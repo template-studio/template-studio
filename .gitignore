@@ -117,6 +117,7 @@ typings/
 
 
 .claude/
+CLAUDE.md
 target/
 nul
 data/
