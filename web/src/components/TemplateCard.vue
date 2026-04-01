@@ -27,7 +27,7 @@
       <div class="card-footer">
         <div class="card-author">
           <div class="author-avatar"></div>
-          <span class="author-name">Template Studio Lite</span>
+          <span class="author-name">Template Studio</span>
         </div>
         <div class="creation-time">
           <span class="time-icon">📅</span>
