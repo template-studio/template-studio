@@ -78,7 +78,7 @@
 #### 1. 克隆项目
 
 ```bash
-git clone https://github.com/your-org/template-studio.git
+git clone https://github.com/template-studio/template-studio.git
 cd template-studio
 ```
 
@@ -384,8 +384,8 @@ A: 在 Web 界面中创建模板，或通过 API 上传模板文件到 `data/tem
 ## 技术支持
 
 - 📖 [文档](./docs/) - 详细的使用文档
-- 🐛 [Issue Tracker](https://github.com/your-org/template-studio/issues) - Bug 报告和功能建议
-- 💬 [Discussions](https://github.com/your-org/template-studio/discussions) - 讨论和问答
+- 🐛 [Issue Tracker](https://github.com/template-studio/template-studio/issues) - Bug 报告和功能建议
+- 💬 [Discussions](https://github.com/template-studio/template-studio/discussions) - 讨论和问答
 
 ---
 

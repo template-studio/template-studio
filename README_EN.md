@@ -78,7 +78,7 @@ Contributions and suggestions are welcome!
 #### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/template-studio.git
+git clone https://github.com/template-studio/template-studio.git
 cd template-studio
 ```
 
@@ -384,8 +384,8 @@ Please ensure:
 ## Support
 
 - 📖 [Documentation](./docs/) - Detailed usage documentation
-- 🐛 [Issue Tracker](https://github.com/your-org/template-studio/issues) - Bug reports and feature requests
-- 💬 [Discussions](https://github.com/your-org/template-studio/discussions) - Q&A and discussions
+- 🐛 [Issue Tracker](https://github.com/template-studio/template-studio/issues) - Bug reports and feature requests
+- 💬 [Discussions](https://github.com/template-studio/template-studio/discussions) - Q&A and discussions
 
 ---
 
