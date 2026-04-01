@@ -1,0 +1,295 @@
+use sqlx::MySqlPool;
+use template_studio_shared::models::template::*;
+use template_studio_shared::utils::response::PagedResponse;
+use anyhow::Result;
+
+/// 模板数据访问层
+pub struct TemplateRepository {
+    pool: MySqlPool,
+}
+
+impl TemplateRepository {
+    pub fn new(pool: MySqlPool) -> Self {
+        Self { pool }
+    }
+
+    /// 创建模板
+    pub async fn create(&self, request: &CreateTemplateRequest, git_repo_path: &str) -> Result<i64> {
+        let mut tx = self.pool.begin().await?;
+
+        // 插入模板主记录
+        let result = sqlx::query!(
+            r#"
+            INSERT INTO templates (name, description, introduction, category_id, template_type, type_config, git_repo_path)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            "#,
+            request.name,
+            request.description,
+            request.introduction,
+            request.category_id,
+            request.template_type,
+            request.type_config,
+            git_repo_path
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        let template_id = result.last_insert_id();
+
+        // 插入语言关联
+        for lang in &request.languages {
+            sqlx::query!(
+                r#"
+                INSERT INTO template_languages (template_id, language_id, is_primary)
+                VALUES (?, ?, ?)
+                "#,
+                template_id,
+                lang.language_id,
+                lang.is_primary
+            )
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        tx.commit().await?;
+        Ok(template_id)
+    }
+
+    /// 根据ID获取模板
+    pub async fn get_by_id(&self, id: i64) -> Result<Option<Template>> {
+        let template = sqlx::query_as!(
+            Template,
+            r#"
+            SELECT id, name, description, category_id, is_featured, logo, introduction, icon,
+                   template_type, type_config, git_repo_path, current_version, created_at, updated_at
+            FROM templates
+            WHERE id = ?
+            "#,
+            id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(template)
+    }
+
+    /// 更新模板
+    pub async fn update(&self, request: &UpdateTemplateRequest) -> Result<bool> {
+        let mut tx = self.pool.begin().await?;
+
+        // 更新模板主记录
+        let result = sqlx::query!(
+            r#"
+            UPDATE templates
+            SET name = ?, description = ?, introduction = ?, category_id = ?,
+                type_config = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            "#,
+            request.name,
+            request.description,
+            request.introduction,
+            request.category_id,
+            request.type_config,
+            request.id
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        // 更新语言关联（先删除后插入）
+        sqlx::query!(
+            "DELETE FROM template_languages WHERE template_id = ?",
+            request.id
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        for lang in &request.languages {
+            sqlx::query!(
+                r#"
+                INSERT INTO template_languages (template_id, language_id, is_primary)
+                VALUES (?, ?, ?)
+                "#,
+                request.id,
+                lang.language_id,
+                lang.is_primary
+            )
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        tx.commit().await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// 删除模板
+    pub async fn delete(&self, id: i64) -> Result<bool> {
+        let mut tx = self.pool.begin().await?;
+
+        // 删除语言关联
+        sqlx::query!(
+            "DELETE FROM template_languages WHERE template_id = ?",
+            id
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        // 删除模板
+        let result = sqlx::query!(
+            "DELETE FROM templates WHERE id = ?",
+            id
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// 分页获取模板列表
+    pub async fn list(&self, query: &TemplateListQuery) -> Result<PagedResponse<Template>> {
+        let page = query.page.unwrap_or(1).max(1);
+        let page_size = query.page_size.unwrap_or(20).min(100);
+        let offset = (page - 1) * page_size;
+
+        let mut count_query = "SELECT COUNT(*) as count FROM templates t WHERE 1=1".to_string();
+        let mut select_query = "
+            SELECT t.id, t.name, t.description, t.category_id, t.is_featured, t.logo, t.introduction, t.icon,
+                   t.template_type, t.type_config, t.git_repo_path, t.current_version, t.created_at, t.updated_at
+            FROM templates t
+            WHERE 1=1
+        "
+        .to_string();
+
+        let mut params = Vec::new();
+
+        if let Some(name) = &query.name {
+            let name_param = format!("%{}%", name);
+            count_query.push_str(&format!(" AND t.name LIKE ?"));
+            select_query.push_str(&format!(" AND t.name LIKE ?"));
+            params.push(name_param);
+        }
+
+        if let Some(description) = &query.description {
+            let desc_param = format!("%{}%", description);
+            count_query.push_str(&format!(" AND t.description LIKE ?"));
+            select_query.push_str(&format!(" AND t.description LIKE ?"));
+            params.push(desc_param);
+        }
+
+        if let Some(category_id) = query.category_id {
+            count_query.push_str(&format!(" AND t.category_id = {}"));
+            select_query.push_str(&format!(" AND t.category_id = {}"));
+        }
+
+        if let Some(language_id) = query.language_id {
+            count_query.push_str(&format!(" AND EXISTS (SELECT 1 FROM template_languages tl WHERE tl.template_id = t.id AND tl.language_id = {})", language_id));
+            select_query.push_str(&format!(" AND EXISTS (SELECT 1 FROM template_languages tl WHERE tl.template_id = t.id AND tl.language_id = {})", language_id));
+        }
+
+        if let Some(is_featured) = query.is_featured {
+            count_query.push_str(&format!(" AND t.is_featured = {}", is_featured));
+            select_query.push_str(&format!(" AND t.is_featured = {}", is_featured));
+        }
+
+        if let Some(template_type) = &query.template_type {
+            count_query.push_str(&format!(" AND t.template_type = ?"));
+            select_query.push_str(&format!(" AND t.template_type = ?"));
+            params.push(template_type.clone());
+        }
+
+        // 添加排序
+        select_query.push_str(" ORDER BY t.is_featured DESC, t.id DESC");
+
+        // 添加分页
+        select_query.push_str(&format!(" LIMIT {} OFFSET {}", page_size, offset));
+
+        // 获取总数
+        let mut query_builder = sqlx::QueryBuilder::new(count_query);
+        for param in &params {
+            query_builder.bind(param);
+        }
+        let count_result = query_builder
+            .build_query_scalar::<i64>()
+            .fetch_one(&self.pool)
+            .await?;
+        let total = count_result as u32;
+
+        // 获取数据
+        let mut query_builder = sqlx::QueryBuilder::new(select_query);
+        for param in &params {
+            query_builder.bind(param);
+        }
+        let templates = query_builder
+            .build_query_as::<Template>()
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(PagedResponse::new(templates, total, page, page_size))
+    }
+
+    /// 切换推荐状态
+    pub async fn toggle_featured(&self, id: i64, is_featured: i32) -> Result<bool> {
+        let result = sqlx::query!(
+            r#"
+            UPDATE templates
+            SET is_featured = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            "#,
+            is_featured,
+            id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Fork模板
+    pub async fn fork(&self, request: &ForkTemplateRequest, git_repo_path: &str) -> Result<i64> {
+        let source = self.get_by_id(request.source_id).await?
+            .ok_or_else(|| anyhow::anyhow!("源模板不存在"))?;
+
+        let category_id = request.category_id.unwrap_or(source.category_id);
+        let template_type = source.template_type.clone();
+
+        let create_request = CreateTemplateRequest {
+            name: request.name.clone(),
+            description: request.description.clone(),
+            introduction: request.introduction.clone(),
+            category_id,
+            template_type,
+            type_config: source.type_config,
+            languages: vec![], // Fork时需要单独处理语言关联
+        };
+
+        let template_id = self.create(&create_request, git_repo_path).await?;
+
+        // 复制语言关联
+        let languages = sqlx::query!(
+            r#"
+            SELECT language_id, is_primary
+            FROM template_languages
+            WHERE template_id = ?
+            "#,
+            request.source_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        for lang in languages {
+            sqlx::query!(
+                r#"
+                INSERT INTO template_languages (template_id, language_id, is_primary)
+                VALUES (?, ?, ?)
+                "#,
+                template_id,
+                lang.language_id,
+                lang.is_primary
+            )
+            .execute(&self.pool)
+            .await?;
+        }
+
+        Ok(template_id)
+    }
+}

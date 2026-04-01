@@ -1,0 +1,199 @@
+use sqlx::MySqlPool;
+use template_studio_shared::models::language::*;
+use template_studio_shared::utils::response::PagedResponse;
+use anyhow::Result;
+
+/// 编程语言数据访问层
+pub struct LanguageRepository {
+    pool: MySqlPool,
+}
+
+impl LanguageRepository {
+    pub fn new(pool: MySqlPool) -> Self {
+        Self { pool }
+    }
+
+    /// 创建编程语言
+    pub async fn create(&self, request: &CreateLanguageRequest) -> Result<i64> {
+        let is_popular = request.is_popular.unwrap_or(0);
+
+        let result = sqlx::query!(
+            r#"
+            INSERT INTO languages (name, display_name, code, icon, color, is_popular)
+            VALUES (?, ?, ?, ?, ?, ?)
+            "#,
+            request.name,
+            request.display_name,
+            request.code,
+            request.icon,
+            request.color,
+            is_popular
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.last_insert_id())
+    }
+
+    /// 根据ID获取编程语言
+    pub async fn get_by_id(&self, id: i64) -> Result<Option<Language>> {
+        let language = sqlx::query_as!(
+            Language,
+            r#"
+            SELECT id, name, display_name, code, icon, color, is_popular, created_at, updated_at
+            FROM languages
+            WHERE id = ?
+            "#,
+            id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(language)
+    }
+
+    /// 根据代码获取编程语言
+    pub async fn get_by_code(&self, code: &str) -> Result<Option<Language>> {
+        let language = sqlx::query_as!(
+            Language,
+            r#"
+            SELECT id, name, display_name, code, icon, color, is_popular, created_at, updated_at
+            FROM languages
+            WHERE code = ?
+            "#,
+            code
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(language)
+    }
+
+    /// 更新编程语言
+    pub async fn update(&self, request: &UpdateLanguageRequest) -> Result<bool> {
+        let result = sqlx::query!(
+            r#"
+            UPDATE languages
+            SET name = ?, display_name = ?, code = ?, icon = ?, color = ?,
+                is_popular = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            "#,
+            request.name,
+            request.display_name,
+            request.code,
+            request.icon,
+            request.color,
+            request.is_popular,
+            request.id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// 删除编程语言
+    pub async fn delete(&self, id: i64) -> Result<bool> {
+        let result = sqlx::query!(
+            "DELETE FROM languages WHERE id = ?",
+            id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// 分页获取编程语言列表
+    pub async fn list(&self, query: &LanguageListQuery) -> Result<PagedResponse<Language>> {
+        let page = query.page.unwrap_or(1).max(1);
+        let page_size = query.page_size.unwrap_or(20).min(100);
+        let offset = (page - 1) * page_size;
+
+        let mut count_query = "SELECT COUNT(*) as count FROM languages WHERE 1=1".to_string();
+        let mut select_query = "
+            SELECT id, name, display_name, code, icon, color, is_popular, created_at, updated_at
+            FROM languages
+            WHERE 1=1
+        "
+        .to_string();
+
+        let mut params = Vec::new();
+
+        if let Some(name) = &query.name {
+            let name_param = format!("%{}%", name);
+            count_query.push_str(" AND (name LIKE ? OR display_name LIKE ?)");
+            select_query.push_str(" AND (name LIKE ? OR display_name LIKE ?)");
+            params.push(name_param.clone());
+            params.push(name_param);
+        }
+
+        if let Some(is_popular) = query.is_popular {
+            count_query.push_str(" AND is_popular = ?");
+            select_query.push_str(" AND is_popular = ?");
+            params.push(is_popular.to_string());
+        }
+
+        // 添加排序
+        select_query.push_str(" ORDER BY is_popular DESC, id ASC");
+
+        // 添加分页
+        select_query.push_str(&format!(" LIMIT {} OFFSET {}", page_size, offset));
+
+        // 获取总数
+        let mut query_builder = sqlx::QueryBuilder::new(count_query);
+        for param in &params {
+            query_builder.bind(param);
+        }
+        let count_result = query_builder
+            .build_query_scalar::<i64>()
+            .fetch_one(&self.pool)
+            .await?;
+        let total = count_result as u32;
+
+        // 获取数据
+        let mut query_builder = sqlx::QueryBuilder::new(select_query);
+        for param in &params {
+            query_builder.bind(param);
+        }
+        let languages = query_builder
+            .build_query_as::<Language>()
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(PagedResponse::new(languages, total, page, page_size))
+    }
+
+    /// 获取所有编程语言
+    pub async fn get_all(&self) -> Result<Vec<Language>> {
+        let languages = sqlx::query_as!(
+            Language,
+            r#"
+            SELECT id, name, display_name, code, icon, color, is_popular, created_at, updated_at
+            FROM languages
+            ORDER BY is_popular DESC, id ASC
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(languages)
+    }
+
+    /// 获取热门编程语言
+    pub async fn get_popular(&self) -> Result<Vec<Language>> {
+        let languages = sqlx::query_as!(
+            Language,
+            r#"
+            SELECT id, name, display_name, code, icon, color, is_popular, created_at, updated_at
+            FROM languages
+            WHERE is_popular = 1
+            ORDER BY id ASC
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(languages)
+    }
+}

@@ -1,0 +1,55 @@
+[package]
+name = "template-studio-cli"
+version = "0.1.0"
+edition = "2021"
+description = "Template Studio CLI - 模板生成器命令行工具"
+authors = ["Template Studio"]
+
+[[bin]]
+name = "template-cli"
+path = "src/main.rs"
+
+[dependencies]
+# 内部依赖
+template-studio-shared = { path = "../../crates/shared" }
+template-studio-infrastructure = { path = "../../crates/infrastructure" }
+template_studio_template_core = { path = "../../crates/template_core" }
+
+# CLI 框架
+clap = { version = "4.4", features = ["derive", "env"] }
+anyhow = "1.0"
+thiserror = "1.0"
+
+# 异步运行时
+tokio = { workspace = true }
+
+# HTTP 客户端
+reqwest = { version = "0.11", features = ["json"] }
+
+# 序列化
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = "0.9"
+toml = "0.8"
+
+# 配置管理
+config = { workspace = true }
+dirs = "5.0"
+
+# TUI 框架
+ratatui = "0.23"
+crossterm = "0.27"
+
+# 交互式输入
+dialoguer = "0.11"
+inquire = "0.6"
+
+# 日志
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-appender = "0.2"
+
+# 文件操作
+fs_extra = "1.3"
+walkdir = "2.4"
+zip = "0.6"

@@ -1,0 +1,33 @@
+[package]
+name = "template-studio-web"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# 内部依赖
+template-studio-shared = { path = "../../crates/shared" }
+template-studio-services = { path = "../../crates/services" }
+template-studio-repositories = { path = "../../crates/repositories" }
+template-studio-infrastructure = { path = "../../crates/infrastructure" }
+template_studio_template_core = { path = "../../crates/template_core" }
+
+# 外部依赖
+axum = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+sqlx = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+config = { workspace = true }
+uuid = { workspace = true, features = ["v4", "serde"] }
+chrono = { workspace = true, features = ["serde"] }
+validator = { workspace = true, features = ["derive"] }
+base64 = "0.22"
+md5 = "0.7"
+bytes = { workspace = true }
+zip = { workspace = true }
+notify = "6.0"

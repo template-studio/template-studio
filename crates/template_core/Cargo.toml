@@ -1,0 +1,39 @@
+[package]
+name = "template_studio_template_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# 序列化
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+serde_yaml = "0.9"
+
+# 模板引擎
+# tera = { workspace = true, features = ["builtins"] }  # 暂时保留，迁移完成后删除
+minijinja = { version = "2.0", features = ["loader", "json"] }
+
+# 编码
+base64 = "0.22"
+percent-encoding = "2.3"
+
+# 工具
+once_cell = "1.19"
+regex = { workspace = true }
+
+# 性能优化
+rayon = { workspace = true, optional = true }  # 条件依赖：仅 Native 需要
+
+# 错误处理
+thiserror = "1.0"
+
+# 日志（可选，可通过 feature 关闭）
+tracing = { workspace = true, optional = true }
+
+[features]
+default = ["logging", "native"]  # 默认启用 Native 优化
+logging = ["tracing"]
+native = ["rayon"]  # Native 平台优化（多线程并行渲染）
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

@@ -1,0 +1,350 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# CodeGen Studio - 代码生成变量约定
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# 渲染规则（前端根据键名自动判断）：
+#
+#   键名                    │ 渲染组件        │ 说明
+#   ───────────────────────┼────────────────┼──────────────────────
+#   单个变量（非对象/数组）  │ 表单输入       │ 自动推断输入类型
+#   fields / columns       │ 可编辑表格     │ 字段配置表格
+#   options                │ 开关组         │ 布尔选项集合
+#   extra                  │ 动态表单       │ 有内容则显示
+#
+# 特殊字段（以 _ 开头）：
+#   _meta                  │ 元信息         │ 定义渲染方式（可选）
+#   _columns               │ 表格列定义     │ 用于 fields 表格
+#   _data                  │ 表格数据       │ 用于 fields 表格
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 基本信息（单个变量 → 自动渲染为表单项）
+# 类型推断规则：
+#   - 包含 name/Name/title/Title → 只读显示
+#   - 布尔值 → 开关
+#   - 枚举值（通过 _meta.enums 定义）→ 下拉选择
+#   - 其他 → 文本输入
+# ─────────────────────────────────────────────────────────────────────────────
+
+# [只读] 数据库表名
+tableName: "sys_user"
+
+# [只读] 表注释
+tableComment: "用户表"
+
+# [只读] 表类型
+tableType: "table"
+
+# 实体名称（PascalCase）
+entityName: "SysUser"
+
+# 功能描述
+entityComment: "用户管理"
+
+# 业务名称（用于 URL 路径）
+businessName: "user"
+
+# 模块名称
+moduleName: "system"
+
+# 作者
+author: "zhangsan"
+
+# 命名风格
+namingCase: "camelCase"
+
+# 表前缀（自动去除）
+tablePrefix: "sys_"
+
+# 包名/模块路径
+packageName: "com.example.demo"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 字段配置（fields → 可编辑表格）
+# _columns: 定义表格的列
+# _data: 表格数据
+# ─────────────────────────────────────────────────────────────────────────────
+fields:
+  # 表格列定义
+  _columns:
+    - key: "name"
+      title: "字段名"
+      width: 120
+      fixed: "left"
+      readonly: true
+
+    - key: "field"
+      title: "属性名"
+      width: 100
+      editable: true
+
+    - key: "type"
+      title: "类型"
+      width: 80
+      editable: true
+
+    - key: "label"
+      title: "显示名"
+      width: 100
+      editable: true
+
+    - key: "input"
+      title: "输入类型"
+      width: 90
+      type: "select"
+      options:
+        - { value: "text", label: "文本" }
+        - { value: "textarea", label: "多行文本" }
+        - { value: "number", label: "数字" }
+        - { value: "select", label: "下拉选择" }
+        - { value: "radio", label: "单选" }
+        - { value: "checkbox", label: "复选" }
+        - { value: "switch", label: "开关" }
+        - { value: "date", label: "日期" }
+        - { value: "datetime", label: "日期时间" }
+        - { value: "hidden", label: "隐藏" }
+
+    - key: "list"
+      title: "列表"
+      width: 50
+      type: "switch"
+      align: "center"
+
+    - key: "form"
+      title: "表单"
+      width: 50
+      type: "switch"
+      align: "center"
+
+    - key: "query"
+      title: "查询"
+      width: 50
+      type: "switch"
+      align: "center"
+
+    - key: "required"
+      title: "必填"
+      width: 50
+      type: "switch"
+      align: "center"
+
+    - key: "dict"
+      title: "字典"
+      width: 100
+      editable: true
+      placeholder: "字典类型"
+
+  # 字段数据
+  _data:
+    - name: "id"
+      field: "id"
+      type: "Long"
+      label: "主键ID"
+      input: "hidden"
+      list: false
+      form: false
+      query: false
+      required: false
+      dict: ""
+
+    - name: "user_name"
+      field: "userName"
+      type: "String"
+      label: "用户名"
+      input: "text"
+      list: true
+      form: true
+      query: true
+      queryType: "like"
+      required: true
+      dict: ""
+
+    - name: "nick_name"
+      field: "nickName"
+      type: "String"
+      label: "昵称"
+      input: "text"
+      list: true
+      form: true
+      query: false
+      required: false
+      dict: ""
+
+    - name: "email"
+      field: "email"
+      type: "String"
+      label: "邮箱"
+      input: "text"
+      list: true
+      form: true
+      query: false
+      required: false
+      dict: ""
+
+    - name: "phone"
+      field: "phone"
+      type: "String"
+      label: "手机号"
+      input: "text"
+      list: true
+      form: true
+      query: false
+      required: false
+      dict: ""
+
+    - name: "status"
+      field: "status"
+      type: "Integer"
+      label: "状态"
+      input: "select"
+      list: true
+      form: true
+      query: true
+      queryType: "eq"
+      required: true
+      dict: "sys_normal_disable"
+
+    - name: "dept_id"
+      field: "deptId"
+      type: "Long"
+      label: "部门"
+      input: "tree"
+      list: true
+      form: true
+      query: false
+      required: false
+      dict: ""
+
+    - name: "created_at"
+      field: "createdAt"
+      type: "DateTime"
+      label: "创建时间"
+      input: "datetime"
+      list: true
+      form: false
+      query: false
+      required: false
+      dict: ""
+
+    - name: "updated_at"
+      field: "updatedAt"
+      type: "DateTime"
+      label: "更新时间"
+      input: "datetime"
+      list: false
+      form: false
+      query: false
+      required: false
+      dict: ""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 生成选项（options → 开关组）
+# 所有布尔值自动渲染为开关
+# ─────────────────────────────────────────────────────────────────────────────
+options:
+  # 代码选项
+  lombok: true                      # 使用 Lombok
+  swagger: true                     # 生成 API 文档
+  validation: true                  # 参数校验
+  serializable: true                # 序列化
+
+  # ORM 选项
+  logicDelete: true                 # 逻辑删除
+  autoFill: true                    # 自动填充时间
+
+  # API 选项
+  restful: true                     # RESTful 风格
+  permission: false                 # 权限控制
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 扩展配置（extra → 动态渲染）
+# 有内容则显示此区块，根据模板组动态变化
+# 支持的渲染类型通过 _type 指定：
+#   - text: 文本输入
+#   - number: 数字输入
+#   - select: 下拉选择（需要 _options）
+#   - switch: 开关
+# ─────────────────────────────────────────────────────────────────────────────
+extra:
+  # Java 模板组配置
+  javaVersion:
+    _type: "select"
+    _label: "Java 版本"
+    _options:
+      - { value: "8", label: "Java 8" }
+      - { value: "11", label: "Java 11" }
+      - { value: "17", label: "Java 17" }
+      - { value: "21", label: "Java 21" }
+    value: "17"
+
+  springBootVersion:
+    _type: "select"
+    _label: "Spring Boot 版本"
+    _options:
+      - { value: "2.7.x", label: "2.7.x" }
+      - { value: "3.0.x", label: "3.0.x" }
+      - { value: "3.1.x", label: "3.1.x" }
+      - { value: "3.2.x", label: "3.2.x" }
+    value: "3.2.x"
+
+  # 以下是其他模板组的示例（不会同时显示）
+  # Go 模板组会显示这些：
+  #
+  # goModule:
+  #   _type: "text"
+  #   _label: "Go Module"
+  #   value: "github.com/example/demo"
+  #
+  # useGin:
+  #   _type: "switch"
+  #   _label: "使用 Gin"
+  #   value: true
+  #
+  # useGorm:
+  #   _type: "switch"
+  #   _label: "使用 GORM"
+  #   value: true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 模板使用示例
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Java 实体类模板：
+# ─────────────────────────────────────────────────────────────────────────────
+# package {{ packageName }}.domain;
+# {% if options.lombok %}
+# import lombok.Data;
+# {% endif %}
+# {% if options.swagger %}
+# import io.swagger.v3.oas.annotations.media.Schema;
+# {% endif %}
+#
+# @Schema(description = "{{ entityComment }}")
+# {% if options.lombok %}@Data{% endif %}
+# public class {{ entityName }} {
+# {% for field in fields._data %}
+#   {% if field.form or field.list %}
+#   {% if options.swagger %}
+#   @Schema(description = "{{ field.label }}")
+#   {% endif %}
+#   private {{ field.type }} {{ field.field }};
+#   {% endif %}
+# {% endfor %}
+# }
+#
+# Vue3 表单模板：
+# ─────────────────────────────────────────────────────────────────────────────
+# <template>
+#   <a-form :model="formData">
+# {% for field in fields._data %}
+#   {% if field.form %}
+#     <a-form-item label="{{ field.label }}" name="{{ field.field }}">
+#       <a-input v-model:value="formData.{{ field.field }}" />
+#     </a-form-item>
+#   {% endif %}
+# {% endfor %}
+#   </a-form>
+# </template>
+#
+# ═══════════════════════════════════════════════════════════════════════════════

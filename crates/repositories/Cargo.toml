@@ -1,0 +1,16 @@
+[package]
+name = "template-studio-repositories"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+template-studio-shared = { path = "../shared" }
+template-studio-infrastructure = { path = "../infrastructure" }
+
+sqlx = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+uuid = { workspace = true, features = ["v4", "serde"] }

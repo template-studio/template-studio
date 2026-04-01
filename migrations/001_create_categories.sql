@@ -1,0 +1,11 @@
+-- 创建分类表
+CREATE TABLE categories (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL UNIQUE COMMENT '分类名称',
+    description TEXT COMMENT '分类描述',
+    icon VARCHAR(500) COMMENT '分类图标',
+    sort INT DEFAULT 0 COMMENT '排序',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_sort (sort)
+);

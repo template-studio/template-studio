@@ -1,0 +1,406 @@
+/* Theme transitions and animations - removed global rules to prevent glass effects */
+
+/* Light Theme */
+[data-theme="light"] {
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+/* Component-specific theme styles */
+.app-sidebar {
+  background-color: var(--color-sidebar);
+  border-right: 1px solid var(--color-border);
+}
+
+.app-navbar {
+  background-color: var(--color-navbar);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Button theme variants */
+.btn-primary {
+  background-color: var(--color-primary);
+  color: white;
+  border: 1px solid var(--color-primary);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-active);
+  border-color: var(--color-active);
+}
+
+.btn-secondary {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-hover);
+  border-color: var(--color-border);
+}
+
+/* Theme toggle animation */
+.theme-toggle {
+  transition: transform var(--transition-fast);
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1);
+}
+
+.theme-toggle:active {
+  transform: scale(0.95);
+}
+
+/* Smooth color transitions for interactive elements - removed to prevent glass effects */
+
+/* Focus states */
+.focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Loading states */
+.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Success, warning, error states */
+.success {
+  color: #52c41a;
+}
+
+.warning {
+  color: #faad14;
+}
+
+.error {
+  color: #ff4d4f;
+}
+
+/* Select dropdown dark theme */
+[data-theme="dark"] .ant-select {
+  color: var(--color-text-dark);
+}
+
+[data-theme="dark"] .ant-select .ant-select-selector {
+  background-color: var(--color-surface-dark) !important;
+  border-color: var(--color-border-dark) !important;
+  color: var(--color-text-dark) !important;
+}
+
+[data-theme="dark"] .ant-select-focused .ant-select-selector,
+[data-theme="dark"] .ant-select-selector:focus,
+[data-theme="dark"] .ant-select-selector:active {
+  border-color: var(--color-primary-dark) !important;
+  box-shadow: 0 0 0 2px rgba(144, 202, 249, 0.2) !important;
+}
+
+[data-theme="dark"] .ant-select-dropdown {
+  background-color: var(--color-surface-dark) !important;
+  border-color: var(--color-border-dark) !important;
+}
+
+[data-theme="dark"] .ant-select-item {
+  color: var(--color-text-dark) !important;
+}
+
+[data-theme="dark"] .ant-select-item-option {
+  color: var(--color-text-dark) !important;
+}
+
+[data-theme="dark"] .ant-select-item-option:hover {
+  background-color: var(--color-hover-dark) !important;
+}
+
+[data-theme="dark"] .ant-select-item-option-selected {
+  background-color: var(--color-active-dark) !important;
+  color: var(--color-primary-dark) !important;
+}
+
+[data-theme="dark"] .ant-select-item-option-active {
+  background-color: var(--color-hover-dark) !important;
+}
+
+[data-theme="dark"] .ant-select-arrow {
+  color: var(--color-text-secondary-dark) !important;
+}
+
+/* Input field dark theme */
+[data-theme="dark"] .ant-input {
+  background-color: var(--color-surface-dark) !important;
+  border-color: var(--color-border-dark) !important;
+  color: var(--color-text-dark) !important;
+}
+
+[data-theme="dark"] .ant-input:hover {
+  border-color: var(--color-border-dark) !important;
+}
+
+[data-theme="dark"] .ant-input:focus,
+[data-theme="dark"] .ant-input-focused {
+  border-color: var(--color-primary-dark) !important;
+  box-shadow: 0 0 0 2px rgba(144, 202, 249, 0.2) !important;
+}
+
+[data-theme="dark"] .ant-input::placeholder {
+  color: var(--color-text-secondary-dark) !important;
+}
+
+[data-theme="dark"] .ant-input-affix-wrapper {
+  background-color: var(--color-surface-dark) !important;
+  border-color: var(--color-border-dark) !important;
+}
+
+[data-theme="dark"] .ant-input-affix-wrapper:hover {
+  border-color: var(--color-border-dark) !important;
+}
+
+[data-theme="dark"] .ant-input-affix-wrapper-focused,
+[data-theme="dark"] .ant-input-affix-wrapper:focus {
+  border-color: var(--color-primary-dark) !important;
+  box-shadow: 0 0 0 2px rgba(144, 202, 249, 0.2) !important;
+}
+
+[data-theme="dark"] .ant-input-affix-wrapper .ant-input {
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+
+[data-theme="dark"] .ant-input-password {
+  background-color: var(--color-surface-dark) !important;
+  border-color: var(--color-border-dark) !important;
+}
+
+[data-theme="dark"] .ant-input-password:hover {
+  border-color: var(--color-border-dark) !important;
+}
+
+[data-theme="dark"] .ant-input-password:focus,
+[data-theme="dark"] .ant-input-password-focused {
+  border-color: var(--color-primary-dark) !important;
+  box-shadow: 0 0 0 2px rgba(144, 202, 249, 0.2) !important;
+}
+
+[data-theme="dark"] .ant-input-search .ant-input-group .ant-input-affix-wrapper {
+  background-color: var(--color-surface-dark) !important;
+}
+
+[data-theme="dark"] .ant-input-search .ant-input-group .ant-input-search-button {
+  background-color: var(--color-surface-dark) !important;
+  border-color: var(--color-border-dark) !important;
+  color: var(--color-text-dark) !important;
+}
+
+[data-theme="dark"] .ant-input-search .ant-input-group .ant-input-search-button:hover {
+  background-color: var(--color-hover-dark) !important;
+  border-color: var(--color-border-dark) !important;
+}
+
+/* InputNumber field dark theme */
+[data-theme="dark"] .ant-input-number {
+  background-color: var(--color-surface-dark) !important;
+  border-color: var(--color-border-dark) !important;
+}
+
+[data-theme="dark"] .ant-input-number:hover {
+  border-color: var(--color-border-dark) !important;
+}
+
+[data-theme="dark"] .ant-input-number:focus,
+[data-theme="dark"] .ant-input-number-focused {
+  border-color: var(--color-primary-dark) !important;
+  box-shadow: 0 0 0 2px rgba(144, 202, 249, 0.2) !important;
+}
+
+[data-theme="dark"] .ant-input-number .ant-input-number-input {
+  background-color: transparent !important;
+  color: var(--color-text-dark) !important;
+}
+
+[data-theme="dark"] .ant-input-number .ant-input-number-input::placeholder {
+  color: var(--color-text-secondary-dark) !important;
+}
+
+[data-theme="dark"] .ant-input-number-handler-wrap {
+  background-color: var(--color-surface-dark) !important;
+  border-left-color: var(--color-border-dark) !important;
+}
+
+[data-theme="dark"] .ant-input-number-handler {
+  background-color: var(--color-surface-dark) !important;
+  border-bottom-color: var(--color-border-dark) !important;
+  color: var(--color-text-secondary-dark) !important;
+}
+
+[data-theme="dark"] .ant-input-number-handler:hover {
+  background-color: var(--color-hover-dark) !important;
+  color: var(--color-text-dark) !important;
+}
+
+[data-theme="dark"] .ant-input-number-handler-up:hover,
+[data-theme="dark"] .ant-input-number-handler-down:hover {
+  background-color: var(--color-hover-dark) !important;
+}
+
+[data-theme="dark"] .ant-input-number-handler-up-inner,
+[data-theme="dark"] .ant-input-number-handler-down-inner {
+  color: inherit !important;
+}
+
+[data-theme="dark"] .ant-input-number-handler-up-disabled,
+[data-theme="dark"] .ant-input-number-handler-down-disabled {
+  background-color: var(--color-surface-dark) !important;
+  color: var(--color-text-secondary-dark) !important;
+  opacity: 0.5;
+}
+
+[data-theme="dark"] .ant-input-number-handler-up-disabled:hover,
+[data-theme="dark"] .ant-input-number-handler-down-disabled:hover {
+  background-color: var(--color-surface-dark) !important;
+  color: var(--color-text-secondary-dark) !important;
+}
+
+/* Button dark theme */
+[data-theme="dark"] .ant-btn {
+  background-color: var(--color-surface-dark) !important;
+  border-color: var(--color-border-dark) !important;
+  color: var(--color-text-dark) !important;
+}
+
+[data-theme="dark"] .ant-btn:hover {
+  background-color: var(--color-hover-dark) !important;
+  border-color: var(--color-border-dark) !important;
+  color: var(--color-text-dark) !important;
+}
+
+[data-theme="dark"] .ant-btn:focus {
+  background-color: var(--color-hover-dark) !important;
+  border-color: var(--color-primary-dark) !important;
+  color: var(--color-text-dark) !important;
+}
+
+[data-theme="dark"] .ant-btn:active {
+  background-color: var(--color-active-dark) !important;
+  border-color: var(--color-border-dark) !important;
+  color: var(--color-text-dark) !important;
+}
+
+/* Primary button dark theme */
+[data-theme="dark"] .ant-btn-primary {
+  background-color: var(--color-primary-dark) !important;
+  border-color: var(--color-primary-dark) !important;
+  color: white !important;
+}
+
+[data-theme="dark"] .ant-btn-primary:hover {
+  background-color: var(--color-active-dark) !important;
+  border-color: var(--color-active-dark) !important;
+  color: white !important;
+}
+
+[data-theme="dark"] .ant-btn-primary:focus {
+  background-color: var(--color-active-dark) !important;
+  border-color: var(--color-primary-dark) !important;
+  color: white !important;
+}
+
+[data-theme="dark"] .ant-btn-primary:active {
+  background-color: var(--color-primary-dark) !important;
+  border-color: var(--color-primary-dark) !important;
+  color: white !important;
+}
+
+/* Text button dark theme */
+[data-theme="dark"] .ant-btn-text {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: var(--color-text-dark) !important;
+}
+
+[data-theme="dark"] .ant-btn-text:hover {
+  background-color: var(--color-hover-dark) !important;
+  border-color: transparent !important;
+  color: var(--color-primary-dark) !important;
+}
+
+[data-theme="dark"] .ant-btn-text:focus {
+  background-color: var(--color-hover-dark) !important;
+  border-color: transparent !important;
+  color: var(--color-primary-dark) !important;
+}
+
+[data-theme="dark"] .ant-btn-text:active {
+  background-color: var(--color-active-dark) !important;
+  border-color: transparent !important;
+  color: var(--color-primary-dark) !important;
+}
+
+/* Link button dark theme */
+[data-theme="dark"] .ant-btn-link {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: var(--color-primary-dark) !important;
+}
+
+[data-theme="dark"] .ant-btn-link:hover {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: var(--color-primary-dark) !important;
+  opacity: 0.8;
+}
+
+[data-theme="dark"] .ant-btn-link:focus {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: var(--color-primary-dark) !important;
+}
+
+[data-theme="dark"] .ant-btn-link:active {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: var(--color-primary-dark) !important;
+}
+
+/* Disabled button dark theme */
+[data-theme="dark"] .ant-btn:disabled,
+[data-theme="dark"] .ant-btn[disabled] {
+  background-color: var(--color-surface-dark) !important;
+  border-color: var(--color-border-dark) !important;
+  color: var(--color-text-secondary-dark) !important;
+  opacity: 0.6;
+}
+
+[data-theme="dark"] .ant-btn-primary:disabled,
+[data-theme="dark"] .ant-btn-primary[disabled] {
+  background-color: var(--color-surface-dark) !important;
+  border-color: var(--color-border-dark) !important;
+  color: var(--color-text-secondary-dark) !important;
+  opacity: 0.6;
+}
+
+/* Loading state dark theme */
+[data-theme="dark"] .ant-btn-loading {
+  background-color: var(--color-surface-dark) !important;
+  border-color: var(--color-border-dark) !important;
+  color: var(--color-text-dark) !important;
+}
+
+/* Button icon dark theme */
+[data-theme="dark"] .ant-btn .anticon {
+  color: inherit;
+}
+
+/* Close button special handling */
+[data-theme="dark"] .window-control.close:hover {
+  background: #ff4757 !important;
+  color: white !important;
+}
