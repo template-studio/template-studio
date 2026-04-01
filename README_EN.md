@@ -8,7 +8,7 @@
 
 ![Rust](https://img.shields.io/badge/Rust-1.70+-orange?logo=rust)
 ![Vue](https://img.shields.io/badge/Vue-3.5+-green?logo=vue.js)
-![License](https://img.shields.io/badge/License-MIT-blue)
+![License](https://img.shields.io/badge/License-Apache%202.0-blue)
 ![Status](https://img.shields.io/badge/Status-Early%20Development-yellow)
 
 [Features](#features) • [Quick Start](#quick-start) • [Architecture](#architecture) • [Development Guide](#development-guide)
@@ -378,7 +378,7 @@ Please ensure:
 
 ## License
 
-This project is licensed under the [MIT](LICENSE) License.
+This project is licensed under the [Apache License 2.0](LICENSE) License.
 
 ---
 

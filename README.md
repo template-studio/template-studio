@@ -8,7 +8,7 @@
 
 ![Rust](https://img.shields.io/badge/Rust-1.70+-orange?logo=rust)
 ![Vue](https://img.shields.io/badge/Vue-3.5+-green?logo=vue.js)
-![License](https://img.shields.io/badge/License-MIT-blue)
+![License](https://img.shields.io/badge/License-Apache%202.0-blue)
 ![Status](https://img.shields.io/badge/Status-Early%20Development-yellow)
 
 [功能特性](#功能特性) • [快速开始](#快速开始) • [架构设计](#架构设计) • [开发指南](#开发指南)
@@ -378,7 +378,7 @@ A: 在 Web 界面中创建模板，或通过 API 上传模板文件到 `data/tem
 
 ## 许可证
 
-本项目采用 [MIT](LICENSE) 许可证。
+本项目采用 [Apache License 2.0](LICENSE) 许可证。
 
 ---
 
