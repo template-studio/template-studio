@@ -157,8 +157,7 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/admin/settings',
     name: 'admin-settings',
-    component: ParentLayout,
-    redirect: '/admin/settings/footer',
+    component: Layout,
     meta: {
       title: '系统设置',
       icon: renderIcon(SettingsOutline),
@@ -166,12 +165,12 @@ const routes: Array<RouteRecordRaw> = [
     },
     children: [
       {
-        path: 'footer',
-        name: 'admin-settings-footer',
+        path: '',
+        name: 'admin-settings-index',
         meta: {
-          title: 'Footer 设置',
+          title: '系统设置',
         },
-        component: () => import('@/views/admin/settings/footer.vue'),
+        component: () => import('@/views/admin/settings/index.vue'),
       },
     ],
   },

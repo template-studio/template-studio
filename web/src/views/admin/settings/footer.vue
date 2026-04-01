@@ -1,53 +1,49 @@
 <template>
-  <div class="settings-footer">
-    <n-card title="Footer 设置" :bordered="false">
-      <n-spin :show="loading">
-        <n-form label-placement="top">
-          <!-- 链接管理 -->
-          <n-form-item label="页脚链接">
-            <div class="links-editor">
-              <div v-for="(link, index) in footerLinks" :key="index" class="link-item">
-                <n-input v-model:value="link.label" placeholder="链接文本" style="width: 200px" />
-                <n-input v-model:value="link.url" placeholder="链接地址" style="flex: 1" />
-                <n-button quaternary type="error" @click="removeLink(index)">
-                  <template #icon><n-icon><CloseOutline /></n-icon></template>
-                </n-button>
-              </div>
-              <n-button dashed block @click="addLink">
-                <template #icon><n-icon><AddOutline /></n-icon></template>
-                添加链接
-              </n-button>
-            </div>
-          </n-form-item>
-
-          <!-- 版权信息 -->
-          <n-form-item label="版权信息">
-            <n-input v-model:value="copyright" placeholder="© 2025 Your Company" />
-          </n-form-item>
-
-          <!-- 技术栈信息 -->
-          <n-form-item label="技术栈信息">
-            <n-input v-model:value="poweredBy" placeholder="基于 Rust & Vue3 构建" />
-          </n-form-item>
-
-          <!-- 联系方式 -->
-          <n-form-item label="反馈邮箱">
-            <n-input v-model:value="feedbackEmail" placeholder="feedback@example.com" />
-          </n-form-item>
-          <n-form-item label="技术支持邮箱">
-            <n-input v-model:value="supportEmail" placeholder="support@example.com" />
-          </n-form-item>
-
-          <!-- 保存按钮 -->
-          <n-form-item>
-            <n-button type="primary" :loading="saving" @click="handleSave">
-              保存设置
+  <n-spin :show="loading">
+    <n-form label-placement="top">
+      <!-- 链接管理 -->
+      <n-form-item label="页脚链接">
+        <div class="links-editor">
+          <div v-for="(link, index) in footerLinks" :key="index" class="link-item">
+            <n-input v-model:value="link.label" placeholder="链接文本" style="width: 200px" />
+            <n-input v-model:value="link.url" placeholder="链接地址" style="flex: 1" />
+            <n-button quaternary type="error" @click="removeLink(index)">
+              <template #icon><n-icon><CloseOutline /></n-icon></template>
             </n-button>
-          </n-form-item>
-        </n-form>
-      </n-spin>
-    </n-card>
-  </div>
+          </div>
+          <n-button dashed block @click="addLink">
+            <template #icon><n-icon><AddOutline /></n-icon></template>
+            添加链接
+          </n-button>
+        </div>
+      </n-form-item>
+
+      <!-- 版权信息 -->
+      <n-form-item label="版权信息">
+        <n-input v-model:value="copyright" placeholder="© 2025 Your Company" />
+      </n-form-item>
+
+      <!-- 技术栈信息 -->
+      <n-form-item label="技术栈信息">
+        <n-input v-model:value="poweredBy" placeholder="基于 Rust & Vue3 构建" />
+      </n-form-item>
+
+      <!-- 联系方式 -->
+      <n-form-item label="反馈邮箱">
+        <n-input v-model:value="feedbackEmail" placeholder="feedback@example.com" />
+      </n-form-item>
+      <n-form-item label="技术支持邮箱">
+        <n-input v-model:value="supportEmail" placeholder="support@example.com" />
+      </n-form-item>
+
+      <!-- 保存按钮 -->
+      <n-form-item>
+        <n-button type="primary" :loading="saving" @click="handleSave">
+          保存设置
+        </n-button>
+      </n-form-item>
+    </n-form>
+  </n-spin>
 </template>
 
 <script setup lang="ts">
@@ -150,10 +146,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.settings-footer {
-  padding: 16px;
-}
-
 .links-editor {
   width: 100%;
   display: flex;
