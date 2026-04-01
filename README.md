@@ -4,6 +4,8 @@
 
 <div align="center">
 
+**[English](README_EN.md)** | **简体中文**
+
 ![Rust](https://img.shields.io/badge/Rust-1.70+-orange?logo=rust)
 ![Vue](https://img.shields.io/badge/Vue-3.5+-green?logo=vue.js)
 ![License](https://img.shields.io/badge/License-MIT-blue)
