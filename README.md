@@ -122,19 +122,6 @@ cargo run -p template-studio-cli -- create my-project --template react-ts
 cargo run -p template-studio-cli -- list
 ```
 
-### Docker 部署
-
-```bash
-# 构建并启动所有服务
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f
-
-# 停止服务
-docker-compose down
-```
-
 ---
 
 ## 项目架构

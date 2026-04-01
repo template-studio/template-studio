@@ -122,19 +122,6 @@ cargo run -p template-studio-cli -- create my-project --template react-ts
 cargo run -p template-studio-cli -- list
 ```
 
-### Docker Deployment
-
-```bash
-# Build and start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-```
-
 ---
 
 ## Architecture
