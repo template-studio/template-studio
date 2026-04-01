@@ -7,6 +7,7 @@ import {
   OptionsOutline,
   ServerOutline,
   LayersOutline,
+  SettingsOutline,
 } from '@vicons/ionicons5';
 import { renderIcon } from '@/utils/index';
 
@@ -150,6 +151,29 @@ const routes: Array<RouteRecordRaw> = [
       title: '变量预设设计',
       hidden: true, // 隐藏菜单
     },
+  },
+
+  // 系统设置
+  {
+    path: '/admin/settings',
+    name: 'admin-settings',
+    component: ParentLayout,
+    redirect: '/admin/settings/footer',
+    meta: {
+      title: '系统设置',
+      icon: renderIcon(SettingsOutline),
+      sort: 99,
+    },
+    children: [
+      {
+        path: 'footer',
+        name: 'admin-settings-footer',
+        meta: {
+          title: 'Footer 设置',
+        },
+        component: () => import('@/views/admin/settings/footer.vue'),
+      },
+    ],
   },
 ];
 

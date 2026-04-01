@@ -9,3 +9,4 @@ pub mod file_tree;
 pub mod release;
 pub mod render;
 pub mod backup;
+pub mod system_setting;

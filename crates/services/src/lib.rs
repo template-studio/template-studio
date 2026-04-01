@@ -9,6 +9,7 @@ pub mod template_render_service;
 pub mod file_conditions_service;
 pub mod release_service;
 pub mod backup_service;
+pub mod system_setting_service;
 pub mod cache;
 
 pub use category_service::CategoryService;
@@ -22,3 +23,4 @@ pub use template_render_service::TemplateRenderService;
 pub use file_conditions_service::FileConditionsService;
 pub use release_service::ReleaseService;
 pub use backup_service::BackupService;
+pub use system_setting_service::SystemSettingService;

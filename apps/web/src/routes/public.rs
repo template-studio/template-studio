@@ -8,6 +8,7 @@ use crate::handlers::{
     engine::{get_engine_info, download_engine, check_engine_update},
     language::{get_all_languages, get_popular_languages},
     var_preset::{get_enabled_var_presets, get_var_presets_by_category},
+    system_setting::get_public_settings,
 };
 use crate::handlers::template_files::{preview_template_file, generate_template_file, preview_file_tree, generate_file_tree, generate_zip, get_template_variables, clear_cache};
 use super::super::AppState;
@@ -21,6 +22,7 @@ pub fn public_routes() -> Router<AppState> {
         .nest("/builtin-functions", builtin_functions_routes())
         .nest("/template-files", template_files_routes())
         .nest("/engine", engine_routes())
+        .route("/settings/:group", get(get_public_settings))
 }
 
 /// 内置函数公开路由

@@ -2,29 +2,80 @@
   <footer class="footer-bar">
     <div class="footer-main">
       <div class="footer-links">
-        <a href="#" @click.prevent>关于我们</a>
-        <a href="#" @click.prevent>用户协议</a>
-        <a href="#" @click.prevent>隐私政策</a>
-        <a href="#" @click.prevent>联系我们</a>
-        <a href="#" @click.prevent>友情链接</a>
+        <a
+          v-for="link in footerLinks"
+          :key="link.label"
+          :href="link.url"
+          @click.prevent="link.url !== '#' && ($event.target.removeAttribute('href'))"
+        >{{ link.label }}</a>
       </div>
       <div class="footer-info">
-        <span>© 2025 Template Studio Lite</span>
-        <span class="footer-divider">|</span>
-        <span>基于 GoFrame & Vue3 构建</span>
-        <span class="footer-divider">|</span>
-        <span>Powered by Naive UI & Vite</span>
+        <span>{{ copyright }}</span>
+        <span v-if="poweredBy" class="footer-divider">|</span>
+        <span v-if="poweredBy">{{ poweredBy }}</span>
       </div>
-      <div class="footer-contact">
-        <span>反馈邮箱：feedback@templateStudio.com</span>
-        <span class="footer-divider">|</span>
-        <span>技术支持：support@templateStudio.com</span>
+      <div v-if="feedbackEmail || supportEmail" class="footer-contact">
+        <span v-if="feedbackEmail">反馈邮箱：{{ feedbackEmail }}</span>
+        <span v-if="feedbackEmail && supportEmail" class="footer-divider">|</span>
+        <span v-if="supportEmail">技术支持：{{ supportEmail }}</span>
       </div>
     </div>
   </footer>
 </template>
 
-<script setup></script>
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { getPublicSettings } from '@/api/system/settings';
+
+interface FooterLink {
+  label: string;
+  url: string;
+}
+
+const footerLinks = ref<FooterLink[]>([
+  { label: '关于我们', url: '#' },
+  { label: '用户协议', url: '#' },
+  { label: '隐私政策', url: '#' },
+  { label: '联系我们', url: '#' },
+  { label: '友情链接', url: '#' },
+]);
+const copyright = ref('© 2025 Template Studio Lite');
+const poweredBy = ref('基于 Rust & Vue3 构建 | Powered by Naive UI & Vite');
+const feedbackEmail = ref('feedback@templateStudio.com');
+const supportEmail = ref('support@templateStudio.com');
+
+onMounted(async () => {
+  try {
+    const res = await getPublicSettings('footer');
+    const items = res.data?.data || [];
+    for (const item of items) {
+      switch (item.key) {
+        case 'links':
+          try {
+            const parsed = JSON.parse(item.value || '[]');
+            if (parsed.length > 0) footerLinks.value = parsed;
+          } catch { /* keep defaults */ }
+          break;
+        case 'copyright':
+          if (item.value) copyright.value = item.value;
+          break;
+        case 'powered_by':
+          if (item.value) poweredBy.value = item.value;
+          break;
+        case 'contact':
+          try {
+            const contact = JSON.parse(item.value || '{}');
+            if (contact.feedback_email) feedbackEmail.value = contact.feedback_email;
+            if (contact.support_email) supportEmail.value = contact.support_email;
+          } catch { /* keep defaults */ }
+          break;
+      }
+    }
+  } catch {
+    // API 不可用时使用默认值
+  }
+});
+</script>
 
 <style scoped>
   .footer-bar {

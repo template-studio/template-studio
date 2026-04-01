@@ -9,6 +9,7 @@ use crate::handlers::{
     var_preset::{create_var_preset, get_var_preset, get_var_preset_by_query, update_var_preset, delete_var_preset, toggle_var_preset, list_var_presets, get_all_var_presets},
     editor::{get_file_tree, restore_file},
     statistics::{get_overview, get_category_distribution, get_language_popularity, get_template_complexity, get_usage_trends},
+    system_setting::{get_settings, update_setting, batch_update_settings},
 };
 use super::super::AppState;
 
@@ -20,6 +21,7 @@ pub fn admin_routes() -> Router<AppState> {
         .nest("/templates", template_admin_routes())
         .nest("/var-preset", var_preset_admin_routes())
         .nest("/statistics", statistics_routes())
+        .nest("/settings", settings_admin_routes())
 }
 
 /// 分类管理路由
@@ -85,4 +87,12 @@ fn statistics_routes() -> Router<AppState> {
         .route("/language-popularity", get(get_language_popularity))
         .route("/template-complexity", get(get_template_complexity))
         .route("/usage-trends", get(get_usage_trends))
+}
+
+/// 系统设置管理路由
+fn settings_admin_routes() -> Router<AppState> {
+    Router::new()
+        .route("/list", get(get_settings))
+        .route("/edit", put(update_setting))
+        .route("/batch-edit", post(batch_update_settings))
 }

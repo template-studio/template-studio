@@ -13,8 +13,8 @@ use template_studio_infrastructure::{
     logging::init_logging,
     file_tree::FileTreeService,
 };
-use template_studio_repositories::{CategoryRepository, LanguageRepository, TemplateRepository, VarPresetRepository};
-use template_studio_services::{CategoryService, LanguageService, TemplateService, VarPresetService, PresetSubscribeService, TemplateAnalysisService, TemplateVariablesService, TemplateRenderService, FileConditionsService, ReleaseService, BackupService};
+use template_studio_repositories::{CategoryRepository, LanguageRepository, TemplateRepository, VarPresetRepository, SystemSettingRepository};
+use template_studio_services::{CategoryService, LanguageService, TemplateService, VarPresetService, PresetSubscribeService, TemplateAnalysisService, TemplateVariablesService, TemplateRenderService, FileConditionsService, ReleaseService, BackupService, SystemSettingService};
 use tower_http::cors::CorsLayer;
 use tracing::{info, warn};
 
@@ -56,6 +56,7 @@ async fn main() -> anyhow::Result<()> {
     let language_repository = Arc::new(LanguageRepository::new(db_pool.get_pool().clone()));
     let template_repository = Arc::new(TemplateRepository::new(db_pool.get_pool().clone()));
     let var_preset_repository = Arc::new(VarPresetRepository::new(db_pool.get_pool().clone()));
+    let system_setting_repository = Arc::new(SystemSettingRepository::new(db_pool.get_pool().clone()));
 
     // 创建Service层
     let category_service = Arc::new(CategoryService::new(category_repository.clone()));
@@ -80,6 +81,7 @@ async fn main() -> anyhow::Result<()> {
         template_variables_service.clone(),
         file_conditions_service.clone(),
     ));
+    let system_setting_service = Arc::new(SystemSettingService::new(system_setting_repository));
 
     // 启动文件系统监听（监听 templates 目录）
     let templates_cache = template_render_service.get_cache();
@@ -103,6 +105,7 @@ async fn main() -> anyhow::Result<()> {
         file_conditions_service,
         release_service,
         backup_service,
+        system_setting_service,
         storage_manager,
     };
 
@@ -134,6 +137,7 @@ pub struct AppState {
     pub file_conditions_service: Arc<FileConditionsService>,
     pub release_service: Arc<ReleaseService>,
     pub backup_service: Arc<BackupService>,
+    pub system_setting_service: Arc<SystemSettingService>,
     pub storage_manager: Arc<StorageManager>,
     // pub git_service: Arc<GitService>,  // 暂时注释掉，测试编译
 }

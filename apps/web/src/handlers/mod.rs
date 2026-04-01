@@ -15,3 +15,4 @@ pub mod releases;
 pub mod template_files;
 pub mod statistics;
 pub mod backup;
+pub mod system_setting;
