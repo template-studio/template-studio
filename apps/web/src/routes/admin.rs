@@ -22,6 +22,8 @@ pub fn admin_routes() -> Router<AppState> {
     Router::new()
         .route("/auth/info", get(auth_handler::get_info))
         .route("/auth/password", put(auth_handler::change_password))
+        .route("/auth/tokens", post(auth_handler::create_pat).get(auth_handler::list_pats))
+        .route("/auth/tokens/:id", delete(auth_handler::delete_pat))
         .nest("/categories", category_admin_routes())
         .nest("/languages", language_admin_routes())
         .nest("/templates", template_admin_routes())

@@ -14,8 +14,8 @@ use template_studio_infrastructure::{
     logging::init_logging,
     file_tree::FileTreeService,
 };
-use template_studio_repositories::{CategoryRepository, LanguageRepository, TemplateRepository, VarPresetRepository, SystemSettingRepository, UserRepository, RoleRepository, PermissionRepository};
-use template_studio_services::{CategoryService, LanguageService, TemplateService, VarPresetService, PresetSubscribeService, TemplateAnalysisService, TemplateVariablesService, TemplateRenderService, FileConditionsService, ReleaseService, BackupService, SystemSettingService, AuthService, UserService, RoleService, PermissionService};
+use template_studio_repositories::{CategoryRepository, LanguageRepository, TemplateRepository, VarPresetRepository, SystemSettingRepository, UserRepository, RoleRepository, PermissionRepository, PatRepository};
+use template_studio_services::{CategoryService, LanguageService, TemplateService, VarPresetService, PresetSubscribeService, TemplateAnalysisService, TemplateVariablesService, TemplateRenderService, FileConditionsService, ReleaseService, BackupService, SystemSettingService, AuthService, UserService, RoleService, PermissionService, PatService};
 use template_studio_shared::models::auth::JwtConfig;
 use tower_http::cors::CorsLayer;
 use tracing::{info, warn};
@@ -62,6 +62,7 @@ async fn main() -> anyhow::Result<()> {
     let user_repository = Arc::new(UserRepository::new(db_pool.get_pool().clone()));
     let role_repository = Arc::new(RoleRepository::new(db_pool.get_pool().clone()));
     let permission_repository = Arc::new(PermissionRepository::new(db_pool.get_pool().clone()));
+    let pat_repository = Arc::new(PatRepository::new(db_pool.get_pool().clone()));
 
     // 创建Service层
     let category_service = Arc::new(CategoryService::new(category_repository.clone()));
@@ -92,6 +93,7 @@ async fn main() -> anyhow::Result<()> {
     let user_service = Arc::new(UserService::new(user_repository));
     let role_service = Arc::new(RoleService::new(role_repository));
     let permission_service = Arc::new(PermissionService::new(permission_repository));
+    let pat_service = Arc::new(PatService::new(pat_repository));
 
     // 启动文件系统监听（监听 templates 目录）
     let templates_cache = template_render_service.get_cache();
@@ -120,6 +122,7 @@ async fn main() -> anyhow::Result<()> {
         user_service,
         role_service,
         permission_service,
+        pat_service,
         storage_manager,
     };
 
@@ -156,6 +159,7 @@ pub struct AppState {
     pub user_service: Arc<UserService>,
     pub role_service: Arc<RoleService>,
     pub permission_service: Arc<PermissionService>,
+    pub pat_service: Arc<PatService>,
     pub storage_manager: Arc<StorageManager>,
 }
 

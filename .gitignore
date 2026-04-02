@@ -122,3 +122,6 @@ target/
 nul
 data/
 *.pdb
+
+# test
+.playwright-cli/

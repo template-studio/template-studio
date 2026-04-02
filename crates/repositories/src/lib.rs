@@ -6,6 +6,7 @@ pub mod system_setting_repository;
 pub mod user_repository;
 pub mod role_repository;
 pub mod permission_repository;
+pub mod pat_repository;
 
 pub use category_repository::CategoryRepository;
 pub use language_repository::LanguageRepository;
@@ -15,3 +16,4 @@ pub use system_setting_repository::SystemSettingRepository;
 pub use user_repository::UserRepository;
 pub use role_repository::RoleRepository;
 pub use permission_repository::PermissionRepository;
+pub use pat_repository::PatRepository;

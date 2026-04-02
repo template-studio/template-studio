@@ -39,3 +39,26 @@ export function getUserInfo() {
 export function changePassword(data) {
   return Alova.Put('/v1/admin/auth/password', data);
 }
+
+/**
+ * @description: 创建 PAT 令牌
+ */
+export function createPat(data: { name: string; expires_in_days?: number | null }) {
+  return Alova.Post('/v1/admin/auth/tokens', data);
+}
+
+/**
+ * @description: 获取 PAT 令牌列表
+ */
+export function listPats() {
+  return Alova.Get('/v1/admin/auth/tokens', {
+    cacheFor: 0,
+  });
+}
+
+/**
+ * @description: 删除 PAT 令牌
+ */
+export function deletePat(id: number) {
+  return Alova.Delete(`/v1/admin/auth/tokens/${id}`);
+}

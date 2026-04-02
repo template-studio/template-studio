@@ -178,6 +178,75 @@
               </div>
             </div>
           </div>
+
+          <!-- 令牌管理 -->
+          <div v-if="activeTab === 'tokens'" class="content-panel">
+            <div class="panel-header">
+              <div class="panel-header-row">
+                <div>
+                  <h2>令牌管理</h2>
+                  <p class="panel-desc">用于 CLI、桌面端等第三方工具对接 API</p>
+                </div>
+                <n-button type="primary" @click="showCreateToken = true">
+                  创建令牌
+                </n-button>
+              </div>
+            </div>
+
+            <div v-if="tokenList.length === 0" class="empty-state">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <p>还没有令牌</p>
+              <span>创建一个令牌来让其他工具访问你的 API</span>
+            </div>
+
+            <div v-else class="token-list">
+              <div v-for="token in tokenList" :key="token.id" class="token-item">
+                <div class="token-info">
+                  <div class="token-name-row">
+                    <span class="token-name">{{ token.name }}</span>
+                    <span class="token-prefix">{{ token.token_prefix }}</span>
+                  </div>
+                  <div class="token-meta">
+                    <span>创建于 {{ formatDate(token.created_at) }}</span>
+                    <span v-if="token.last_used_at"> · 最近使用 {{ formatDate(token.last_used_at) }}</span>
+                    <span v-if="token.expires_at" class="token-expiry"> · {{ isExpired(token.expires_at) ? '已过期' : '过期于 ' + formatDate(token.expires_at) }}</span>
+                  </div>
+                </div>
+                <n-button size="small" type="error" ghost @click="handleDeleteToken(token.id)">删除</n-button>
+              </div>
+            </div>
+
+            <!-- 创建令牌弹窗 -->
+            <n-modal v-model:show="showCreateToken" preset="dialog" title="创建新令牌" :show-icon="false" style="width: 480px">
+              <n-form label-placement="top">
+                <n-form-item label="令牌名称">
+                  <n-input v-model:value="newTokenName" placeholder="如：CLI 工具、VS Code 插件" />
+                </n-form-item>
+                <n-form-item label="过期时间">
+                  <n-select
+                    v-model:value="newTokenExpiry"
+                    :options="expiryOptions"
+                    placeholder="选择过期时间"
+                  />
+                </n-form-item>
+              </n-form>
+              <div v-if="createdToken" class="token-created">
+                <div class="token-created-warning">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  <span>请立即复制令牌，关闭后将无法再次查看</span>
+                </div>
+                <div class="token-created-value">
+                  <code>{{ createdToken }}</code>
+                  <n-button size="tiny" quaternary @click="copyToken">复制</n-button>
+                </div>
+              </div>
+              <template #action>
+                <n-button v-if="!createdToken" @click="showCreateToken = false">取消</n-button>
+                <n-button v-if="!createdToken" type="primary" @click="handleCreateToken" :loading="createTokenLoading" :disabled="!newTokenName.trim()">创建</n-button>
+                <n-button v-else @click="closeCreateModal">完成</n-button>
+              </template>
+            </n-modal>
+          </div>
         </div>
       </div>
     </div>
@@ -185,10 +254,10 @@
 </template>
 
 <script setup>
-  import { ref, computed, reactive, onMounted } from 'vue';
+  import { ref, computed, reactive, onMounted, watch } from 'vue';
   import { useMessage } from 'naive-ui';
   import { useUserStore } from '@/store/modules/user';
-  import { changePassword } from '@/api/system/user';
+  import { changePassword, createPat, listPats, deletePat } from '@/api/system/user';
   import {
     applyClientTheme, getClientTheme,
     heroPresets, applyHeroPreset, getHeroPreset,
@@ -228,6 +297,11 @@
       key: 'appearance',
       label: '外观设置',
       icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>',
+    },
+    {
+      key: 'tokens',
+      label: '令牌管理',
+      icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
     },
   ];
 
@@ -327,6 +401,80 @@
       }
     });
   };
+
+  // ===== 令牌管理 =====
+  const tokenList = ref([]);
+  const showCreateToken = ref(false);
+  const newTokenName = ref('');
+  const newTokenExpiry = ref(null);
+  const createTokenLoading = ref(false);
+  const createdToken = ref('');
+
+  const expiryOptions = [
+    { label: '永不过期', value: null },
+    { label: '30 天', value: 30 },
+    { label: '90 天', value: 90 },
+    { label: '180 天', value: 180 },
+    { label: '365 天', value: 365 },
+  ];
+
+  async function loadTokens() {
+    try {
+      const result = await listPats();
+      tokenList.value = result || [];
+    } catch {}
+  }
+
+  watch(activeTab, (v) => { if (v === 'tokens') loadTokens(); });
+
+  async function handleCreateToken() {
+    createTokenLoading.value = true;
+    try {
+      const result = await createPat({
+        name: newTokenName.value,
+        expires_in_days: newTokenExpiry.value,
+      });
+      createdToken.value = result?.token || '';
+      message.success('令牌创建成功');
+      await loadTokens();
+    } catch {
+      message.error('创建失败');
+    } finally {
+      createTokenLoading.value = false;
+    }
+  }
+
+  async function handleDeleteToken(id) {
+    try {
+      await deletePat(id);
+      message.success('令牌已删除');
+      await loadTokens();
+    } catch {
+      message.error('删除失败');
+    }
+  }
+
+  function closeCreateModal() {
+    showCreateToken.value = false;
+    newTokenName.value = '';
+    newTokenExpiry.value = null;
+    createdToken.value = '';
+    loadTokens();
+  }
+
+  function copyToken() {
+    navigator.clipboard.writeText(createdToken.value);
+    message.success('已复制到剪贴板');
+  }
+
+  function formatDate(d) {
+    if (!d) return '-';
+    return new Date(d).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  }
+
+  function isExpired(d) {
+    return new Date(d) < new Date();
+  }
 </script>
 
 <style scoped>
@@ -677,6 +825,121 @@
     font-size: 13px;
     color: #fff;
     font-weight: 500;
+  }
+
+  /* ===== Token Management ===== */
+  .panel-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 64px 20px;
+    color: #94a3b8;
+  }
+
+  .empty-state p {
+    font-size: 15px;
+    font-weight: 500;
+    color: #64748b;
+    margin: 16px 0 4px;
+  }
+
+  .empty-state span {
+    font-size: 13px;
+  }
+
+  .token-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .token-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-radius: 10px;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    transition: border-color 0.15s ease;
+  }
+
+  .token-item:hover {
+    border-color: #e2e8f0;
+  }
+
+  .token-name-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+
+  .token-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f172a;
+  }
+
+  .token-prefix {
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: #94a3b8;
+    background: #f1f5f9;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .token-meta {
+    font-size: 12px;
+    color: #94a3b8;
+  }
+
+  .token-expiry {
+    color: #f59e0b;
+  }
+
+  .token-created {
+    margin-top: 16px;
+    padding: 16px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+  }
+
+  .token-created-warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #92400e;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 12px;
+  }
+
+  .token-created-value {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 8px 12px;
+  }
+
+  .token-created-value code {
+    flex: 1;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    color: #0f172a;
+    word-break: break-all;
   }
 
   /* ===== Responsive ===== */
