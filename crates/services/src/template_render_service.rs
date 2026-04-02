@@ -456,6 +456,7 @@ impl TemplateRenderService {
         }
     }
 
+    #[allow(dead_code)]
     /// 递归扁平化文件树
     async fn flatten_file_tree(
         &self,
@@ -513,6 +514,7 @@ impl TemplateRenderService {
     /// 加载条件配置文件
     ///
     /// 从 .meta/variables/conditions.yml 加载条件配置
+    #[allow(dead_code)]
     async fn load_conditions(&self, template_id: i64) -> Result<ConditionsYaml, AppError> {
         let conditions_path = self.base_path
             .join(template_id.to_string())
@@ -533,6 +535,7 @@ impl TemplateRenderService {
     /// 将 FileTreeNode 树扁平化并转换为 TemplateFile 列表
     ///
     /// 同时读取文件内容和条件信息
+    #[allow(dead_code)]
     async fn convert_to_template_files(
         &self,
         template_id: i64,

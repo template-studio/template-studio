@@ -73,3 +73,9 @@ bcrypt = "0.15"
 # 性能优化
 lru = "0.12"
 rayon = "1.10"
+
+[profile.release]
+opt-level = 3
+lto = true
+panic = "abort"
+codegen-units = 1

@@ -132,10 +132,3 @@ pub async fn get_usage_trends(
         "message": "OK"
     })))
 }
-
-fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    Err((status, Json(json!({
-        "code": status.as_u16() as i32,
-        "message": message
-    }))))
-}
