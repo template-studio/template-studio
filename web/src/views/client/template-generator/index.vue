@@ -4,14 +4,13 @@
     <div class="generator-header">
       <div class="header-content">
         <div class="header-left">
-          <n-button text @click="goBack">
-            <template #icon>
-              <n-icon><ArrowBack /></n-icon>
-            </template>
-            返回
-          </n-button>
+          <div class="back-btn" @click="goBack">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+            <span>返回</span>
+          </div>
           <div class="template-title">
             <span class="title-text">使用模板</span>
+            <span class="title-divider">/</span>
             <span class="template-name" v-if="templateInfo">{{ templateInfo.name }}</span>
           </div>
         </div>
@@ -27,8 +26,12 @@
               completed: currentStep > index + 1,
             }"
           >
-            <div class="step-number">{{ index + 1 }}</div>
-            <div class="step-label">{{ step.label }}</div>
+            <div class="step-dot">
+              <svg v-if="currentStep > index + 1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span v-else>{{ index + 1 }}</span>
+            </div>
+            <span class="step-label">{{ step.label }}</span>
+            <div v-if="index < steps.length - 1" class="step-line" :class="{ filled: currentStep > index + 1 }"></div>
           </div>
         </div>
       </div>
@@ -36,13 +39,11 @@
 
     <!-- 主要内容区域 -->
     <div class="template-generator">
-      <!-- 步骤内容 -->
       <div class="generator-content">
         <!-- 加载状态 -->
         <div v-if="loading" class="loading-container">
-          <n-spin size="large">
-            <template #description> 正在加载模板信息... </template>
-          </n-spin>
+          <n-spin size="large" />
+          <p>正在加载模板信息...</p>
         </div>
 
         <!-- 步骤1: 模板介绍 -->
@@ -87,7 +88,6 @@
   import { ref, onMounted } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { useMessage } from 'naive-ui';
-  import { ArrowBack } from '@vicons/ionicons5';
   import { getTemplateDetail } from '@/api/templates';
   import { listReleases } from '@/api/releases';
   import StepIntro from './components/StepIntro.vue';
@@ -98,24 +98,20 @@
   const router = useRouter();
   const message = useMessage();
 
-  // 步骤配置
   const steps = [
     { label: '模板介绍', key: 'intro' },
     { label: '配置变量', key: 'variables' },
     { label: '预览确认', key: 'preview' },
   ];
 
-  // 状态
   const currentStep = ref(1);
   const templateInfo = ref(null);
   const variables = ref({});
   const loading = ref(false);
 
-  // 版本管理
   const versionList = ref([]);
-  const selectedVersion = ref(''); // 空字符串表示最新版本
+  const selectedVersion = ref('');
 
-  // 获取模板信息
   const loadTemplateInfo = async () => {
     if (!route.params.id) {
       message.error('缺少模板ID参数');
@@ -125,22 +121,16 @@
     loading.value = true;
     try {
       const res = await getTemplateDetail({ id: route.params.id });
-      templateInfo.value = res.data.data; // 修复：两层 data，不是三层
-      console.log('模板信息加载成功:', templateInfo.value);
+      templateInfo.value = res.data.data;
     } catch (error) {
       message.error('加载模板信息失败');
-      console.error(error);
     } finally {
       loading.value = false;
     }
   };
 
-  // 加载版本列表
   const loadVersions = async () => {
-    if (!route.params.id) {
-      return;
-    }
-
+    if (!route.params.id) return;
     try {
       const res = await listReleases(route.params.id);
       const data = res.data;
@@ -152,63 +142,46 @@
     }
   };
 
-  // 步骤导航
   const nextStep = () => {
-    if (currentStep.value < 3) {
-      currentStep.value++;
-    }
+    if (currentStep.value < 3) currentStep.value++;
   };
 
   const prevStep = () => {
-    if (currentStep.value > 1) {
-      currentStep.value--;
-    }
+    if (currentStep.value > 1) currentStep.value--;
   };
 
-  // 更新变量
   const updateVariables = (newVariables) => {
     variables.value = { ...newVariables };
   };
 
-  // 更新版本
   const updateVersion = (newVersion) => {
     selectedVersion.value = newVersion;
-    // 清空变量，因为不同版本的变量定义可能不同
     variables.value = {};
-    console.log('版本已更新为:', newVersion || 'Latest');
   };
 
-  // 生成项目 - 实际生成功能在StepPreview组件中实现
   const generateProject = async () => {
-    // 注意：实际的生成和下载功能已移至StepPreview.vue组件中
-    // 此函数仅为兼容性保留，实际不会被调用
     console.warn('generateProject函数已迁移至StepPreview组件');
   };
 
-  // 返回上一页
   const goBack = () => {
     router.back();
   };
 
   onMounted(async () => {
-    // 如果没有模板ID，重定向到模板列表页
     if (!route.params.id) {
       message.warning('请先选择一个模板');
       router.push('/templates');
       return;
     }
-
     await loadTemplateInfo();
     await loadVersions();
   });
 </script>
 
 <style>
-  /* 全局样式覆盖 - 不使用scoped */
   .main-content {
     padding-bottom: 0 !important;
   }
-
   .footer-bar {
     margin-top: 0 !important;
     padding: 16px 0 !important;
@@ -216,45 +189,56 @@
 </style>
 
 <style scoped>
-  /* 外层容器 */
   .template-generator-wrapper {
     min-height: 100vh;
-    padding-top: 72px; /* 为固定的header留出空间 */
+    padding-top: 60px;
+    background: #f8fafc;
   }
 
-  /* 固定顶部导航 */
+  /* ===== Header ===== */
   .generator-header {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     background: #fff;
-    border-bottom: 1px solid #e0e0e0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    border-bottom: 1px solid #e2e8f0;
     z-index: 1000;
   }
 
   .header-content {
     margin: 0;
-    padding: 16px 30px;
+    padding: 0 32px;
+    height: 60px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
     box-sizing: border-box;
-  }
-
-  /* 主要内容区域 */
-  .template-generator {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
   }
 
   .header-left {
     display: flex;
     align-items: center;
     gap: 16px;
+  }
+
+  .back-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #64748b;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  }
+
+  .back-btn:hover {
+    color: #0f172a;
+    background: #f1f5f9;
   }
 
   .template-title {
@@ -264,89 +248,118 @@
   }
 
   .title-text {
-    font-size: 16px;
-    color: #666;
+    font-size: 14px;
+    color: #94a3b8;
+  }
+
+  .title-divider {
+    color: #e2e8f0;
   }
 
   .template-name {
-    font-size: 18px;
-    font-weight: bold;
-    color: #18a058;
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f172a;
   }
 
+  /* ===== Steps ===== */
   .step-indicator {
     display: flex;
     align-items: center;
-    gap: 32px;
+    gap: 0;
   }
 
   .step-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    cursor: pointer;
-    transition: all 0.3s;
   }
 
-  .step-number {
-    width: 32px;
-    height: 32px;
+  .step-dot {
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
-    background: #f0f0f0;
-    color: #999;
+    background: #f1f5f9;
+    color: #94a3b8;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
-    transition: all 0.3s;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.25s ease;
+    flex-shrink: 0;
+  }
+
+  .step-item.active .step-dot {
+    background: #22c55e;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+  }
+
+  .step-item.completed .step-dot {
+    background: #22c55e;
+    color: #fff;
   }
 
   .step-label {
-    font-size: 14px;
-    color: #666;
-    transition: all 0.3s;
-  }
-
-  .step-item.active .step-number {
-    background: #18a058;
-    color: #fff;
+    font-size: 13px;
+    color: #94a3b8;
+    font-weight: 500;
+    transition: color 0.25s ease;
+    white-space: nowrap;
   }
 
   .step-item.active .step-label {
-    color: #18a058;
-    font-weight: bold;
-  }
-
-  .step-item.completed .step-number {
-    background: #52c41a;
-    color: #fff;
+    color: #0f172a;
+    font-weight: 600;
   }
 
   .step-item.completed .step-label {
-    color: #52c41a;
+    color: #22c55e;
   }
 
+  .step-line {
+    width: 40px;
+    height: 2px;
+    background: #e2e8f0;
+    margin: 0 12px;
+    border-radius: 1px;
+    transition: background 0.25s ease;
+  }
+
+  .step-line.filled {
+    background: #22c55e;
+  }
+
+  /* ===== Content ===== */
   .generator-content {
-    flex: 1;
-    padding: 30px;
-    width: 100%;
+    padding: 24px 32px;
+    max-width: 1400px;
+    margin: 0 auto;
     box-sizing: border-box;
-    overflow-y: auto;
   }
 
   .loading-container {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     min-height: 400px;
+    gap: 16px;
+    color: #64748b;
+  }
+
+  .loading-container p {
+    font-size: 14px;
   }
 
   .step-content {
     background: #fff;
     border-radius: 12px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-    min-height: calc(100vh - 132px);
+    border: 1px solid #e2e8f0;
+    min-height: calc(100vh - 120px);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 </style>

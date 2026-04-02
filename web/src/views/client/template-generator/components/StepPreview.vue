@@ -91,7 +91,7 @@
 
 <script setup>
   import { ref, onMounted, computed, h, watch, nextTick, onBeforeUnmount } from 'vue';
-  import { useMessage, NIcon, NTree, NSelect, NTag } from 'naive-ui';
+  import { useMessage, NIcon, NTree, NSelect, NTag, NButton, NSpin } from 'naive-ui';
   import {
     ArrowBack,
     Download,
@@ -852,44 +852,44 @@
   .preview-fullscreen {
     position: fixed;
     inset: 0;
-    background: #f5f5f5;
+    background: #f8fafc;
     display: flex;
     flex-direction: column;
+    z-index: 1100;
   }
 
   .preview-header {
-    height: 56px;
+    height: 52px;
     background: #fff;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 32px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    padding: 0 24px;
   }
 
   .header-left {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
     flex: 1;
   }
 
   .preview-title {
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: #18a058;
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f172a;
   }
 
   .template-name {
-    font-size: 1rem;
-    color: #666;
+    font-size: 14px;
+    color: #94a3b8;
   }
 
   .header-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     flex: 1;
     justify-content: flex-end;
   }
@@ -897,31 +897,33 @@
   .preview-main {
     flex: 1;
     display: flex;
-    min-height: 0;
+    min-height: 600px;
   }
 
-  /* 文件资源管理器 */
+  /* ===== 文件资源管理器 ===== */
   .file-explorer {
-    width: 280px;
+    width: 260px;
     background: #fff;
-    border-right: 1px solid #e0e0e0;
+    border-right: 1px solid #e2e8f0;
     display: flex;
     flex-direction: column;
   }
 
   .explorer-header {
-    height: 48px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e0e0e0;
+    height: 40px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
     padding: 0 16px;
   }
 
   .explorer-title {
-    font-size: 14px;
-    font-weight: bold;
-    color: #333;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   .explorer-content {
@@ -945,16 +947,15 @@
   }
 
   .empty-text {
-    color: #999;
+    color: #94a3b8;
     font-size: 14px;
   }
 
-  /* 文件树样式 */
   .file-tree {
     height: 100%;
   }
 
-  /* 预览容器 */
+  /* ===== 预览容器 ===== */
   .preview-container {
     flex: 1;
     display: flex;
@@ -976,7 +977,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #999;
+    color: #94a3b8;
   }
 
   .no-file-icon {
@@ -984,7 +985,7 @@
   }
 
   .no-file-text {
-    font-size: 16px;
+    font-size: 14px;
   }
 
   .file-preview {
@@ -995,9 +996,9 @@
   }
 
   .file-header {
-    height: 48px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e0e0e0;
+    height: 40px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
     padding: 0 16px;
@@ -1009,9 +1010,10 @@
   }
 
   .file-name {
-    font-size: 14px;
-    font-weight: bold;
-    color: #333;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
   }
 
   .file-content {
@@ -1024,9 +1026,8 @@
   .code-preview {
     flex: 1;
     overflow: auto;
-    background: #1e1e1e;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    background: #1e293b;
+    border-radius: 0;
   }
 
   .codemirror-container {
@@ -1034,15 +1035,14 @@
     min-height: 400px;
   }
 
-  /* CodeMirror 样式覆盖 - 确保与编辑页面一致 */
   :deep(.cm-editor) {
     height: 100% !important;
-    font-size: 15px;
+    font-size: 14px;
     outline: none !important;
   }
 
   :deep(.cm-editor .cm-scroller) {
-    font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
     overflow: auto !important;
     height: 100% !important;
     max-height: none !important;
@@ -1052,11 +1052,7 @@
     padding: 0;
   }
 
-  /* 只读模式下的光标隐藏 */
-  :deep(.cm-editor .cm-cursor) {
-    display: none !important;
-  }
-
+  :deep(.cm-editor .cm-cursor),
   :deep(.cm-editor .cm-cursor-primary) {
     display: none !important;
   }

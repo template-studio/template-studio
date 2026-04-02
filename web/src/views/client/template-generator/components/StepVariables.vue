@@ -422,14 +422,15 @@
   .form-title {
     font-size: 24px;
     font-weight: 600;
+    color: #0f172a;
     margin-bottom: 4px;
   }
   .form-desc {
-    color: #666;
+    color: #64748b;
     font-size: 14px;
   }
   .mode-tabs :deep(.n-tabs-nav) {
-    background: #f8f9fa;
+    background: #f1f5f9;
     border-radius: 6px;
     padding: 4px;
   }
@@ -441,12 +442,12 @@
   }
   .mode-tabs :deep(.n-tabs-tab:not(.n-tabs-tab--active)) {
     background: transparent;
-    color: #666;
+    color: #64748b;
   }
   .mode-tabs :deep(.n-tabs-tab.n-tabs-tab--active) {
     background: #fff;
-    color: #18a058;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    color: #22c55e;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   }
   .mode-tabs :deep(.n-tabs-tab:hover) {
     background: rgba(255, 255, 255, 0.8);
@@ -458,15 +459,16 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
+    color: #0f172a;
     margin-bottom: 12px;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid #f1f5f9;
     padding-bottom: 8px;
   }
   .section-subtitle {
     font-size: 13px;
-    color: #666;
+    color: #94a3b8;
     margin-left: 6px;
     font-weight: 400;
   }
@@ -491,7 +493,7 @@
   }
   .desc {
     font-weight: 400;
-    color: #666;
+    color: #94a3b8;
     font-size: 12px;
   }
   .required {
@@ -512,8 +514,8 @@
     gap: 4px;
   }
   .editor-wrap {
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
     overflow: hidden;
   }
   .editor-header {
@@ -521,10 +523,11 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e0e0e0;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
     font-size: 14px;
     font-weight: 500;
+    color: #334155;
   }
   .actions {
     display: flex;
@@ -535,22 +538,24 @@
   }
   .editor-footer {
     padding: 8px 16px;
-    background: #f8f9fa;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
     font-size: 12px;
     display: flex;
     align-items: center;
     gap: 6px;
+    color: #64748b;
   }
   .ok {
-    color: #18a058;
+    color: #22c55e;
   }
   .err {
     color: #d03050;
   }
   .step-actions {
     padding: 16px 24px;
-    border-top: 1px solid #f0f0f0;
-    background: #fafafa;
+    border-top: 1px solid #e2e8f0;
+    background: #fff;
     display: flex;
     justify-content: space-between;
   }
