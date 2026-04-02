@@ -36,7 +36,10 @@ export const columns: BasicColumn<TemplateData>[] = [
   {
     title: 'ID',
     key: 'id',
-    width: 80,
+    width: 160,
+    ellipsis: {
+      tooltip: true,
+    },
   },
   {
     title: '模板名称',

@@ -323,7 +323,7 @@ fn studio_routes() -> Router<AppState> {
         .route("/languages/popular", get(handlers::language::get_popular_languages))
         .route("/templates/types", get(handlers::template::get_template_types))
         .route("/template-types", get(handlers::template::get_template_types))  // 兼容前端调用
-        .route("/templates/list", get(handlers::template::list_templates))
+        .route("/templates/list", get(handlers::template::list_public_templates_studio))
 }
 
 /// 备份路由

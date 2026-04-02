@@ -80,6 +80,15 @@ pub async fn list_templates(
     }
 }
 
+/// 公开模板列表（只返回 visibility=public, status=active）
+pub async fn list_public_templates_studio(
+    State(state): State<AppState>,
+    Query(mut query): Query<TemplateListQuery>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    query.public_only = Some(true);
+    list_templates(State(state), Query(query)).await
+}
+
 /// 获取模板详情
 pub async fn get_template(
     State(state): State<AppState>,
@@ -1491,7 +1500,7 @@ pub async fn list_pending_templates(
     let page = query.page.unwrap_or(1);
     let page_size = query.page_size.unwrap_or(20);
     match state.template_service.list_pending_templates(page, page_size).await {
-        Ok(resp) => Ok(Json(json!({ "code": 0, "result": resp }))),
+        Ok(resp) => Ok(Json(json!({ "code": 200, "result": resp }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -1503,7 +1512,7 @@ pub async fn review_template_admin(
     Json(request): Json<ReviewTemplateRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.template_service.review_template(auth_user.user_id, request).await {
-        Ok(_) => Ok(Json(json!({ "code": 0, "message": "审核完成" }))),
+        Ok(_) => Ok(Json(json!({ "code": 200, "message": "审核完成" }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
 }

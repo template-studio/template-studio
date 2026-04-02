@@ -64,19 +64,39 @@ const routes: Array<RouteRecordRaw> = [
     children: [
       {
         path: 'list',
-        name: 'admin-templates-index',
+        name: 'admin-templates',
+        component: Layout,
         meta: {
           title: '模板列表',
         },
-        component: () => import('@/views/admin/template/index.vue'),
+        children: [
+          {
+            path: '',
+            name: 'admin-templates-index',
+            meta: {
+              title: '模板列表',
+            },
+            component: () => import('@/views/admin/template/index.vue'),
+          },
+        ],
       },
       {
         path: 'review',
         name: 'admin-templates-review',
+        component: Layout,
         meta: {
           title: '模板审核',
         },
-        component: () => import('@/views/admin/template/review.vue'),
+        children: [
+          {
+            path: '',
+            name: 'admin-templates-review-index',
+            meta: {
+              title: '模板审核',
+            },
+            component: () => import('@/views/admin/template/review.vue'),
+          },
+        ],
       },
     ],
   },

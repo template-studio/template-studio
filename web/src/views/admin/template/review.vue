@@ -74,15 +74,15 @@ const pagination = {
 };
 
 const columns = [
-  { title: 'ID', key: 'id', width: 120 },
+  { title: 'ID', key: 'id', width: 160, ellipsis: { tooltip: true } },
   { title: '模板名称', key: 'name', ellipsis: { tooltip: true } },
   { title: '描述', key: 'description', ellipsis: { tooltip: true } },
   { title: '类型', key: 'templateType', width: 100, render: (row) => {
     const map = { basic: '基础', scaffold: '脚手架', data_driven: '数据驱动' };
     return map[row.templateType] || row.templateType;
   }},
-  { title: '创建时间', key: 'createdAt', width: 160 },
-  { title: '操作', key: 'actions', width: 120, render: (row) => {
+  { title: '创建时间', key: 'createdAt', width: 200 },
+  { title: '操作', key: 'actions', width: 100, render: (row) => {
     return h(NSpace, { size: 'small' }, () => [
       h(NButton, { size: 'small', type: 'primary', onClick: () => openReview(row) }, () => '审核'),
     ]);

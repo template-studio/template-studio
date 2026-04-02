@@ -91,11 +91,13 @@ pub struct TemplateListQuery {
     #[serde(rename = "categoryId")]
     pub category_id: Option<i64>,
     #[serde(rename = "languageId")]
-    pub language_id: Option<u32>,  // 改为 u32
+    pub language_id: Option<u32>,
     #[serde(rename = "isFeatured")]
     pub is_featured: Option<i32>,
     #[serde(rename = "templateType")]
     pub template_type: Option<String>,
+    #[serde(rename = "publicOnly")]
+    pub public_only: Option<bool>,
 }
 
 impl Default for TemplateListQuery {
@@ -109,6 +111,7 @@ impl Default for TemplateListQuery {
             language_id: None,
             is_featured: None,
             template_type: None,
+            public_only: None,
         }
     }
 }
