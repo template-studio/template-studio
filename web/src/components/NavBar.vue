@@ -69,7 +69,22 @@
           </div>
         </div>
         <div class="nav-right">
-          <!-- 后台管理链接已移动到首页英雄区域 -->
+          <template v-if="isLoggedIn">
+            <n-dropdown :options="userMenuOptions" @select="handleUserMenu">
+              <div class="user-trigger">
+                <n-avatar round size="small" style="background: linear-gradient(135deg, #4285f4, #34a853)">
+                  {{ userStore.getNickname?.charAt(0)?.toUpperCase() || 'U' }}
+                </n-avatar>
+                <span class="user-name">{{ userStore.getNickname }}</span>
+              </div>
+            </n-dropdown>
+          </template>
+          <template v-else>
+            <div class="auth-buttons">
+              <n-button text @click="goLogin">登录</n-button>
+              <n-button type="primary" size="small" @click="goRegister">注册</n-button>
+            </div>
+          </template>
         </div>
       </div>
     </div>
@@ -79,11 +94,49 @@
 <script setup>
   import { ref, computed, onMounted, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
-  import { NLayoutHeader, NMenu, NInput, NButton, NIcon } from 'naive-ui';
-  import { SearchOutline, SettingsOutline } from '@vicons/ionicons5';
+  import { NLayoutHeader, NMenu, NInput, NButton, NIcon, NDropdown, NAvatar } from 'naive-ui';
+  import { SearchOutline, SettingsOutline, PersonOutline, LogOutOutline } from '@vicons/ionicons5';
+  import { useUser } from '@/store/modules/user';
+  import { renderIcon } from '@/utils/index';
+  import { storage } from '@/utils/Storage';
+  import { ACCESS_TOKEN } from '@/store/mutation-types';
 
   const route = useRoute();
   const router = useRouter();
+  const userStore = useUser();
+
+  const isLoggedIn = computed(() => !!userStore.getToken);
+
+  const userMenuOptions = computed(() => {
+    const options = [
+      { label: '个人中心', key: 'profile', icon: renderIcon(PersonOutline) },
+    ];
+    if (userStore.isAdmin) {
+      options.push({ label: '后台管理', key: 'admin', icon: renderIcon(SettingsOutline) });
+    }
+    options.push({ type: 'divider', key: 'd1' });
+    options.push({ label: '退出登录', key: 'logout', icon: renderIcon(LogOutOutline) });
+    return options;
+  });
+
+  function handleUserMenu(key) {
+    if (key === 'admin') {
+      router.push('/admin/dashboard');
+    } else if (key === 'profile') {
+      // TODO: 个人中心页
+    } else if (key === 'logout') {
+      userStore.logout();
+      window.location.href = '/';
+    }
+  }
+
+  function goLogin() {
+    router.push('/login');
+  }
+
+  function goRegister() {
+    router.push({ path: '/login', query: { mode: 'register' } });
+  }
 
   const menuOptions = computed(() => {
     const baseOptions = [

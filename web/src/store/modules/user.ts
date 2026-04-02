@@ -5,6 +5,7 @@ import { ResultEnum } from '@/enums/httpEnum';
 
 import { getUserInfo as getUserInfoApi, login } from '@/api/system/user';
 import { storage } from '@/utils/Storage';
+import { useAsyncRoute } from '@/store/modules/asyncRoute';
 
 export type UserInfoType = {
   username: string;
@@ -119,8 +120,12 @@ export const useUserStore = defineStore({
       this.setPermissions([]);
       this.setRoles([]);
       this.setUserInfo({ username: '', email: '' });
+      this.setToken('');
       storage.remove(ACCESS_TOKEN);
       storage.remove(CURRENT_USER);
+      // 重置动态路由状态，确保下次进入时重新初始化
+      const asyncRouteStore = useAsyncRoute();
+      asyncRouteStore.setDynamicRouteAdded(false);
     },
   },
 });

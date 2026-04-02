@@ -10,7 +10,7 @@
           <n-button type="primary" size="large" class="cta-button" @click="scrollToTemplates">
             开始探索
           </n-button>
-          <router-link to="/admin" class="admin-link">
+          <router-link v-if="userStore.isAdmin" to="/admin" class="admin-link">
             <n-icon class="admin-icon">
               <SettingsOutline />
             </n-icon>
@@ -61,11 +61,13 @@
   import { useRouter } from 'vue-router';
   import { getIndexData } from '@/api/indexData';
   import { useLanguageStore } from '@/store/modules/languageStore';
+  import { useUser } from '@/store/modules/user';
   import TemplateCard from '@/components/TemplateCard.vue';
   import { SettingsOutline } from '@vicons/ionicons5';
 
   const router = useRouter();
   const languageStore = useLanguageStore();
+  const userStore = useUser();
 
   // 响应式数据
   const loading = ref(false);
