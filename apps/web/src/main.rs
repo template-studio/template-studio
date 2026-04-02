@@ -1,5 +1,6 @@
 mod handlers;
 mod routes;
+mod middleware;
 mod file_watcher;
 
 use axum::{
@@ -13,8 +14,9 @@ use template_studio_infrastructure::{
     logging::init_logging,
     file_tree::FileTreeService,
 };
-use template_studio_repositories::{CategoryRepository, LanguageRepository, TemplateRepository, VarPresetRepository, SystemSettingRepository};
-use template_studio_services::{CategoryService, LanguageService, TemplateService, VarPresetService, PresetSubscribeService, TemplateAnalysisService, TemplateVariablesService, TemplateRenderService, FileConditionsService, ReleaseService, BackupService, SystemSettingService};
+use template_studio_repositories::{CategoryRepository, LanguageRepository, TemplateRepository, VarPresetRepository, SystemSettingRepository, UserRepository, RoleRepository, PermissionRepository};
+use template_studio_services::{CategoryService, LanguageService, TemplateService, VarPresetService, PresetSubscribeService, TemplateAnalysisService, TemplateVariablesService, TemplateRenderService, FileConditionsService, ReleaseService, BackupService, SystemSettingService, AuthService, UserService, RoleService, PermissionService};
+use template_studio_shared::models::auth::JwtConfig;
 use tower_http::cors::CorsLayer;
 use tracing::{info, warn};
 
@@ -57,6 +59,9 @@ async fn main() -> anyhow::Result<()> {
     let template_repository = Arc::new(TemplateRepository::new(db_pool.get_pool().clone()));
     let var_preset_repository = Arc::new(VarPresetRepository::new(db_pool.get_pool().clone()));
     let system_setting_repository = Arc::new(SystemSettingRepository::new(db_pool.get_pool().clone()));
+    let user_repository = Arc::new(UserRepository::new(db_pool.get_pool().clone()));
+    let role_repository = Arc::new(RoleRepository::new(db_pool.get_pool().clone()));
+    let permission_repository = Arc::new(PermissionRepository::new(db_pool.get_pool().clone()));
 
     // 创建Service层
     let category_service = Arc::new(CategoryService::new(category_repository.clone()));
@@ -82,6 +87,11 @@ async fn main() -> anyhow::Result<()> {
         file_conditions_service.clone(),
     ));
     let system_setting_service = Arc::new(SystemSettingService::new(system_setting_repository));
+    let jwt_config = JwtConfig::default();
+    let auth_service = Arc::new(AuthService::new(user_repository.clone(), jwt_config));
+    let user_service = Arc::new(UserService::new(user_repository));
+    let role_service = Arc::new(RoleService::new(role_repository));
+    let permission_service = Arc::new(PermissionService::new(permission_repository));
 
     // 启动文件系统监听（监听 templates 目录）
     let templates_cache = template_render_service.get_cache();
@@ -106,6 +116,10 @@ async fn main() -> anyhow::Result<()> {
         release_service,
         backup_service,
         system_setting_service,
+        auth_service,
+        user_service,
+        role_service,
+        permission_service,
         storage_manager,
     };
 
@@ -138,19 +152,27 @@ pub struct AppState {
     pub release_service: Arc<ReleaseService>,
     pub backup_service: Arc<BackupService>,
     pub system_setting_service: Arc<SystemSettingService>,
+    pub auth_service: Arc<AuthService>,
+    pub user_service: Arc<UserService>,
+    pub role_service: Arc<RoleService>,
+    pub permission_service: Arc<PermissionService>,
     pub storage_manager: Arc<StorageManager>,
-    // pub git_service: Arc<GitService>,  // 暂时注释掉，测试编译
 }
 
 /// 创建应用路由
 pub fn create_app(state: AppState) -> Router {
+    let admin = routes::admin_routes()
+        .layer(axum::middleware::from_fn_with_state(state.clone(), middleware::auth::auth_middleware));
+
     Router::new()
         // 健康检查
         .route("/health", get(health_check))
+        // 认证API（公开）
+        .nest("/api/v1/auth", routes::auth_routes())
         // 模板API
         .nest("/api/v1/template", template_routes())
-        // 管理员API
-        .nest("/api/v1/admin", routes::admin_routes())
+        // 管理员API（受认证保护）
+        .nest("/api/v1/admin", admin)
         // 编辑器API
         .nest("/api/v1/editor", editor_routes())
         // Studio API

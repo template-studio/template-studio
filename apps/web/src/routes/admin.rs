@@ -10,10 +10,13 @@ use crate::handlers::{
     editor::{get_file_tree, restore_file},
     statistics::{get_overview, get_category_distribution, get_language_popularity, get_template_complexity, get_usage_trends},
     system_setting::{get_settings, update_setting, batch_update_settings},
+    user_management,
+    role_management,
+    permission_management,
 };
 use super::super::AppState;
 
-/// 管理员路由
+/// 管理员路由（不含 middleware，由 create_app 添加认证层）
 pub fn admin_routes() -> Router<AppState> {
     Router::new()
         .nest("/categories", category_admin_routes())
@@ -22,6 +25,9 @@ pub fn admin_routes() -> Router<AppState> {
         .nest("/var-preset", var_preset_admin_routes())
         .nest("/statistics", statistics_routes())
         .nest("/settings", settings_admin_routes())
+        .nest("/users", users_admin_routes())
+        .nest("/roles", roles_admin_routes())
+        .nest("/permissions", permissions_admin_routes())
 }
 
 /// 分类管理路由
@@ -64,21 +70,6 @@ fn var_preset_admin_routes() -> Router<AppState> {
         .route("/all", get(get_all_var_presets))
 }
 
-/// 编辑器路由
-pub fn editor_routes() -> Router<AppState> {
-    Router::new()
-        .route("/fileTree", get(get_file_tree))
-        .route("/content", get(get_template_file_content))
-        .route("/add", post(add_template_file))
-        .route("/del", delete(delete_template_file))
-        .route("/edit", put(edit_template_file))
-        .route("/rename", put(move_template_file))
-        .route("/move", put(move_template_file))
-        .route("/uploadCode", post(upload_code))
-        .route("/uploadZip", post(upload_zip))
-        .route("/restore", post(restore_file))
-}
-
 /// 统计路由
 fn statistics_routes() -> Router<AppState> {
     Router::new()
@@ -95,4 +86,46 @@ fn settings_admin_routes() -> Router<AppState> {
         .route("/list", get(get_settings))
         .route("/edit", put(update_setting))
         .route("/batch-edit", post(batch_update_settings))
+}
+
+/// 用户管理路由
+fn users_admin_routes() -> Router<AppState> {
+    Router::new()
+        .route("/list", get(user_management::list_users))
+        .route("/add", post(user_management::create_user))
+        .route("/edit", put(user_management::update_user))
+        .route("/del/:id", delete(user_management::delete_user))
+        .route("/:id/roles", put(user_management::assign_roles))
+}
+
+/// 角色管理路由
+fn roles_admin_routes() -> Router<AppState> {
+    Router::new()
+        .route("/list", get(role_management::list_roles))
+        .route("/add", post(role_management::create_role))
+        .route("/edit", put(role_management::update_role))
+        .route("/del/:id", delete(role_management::delete_role))
+        .route("/:id/permissions", get(role_management::get_role_permissions).put(role_management::assign_permissions))
+}
+
+/// 权限管理路由
+fn permissions_admin_routes() -> Router<AppState> {
+    Router::new()
+        .route("/list", get(permission_management::list_permissions))
+        .route("/tree", get(permission_management::get_permission_tree))
+}
+
+/// 编辑器路由
+pub fn editor_routes() -> Router<AppState> {
+    Router::new()
+        .route("/fileTree", get(get_file_tree))
+        .route("/content", get(get_template_file_content))
+        .route("/add", post(add_template_file))
+        .route("/del", delete(delete_template_file))
+        .route("/edit", put(edit_template_file))
+        .route("/rename", put(move_template_file))
+        .route("/move", put(move_template_file))
+        .route("/uploadCode", post(upload_code))
+        .route("/uploadZip", post(upload_zip))
+        .route("/restore", post(restore_file))
 }

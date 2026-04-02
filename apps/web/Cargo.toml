@@ -28,6 +28,8 @@ chrono = { workspace = true, features = ["serde"] }
 validator = { workspace = true, features = ["derive"] }
 base64 = "0.22"
 md5 = "0.7"
+jsonwebtoken = { workspace = true }
+bcrypt = { workspace = true }
 bytes = { workspace = true }
 zip = { workspace = true }
 notify = "6.0"

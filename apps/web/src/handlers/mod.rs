@@ -16,3 +16,7 @@ pub mod template_files;
 pub mod statistics;
 pub mod backup;
 pub mod system_setting;
+pub mod auth;
+pub mod user_management;
+pub mod role_management;
+pub mod permission_management;

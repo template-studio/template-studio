@@ -1,0 +1,96 @@
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::Json,
+};
+use serde_json::{json, Value};
+use template_studio_shared::models::user::{CreateUserRequest, UpdateUserRequest, AssignRolesRequest};
+use validator::Validate;
+
+pub type AppState = super::super::AppState;
+
+/// 用户列表
+pub async fn list_users(
+    State(state): State<AppState>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    match state.user_service.list_users().await {
+        Ok(users) => Ok(Json(json!({
+            "code": 0,
+            "message": "OK",
+            "data": {
+                "list": users,
+                "total": users.len()
+            }
+        }))),
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
+    }
+}
+
+/// 创建用户
+pub async fn create_user(
+    State(state): State<AppState>,
+    Json(request): Json<CreateUserRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(e) = request.validate() {
+        return error_response(StatusCode::BAD_REQUEST, &e.to_string());
+    }
+
+    match state.user_service.create_user(&request).await {
+        Ok(id) => Ok(Json(json!({
+            "code": 0,
+            "data": { "id": id },
+            "message": "创建用户成功"
+        }))),
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
+    }
+}
+
+/// 更新用户
+pub async fn update_user(
+    State(state): State<AppState>,
+    Json(request): Json<UpdateUserRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    match state.user_service.update_user(&request).await {
+        Ok(_) => Ok(Json(json!({
+            "code": 0,
+            "message": "更新用户成功"
+        }))),
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
+    }
+}
+
+/// 删除用户
+pub async fn delete_user(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    match state.user_service.delete_user(id).await {
+        Ok(_) => Ok(Json(json!({
+            "code": 0,
+            "message": "删除用户成功"
+        }))),
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
+    }
+}
+
+/// 分配角色
+pub async fn assign_roles(
+    State(state): State<AppState>,
+    Path(user_id): Path<i64>,
+    Json(request): Json<AssignRolesRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    match state.user_service.assign_roles(user_id, &request.role_ids).await {
+        Ok(_) => Ok(Json(json!({
+            "code": 0,
+            "message": "分配角色成功"
+        }))),
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
+    }
+}
+
+fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    Err((status, Json(json!({
+        "code": status.as_u16() as i32,
+        "message": message
+    }))))
+}

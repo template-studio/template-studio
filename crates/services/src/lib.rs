@@ -10,6 +10,10 @@ pub mod file_conditions_service;
 pub mod release_service;
 pub mod backup_service;
 pub mod system_setting_service;
+pub mod auth_service;
+pub mod user_service;
+pub mod role_service;
+pub mod permission_service;
 pub mod cache;
 
 pub use category_service::CategoryService;
@@ -24,3 +28,7 @@ pub use file_conditions_service::FileConditionsService;
 pub use release_service::ReleaseService;
 pub use backup_service::BackupService;
 pub use system_setting_service::SystemSettingService;
+pub use auth_service::AuthService;
+pub use user_service::UserService;
+pub use role_service::RoleService;
+pub use permission_service::PermissionService;

@@ -4,7 +4,7 @@
       <div class="settings-layout">
         <div class="settings-sidebar">
           <div
-            v-for="tab in tabs"
+            v-for="tab in visibleTabs"
             :key="tab.key"
             :class="['sidebar-item', { active: activeTab === tab.key }]"
             @click="handleTabClick(tab.key)"
@@ -15,6 +15,8 @@
         </div>
         <div class="settings-content">
           <FooterSettings v-if="activeTab === 'footer'" />
+          <UserManagement v-if="activeTab === 'users'" />
+          <RoleManagement v-if="activeTab === 'roles'" />
         </div>
       </div>
     </n-card>
@@ -22,15 +24,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { BookmarkOutline } from '@vicons/ionicons5';
+import { ref, computed } from 'vue';
+import { BookmarkOutline, PeopleOutline, ShieldOutline } from '@vicons/ionicons5';
 import FooterSettings from './footer.vue';
+import UserManagement from './users.vue';
+import RoleManagement from './roles.vue';
+import { useUser } from '@/store/modules/user';
 
 const activeTab = ref('footer');
+const userStore = useUser();
 
-const tabs = [
-  { key: 'footer', label: 'Footer 设置', icon: BookmarkOutline },
+const allTabs = [
+  { key: 'footer', label: 'Footer 设置', icon: BookmarkOutline, permission: 'settings' },
+  { key: 'users', label: '用户管理', icon: PeopleOutline, permission: 'user_management' },
+  { key: 'roles', label: '角色管理', icon: ShieldOutline, permission: 'role_management' },
 ];
+
+const visibleTabs = computed(() => {
+  const permissions = userStore.getPermissions?.map((p: any) => p.value) || [];
+  return allTabs.filter((tab) => permissions.includes(tab.permission));
+});
 
 function handleTabClick(key: string) {
   activeTab.value = key;

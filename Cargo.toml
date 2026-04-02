@@ -66,6 +66,10 @@ validator = { version = "0.16", features = ["derive"] }
 # 正则表达式
 regex = "1.10"
 
+# 认证
+jsonwebtoken = "9"
+bcrypt = "0.15"
+
 # 性能优化
 lru = "0.12"
 rayon = "1.10"
