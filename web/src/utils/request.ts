@@ -1,6 +1,8 @@
 import axios from 'axios';
 import qs from 'qs';
 import { createDiscreteApi } from 'naive-ui';
+import { storage } from '@/utils/Storage';
+import { ACCESS_TOKEN } from '@/store/mutation-types';
 
 const { message } = createDiscreteApi(['message']);
 
@@ -42,6 +44,15 @@ const service = axios.create({
       return qs.stringify(params, { allowDots: true, arrayFormat: 'brackets' });
     },
   },
+});
+
+// 添加请求拦截器 - 注入 token
+service.interceptors.request.use((config) => {
+  const token = storage.get(ACCESS_TOKEN);
+  if (token) {
+    config.headers['token'] = token;
+  }
+  return config;
 });
 
 // 添加响应拦截器 - 处理通用错误
