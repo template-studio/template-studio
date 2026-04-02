@@ -23,10 +23,6 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             开始探索
           </button>
-          <router-link v-if="userStore.isAdmin" to="/admin" class="cta-admin">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            后台管理
-          </router-link>
         </div>
 
         <!-- 统计数据 -->
@@ -302,30 +298,6 @@
   transform: translateY(0);
 }
 
-.cta-admin {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 48px;
-  padding: 0 20px;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #94a3b8;
-  text-decoration: none;
-  cursor: pointer;
-  transition: all 0.2s ease-out;
-}
-
-.cta-admin:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: #f8fafc;
-  text-decoration: none;
-}
-
 /* ===== 统计数据 ===== */
 .hero-stats {
   display: flex;
@@ -436,8 +408,7 @@
     gap: 12px;
   }
 
-  .cta-primary,
-  .cta-admin {
+  .cta-primary {
     width: 100%;
     max-width: 280px;
     justify-content: center;
@@ -464,7 +435,6 @@
 /* ===== prefers-reduced-motion ===== */
 @media (prefers-reduced-motion: reduce) {
   .hero-glow { animation: none; }
-  .cta-primary,
-  .cta-admin { transition: none; }
+  .cta-primary { transition: none; }
 }
 </style>
