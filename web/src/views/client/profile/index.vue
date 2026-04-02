@@ -97,7 +97,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, reactive } from 'vue';
+  import { ref, computed, reactive, onMounted } from 'vue';
   import { useMessage } from 'naive-ui';
   import { useUserStore } from '@/store/modules/user';
   import { changePassword } from '@/api/system/user';
@@ -106,6 +106,16 @@
   const message = useMessage();
 
   const activeTab = ref('info');
+
+  onMounted(async () => {
+    if (userStore.getToken && !userStore.getNickname) {
+      try {
+        await userStore.getInfo();
+      } catch (e) {
+        console.warn('获取用户信息失败:', e);
+      }
+    }
+  });
 
   const tabs = [
     {
