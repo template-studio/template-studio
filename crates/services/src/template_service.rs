@@ -206,6 +206,11 @@ impl TemplateService {
                 is_featured: tmpl.is_featured,
                 template_type: tmpl.template_type,
                 type_config: tmpl.type_config.or_else(|| Some(String::new())),
+                visibility: tmpl.visibility,
+                status: tmpl.status,
+                owner_id: tmpl.owner_id,
+                owner_name: None,
+                download_count: tmpl.download_count,
                 created_at,
                 updated_at,
                 languages,
@@ -415,5 +420,165 @@ impl TemplateService {
     pub async fn get_template_count(&self) -> Result<i64, AppError> {
         let count = self.repository.count_all().await?;
         Ok(count)
+    }
+
+    // ===== 用户模板投稿 =====
+
+    /// 用户创建模板
+    pub async fn create_user_template(&self, user_id: i64, mut request: CreateTemplateRequest) -> Result<i64, AppError> {
+        validate_request(&request)?;
+        request.owner_id = Some(user_id);
+        request.visibility = request.visibility.or_else(|| Some("private".to_string()));
+        self.create_template(request).await
+    }
+
+    /// 用户更新模板
+    pub async fn update_user_template(&self, user_id: i64, request: UpdateTemplateRequest) -> Result<(), AppError> {
+        validate_request(&request)?;
+        let updated = self.repository.update_user_template(&request, user_id).await
+            .map_err(|e| AppError::Forbidden(e.to_string()))?;
+        if !updated {
+            return Err(AppError::NotFound(format!("模板 {} 不存在", request.id)));
+        }
+        tracing::info!("用户 {} 更新模板 {}", user_id, request.id);
+        Ok(())
+    }
+
+    /// 用户删除模板
+    pub async fn delete_user_template(&self, user_id: i64, template_id: i64) -> Result<(), AppError> {
+        let deleted = self.repository.delete_user_template(template_id, user_id).await
+            .map_err(|e| AppError::Forbidden(e.to_string()))?;
+        if !deleted {
+            return Err(AppError::NotFound(format!("模板 {} 不存在", template_id)));
+        }
+        let template_path = self.storage_manager.get_template_path(template_id);
+        if template_path.exists() {
+            let _ = tokio::fs::remove_dir_all(&template_path).await;
+        }
+        tracing::info!("用户 {} 删除模板 {}", user_id, template_id);
+        Ok(())
+    }
+
+    /// 提交审核 (private → pending)
+    pub async fn submit_for_review(&self, user_id: i64, template_id: i64) -> Result<(), AppError> {
+        let is_owner = self.repository.is_owner(template_id, user_id).await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        if !is_owner {
+            return Err(AppError::Forbidden("无权操作此模板".to_string()));
+        }
+        self.repository.update_visibility(template_id, "pending").await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        tracing::info!("用户 {} 提交模板 {} 审核", user_id, template_id);
+        Ok(())
+    }
+
+    /// 列出用户的模板
+    pub async fn list_user_templates(&self, user_id: i64, query: UserTemplateListQuery) -> Result<TemplateListResponse, AppError> {
+        let paged = self.repository.list_user_templates(user_id, &query).await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        let mut list = Vec::new();
+        for tmpl in paged.items {
+            let languages = self.repository.get_template_languages(tmpl.id).await.unwrap_or_default();
+            list.push(TemplateItem {
+                id: tmpl.id,
+                name: tmpl.name,
+                description: tmpl.description,
+                introduction: tmpl.introduction,
+                category_id: tmpl.category_id,
+                is_featured: tmpl.is_featured,
+                template_type: tmpl.template_type,
+                type_config: tmpl.type_config.or_else(|| Some(String::new())),
+                visibility: tmpl.visibility,
+                status: tmpl.status,
+                owner_id: tmpl.owner_id,
+                owner_name: None,
+                download_count: tmpl.download_count,
+                created_at: tmpl.created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+                updated_at: tmpl.updated_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+                languages,
+            });
+        }
+        Ok(TemplateListResponse {
+            current_page: paged.page,
+            total: paged.total,
+            templates_list: list,
+        })
+    }
+
+    /// 获取公开模板列表
+    pub async fn list_public_templates(&self, query: UserTemplateListQuery) -> Result<TemplateListResponse, AppError> {
+        let paged = self.repository.list_public_templates(&query).await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        let mut list = Vec::new();
+        for tmpl in paged.items {
+            let languages = self.repository.get_template_languages(tmpl.id).await.unwrap_or_default();
+            list.push(TemplateItem {
+                id: tmpl.id,
+                name: tmpl.name,
+                description: tmpl.description,
+                introduction: tmpl.introduction,
+                category_id: tmpl.category_id,
+                is_featured: tmpl.is_featured,
+                template_type: tmpl.template_type,
+                type_config: tmpl.type_config.or_else(|| Some(String::new())),
+                visibility: tmpl.visibility,
+                status: tmpl.status,
+                owner_id: tmpl.owner_id,
+                owner_name: None,
+                download_count: tmpl.download_count,
+                created_at: tmpl.created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+                updated_at: tmpl.updated_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+                languages,
+            });
+        }
+        Ok(TemplateListResponse {
+            current_page: paged.page,
+            total: paged.total,
+            templates_list: list,
+        })
+    }
+
+    /// 获取待审核模板列表（管理员）
+    pub async fn list_pending_templates(&self, page: u32, page_size: u32) -> Result<TemplateListResponse, AppError> {
+        let paged = self.repository.list_pending_templates(page, page_size).await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        let mut list = Vec::new();
+        for tmpl in paged.items {
+            let languages = self.repository.get_template_languages(tmpl.id).await.unwrap_or_default();
+            list.push(TemplateItem {
+                id: tmpl.id,
+                name: tmpl.name,
+                description: tmpl.description,
+                introduction: tmpl.introduction,
+                category_id: tmpl.category_id,
+                is_featured: tmpl.is_featured,
+                template_type: tmpl.template_type,
+                type_config: tmpl.type_config.or_else(|| Some(String::new())),
+                visibility: tmpl.visibility,
+                status: tmpl.status,
+                owner_id: tmpl.owner_id,
+                owner_name: None,
+                download_count: tmpl.download_count,
+                created_at: tmpl.created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+                updated_at: tmpl.updated_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+                languages,
+            });
+        }
+        Ok(TemplateListResponse {
+            current_page: paged.page,
+            total: paged.total,
+            templates_list: list,
+        })
+    }
+
+    /// 审核模板（管理员）
+    pub async fn review_template(&self, reviewer_id: i64, req: ReviewTemplateRequest) -> Result<(), AppError> {
+        let _template = self.repository.get_by_id(req.template_id).await?
+            .ok_or_else(|| AppError::NotFound(format!("模板 {} 不存在", req.template_id)))?;
+        let reason = req.reason.unwrap_or_default();
+        self.repository.review_template(req.template_id, reviewer_id, &req.action, &reason).await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        tracing::info!("审核人 {} 审核模板 {} action={}", reviewer_id, req.template_id, req.action);
+        Ok(())
     }
 }

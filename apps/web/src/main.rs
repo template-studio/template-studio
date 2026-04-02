@@ -41,6 +41,48 @@ async fn main() -> anyhow::Result<()> {
     db_pool.run_migrations().await?;
     info!("数据库迁移完成");
 
+    // 执行模板投稿系统迁移（017/018）
+    {
+        let pool = db_pool.get_pool().clone();
+        // 017: 添加 visibility/owner_id 等字段
+        let existing: Vec<String> = sqlx::query_scalar(
+            "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'templates'"
+        )
+        .fetch_all(&pool)
+        .await
+        .unwrap_or_default();
+        if !existing.contains(&"owner_id".to_string()) {
+            sqlx::query("ALTER TABLE templates ADD COLUMN owner_id BIGINT DEFAULT NULL, ADD COLUMN visibility VARCHAR(20) DEFAULT 'public', ADD COLUMN status VARCHAR(20) DEFAULT 'active', ADD COLUMN reviewed_at DATETIME DEFAULT NULL, ADD COLUMN reviewed_by BIGINT DEFAULT NULL, ADD COLUMN download_count INT DEFAULT 0")
+                .execute(&pool).await.ok();
+            sqlx::query("ALTER TABLE templates ADD INDEX idx_owner_id (owner_id), ADD INDEX idx_visibility (visibility)")
+                .execute(&pool).await.ok();
+            sqlx::query("UPDATE templates SET visibility='public', status='active' WHERE owner_id IS NULL")
+                .execute(&pool).await.ok();
+            info!("Migration 017 applied: templates table updated with visibility fields");
+        }
+        // 018: template_reviews 表
+        let table_exists: bool = sqlx::query_scalar(
+            "SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'template_reviews'"
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap_or(false);
+        if !table_exists {
+            sqlx::query(
+                "CREATE TABLE template_reviews (
+                    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                    template_id BIGINT NOT NULL,
+                    reviewer_id BIGINT NOT NULL,
+                    action VARCHAR(20) NOT NULL,
+                    reason VARCHAR(500) DEFAULT '',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_template_id (template_id)
+                )"
+            ).execute(&pool).await.ok();
+            info!("Migration 018 applied: template_reviews table created");
+        }
+    }
+
     // 创建存储管理器
     let storage_manager = Arc::new(StorageManager::new(config.storage.clone()));
 

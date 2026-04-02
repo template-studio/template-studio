@@ -125,3 +125,6 @@ data/
 
 # test
 .playwright-cli/
+init.sh
+claude-progress.txt
+features.json

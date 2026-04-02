@@ -12,6 +12,9 @@ pub enum AppError {
     #[error("未找到记录: {0}")]
     NotFound(String),
 
+    #[error("权限不足: {0}")]
+    Forbidden(String),
+
     #[error("重复记录: {0}")]
     Duplicate(String),
 
@@ -47,6 +50,7 @@ impl AppError {
             AppError::Database(_) => 5001,
             AppError::Validation(_) => 4000,
             AppError::NotFound(_) => 4004,
+            AppError::Forbidden(_) => 4003,
             AppError::Duplicate(_) => 4009,
             AppError::Io(_) => 5002,
             AppError::Git(_) => 5003,

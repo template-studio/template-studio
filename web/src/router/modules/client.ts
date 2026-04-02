@@ -41,6 +41,14 @@ const routes: Array<RouteRecordRaw> = [
         },
         component: () => import('@/views/client/profile/index.vue'),
       },
+      {
+        path: 'my-templates',
+        name: 'my-templates',
+        meta: {
+          title: '我的模板',
+        },
+        component: () => import('@/views/client/my-templates/index.vue'),
+      },
     ],
   },
 

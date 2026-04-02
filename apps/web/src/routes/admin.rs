@@ -5,7 +5,10 @@ use axum::{
 use crate::handlers::{
     category::{create_category, get_category, update_category, delete_category, delete_category_by_query, list_categories},
     language::{list_languages, get_all_languages, get_popular_languages, update_language},
-    template::{get_template, list_templates, get_template_file_content, add_template_file, delete_template_file, edit_template_file, move_template_file, upload_code, upload_zip},
+    template::{get_template, list_templates, get_template_file_content, add_template_file, delete_template_file, edit_template_file, move_template_file, upload_code, upload_zip,
+        create_user_template, list_my_templates, update_user_template, delete_user_template, submit_for_review,
+        list_pending_templates, review_template_admin,
+    },
     var_preset::{create_var_preset, get_var_preset, get_var_preset_by_query, update_var_preset, delete_var_preset, toggle_var_preset, list_var_presets, get_all_var_presets},
     editor::{get_file_tree, restore_file},
     statistics::{get_overview, get_category_distribution, get_language_popularity, get_template_complexity, get_usage_trends},
@@ -27,6 +30,8 @@ pub fn admin_routes() -> Router<AppState> {
         .nest("/categories", category_admin_routes())
         .nest("/languages", language_admin_routes())
         .nest("/templates", template_admin_routes())
+        .nest("/templates/pending", template_review_routes())
+        .nest("/my/templates", user_template_routes())
         .nest("/var-preset", var_preset_admin_routes())
         .nest("/statistics", statistics_routes())
         .nest("/settings", settings_admin_routes())
@@ -133,4 +138,20 @@ pub fn editor_routes() -> Router<AppState> {
         .route("/uploadCode", post(upload_code))
         .route("/uploadZip", post(upload_zip))
         .route("/restore", post(restore_file))
+}
+
+/// 模板审核路由（管理员）
+fn template_review_routes() -> Router<AppState> {
+    Router::new()
+        .route("/list", get(list_pending_templates))
+        .route("/review", post(review_template_admin))
+}
+
+/// 用户模板路由（需认证）
+fn user_template_routes() -> Router<AppState> {
+    Router::new()
+        .route("/list", get(list_my_templates))
+        .route("/add", post(create_user_template))
+        .route("/:id", put(update_user_template).delete(delete_user_template))
+        .route("/:id/submit-review", post(submit_for_review))
 }

@@ -140,10 +140,14 @@
   }
 
   const menuOptions = computed(() => {
-    return [
+    const options = [
       { label: '首页', key: 'home' },
       { label: '模板', key: 'templates' },
     ];
+    if (userStore.getToken) {
+      options.push({ label: '我的模板', key: 'my-templates' });
+    }
+    return options;
   });
 
   const activeKey = ref(route.name || 'home');
@@ -152,6 +156,7 @@
     activeKey.value = key;
     if (key === 'home') router.push('/');
     else if (key === 'templates') router.push('/templates');
+    else if (key === 'my-templates') router.push('/my-templates');
   }
 
   function goHome() {

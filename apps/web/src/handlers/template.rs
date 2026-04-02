@@ -1,8 +1,9 @@
 use axum::{
-    extract::{Path, Query, State, Multipart},
+    extract::{Path, Query, State, Multipart, Extension},
     http::StatusCode,
     response::Json,
 };
+use template_studio_shared::models::auth::AuthUser;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use template_studio_shared::models::template::*;
@@ -1395,5 +1396,114 @@ pub async fn fork_template(
         Err(e) => {
             error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string())
         }
+    }
+}
+
+// ===== 用户模板投稿 Handler =====
+
+/// 创建用户模板
+pub async fn create_user_template(
+    State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
+    Json(request): Json<CreateTemplateRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    match state.template_service.create_user_template(auth_user.user_id, request).await {
+        Ok(id) => Ok(Json(json!({ "code": 200, "message": "模板创建成功", "result": { "id": id } }))),
+        Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
+    }
+}
+
+/// 获取我的模板列表
+pub async fn list_my_templates(
+    State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
+    Query(query): Query<UserTemplateListQuery>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    match state.template_service.list_user_templates(auth_user.user_id, query).await {
+        Ok(resp) => Ok(Json(json!({ "code": 200, "result": resp }))),
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
+    }
+}
+
+/// 更新用户模板
+pub async fn update_user_template(
+    State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
+    Path(id): Path<i64>,
+    Json(mut request): Json<UpdateTemplateRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    request.id = id;
+    match state.template_service.update_user_template(auth_user.user_id, request).await {
+        Ok(_) => Ok(Json(json!({ "code": 200, "message": "模板更新成功" }))),
+        Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
+    }
+}
+
+/// 删除用户模板
+pub async fn delete_user_template(
+    State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    match state.template_service.delete_user_template(auth_user.user_id, id).await {
+        Ok(_) => Ok(Json(json!({ "code": 200, "message": "模板删除成功" }))),
+        Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
+    }
+}
+
+/// 提交审核
+pub async fn submit_for_review(
+    State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    match state.template_service.submit_for_review(auth_user.user_id, id).await {
+        Ok(_) => Ok(Json(json!({ "code": 200, "message": "已提交审核" }))),
+        Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
+    }
+}
+
+/// 获取公开模板列表（无需认证）
+pub async fn list_public_templates(
+    State(state): State<AppState>,
+    Query(query): Query<UserTemplateListQuery>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    match state.template_service.list_public_templates(query).await {
+        Ok(resp) => Ok(Json(json!({ "code": 200, "result": resp }))),
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
+    }
+}
+
+// ===== 管理员审核 Handler =====
+
+#[derive(Debug, Deserialize)]
+pub struct PendingListQuery {
+    pub page: Option<u32>,
+    #[serde(rename = "pageSize")]
+    pub page_size: Option<u32>,
+}
+
+/// 获取待审核模板列表
+pub async fn list_pending_templates(
+    State(state): State<AppState>,
+    Query(query): Query<PendingListQuery>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let page = query.page.unwrap_or(1);
+    let page_size = query.page_size.unwrap_or(20);
+    match state.template_service.list_pending_templates(page, page_size).await {
+        Ok(resp) => Ok(Json(json!({ "code": 0, "result": resp }))),
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
+    }
+}
+
+/// 审核模板
+pub async fn review_template_admin(
+    State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
+    Json(request): Json<ReviewTemplateRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    match state.template_service.review_template(auth_user.user_id, request).await {
+        Ok(_) => Ok(Json(json!({ "code": 0, "message": "审核完成" }))),
+        Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
 }

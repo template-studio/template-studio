@@ -7,6 +7,7 @@ use crate::handlers::{
     category::get_all_categories,
     engine::{get_engine_info, download_engine, check_engine_update},
     language::{get_all_languages, get_popular_languages},
+    template::list_public_templates,
     var_preset::{get_enabled_var_presets, get_var_presets_by_category},
     system_setting::get_public_settings,
 };
@@ -21,8 +22,15 @@ pub fn public_routes() -> Router<AppState> {
         .nest("/var-presets", var_preset_public_routes())
         .nest("/builtin-functions", builtin_functions_routes())
         .nest("/template-files", template_files_routes())
+        .nest("/templates", templates_public_routes())
         .nest("/engine", engine_routes())
         .route("/settings/:group", get(get_public_settings))
+}
+
+/// 公开模板路由
+fn templates_public_routes() -> Router<AppState> {
+    Router::new()
+        .route("/list", get(list_public_templates))
 }
 
 /// 内置函数公开路由

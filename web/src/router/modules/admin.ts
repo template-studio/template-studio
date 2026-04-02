@@ -54,7 +54,8 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/admin/templates',
     name: 'admin-templates-list',
-    component: Layout,
+    component: ParentLayout,
+    redirect: '/admin/templates/list',
     meta: {
       title: '模板管理',
       icon: renderIcon(DocumentTextOutline),
@@ -62,12 +63,20 @@ const routes: Array<RouteRecordRaw> = [
     },
     children: [
       {
-        path: '',
+        path: 'list',
         name: 'admin-templates-index',
         meta: {
-          title: '模板管理',
+          title: '模板列表',
         },
         component: () => import('@/views/admin/template/index.vue'),
+      },
+      {
+        path: 'review',
+        name: 'admin-templates-review',
+        meta: {
+          title: '模板审核',
+        },
+        component: () => import('@/views/admin/template/review.vue'),
       },
     ],
   },

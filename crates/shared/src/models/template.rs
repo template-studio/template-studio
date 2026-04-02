@@ -17,6 +17,12 @@ pub struct Template {
     pub type_config: Option<String>,
     pub git_repo_path: Option<String>, // 保持可选
     pub current_version: Option<String>, // 保持可选
+    pub owner_id: Option<i64>,
+    pub visibility: Option<String>,
+    pub status: Option<String>,
+    pub reviewed_at: Option<String>,
+    pub reviewed_by: Option<i64>,
+    pub download_count: Option<i32>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -38,6 +44,9 @@ pub struct CreateTemplateRequest {
     #[serde(rename = "typeConfig")]
     pub type_config: Option<String>,
     pub languages: Vec<TemplateLanguageRequest>,
+    pub visibility: Option<String>,
+    #[serde(rename = "ownerId")]
+    pub owner_id: Option<i64>,
 }
 
 /// 更新模板请求
@@ -58,6 +67,7 @@ pub struct UpdateTemplateRequest {
     #[serde(rename = "typeConfig")]
     pub type_config: Option<String>,
     pub languages: Vec<TemplateLanguageRequest>,
+    pub visibility: Option<String>,
 }
 
 /// 模板语言关联请求
@@ -220,6 +230,14 @@ pub struct TemplateItem {
     pub template_type: String,
     #[serde(rename = "typeConfig")]
     pub type_config: Option<String>,
+    pub visibility: Option<String>,
+    pub status: Option<String>,
+    #[serde(rename = "ownerId")]
+    pub owner_id: Option<i64>,
+    #[serde(rename = "ownerName")]
+    pub owner_name: Option<String>,
+    #[serde(rename = "downloadCount")]
+    pub download_count: Option<i32>,
     #[serde(rename = "createdAt")]
     pub created_at: String,
     #[serde(rename = "updatedAt")]
@@ -237,4 +255,67 @@ pub struct TemplateLanguageItem {
     pub language_id: i64,
     #[serde(rename = "isPrimary")]
     pub is_primary: i32,
+}
+
+// ===== 用户模板投稿 =====
+
+/// 用户模板列表查询
+#[derive(Debug, Clone, Deserialize)]
+pub struct UserTemplateListQuery {
+    pub page: Option<u32>,
+    #[serde(rename = "pageSize")]
+    pub page_size: Option<u32>,
+    pub keyword: Option<String>,
+    pub visibility: Option<String>,
+    #[serde(rename = "categoryId")]
+    pub category_id: Option<i64>,
+    #[serde(rename = "ownerId")]
+    pub owner_id: Option<i64>,
+}
+
+/// 审核请求（管理员用）
+#[derive(Debug, Deserialize)]
+pub struct ReviewTemplateRequest {
+    #[serde(rename = "templateId")]
+    pub template_id: i64,
+    pub action: String,   // approve / reject
+    pub reason: Option<String>,
+}
+
+/// 审核记录
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct TemplateReview {
+    pub id: i64,
+    pub template_id: i64,
+    pub reviewer_id: i64,
+    pub action: String,
+    pub reason: Option<String>,
+    pub created_at: Option<String>,
+}
+
+/// 模板详情响应（扩展版，含投稿信息）
+#[derive(Debug, Serialize)]
+pub struct TemplateDetailExtResponse {
+    #[serde(rename = "templateId")]
+    pub template_id: i64,
+    pub name: String,
+    pub description: String,
+    pub introduction: Option<String>,
+    #[serde(rename = "categoryId")]
+    pub category_id: i64,
+    #[serde(rename = "templateType")]
+    pub template_type: String,
+    pub visibility: Option<String>,
+    pub status: Option<String>,
+    #[serde(rename = "ownerId")]
+    pub owner_id: Option<i64>,
+    #[serde(rename = "ownerName")]
+    pub owner_name: Option<String>,
+    #[serde(rename = "downloadCount")]
+    pub download_count: Option<i32>,
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String,
+    pub languages: Vec<TemplateLanguageItem>,
 }
