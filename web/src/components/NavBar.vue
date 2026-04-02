@@ -119,7 +119,7 @@
     if (key === 'admin') {
       router.push('/admin/dashboard');
     } else if (key === 'profile') {
-      // TODO: 个人中心页
+      router.push('/profile');
     } else if (key === 'logout') {
       userStore.logout();
       window.location.href = '/';

@@ -33,6 +33,14 @@ const routes: Array<RouteRecordRaw> = [
         },
         component: () => import('@/views/client/templates-public/index.vue'),
       },
+      {
+        path: 'profile',
+        name: 'profile',
+        meta: {
+          title: '个人中心',
+        },
+        component: () => import('@/views/client/profile/index.vue'),
+      },
     ],
   },
 
