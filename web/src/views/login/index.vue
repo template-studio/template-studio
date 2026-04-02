@@ -154,7 +154,7 @@
 
           <div v-if="!isRegister" class="form-options">
             <n-checkbox v-model:checked="autoLogin">记住登录</n-checkbox>
-            <a href="javascript:" class="forgot-link">忘记密码</a>
+            <a href="javascript:" class="forgot-link" @click="showForgot = true">忘记密码</a>
           </div>
 
           <n-button
@@ -168,6 +168,34 @@
             {{ isRegister ? '创建账号' : '登录' }}
           </n-button>
         </n-form>
+
+        <!-- 忘记密码弹窗 -->
+        <n-modal v-model:show="showForgot" :mask-closable="true">
+          <n-card style="width: 420px" title="忘记密码" :bordered="false" size="huge" role="dialog">
+            <template #header-extra>
+              <n-button quaternary circle @click="showForgot = false">
+                <template #icon><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></template>
+              </n-button>
+            </template>
+            <n-alert v-if="forgotSent" type="success" style="margin-bottom: 16px">
+              如果该邮箱已注册，重置邮件已发送。请检查收件箱。
+            </n-alert>
+            <template v-else>
+              <p style="color: #64748b; font-size: 14px; margin: 0 0 16px">请输入注册时使用的邮箱，我们将发送密码重置链接。</p>
+              <n-input v-model:value="forgotEmail" placeholder="注册邮箱" size="large">
+                <template #prefix>
+                  <n-icon size="18" color="#94a3b8"><MailOutline /></n-icon>
+                </template>
+              </n-input>
+            </template>
+            <template #footer>
+              <div style="display: flex; gap: 12px; justify-content: flex-end">
+                <n-button @click="showForgot = false">关闭</n-button>
+                <n-button v-if="!forgotSent" type="primary" :loading="forgotLoading" :disabled="!forgotEmail" @click="handleForgot">发送重置邮件</n-button>
+              </div>
+            </template>
+          </n-card>
+        </n-modal>
       </div>
     </div>
   </div>
@@ -186,6 +214,7 @@ import {
 } from '@vicons/ionicons5';
 import { PageEnum } from '@/enums/pageEnum';
 import { register } from '@/api/system/user';
+import { forgotPassword } from '@/api/system/password';
 
 interface FormState {
   username: string;
@@ -197,6 +226,10 @@ const message = useMessage();
 const loading = ref(false);
 const autoLogin = ref(true);
 const isRegister = ref(false);
+const showForgot = ref(false);
+const forgotEmail = ref('');
+const forgotLoading = ref(false);
+const forgotSent = ref(false);
 const LOGIN_NAME = PageEnum.BASE_LOGIN_NAME;
 
 const router = useRouter();
@@ -233,8 +266,23 @@ const registerRules = {
 
 const currentRules = computed(() => isRegister.value ? registerRules : loginRules);
 
+async function handleForgot() {
+  if (!forgotEmail.value.trim()) return;
+  forgotLoading.value = true;
+  try {
+    const res = await forgotPassword(forgotEmail.value.trim());
+    forgotSent.value = true;
+  } catch {
+    forgotSent.value = true; // 不暴露错误
+  } finally {
+    forgotLoading.value = false;
+  }
+}
+
 function switchMode(register: boolean) {
   isRegister.value = register;
+  showForgot.value = false;
+  forgotSent.value = false;
   formRef.value?.restoreValidation();
 }
 

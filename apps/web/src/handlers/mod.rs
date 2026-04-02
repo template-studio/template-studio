@@ -20,3 +20,4 @@ pub mod auth;
 pub mod user_management;
 pub mod role_management;
 pub mod permission_management;
+pub mod email;

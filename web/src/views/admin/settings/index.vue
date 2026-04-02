@@ -15,6 +15,7 @@
         </div>
         <div class="settings-content">
           <FooterSettings v-if="activeTab === 'footer'" />
+          <SmtpSettings v-if="activeTab === 'smtp'" />
         </div>
       </div>
     </n-card>
@@ -23,13 +24,15 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { BookmarkOutline } from '@vicons/ionicons5';
+import { BookmarkOutline, MailOutline } from '@vicons/ionicons5';
 import FooterSettings from './footer.vue';
+import SmtpSettings from './smtp.vue';
 
 const activeTab = ref('footer');
 
 const tabs = [
   { key: 'footer', label: 'Footer 设置', icon: BookmarkOutline },
+  { key: 'smtp', label: '邮件服务', icon: MailOutline },
 ];
 </script>
 

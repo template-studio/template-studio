@@ -2,7 +2,7 @@ use axum::{
     routing::post,
     Router,
 };
-use crate::handlers::auth;
+use crate::handlers::{auth, email};
 use super::super::AppState;
 
 /// 认证路由（公开，不需要 auth middleware）
@@ -10,4 +10,6 @@ pub fn auth_routes() -> Router<AppState> {
     Router::new()
         .route("/login", post(auth::login))
         .route("/register", post(auth::register))
+        .route("/forgot-password", post(email::forgot_password))
+        .route("/reset-password", post(email::reset_password))
 }

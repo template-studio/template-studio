@@ -15,6 +15,7 @@ pub mod user_service;
 pub mod role_service;
 pub mod permission_service;
 pub mod pat_service;
+pub mod email_service;
 pub mod cache;
 
 pub use category_service::CategoryService;
@@ -34,3 +35,4 @@ pub use user_service::UserService;
 pub use role_service::RoleService;
 pub use permission_service::PermissionService;
 pub use pat_service::PatService;
+pub use email_service::EmailService;

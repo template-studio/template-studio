@@ -30,6 +30,7 @@ base64 = "0.22"
 md5 = "0.7"
 jsonwebtoken = { workspace = true }
 bcrypt = { workspace = true }
+lettre = { workspace = true }
 bytes = { workspace = true }
 zip = { workspace = true }
 notify = "6.0"

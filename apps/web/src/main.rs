@@ -15,7 +15,7 @@ use template_studio_infrastructure::{
     file_tree::FileTreeService,
 };
 use template_studio_repositories::{CategoryRepository, LanguageRepository, TemplateRepository, VarPresetRepository, SystemSettingRepository, UserRepository, RoleRepository, PermissionRepository, PatRepository};
-use template_studio_services::{CategoryService, LanguageService, TemplateService, VarPresetService, PresetSubscribeService, TemplateAnalysisService, TemplateVariablesService, TemplateRenderService, FileConditionsService, ReleaseService, BackupService, SystemSettingService, AuthService, UserService, RoleService, PermissionService, PatService};
+use template_studio_services::{CategoryService, LanguageService, TemplateService, VarPresetService, PresetSubscribeService, TemplateAnalysisService, TemplateVariablesService, TemplateRenderService, FileConditionsService, ReleaseService, BackupService, SystemSettingService, AuthService, UserService, RoleService, PermissionService, PatService, EmailService};
 use template_studio_shared::models::auth::JwtConfig;
 use tower_http::cors::CorsLayer;
 use tracing::{info, warn};
@@ -81,6 +81,29 @@ async fn main() -> anyhow::Result<()> {
             ).execute(&pool).await.ok();
             info!("Migration 018 applied: template_reviews table created");
         }
+        // 019: password_reset_tokens 表
+        let reset_table_exists: bool = sqlx::query_scalar(
+            "SELECT COUNT(*) > 0 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'password_reset_tokens'"
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap_or(false);
+        if !reset_table_exists {
+            sqlx::query(
+                "CREATE TABLE password_reset_tokens (
+                    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                    user_id BIGINT NOT NULL,
+                    token VARCHAR(64) NOT NULL UNIQUE,
+                    email VARCHAR(100) NOT NULL,
+                    used TINYINT DEFAULT 0,
+                    expires_at DATETIME NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_token (token),
+                    INDEX idx_user_id (user_id)
+                )"
+            ).execute(&pool).await.ok();
+            info!("Migration 019 applied: password_reset_tokens table created");
+        }
     }
 
     // 创建存储管理器
@@ -129,13 +152,26 @@ async fn main() -> anyhow::Result<()> {
         template_variables_service.clone(),
         file_conditions_service.clone(),
     ));
-    let system_setting_service = Arc::new(SystemSettingService::new(system_setting_repository));
+    let system_setting_service = Arc::new(SystemSettingService::new(system_setting_repository.clone()));
     let jwt_config = JwtConfig::default();
     let auth_service = Arc::new(AuthService::new(user_repository.clone(), jwt_config));
     let user_service = Arc::new(UserService::new(user_repository));
     let role_service = Arc::new(RoleService::new(role_repository));
     let permission_service = Arc::new(PermissionService::new(permission_repository));
     let pat_service = Arc::new(PatService::new(pat_repository));
+
+    // 创建邮件服务
+    let server_url = format!("{}:{}", config.server.host, config.server.port);
+    let base_url = if server_url.starts_with("0.0.0.0") || server_url.starts_with("127.0.0.1") {
+        format!("http://localhost:{}", config.server.port)
+    } else {
+        format!("http://{}", server_url)
+    };
+    let email_service = Arc::new(EmailService::new(
+        db_pool.get_pool().clone(),
+        system_setting_repository.clone(),
+        base_url,
+    ));
 
     // 启动文件系统监听（监听 templates 目录）
     let templates_cache = template_render_service.get_cache();
@@ -165,6 +201,7 @@ async fn main() -> anyhow::Result<()> {
         role_service,
         permission_service,
         pat_service,
+        email_service,
         storage_manager,
     };
 
@@ -202,6 +239,7 @@ pub struct AppState {
     pub role_service: Arc<RoleService>,
     pub permission_service: Arc<PermissionService>,
     pub pat_service: Arc<PatService>,
+    pub email_service: Arc<EmailService>,
     pub storage_manager: Arc<StorageManager>,
 }
 

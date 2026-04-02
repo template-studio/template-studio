@@ -29,3 +29,4 @@ jsonwebtoken = { workspace = true }
 bcrypt = { workspace = true }
 validator = { workspace = true, features = ["derive"] }
 rand = "0.8"
+lettre = { workspace = true }
