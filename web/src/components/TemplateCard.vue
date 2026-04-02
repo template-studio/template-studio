@@ -17,7 +17,6 @@
         <n-tag
           v-for="lang in template.languages"
           :key="lang.id"
-          :color="{ color: '#f0f0f0', textColor: '#666' }"
           size="small"
         >
           {{ getLanguageName(lang.languageId) }}
@@ -26,12 +25,14 @@
 
       <div class="card-footer">
         <div class="card-author">
-          <div class="author-avatar"></div>
+          <div class="author-avatar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
           <span class="author-name">Template Studio</span>
         </div>
         <div class="creation-time">
-          <span class="time-icon">📅</span>
-          {{ formatCreationTime(template.createdAt) }}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>{{ formatCreationTime(template.createdAt) }}</span>
         </div>
       </div>
     </div>
@@ -56,14 +57,12 @@
   const languageStore = useLanguageStore();
   const { languagesList } = storeToRefs(languageStore);
 
-  // 获取语言名称
   const getLanguageName = (languageId) => {
     if (!languageId) return '';
     const language = languagesList.value.find((lang) => lang.id === Number(languageId));
     return language ? language.name : '';
   };
 
-  // 生成代码片段预览
   const codeSnippet = computed(() => {
     const template = props.template;
     const name = template.name?.toLowerCase() || '';
@@ -80,7 +79,7 @@
 
 function App() {
   const [state, setState] = useState()
-  
+
   return (
     <div className="app">
       <h1>Hello World</h1>
@@ -95,7 +94,7 @@ export default App`;
       return `class ${template.name.replace(/\s+/g, '')}:
     def __init__(self):
         self.name = "${template.name}"
-    
+
     def run(self):
         print(f"Running {self.name}")
         return True
@@ -108,15 +107,15 @@ if __name__ == "__main__":
     if (langName.includes('java')) {
       return `public class ${template.name.replace(/\s+/g, '')} {
     private String name;
-    
+
     public ${template.name.replace(/\s+/g, '')}() {
         this.name = "${template.name}";
     }
-    
+
     public void run() {
         System.out.println("Running " + name);
     }
-    
+
     public static void main(String[] args) {
         ${template.name.replace(/\s+/g, '')} app = new ${template.name.replace(/\s+/g, '')}();
         app.run();
@@ -145,18 +144,17 @@ func main() {
 }`;
     }
 
-    // 默认通用代码片段
     return `// ${template.name}
 class Application {
   constructor() {
     this.name = '${template.name}'
   }
-  
+
   init() {
     console.log('Initializing...')
     this.run()
   }
-  
+
   run() {
     console.log('Running', this.name)
   }
@@ -166,7 +164,6 @@ const app = new Application()
 app.init()`;
   });
 
-  // 格式化创建时间
   const formatCreationTime = (createdAt) => {
     if (!createdAt) return '未知时间';
 
@@ -202,180 +199,192 @@ app.init()`;
     }
   };
 
-  // 处理点击事件
   const handleClick = () => {
     emit('click', props.template);
   };
 </script>
 
 <style scoped>
-  /* 模板卡片 */
-  .template-card {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(12px);
-    border-radius: 16px;
-    box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.1), 0 1px 3px 1px rgba(60, 64, 67, 0.05);
-    overflow: hidden;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    cursor: pointer;
-    position: relative;
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    will-change: transform;
-    backface-visibility: hidden;
-  }
+.template-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  transition: all 0.25s ease-out;
+  cursor: pointer;
+  position: relative;
+  border: 1px solid #e2e8f0;
+}
 
-  .template-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 12px 40px rgba(66, 133, 244, 0.15);
-    border-color: rgba(66, 133, 244, 0.3);
-    background: rgba(255, 255, 255, 0.95);
-  }
+.template-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+  border-color: #22c55e;
+}
 
-  /* 上方视觉区域 */
-  .card-visual-area {
-    width: 100%;
-    height: 180px;
-    position: relative;
-    overflow: hidden;
-  }
+.card-visual-area {
+  width: 100%;
+  height: 160px;
+  position: relative;
+  overflow: hidden;
+}
 
-  .visual-bg {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-  }
+.visual-bg {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
 
-  /* Shimmer光泽效果 */
-  .visual-bg::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-      45deg,
-      transparent 30%,
-      rgba(255, 255, 255, 0.2) 50%,
-      transparent 70%
-    );
-    animation: shimmer 3s infinite;
-  }
+.visual-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(34, 197, 94, 0.03) 45%,
+    rgba(34, 197, 94, 0.08) 50%,
+    rgba(34, 197, 94, 0.03) 55%,
+    transparent 100%
+  );
+  animation: shimmer 4s ease-in-out infinite;
+}
 
-  @keyframes shimmer {
-    0% {
-      transform: translateX(-100%);
-    }
-    100% {
-      transform: translateX(100%);
-    }
-  }
+@keyframes shimmer {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(50%); }
+}
 
-  .code-snippet-preview {
-    font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
-    font-size: 10px;
-    line-height: 1.4;
-    color: rgba(255, 255, 255, 0.4);
-    white-space: pre;
-    overflow: hidden;
-    padding: 20px;
-    text-align: left;
-    position: relative;
-    z-index: 1;
-  }
+.code-snippet-preview {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  color: rgba(148, 163, 184, 0.4);
+  white-space: pre;
+  overflow: hidden;
+  padding: 16px 20px;
+  text-align: left;
+  position: relative;
+  z-index: 1;
+}
 
-  .template-badge {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(8px);
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 500;
-    color: #4285f4;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    z-index: 2;
-  }
+.template-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(34, 197, 94, 0.9);
+  backdrop-filter: blur(8px);
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  z-index: 2;
+  letter-spacing: 0.3px;
+}
 
-  /* 卡片内容区域 */
-  .card-content-area {
-    padding: 20px;
-    background: #fff;
-  }
+.card-content-area {
+  padding: 16px 20px 20px;
+}
 
-  .template-name {
-    font-size: 18px;
-    font-weight: 600;
-    color: #202124;
-    margin: 0 0 8px 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+.template-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+}
 
-  .template-description {
-    font-size: 14px;
-    color: #5f6368;
-    margin: 0 0 16px 0;
-    line-height: 1.6;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
+.template-card:hover .template-name {
+  color: #22c55e;
+}
 
-  .template-languages {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 16px;
-  }
+.template-description {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0 0 12px 0;
+  line-height: 1.6;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
 
-  /* 卡片底部 */
-  .card-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 16px;
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
-  }
+.template-languages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
 
-  .card-author {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+.template-languages :deep(.n-tag) {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
 
-  .author-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
-    flex-shrink: 0;
-  }
+.template-card:hover .template-languages :deep(.n-tag) {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
 
-  .author-name {
-    font-size: 13px;
-    color: #5f6368;
-    font-weight: 500;
-  }
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
 
-  .creation-time {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 13px;
-    color: #80868b;
-  }
+.card-author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
-  .time-icon {
-    font-size: 14px;
-  }
+.author-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.author-name {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.creation-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .visual-bg::before { animation: none; }
+  .template-card { transition: none; }
+}
 </style>

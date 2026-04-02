@@ -324,8 +324,9 @@
 
 <style scoped>
   .templates-page {
-    min-height: calc(100vh - 84px);
+    min-height: calc(100vh - 64px);
     width: 100%;
+    background: #f8fafc;
   }
 
   .container {
@@ -334,15 +335,15 @@
     padding: 0 20px;
   }
 
-  /* 筛选区域样式 */
+  /* ===== 筛选区域 ===== */
   .filters-section {
     background: #fff;
-    padding: 20px 0;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 24px 0;
+    border-bottom: 1px solid #e2e8f0;
   }
 
   .filter-block {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
 
   .filter-block:last-child {
@@ -350,107 +351,103 @@
   }
 
   .filter-block h2 {
-    font-size: 1.1rem;
+    font-size: 13px;
     font-weight: 600;
-    color: #333;
-    margin: 0 0 12px 0;
+    color: #64748b;
+    margin: 0 0 10px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
-  /* 磁贴容器 */
   .tiles {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 8px;
   }
 
-  /* 磁贴 */
   .tile {
-    background: #fff;
-    border-radius: 12px;
-    padding: 8px 16px;
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 6px 14px;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    transition: all 0.25s ease;
+    transition: all 0.2s ease-out;
     display: inline-flex;
     align-items: center;
-    font-size: 0.875rem;
-    color: #333;
+    font-size: 13px;
+    color: #475569;
     font-weight: 500;
-    border: 1px solid transparent;
+    border: 1px solid #e2e8f0;
   }
 
   .tile:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-    color: #6366f1;
-    border-color: rgba(99, 102, 241, 0.1);
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #15803d;
   }
 
   .tile.active {
-    background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+    background: #0f172a;
     color: #fff;
-    box-shadow: 0 4px 14px rgba(66, 133, 244, 0.3);
+    border-color: #0f172a;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
   }
 
   .tile.active:hover {
-    background: linear-gradient(135deg, #3b78e7 0%, #2d9249 100%);
+    background: #1e293b;
+    border-color: #1e293b;
     color: #fff;
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(66, 133, 244, 0.4);
   }
 
-  /* 模板列表样式 */
+  /* ===== 模板列表 ===== */
   .templates-section {
-    padding: 40px 0;
-    background: #fff;
+    padding: 40px 0 60px;
   }
 
   .templates-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 30px;
+    align-items: flex-end;
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e2e8f0;
   }
 
   .templates-title-section {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
   }
 
   .templates-header h2 {
     margin: 0;
-    color: #333;
+    font-size: 22px;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.3px;
   }
 
   .templates-count {
-    color: #666;
-    font-size: 14px;
-    margin-top: 4px;
+    color: #94a3b8;
+    font-size: 13px;
+    margin-top: 2px;
   }
 
-  /* 模板网格 */
+  /* ===== 模板网格 ===== */
   .templates-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
     margin-bottom: 40px;
-  }
-
-  @media (max-width: 1200px) {
-    .templates-grid {
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    }
   }
 
   @media (max-width: 768px) {
     .templates-grid {
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: 1fr;
       gap: 16px;
     }
   }
 
-  /* 分页样式 */
+  /* ===== 分页 ===== */
   .pagination-section {
     display: flex;
     justify-content: center;

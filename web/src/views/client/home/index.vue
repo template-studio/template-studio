@@ -1,21 +1,50 @@
 <template>
   <div class="home-page-wrapper">
-    <!-- 英雄区域 - 完全独立，不受Container限制 -->
+    <!-- 英雄区域 -->
     <div class="hero-section">
+      <div class="hero-bg">
+        <div class="hero-grid"></div>
+        <div class="hero-glow hero-glow-1"></div>
+        <div class="hero-glow hero-glow-2"></div>
+      </div>
       <div class="hero-content">
-        <h1>Template Studio</h1>
-        <p class="hero-subtitle">从数百个精心设计的项目模板中选择，一键生成完整项目结构</p>
+        <div class="hero-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <span>Template Studio</span>
+        </div>
+        <h1>
+          从模板到代码<br>
+          <span class="hero-highlight">一键生成项目</span>
+        </h1>
+        <p class="hero-subtitle">选择精心设计的项目模板，通过变量配置快速生成完整的项目结构，让开发效率提升 10 倍。</p>
 
         <div class="hero-actions">
-          <n-button type="primary" size="large" class="cta-button" @click="scrollToTemplates">
+          <button class="cta-primary" @click="scrollToTemplates">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             开始探索
-          </n-button>
-          <router-link v-if="userStore.isAdmin" to="/admin" class="admin-link">
-            <n-icon class="admin-icon">
-              <SettingsOutline />
-            </n-icon>
-            <span class="admin-text">后台管理</span>
+          </button>
+          <router-link v-if="userStore.isAdmin" to="/admin" class="cta-admin">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            后台管理
           </router-link>
+        </div>
+
+        <!-- 统计数据 -->
+        <div class="hero-stats">
+          <div class="stat-item">
+            <span class="stat-value">{{ statistics.totalTemplates || '100+' }}</span>
+            <span class="stat-label">项目模板</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span class="stat-value">{{ statistics.totalCategories || '10+' }}</span>
+            <span class="stat-label">分类目录</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span class="stat-value">{{ statistics.totalLanguages || '20+' }}</span>
+            <span class="stat-label">编程语言</span>
+          </div>
         </div>
       </div>
     </div>
@@ -28,13 +57,8 @@
         v-if="featuredTemplates && featuredTemplates.length > 0"
       >
         <div class="section-header">
-          <div class="section-content">
-            <h3 class="section-title">
-              <span class="section-icon">✨</span>
-              推荐模板
-            </h3>
-            <p class="section-subtitle">精选热门模板，助力快速开发</p>
-          </div>
+          <h3 class="section-title">推荐模板</h3>
+          <p class="section-subtitle">精选热门模板，助力快速开发</p>
         </div>
 
         <div class="container">
@@ -63,13 +87,11 @@
   import { useLanguageStore } from '@/store/modules/languageStore';
   import { useUser } from '@/store/modules/user';
   import TemplateCard from '@/components/TemplateCard.vue';
-  import { SettingsOutline } from '@vicons/ionicons5';
 
   const router = useRouter();
   const languageStore = useLanguageStore();
   const userStore = useUser();
 
-  // 响应式数据
   const loading = ref(false);
   const templatesSection = ref(null);
   const statistics = ref({
@@ -81,19 +103,16 @@
   const categories = ref([]);
   const featuredTemplates = ref([]);
 
-  // 滚动到模板区域
   const scrollToTemplates = () => {
     if (templatesSection.value) {
       templatesSection.value.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
-  // 使用模板
   const useTemplate = (template) => {
     router.push(`/template-generator/${template.id}`);
   };
 
-  // 获取首页数据
   const fetchIndexData = async () => {
     loading.value = true;
     try {
@@ -113,609 +132,339 @@
     }
   };
 
-  // 页面加载时获取数据
   onMounted(async () => {
     try {
-      // 先获取语言列表
       await languageStore.fetchLanguages();
-      // 再获取首页数据
       await fetchIndexData();
     } catch (error) {}
   });
 </script>
 
 <style scoped>
-  .home-page-wrapper {
-    width: 100%;
-    margin: 0;
-    overflow-x: hidden;
-  }
+.home-page-wrapper {
+  width: 100%;
+  margin: 0;
+  overflow-x: hidden;
+}
 
-  .home-page {
-    min-height: calc(100vh - 84px);
-    background: #ffffff;
-    position: relative;
-    overflow-x: hidden;
-    /* 确保可以突破Container限制 */
-    margin: 0;
-    padding: 0;
-  }
+.home-page {
+  min-height: calc(100vh - 84px);
+  background: #ffffff;
+  position: relative;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
 
-  /* 背景装饰 */
-  .bg-decoration {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    pointer-events: none;
-    z-index: 1;
-  }
+/* ===== 英雄区域 ===== */
+.hero-section {
+  min-height: 85vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f172a;
+  position: relative;
+  z-index: 2;
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  padding-top: 64px;
+  overflow: hidden;
+}
 
-  .circle {
-    position: absolute;
-    border-radius: 50%;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
-    backdrop-filter: blur(10px);
-    animation: float 8s ease-in-out infinite;
-  }
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
 
-  .circle-1 {
-    width: 400px;
-    height: 400px;
-    top: -200px;
-    right: -200px;
-    animation-delay: 0s;
-  }
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(34, 197, 94, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 197, 94, 0.04) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
 
-  .circle-2 {
-    width: 300px;
-    height: 300px;
-    top: 30%;
-    left: -150px;
-    animation-delay: 2s;
-  }
+.hero-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+}
 
-  .circle-3 {
-    width: 250px;
-    height: 250px;
-    bottom: 20%;
-    right: 10%;
-    animation-delay: 4s;
-  }
+.hero-glow-1 {
+  width: 500px;
+  height: 500px;
+  background: rgba(34, 197, 94, 0.08);
+  top: -15%;
+  right: -10%;
+  animation: hero-drift 25s ease-in-out infinite;
+}
 
-  .circle-4 {
-    width: 200px;
-    height: 200px;
-    bottom: -100px;
-    left: 20%;
-    animation-delay: 6s;
-  }
+.hero-glow-2 {
+  width: 400px;
+  height: 400px;
+  background: rgba(59, 130, 246, 0.06);
+  bottom: -10%;
+  left: -5%;
+  animation: hero-drift 30s ease-in-out infinite reverse;
+}
 
-  @keyframes float {
-    0%,
-    100% {
-      transform: translateY(0px) rotate(0deg);
-    }
-    50% {
-      transform: translateY(-30px) rotate(180deg);
-    }
-  }
+@keyframes hero-drift {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(30px, -25px); }
+  50% { transform: translate(-25px, 30px); }
+  75% { transform: translate(20px, 15px); }
+}
 
-  /* 英雄区域 - 完全独立，占满全屏 */
+.hero-content {
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 32px;
+  letter-spacing: 0.3px;
+}
+
+.hero-content h1 {
+  font-size: 52px;
+  font-weight: 700;
+  margin: 0 0 24px 0;
+  color: #f8fafc;
+  letter-spacing: -1px;
+  line-height: 1.2;
+}
+
+.hero-highlight {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-subtitle {
+  font-size: 18px;
+  color: #94a3b8;
+  margin: 0 0 40px 0;
+  line-height: 1.7;
+  font-weight: 400;
+}
+
+/* ===== CTA 按钮 ===== */
+.hero-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 48px;
+}
+
+.cta-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 28px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 10px;
+  background: #22c55e;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease-out;
+  letter-spacing: 0.3px;
+}
+
+.cta-primary:hover {
+  background: #16a34a;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(34, 197, 94, 0.3);
+}
+
+.cta-primary:active {
+  transform: translateY(0);
+}
+
+.cta-admin {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 48px;
+  padding: 0 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease-out;
+}
+
+.cta-admin:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #f8fafc;
+  text-decoration: none;
+}
+
+/* ===== 统计数据 ===== */
+.hero-stats {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ===== 推荐模板区域 ===== */
+.featured-section {
+  position: relative;
+  z-index: 2;
+  padding: 80px 0;
+  background: #f8fafc;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.section-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+  color: #0f172a;
+  letter-spacing: -0.5px;
+}
+
+.section-subtitle {
+  font-size: 15px;
+  color: #64748b;
+  margin: 0;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 0;
+  color: #64748b;
+  text-align: center;
+}
+
+.loading-container p {
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.templates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
   .hero-section {
-    min-height: 85vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
-    position: relative;
-    z-index: 2;
-    /* 占满整个视口宽度 */
-    width: 100vw;
-    /* 使用负margin将元素拉到视口的最左边 */
-    margin-left: calc(-50vw + 50%);
-    /* 处理导航栏高度 */
-    margin-top: 0;
-    padding-top: 64px;
-  }
-
-  .hero-content {
-    text-align: center;
-    color: #ffffff;
-    max-width: 700px;
-    margin: 0 auto;
-    padding: 0 20px;
-    position: relative;
-    z-index: 1;
+    min-height: 80vh;
+    padding: 40px 20px;
   }
 
   .hero-content h1 {
-    font-size: 48px;
-    font-weight: 500;
-    margin: 0 0 24px 0;
-    color: #ffffff;
+    font-size: 32px;
     letter-spacing: -0.5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
   }
 
   .hero-subtitle {
-    font-size: 20px;
-    color: rgba(255, 255, 255, 0.9);
-    margin: 0 0 48px 0;
-    line-height: 1.6;
-    font-weight: 400;
+    font-size: 16px;
+    margin-bottom: 32px;
   }
 
-  /* 行动按钮 */
   .hero-actions {
-    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .cta-primary,
+  .cta-admin {
+    width: 100%;
+    max-width: 280px;
     justify-content: center;
-    align-items: center;
-    gap: 16px;
   }
 
-  .cta-button {
-    height: 48px;
-    padding: 0 32px;
-    font-size: 15px;
-    font-weight: 500;
-    border-radius: 24px;
-    background: #ffffff;
-    border: none;
-    color: #4285f4;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  .hero-stats {
+    gap: 20px;
   }
 
-  .cta-button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-
-  /* 英雄区域后台管理链接样式 */
-  .admin-link {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    border-radius: 24px;
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: rgba(255, 255, 255, 0.9);
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 13px;
-    transition: all 0.3s ease;
-  }
-
-  .admin-link:hover {
-    background: rgba(255, 255, 255, 0.25);
-    border-color: rgba(255, 255, 255, 0.5);
-    color: #ffffff;
-    text-decoration: none;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.1);
-  }
-
-  .admin-link:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.05);
-  }
-
-  .admin-icon {
-    font-size: 14px;
-    transition: transform 0.2s ease;
-  }
-
-  .admin-link:hover .admin-icon {
-    transform: rotate(90deg);
-  }
-
-  .admin-text {
-    letter-spacing: 0.2px;
-    white-space: nowrap;
-  }
-
-  /* 区域通用样式 */
-  .featured-section,
-  .categories-section {
-    position: relative;
-    z-index: 2;
-    padding: 80px 0;
-  }
-
-  .featured-section {
-    background: #ffffff;
-  }
-
-  .categories-section {
-    background: #f8fafc;
-  }
-
-  .section-header {
-    text-align: center;
-    margin-bottom: 60px;
-  }
-
-  .section-content {
-    max-width: 600px;
-    margin: 0 auto;
+  .stat-value {
+    font-size: 20px;
   }
 
   .section-title {
-    font-size: 32px;
-    font-weight: 500;
-    margin: 0 0 16px 0;
-    color: #202124;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
+    font-size: 22px;
   }
 
-  .section-icon {
-    font-size: 36px;
-  }
-
-  .section-subtitle {
-    font-size: 16px;
-    color: #5f6368;
-    margin: 0;
-    font-weight: 400;
-  }
-
-  /* 容器 */
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-  }
-
-  /* 加载和空状态 */
-  .loading-container,
-  .empty-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 80px 0;
-    color: #6b7280;
-    text-align: center;
-  }
-
-  .loading-container p,
-  .empty-container p {
-    margin-top: 16px;
-    font-size: 16px;
-  }
-
-  /* 分类块 */
-  .category-block {
-    margin-bottom: 80px;
-  }
-
-  .category-block:last-child {
-    margin-bottom: 0;
-  }
-
-  .category-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 40px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #f1f5f9;
-  }
-
-  .category-info {
-    flex: 1;
-  }
-
-  .category-title {
-    font-size: 24px;
-    font-weight: 500;
-    margin: 0 0 8px 0;
-    color: #202124;
-  }
-
-  .category-description {
-    font-size: 16px;
-    color: #5f6368;
-    margin: 0;
-  }
-
-  .category-stats {
-    margin-left: 20px;
-  }
-
-  .template-count {
-    background: linear-gradient(135deg, #4285f4, #34a853);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 500;
-  }
-
-  /* 模板网格 */
   .templates-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 24px;
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
+}
 
-  @media (max-width: 1200px) {
-    .templates-grid {
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    }
-  }
-
-  @media (max-width: 768px) {
-    .templates-grid {
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
-    }
-  }
-
-  /* 模板卡片 */
-  .template-card {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(12px);
-    border-radius: 16px;
-    box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.1), 0 1px 3px 1px rgba(60, 64, 67, 0.05);
-    overflow: hidden;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    cursor: pointer;
-    position: relative;
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    will-change: transform;
-    backface-visibility: hidden;
-  }
-
-  .template-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 12px 40px rgba(66, 133, 244, 0.15);
-    border-color: rgba(66, 133, 244, 0.3);
-    background: rgba(255, 255, 255, 0.95);
-  }
-
-  /* 上方视觉区域 */
-  .card-visual-area {
-    width: 100%;
-    height: 180px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .visual-bg {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-  }
-
-  /* Shimmer光泽效果 */
-  .visual-bg::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-      45deg,
-      transparent 30%,
-      rgba(255, 255, 255, 0.2) 50%,
-      transparent 70%
-    );
-    animation: shimmer 3s infinite;
-  }
-
-  @keyframes shimmer {
-    0% {
-      transform: translateX(-100%);
-    }
-    100% {
-      transform: translateX(100%);
-    }
-  }
-
-  .code-snippet-preview {
-    font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
-    font-size: 10px;
-    line-height: 1.4;
-    color: rgba(255, 255, 255, 0.4);
-    white-space: pre;
-    overflow: hidden;
-    padding: 20px;
-    text-align: left;
-    position: relative;
-    z-index: 1;
-  }
-
-  /* 卡片内容区域 */
-  .card-content-area {
-    padding: 20px;
-    background: white;
-  }
-
-  .template-badge {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: rgba(255, 255, 255, 0.95);
-    color: #34a853;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 6px 14px;
-    border-radius: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: all 0.3s ease;
-    z-index: 2;
-    backdrop-filter: blur(10px);
-  }
-
-  .template-card:hover .template-badge {
-    transform: scale(1.08);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-
-  .template-name {
-    font-size: 18px;
-    font-weight: 600;
-    margin: 0 0 10px 0;
-    color: #202124;
-    line-height: 1.3;
-    letter-spacing: -0.3px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .template-card:hover .template-name {
-    color: #1967d2;
-  }
-
-  .template-description {
-    font-size: 13px;
-    color: #5f6368;
-    margin: 0 0 16px 0;
-    line-height: 1.6;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .template-languages {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 16px;
-  }
-
-  /* 卡片底部 */
-  .card-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 16px;
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
-  }
-
-  .card-author {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .author-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
-    flex-shrink: 0;
-  }
-
-  .author-name {
-    font-size: 13px;
-    color: #5f6368;
-    font-weight: 500;
-  }
-
-  .card-stats {
-    display: flex;
-    gap: 12px;
-    font-size: 13px;
-    color: #80868b;
-  }
-
-  .stat-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .stat-icon {
-    font-size: 14px;
-  }
-
-  .template-languages :deep(.n-tag) {
-    background: #f8f9fa;
-    border: 1px solid #e8eaed;
-    color: #5f6368;
-    font-size: 12px;
-    padding: 4px 12px;
-    border-radius: 12px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .template-card:hover .template-languages :deep(.n-tag) {
-    background: linear-gradient(135deg, #e8f0fe 0%, #e6f4ea 100%);
-    border-color: #d2e3fc;
-    color: #1967d2;
-    transform: translateY(-2px);
-  }
-
-  /* 响应式设计 */
-  @media (max-width: 768px) {
-    .hero-section {
-      min-height: 80vh;
-      padding: 40px 20px;
-    }
-
-    .hero-content h1 {
-      font-size: 32px;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .hero-subtitle {
-      font-size: 18px;
-      margin-bottom: 32px;
-    }
-
-    .hero-actions {
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .cta-button {
-      width: 100%;
-      max-width: 280px;
-    }
-
-    .section-title {
-      font-size: 24px;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .category-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 12px;
-    }
-
-    .category-stats {
-      margin-left: 0;
-    }
-
-    .templates-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .template-card {
-      max-width: 100%;
-    }
-  }
+/* ===== prefers-reduced-motion ===== */
+@media (prefers-reduced-motion: reduce) {
+  .hero-glow { animation: none; }
+  .cta-primary,
+  .cta-admin { transition: none; }
+}
 </style>

@@ -20,11 +20,11 @@
             <circle cx="11" cy="17" r="0.5" fill="#ff4d4f" />
             <circle cx="13" cy="17" r="0.5" fill="#ff4d4f" />
             <rect x="14.5" y="16.5" width="2" height="1" fill="#ff4d4f" />
-            <path d="M22 20 L26 24 L22 28" stroke="#52c41a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            <path d="M22 20 L26 24 L22 28" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
             <defs>
               <linearGradient id="loginGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#1890ff;stop-opacity:1" />
-                <stop offset="100%" style="stop-color:#18a058;stop-opacity:1" />
+                <stop offset="0%" style="stop-color:#0f172a;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#1e293b;stop-opacity:1" />
               </linearGradient>
             </defs>
           </svg>
@@ -325,8 +325,8 @@ const handleSubmit = (e) => {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(24, 160, 88, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(24, 160, 88, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(34, 197, 94, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 197, 94, 0.03) 1px, transparent 1px);
   background-size: 60px 60px;
 }
 
@@ -340,7 +340,7 @@ const handleSubmit = (e) => {
 .glow-1 {
   width: 400px;
   height: 400px;
-  background: rgba(24, 160, 88, 0.15);
+  background: rgba(34, 197, 94, 0.15);
   top: -10%;
   right: -5%;
   animation: drift 20s ease-in-out infinite;
@@ -349,7 +349,7 @@ const handleSubmit = (e) => {
 .glow-2 {
   width: 300px;
   height: 300px;
-  background: rgba(45, 140, 240, 0.12);
+  background: rgba(59, 130, 246, 0.12);
   bottom: -5%;
   left: 5%;
   animation: drift 25s ease-in-out infinite reverse;
@@ -391,11 +391,11 @@ const handleSubmit = (e) => {
   font-weight: 700;
   color: #f8fafc;
   letter-spacing: -0.5px;
-  font-family: 'Fira Code', 'Segoe UI', system-ui, sans-serif;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Segoe UI', system-ui, sans-serif;
 }
 
 .brand-name .accent {
-  color: #18a058;
+  color: #22c55e;
 }
 
 .brand-title {
@@ -432,12 +432,12 @@ const handleSubmit = (e) => {
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: rgba(24, 160, 88, 0.1);
-  border: 1px solid rgba(24, 160, 88, 0.2);
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #18a058;
+  color: #22c55e;
   flex-shrink: 0;
 }
 
@@ -471,7 +471,7 @@ const handleSubmit = (e) => {
 }
 
 .back-home:hover {
-  color: #18a058;
+  color: #22c55e;
 }
 
 /* ===== Tab 切换 ===== */
@@ -552,7 +552,7 @@ const handleSubmit = (e) => {
 }
 
 .forgot-link {
-  color: #18a058;
+  color: #22c55e;
   text-decoration: none;
   font-size: 13px;
   font-weight: 500;
@@ -561,7 +561,7 @@ const handleSubmit = (e) => {
 }
 
 .forgot-link:hover {
-  color: #36ad6a;
+  color: #16a34a;
 }
 
 .submit-btn {
