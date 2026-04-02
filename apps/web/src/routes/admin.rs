@@ -13,12 +13,15 @@ use crate::handlers::{
     user_management,
     role_management,
     permission_management,
+    auth as auth_handler,
 };
 use super::super::AppState;
 
 /// 管理员路由（不含 middleware，由 create_app 添加认证层）
 pub fn admin_routes() -> Router<AppState> {
     Router::new()
+        .route("/auth/info", get(auth_handler::get_info))
+        .route("/auth/password", put(auth_handler::change_password))
         .nest("/categories", category_admin_routes())
         .nest("/languages", language_admin_routes())
         .nest("/templates", template_admin_routes())

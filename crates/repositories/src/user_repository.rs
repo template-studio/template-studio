@@ -115,7 +115,7 @@ impl UserRepository {
              INNER JOIN role_permissions rp ON p.id = rp.permission_id \
              INNER JOIN user_roles ur ON rp.role_id = ur.role_id \
              WHERE ur.user_id = ? AND p.status = 1 \
-             ORDER BY p.sort ASC"
+             ORDER BY p.name ASC"
         )
         .bind(user_id)
         .fetch_all(&self.pool)

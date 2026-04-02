@@ -183,10 +183,10 @@
           const { code, message: msg } = await userStore.login(params);
           message.destroyAll();
           if (code == ResultEnum.SUCCESS) {
-            const toPath = decodeURIComponent((route.query?.redirect || '/') as string);
+            const toPath = decodeURIComponent((route.query?.redirect || '/admin/dashboard') as string);
             message.success('登录成功，即将进入系统');
             if (route.name === LOGIN_NAME) {
-              router.replace('/');
+              router.replace(toPath);
             } else router.replace(toPath);
           } else {
             message.info(msg || '登录失败');

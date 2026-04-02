@@ -168,7 +168,7 @@ pub fn create_app(state: AppState) -> Router {
         // 健康检查
         .route("/health", get(health_check))
         // 认证API（公开）
-        .nest("/api/v1/auth", routes::auth_routes())
+        .nest("/api/v1/auth", routes::auth::auth_routes())
         // 模板API
         .nest("/api/v1/template", template_routes())
         // 管理员API（受认证保护）
