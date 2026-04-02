@@ -3,7 +3,7 @@
     <!-- 英雄区域 - 完全独立，不受Container限制 -->
     <div class="hero-section">
       <div class="hero-content">
-        <h1>Template Studio <span class="lite-badge">Lite</span></h1>
+        <h1>Template Studio</h1>
         <p class="hero-subtitle">从数百个精心设计的项目模板中选择，一键生成完整项目结构</p>
 
         <div class="hero-actions">
@@ -238,20 +238,6 @@
     align-items: center;
     justify-content: center;
     gap: 12px;
-  }
-
-  .lite-badge {
-    font-size: 18px;
-    font-weight: 300;
-    background: rgba(255, 255, 255, 0.2);
-    padding: 4px 12px;
-    border-radius: 12px;
-    color: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    backdrop-filter: blur(10px);
-    margin-left: 8px;
-    position: relative;
-    top: -8px;
   }
 
   .hero-subtitle {
@@ -689,12 +675,6 @@
       font-size: 32px;
       flex-direction: column;
       gap: 8px;
-    }
-
-    .lite-badge {
-      font-size: 14px;
-      top: -2px;
-      padding: 2px 8px;
     }
 
     .hero-subtitle {
