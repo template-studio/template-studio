@@ -8,6 +8,8 @@ import {
   ServerOutline,
   LayersOutline,
   SettingsOutline,
+  PeopleOutline,
+  ShieldOutline,
 } from '@vicons/ionicons5';
 import { renderIcon } from '@/utils/index';
 
@@ -70,6 +72,62 @@ const routes: Array<RouteRecordRaw> = [
     ],
   },
 
+  // 权限管理（带子菜单）
+  {
+    path: '/admin/permission',
+    name: 'admin-permission',
+    component: ParentLayout,
+    redirect: '/admin/permission/users',
+    meta: {
+      title: '权限管理',
+      icon: renderIcon(ShieldOutline),
+      sort: 2,
+      permissions: ['user_management', 'role_management'],
+    },
+    children: [
+      {
+        path: 'users',
+        name: 'admin-users',
+        component: Layout,
+        meta: {
+          title: '用户管理',
+          icon: renderIcon(PeopleOutline),
+          permissions: ['user_management'],
+        },
+        children: [
+          {
+            path: '',
+            name: 'admin-users-index',
+            meta: {
+              title: '用户管理',
+            },
+            component: () => import('@/views/admin/settings/users.vue'),
+          },
+        ],
+      },
+      {
+        path: 'roles',
+        name: 'admin-roles',
+        component: Layout,
+        meta: {
+          title: '角色管理',
+          icon: renderIcon(ShieldOutline),
+          permissions: ['role_management'],
+        },
+        children: [
+          {
+            path: '',
+            name: 'admin-roles-index',
+            meta: {
+              title: '角色管理',
+            },
+            component: () => import('@/views/admin/settings/roles.vue'),
+          },
+        ],
+      },
+    ],
+  },
+
   // 基础数据（带子菜单）
   {
     path: '/admin/basic-data',
@@ -79,7 +137,7 @@ const routes: Array<RouteRecordRaw> = [
     meta: {
       title: '基础数据',
       icon: renderIcon(ServerOutline),
-      sort: 2,
+      sort: 3,
     },
     children: [
       {
@@ -162,6 +220,7 @@ const routes: Array<RouteRecordRaw> = [
       title: '系统设置',
       icon: renderIcon(SettingsOutline),
       sort: 99,
+      permissions: ['settings'],
     },
     children: [
       {

@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, h } from 'vue';
+import { ref, reactive, onMounted, h, watch } from 'vue';
 import { NButton, NSpace, NTag, useMessage } from 'naive-ui';
 import { getUserList, createUser, updateUser, deleteUser } from '@/api/admin/user';
 import { getRoleList } from '@/api/system/role';
@@ -117,7 +117,7 @@ async function fetchUsers() {
   loading.value = true;
   try {
     const res = await getUserList();
-    users.value = res?.data?.list || [];
+    users.value = res?.data?.data?.list || [];
   } catch (e) {
     message.error('获取用户列表失败');
   } finally {
@@ -128,7 +128,7 @@ async function fetchUsers() {
 async function fetchRoles() {
   try {
     const res = await getRoleList();
-    const list = res?.data?.list || [];
+    const list = res?.data?.data?.list || [];
     roles.value = list;
     roleOptions.value = list.map((r: any) => ({ label: r.display_name, value: r.id }));
   } catch (e) {
@@ -204,8 +204,6 @@ watch(
     }
   }
 );
-
-import { watch } from 'vue';
 
 onMounted(() => {
   fetchUsers();

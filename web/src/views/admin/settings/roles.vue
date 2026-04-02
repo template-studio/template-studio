@@ -124,7 +124,7 @@ async function fetchRoles() {
   loading.value = true;
   try {
     const res = await getRoleList();
-    roles.value = res?.data?.list || [];
+    roles.value = res?.data?.data?.list || [];
   } catch (e) {
     message.error('获取角色列表失败');
   } finally {
@@ -135,7 +135,7 @@ async function fetchRoles() {
 async function fetchPermissions() {
   try {
     const res = await getPermissionList();
-    permissions.value = res?.data?.list || [];
+    permissions.value = res?.data?.data?.list || [];
   } catch (e) {
     // ignore
   }
@@ -161,7 +161,7 @@ async function handleOpenPerms(row: any) {
   currentRoleId.value = row.id;
   try {
     const res = await getRolePermissions(row.id);
-    selectedPermissions.value = res?.data?.permission_ids || [];
+    selectedPermissions.value = res?.data?.data?.permission_ids || [];
     showPermModal.value = true;
   } catch (e) {
     message.error('获取角色权限失败');
