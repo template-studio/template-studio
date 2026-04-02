@@ -58,6 +58,12 @@
     <!-- 右侧表单区域 -->
     <div class="auth-form-side">
       <div class="form-container">
+        <!-- 返回首页 -->
+        <div class="back-home" @click="router.push('/')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+          <span>返回首页</span>
+        </div>
+
         <!-- 模式切换 Tab -->
         <div class="auth-tabs">
           <button
@@ -450,6 +456,22 @@ const handleSubmit = (e) => {
   width: 100%;
   max-width: 400px;
   padding: 0 24px;
+}
+
+/* ===== 返回首页 ===== */
+.back-home {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #94a3b8;
+  font-size: 13px;
+  cursor: pointer;
+  margin-bottom: 32px;
+  transition: color 0.2s;
+}
+
+.back-home:hover {
+  color: #18a058;
 }
 
 /* ===== Tab 切换 ===== */
