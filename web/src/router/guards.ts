@@ -65,6 +65,13 @@ export function createRouterGuards(router: Router) {
     try {
       const userInfo = await userStore.getInfo();
 
+      // 非管理员访问 /admin 路由时，重定向到门户首页
+      if (to.path.startsWith('/admin') && !userStore.isAdmin) {
+        next({ path: '/', replace: true });
+        Loading && Loading.finish();
+        return;
+      }
+
       const routes = await asyncRouteStore.generateRoutes(userInfo);
 
       // 动态添加可访问路由表

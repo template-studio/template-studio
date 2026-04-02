@@ -17,6 +17,7 @@ export interface IUserState {
   welcome: string;
   avatar: string;
   permissions: any[];
+  roles: string[];
   info: UserInfoType;
 }
 
@@ -28,6 +29,7 @@ export const useUserStore = defineStore({
     welcome: '',
     avatar: '',
     permissions: [],
+    roles: [],
     info: storage.get(CURRENT_USER, {}),
   }),
   getters: {
@@ -46,6 +48,12 @@ export const useUserStore = defineStore({
     getUserInfo(): UserInfoType {
       return this.info;
     },
+    getRoles(): string[] {
+      return this.roles;
+    },
+    isAdmin(): boolean {
+      return this.roles.some((r) => ['super_admin', 'admin'].includes(r));
+    },
   },
   actions: {
     setToken(token: string) {
@@ -56,6 +64,9 @@ export const useUserStore = defineStore({
     },
     setPermissions(permissions) {
       this.permissions = permissions;
+    },
+    setRoles(roles: string[]) {
+      this.roles = roles;
     },
     setUserInfo(info: UserInfoType) {
       this.info = info;
@@ -69,6 +80,9 @@ export const useUserStore = defineStore({
         storage.set(ACCESS_TOKEN, result.token, ex);
         storage.set(IS_SCREENLOCKED, false);
         this.setToken(result.token);
+        if (result.roles) {
+          this.setRoles(result.roles);
+        }
       }
       return response;
     },
@@ -80,6 +94,10 @@ export const useUserStore = defineStore({
         const permissionsList = result.permissions;
         this.setPermissions(permissionsList);
 
+        if (result.roles) {
+          this.setRoles(result.roles);
+        }
+
         const userInfo = {
           username: result.username,
           email: result.email,
@@ -90,7 +108,7 @@ export const useUserStore = defineStore({
         this.username = result.username;
 
         const ex = 7 * 24 * 60 * 60;
-        storage.set(CURRENT_USER, { ...userInfo, permissions: permissionsList }, ex);
+        storage.set(CURRENT_USER, { ...userInfo, permissions: permissionsList, roles: result.roles || [] }, ex);
       } else {
         throw new Error('getInfo: permissionsList must be a non-null array !');
       }
@@ -99,6 +117,7 @@ export const useUserStore = defineStore({
     // 登出
     async logout() {
       this.setPermissions([]);
+      this.setRoles([]);
       this.setUserInfo({ username: '', email: '' });
       storage.remove(ACCESS_TOKEN);
       storage.remove(CURRENT_USER);

@@ -5,7 +5,7 @@ use axum::{
     Extension,
 };
 use serde_json::{json, Value};
-use template_studio_shared::models::user::{LoginRequest, ChangePasswordRequest};
+use template_studio_shared::models::user::{LoginRequest, ChangePasswordRequest, RegisterRequest};
 use template_studio_shared::models::auth::AuthUser;
 use validator::Validate;
 
@@ -27,6 +27,25 @@ pub async fn login(
             "result": resp
         }))),
         Err(e) => error_response(StatusCode::UNAUTHORIZED, &e.to_string()),
+    }
+}
+
+/// 用户注册（公开接口，不需要认证）
+pub async fn register(
+    State(state): State<AppState>,
+    Json(request): Json<RegisterRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(e) = request.validate() {
+        return error_response(StatusCode::BAD_REQUEST, &e.to_string());
+    }
+
+    match state.auth_service.register(&request).await {
+        Ok(resp) => Ok(Json(json!({
+            "code": 200,
+            "message": "注册成功",
+            "result": resp
+        }))),
+        Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
 }
 

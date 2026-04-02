@@ -5,8 +5,9 @@ use axum::{
 use crate::handlers::auth;
 use super::super::AppState;
 
-/// 认证路由（仅登录，公开不需要 auth middleware）
+/// 认证路由（公开，不需要 auth middleware）
 pub fn auth_routes() -> Router<AppState> {
     Router::new()
         .route("/login", post(auth::login))
+        .route("/register", post(auth::register))
 }

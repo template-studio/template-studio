@@ -12,6 +12,17 @@ export function login(params) {
 }
 
 /**
+ * @description: 用户注册
+ */
+export function register(params) {
+  return Alova.Post('/v1/auth/register', params, {
+    meta: {
+      isReturnNativeResponse: true,
+    },
+  });
+}
+
+/**
  * @description: 获取用户信息（需认证）
  */
 export function getUserInfo() {
