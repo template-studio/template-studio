@@ -419,15 +419,15 @@ app.init()`;
 
 <style scoped>
   .my-template-card {
-    background: rgba(255, 255, 255, 0.8);
+    background: var(--client-card-bg, rgba(255, 255, 255, 0.8));
     backdrop-filter: blur(12px);
-    border-radius: 16px;
-    box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.1), 0 1px 3px 1px rgba(60, 64, 67, 0.05);
+    border-radius: var(--client-card-radius, 16px);
+    box-shadow: var(--client-card-shadow, 0 1px 2px 0 rgba(60, 64, 67, 0.1), 0 1px 3px 1px rgba(60, 64, 67, 0.05));
     overflow: hidden;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     cursor: pointer;
     position: relative;
-    border: 1px solid rgba(255, 255, 255, 0.6);
+    border: var(--client-card-border, 1px solid rgba(255, 255, 255, 0.6));
     will-change: transform;
     backface-visibility: hidden;
   }
@@ -553,7 +553,7 @@ app.init()`;
   }
 
   .status-published {
-    background: rgba(34, 197, 94, 0.95);
+    background: rgba(var(--client-theme-rgb), 0.95);
     color: white;
   }
 

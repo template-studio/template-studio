@@ -446,7 +446,7 @@
   }
   .mode-tabs :deep(.n-tabs-tab.n-tabs-tab--active) {
     background: #fff;
-    color: #22c55e;
+    color: var(--client-theme-color);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   }
   .mode-tabs :deep(.n-tabs-tab:hover) {
@@ -547,7 +547,7 @@
     color: #64748b;
   }
   .ok {
-    color: #22c55e;
+    color: var(--client-theme-color);
   }
   .err {
     color: #d03050;

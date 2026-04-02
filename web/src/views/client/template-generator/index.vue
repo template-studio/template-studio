@@ -291,13 +291,13 @@
   }
 
   .step-item.active .step-dot {
-    background: #22c55e;
+    background: var(--client-theme-color);
     color: #fff;
-    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+    box-shadow: 0 2px 8px rgba(var(--client-theme-rgb), 0.3);
   }
 
   .step-item.completed .step-dot {
-    background: #22c55e;
+    background: var(--client-theme-color);
     color: #fff;
   }
 
@@ -315,7 +315,7 @@
   }
 
   .step-item.completed .step-label {
-    color: #22c55e;
+    color: var(--client-theme-color);
   }
 
   .step-line {
@@ -328,7 +328,7 @@
   }
 
   .step-line.filled {
-    background: #22c55e;
+    background: var(--client-theme-color);
   }
 
   /* ===== Content ===== */

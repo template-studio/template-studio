@@ -19,7 +19,7 @@
         </div>
 
         <div v-if="templateInfo?.isFeatured" class="featured-badge">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="#22c55e" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" style="fill: var(--client-theme-color)" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           <span>推荐模板</span>
         </div>
 
@@ -183,9 +183,9 @@
     gap: 6px;
     padding: 6px 12px;
     border-radius: 6px;
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
-    color: #22c55e;
+    background: var(--client-theme-bg-light);
+    border: 1px solid var(--client-theme-border-light);
+    color: var(--client-theme-color);
     font-size: 13px;
     font-weight: 600;
     margin-bottom: 24px;

@@ -162,7 +162,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0f172a;
+  background: linear-gradient(135deg, var(--client-hero-from, #0f172a), var(--client-hero-to, #1e293b));
   position: relative;
   z-index: 2;
   width: 100vw;
@@ -181,8 +181,8 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(34, 197, 94, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(34, 197, 94, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(var(--client-theme-rgb), 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--client-theme-rgb), 0.04) 1px, transparent 1px);
   background-size: 64px 64px;
 }
 
@@ -196,7 +196,7 @@
 .hero-glow-1 {
   width: 500px;
   height: 500px;
-  background: rgba(34, 197, 94, 0.08);
+  background: rgba(var(--client-theme-rgb), 0.08);
   top: -15%;
   right: -10%;
   animation: hero-drift 25s ease-in-out infinite;
@@ -233,9 +233,9 @@
   gap: 6px;
   padding: 6px 14px;
   border-radius: 20px;
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  color: #22c55e;
+  background: rgba(var(--client-theme-rgb), 0.1);
+  border: 1px solid rgba(var(--client-theme-rgb), 0.2);
+  color: var(--client-theme-color);
   font-size: 13px;
   font-weight: 500;
   margin-bottom: 32px;
@@ -252,7 +252,7 @@
 }
 
 .hero-highlight {
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  background: var(--client-theme-color);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -284,7 +284,7 @@
   font-size: 15px;
   font-weight: 600;
   border-radius: 10px;
-  background: #22c55e;
+  background: var(--client-theme-color);
   border: none;
   color: #fff;
   cursor: pointer;
@@ -293,9 +293,9 @@
 }
 
 .cta-primary:hover {
-  background: #16a34a;
+  background: var(--client-theme-dark);
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(34, 197, 94, 0.3);
+  box-shadow: 0 8px 24px rgba(var(--client-theme-rgb), 0.3);
 }
 
 .cta-primary:active {

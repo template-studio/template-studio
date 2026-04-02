@@ -206,20 +206,20 @@ app.init()`;
 
 <style scoped>
 .template-card {
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  background: var(--client-card-bg, #ffffff);
+  border-radius: var(--client-card-radius, 12px);
+  box-shadow: var(--client-card-shadow, none);
   overflow: hidden;
   transition: all 0.25s ease-out;
   cursor: pointer;
   position: relative;
-  border: 1px solid #e2e8f0;
+  border: var(--client-card-border, 1px solid #e2e8f0);
 }
 
 .template-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
-  border-color: #22c55e;
+  box-shadow: var(--client-card-hover-shadow, 0 12px 32px rgba(15, 23, 42, 0.12));
+  border-color: var(--client-theme-color);
 }
 
 .card-visual-area {
@@ -250,9 +250,9 @@ app.init()`;
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(34, 197, 94, 0.03) 45%,
-    rgba(34, 197, 94, 0.08) 50%,
-    rgba(34, 197, 94, 0.03) 55%,
+    rgba(var(--client-theme-rgb), 0.03) 45%,
+    rgba(var(--client-theme-rgb), 0.08) 50%,
+    rgba(var(--client-theme-rgb), 0.03) 55%,
     transparent 100%
   );
   animation: shimmer 4s ease-in-out infinite;
@@ -280,7 +280,7 @@ app.init()`;
   position: absolute;
   top: 10px;
   right: 10px;
-  background: rgba(34, 197, 94, 0.9);
+  background: rgba(var(--client-theme-rgb), 0.9);
   backdrop-filter: blur(8px);
   padding: 3px 10px;
   border-radius: 6px;
@@ -307,7 +307,7 @@ app.init()`;
 }
 
 .template-card:hover .template-name {
-  color: #22c55e;
+  color: var(--client-theme-color);
 }
 
 .template-description {
@@ -339,9 +339,9 @@ app.init()`;
 }
 
 .template-card:hover .template-languages :deep(.n-tag) {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-  color: #15803d;
+  background: var(--client-theme-bg-light);
+  border-color: var(--client-theme-border-light);
+  color: var(--client-theme-dark);
 }
 
 .card-footer {

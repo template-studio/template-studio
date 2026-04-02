@@ -90,6 +90,94 @@
               </div>
             </n-form>
           </div>
+
+          <!-- 外观设置 -->
+          <div v-if="activeTab === 'appearance'" class="content-panel">
+            <div class="panel-header">
+              <h2>外观设置</h2>
+              <p class="panel-desc">个性化你的浏览体验，所有设置保存在本地浏览器中</p>
+            </div>
+
+            <!-- 主题色 -->
+            <div class="theme-section">
+              <h3 class="section-label">主题色</h3>
+              <div class="color-grid">
+                <div
+                  v-for="color in themeColors"
+                  :key="color.value"
+                  class="color-swatch"
+                  :class="{ active: currentTheme === color.value }"
+                  :style="{ '--swatch-color': color.value }"
+                  :title="color.name"
+                  @click="handleThemeChange(color.value)"
+                >
+                  <div class="swatch-circle"></div>
+                  <span class="swatch-name">{{ color.name }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 英雄区风格 -->
+            <div class="theme-section">
+              <h3 class="section-label">英雄区风格</h3>
+              <div class="preset-grid">
+                <div
+                  v-for="preset in heroPresets"
+                  :key="preset.name"
+                  class="preset-card"
+                  :class="{ active: currentHero.name === preset.name }"
+                  @click="handleHeroChange(preset)"
+                >
+                  <div
+                    class="preset-preview hero-preview"
+                    :style="{ background: `linear-gradient(135deg, ${preset.from}, ${preset.to})` }"
+                  >
+                    <div class="hero-preview-text">Aa</div>
+                  </div>
+                  <span class="preset-name">{{ preset.name }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 卡片风格 -->
+            <div class="theme-section">
+              <h3 class="section-label">卡片风格</h3>
+              <div class="preset-grid">
+                <div
+                  v-for="style in cardStyles"
+                  :key="style.name"
+                  class="preset-card"
+                  :class="{ active: currentCardStyle.name === style.name }"
+                  @click="handleCardChange(style)"
+                >
+                  <div
+                    class="preset-preview card-preview"
+                    :style="{
+                      background: style.bg,
+                      border: style.border,
+                      boxShadow: style.shadow,
+                      borderRadius: style.radius
+                    }"
+                  >
+                    <div class="card-preview-line w70"></div>
+                    <div class="card-preview-line w50"></div>
+                    <div class="card-preview-line w90"></div>
+                  </div>
+                  <span class="preset-name">{{ style.name }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 预览 -->
+            <div class="theme-preview">
+              <h3 class="section-label">预览效果</h3>
+              <div class="preview-row">
+                <div class="preview-btn" :style="{ background: currentTheme }">主要按钮</div>
+                <div class="preview-btn ghost" :style="{ color: currentTheme, borderColor: currentTheme }">幽灵按钮</div>
+                <div class="preview-tag" :style="{ background: currentTheme }">标签</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -101,11 +189,19 @@
   import { useMessage } from 'naive-ui';
   import { useUserStore } from '@/store/modules/user';
   import { changePassword } from '@/api/system/user';
+  import {
+    applyClientTheme, getClientTheme,
+    heroPresets, applyHeroPreset, getHeroPreset,
+    cardStyles, applyCardStyle, getCardStyle,
+  } from '@/utils/clientTheme';
 
   const userStore = useUserStore();
   const message = useMessage();
 
   const activeTab = ref('info');
+  const currentTheme = ref(getClientTheme());
+  const currentHero = ref(getHeroPreset());
+  const currentCardStyle = ref(getCardStyle());
 
   onMounted(async () => {
     if (userStore.getToken && !userStore.getNickname) {
@@ -128,7 +224,51 @@
       label: '修改密码',
       icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
     },
+    {
+      key: 'appearance',
+      label: '外观设置',
+      icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>',
+    },
   ];
+
+  const themeColors = [
+    { name: '经典蓝', value: '#2d8cf0' },
+    { name: '翡翠绿', value: '#22c55e' },
+    { name: '青碧', value: '#009688' },
+    { name: '天青', value: '#00C1D4' },
+    { name: '靛蓝', value: '#536dfe' },
+    { name: '深海蓝', value: '#0960bd' },
+    { name: '海洋', value: '#0084f4' },
+    { name: '碧波', value: '#0096c7' },
+    { name: '薰衣草', value: '#9c27b0' },
+    { name: '珊瑚粉', value: '#ff5c93' },
+    { name: '赤焰', value: '#FF3D68' },
+    { name: '暖橙', value: '#ff9800' },
+    { name: '烈焰', value: '#ee4f12' },
+    { name: '琥珀', value: '#FB9300' },
+    { name: '薄荷', value: '#71EFA3' },
+    { name: '青瓷', value: '#78DEC7' },
+    { name: '藏蓝', value: '#1768AC' },
+    { name: '炭墨', value: '#171010' },
+  ];
+
+  function handleThemeChange(color) {
+    currentTheme.value = color;
+    applyClientTheme(color);
+    message.success('主题色已更新');
+  }
+
+  function handleHeroChange(preset) {
+    currentHero.value = preset;
+    applyHeroPreset(preset);
+    message.success('英雄区风格已更新');
+  }
+
+  function handleCardChange(style) {
+    currentCardStyle.value = style;
+    applyCardStyle(style);
+    message.success('卡片风格已更新');
+  }
 
   const userRoles = computed(() => {
     const roles = userStore.getRoles || [];
@@ -236,8 +376,8 @@
   }
 
   .nav-item.active {
-    background: #f0fdf4;
-    color: #22c55e;
+    background: var(--client-theme-bg-light);
+    color: var(--client-theme-color);
   }
 
   .nav-icon {
@@ -307,7 +447,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #22c55e;
+    color: var(--client-theme-color);
     flex-shrink: 0;
   }
 
@@ -352,6 +492,193 @@
     border-top: 1px solid #f1f5f9;
   }
 
+  /* ===== Appearance ===== */
+  .section-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+    margin: 0 0 16px;
+  }
+
+  .theme-section {
+    margin-bottom: 32px;
+  }
+
+  .color-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 12px;
+  }
+
+  .color-swatch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 8px;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: #f8fafc;
+  }
+
+  .color-swatch:hover {
+    border-color: #e2e8f0;
+    background: #fff;
+  }
+
+  .color-swatch.active {
+    border-color: var(--swatch-color);
+    background: #fff;
+  }
+
+  .swatch-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--swatch-color);
+    transition: transform 0.15s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .color-swatch:hover .swatch-circle {
+    transform: scale(1.1);
+  }
+
+  .color-swatch.active .swatch-circle {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8), 0 0 0 5px var(--swatch-color);
+  }
+
+  .swatch-name {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .color-swatch.active .swatch-name {
+    color: #0f172a;
+    font-weight: 600;
+  }
+
+  /* ===== Preset Cards (Hero & Card Style) ===== */
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+  }
+
+  .preset-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 10px;
+    border: 2px solid #e2e8f0;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: #f8fafc;
+  }
+
+  .preset-card:hover {
+    border-color: #cbd5e1;
+    background: #fff;
+  }
+
+  .preset-card.active {
+    border-color: var(--client-theme-color);
+    background: #fff;
+  }
+
+  .preset-preview {
+    width: 100%;
+    height: 64px;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .hero-preview-text {
+    position: absolute;
+    bottom: 8px;
+    left: 10px;
+    color: #f8fafc;
+    font-size: 18px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    opacity: 0.7;
+  }
+
+  .card-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+  }
+
+  .card-preview-line {
+    height: 6px;
+    border-radius: 3px;
+    background: #e2e8f0;
+  }
+
+  .card-preview-line.w50 { width: 50%; }
+  .card-preview-line.w70 { width: 70%; }
+  .card-preview-line.w90 { width: 90%; }
+
+  .preset-card.active .card-preview-line {
+    background: rgba(var(--client-theme-rgb), 0.15);
+  }
+
+  .preset-name {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .preset-card.active .preset-name {
+    color: #0f172a;
+    font-weight: 600;
+  }
+
+  .theme-preview {
+    padding-top: 24px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .preview-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .preview-btn {
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    cursor: default;
+  }
+
+  .preview-btn.ghost {
+    background: transparent;
+    border: 1px solid;
+  }
+
+  .preview-tag {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #fff;
+    font-weight: 500;
+  }
+
   /* ===== Responsive ===== */
   @media (max-width: 768px) {
     .profile-body {
@@ -381,6 +708,11 @@
 
     .content-panel {
       padding: 20px;
+    }
+
+    .color-grid {
+      grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+      gap: 8px;
     }
   }
 </style>

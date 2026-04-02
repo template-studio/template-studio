@@ -380,9 +380,9 @@
   }
 
   .tile:hover {
-    background: #f0fdf4;
-    border-color: #bbf7d0;
-    color: #15803d;
+    background: var(--client-theme-bg-light);
+    border-color: var(--client-theme-border-light);
+    color: var(--client-theme-dark);
   }
 
   .tile.active {

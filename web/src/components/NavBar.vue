@@ -22,7 +22,7 @@
                 <rect x="14.5" y="16.5" width="2" height="1" fill="#ff4d4f" />
                 <path
                   d="M22 20 L26 24 L22 28"
-                  stroke="#22c55e"
+                  stroke="var(--client-theme-color)"
                   stroke-width="2"
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -68,7 +68,7 @@
           <template v-if="isLoggedIn">
             <n-dropdown :options="userMenuOptions" @select="handleUserMenu">
               <div class="user-trigger">
-                <n-avatar round size="small" style="background: linear-gradient(135deg, #0f172a, #22c55e)">
+                <n-avatar round size="small" style="background: linear-gradient(135deg, #0f172a, var(--client-theme-color))">
                   {{ userStore.getNickname?.charAt(0)?.toUpperCase() || 'U' }}
                 </n-avatar>
                 <span class="user-name">{{ userStore.getNickname }}</span>
@@ -96,12 +96,17 @@
   import { renderIcon } from '@/utils/index';
   import { storage } from '@/utils/Storage';
   import { ACCESS_TOKEN } from '@/store/mutation-types';
+  import { applyClientTheme, getClientTheme, applyHeroPreset, getHeroPreset, applyCardStyle, getCardStyle } from '@/utils/clientTheme';
 
   const route = useRoute();
   const router = useRouter();
   const userStore = useUser();
 
   const isLoggedIn = computed(() => !!userStore.getToken);
+
+  applyClientTheme(getClientTheme());
+  applyHeroPreset(getHeroPreset());
+  applyCardStyle(getCardStyle());
 
   const userMenuOptions = computed(() => {
     const options = [
@@ -287,7 +292,7 @@
   }
 
   .brand-accent {
-    color: #22c55e;
+    color: var(--client-theme-color);
   }
 
   /* ===== Menu ===== */
