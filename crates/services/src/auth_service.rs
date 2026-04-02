@@ -48,8 +48,7 @@ impl AuthService {
 
         self.user_repo.update_last_login(user.id).await?;
 
-        let roles = self.user_repo.get_user_roles(user.id).await?
-            .into_iter().map(|r| r.name).collect();
+        let roles = self.get_roles_safe(user.id, &user.username).await?;
 
         Ok(LoginResponse { token, roles })
     }
@@ -105,8 +104,7 @@ impl AuthService {
             .ok_or_else(|| anyhow!("用户不存在"))?;
 
         let permissions = self.user_repo.get_user_permissions(user_id).await?;
-        let roles = self.user_repo.get_user_roles(user_id).await?
-            .into_iter().map(|r| r.name).collect();
+        let roles = self.get_roles_safe(user_id, &user.username).await?;
 
         Ok(UserInfoResponse {
             username: user.username,
@@ -115,5 +113,15 @@ impl AuthService {
             roles,
             permissions,
         })
+    }
+
+    /// 获取用户角色，admin 用户兜底确保拥有 super_admin 角色
+    async fn get_roles_safe(&self, user_id: i64, username: &str) -> Result<Vec<String>> {
+        if username == "admin" {
+            let _ = self.user_repo.ensure_role_by_name(user_id, "super_admin").await;
+        }
+        let roles = self.user_repo.get_user_roles(user_id).await?
+            .into_iter().map(|r| r.name).collect();
+        Ok(roles)
     }
 }

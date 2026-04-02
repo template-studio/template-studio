@@ -124,6 +124,19 @@ impl UserRepository {
         Ok(permissions.into_iter().map(|(value, label)| PermissionItem { value, label }).collect())
     }
 
+    /// 幂等确保用户拥有指定角色（按角色名），已存在则跳过
+    pub async fn ensure_role_by_name(&self, user_id: i64, role_name: &str) -> Result<bool> {
+        let result = sqlx::query(
+            "INSERT IGNORE INTO user_roles (user_id, role_id) \
+             SELECT ?, r.id FROM roles r WHERE r.name = ?"
+        )
+        .bind(user_id)
+        .bind(role_name)
+        .execute(&self.pool)
+        .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
     pub async fn assign_roles(&self, user_id: i64, role_ids: &[i64]) -> Result<()> {
         let mut tx = self.pool.begin().await?;
         sqlx::query("DELETE FROM user_roles WHERE user_id = ?")
