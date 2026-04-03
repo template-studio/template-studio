@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use bcrypt::{hash, DEFAULT_COST};
-use sqlx::MySqlPool;
+use sqlx::{MySqlPool, Row};
 use template_studio_repositories::SystemSettingRepository;
 
 pub struct EmailService {
@@ -71,6 +71,8 @@ impl EmailService {
         .execute(&self.db)
         .await?;
 
+        tracing::info!("Password reset token created for user {}: {}...", user_id, &token[..8]);
+
         // 发送邮件
         let smtp = self.get_smtp_config().await?;
         let reset_url = format!("{}/reset-password?token={}", self.base_url.trim_end_matches('/'), token);
@@ -101,16 +103,31 @@ impl EmailService {
 
     /// 重置密码
     pub async fn reset_password(&self, token: &str, new_password: &str) -> Result<()> {
+        // 先检查 token 是否存在（不管 used 状态）
+        let exists: bool = sqlx::query_scalar(
+            "SELECT COUNT(*) > 0 FROM password_reset_tokens WHERE token = ?"
+        )
+        .bind(token)
+        .fetch_one(&self.db)
+        .await
+        .unwrap_or(false);
+
+        if !exists {
+            tracing::error!("Token not found in database: {}", &token[..8.min(token.len())]);
+            return Err(anyhow!("重置链接无效或已过期"));
+        }
+
         // 查找有效令牌
-        let record = sqlx::query_as::<_, (i64, chrono::NaiveDateTime)>(
-            "SELECT user_id, expires_at FROM password_reset_tokens WHERE token = ? AND used = 0"
+        let record = sqlx::query(
+            "SELECT user_id, expires_at, used FROM password_reset_tokens WHERE token = ? AND used = 0"
         )
         .bind(token)
         .fetch_optional(&self.db)
         .await?
-        .ok_or_else(|| anyhow!("重置链接无效或已过期"))?;
+        .ok_or_else(|| anyhow!("重置链接已被使用，请重新申请"))?;
 
-        let (user_id, expires_at) = record;
+        let user_id: i64 = record.get("user_id");
+        let expires_at: chrono::NaiveDateTime = record.get("expires_at");
         if chrono::Utc::now().naive_utc() > expires_at {
             return Err(anyhow!("重置链接已过期，请重新申请"));
         }

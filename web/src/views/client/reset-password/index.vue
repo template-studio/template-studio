@@ -76,7 +76,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
@@ -118,13 +118,14 @@ async function handleReset() {
   loading.value = true;
   try {
     const res = await resetPassword(token.value, form.password);
-    if (res.code === 200) {
+    if (res.data?.code === 200) {
       success.value = true;
     } else {
-      error.value = res.message || '重置失败';
+      error.value = res.data?.message || '重置失败';
     }
-  } catch (e) {
-    message.error('重置失败，请稍后重试');
+  } catch (e: any) {
+    const msg = e?.response?.data?.message || e?.message || '重置失败，请稍后重试';
+    error.value = msg;
   } finally {
     loading.value = false;
   }
