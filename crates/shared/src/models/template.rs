@@ -5,19 +5,20 @@ use validator::Validate;
 /// 模板数据模型
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Template {
-    pub id: i64, // 恢复为i64，使用SQL类型转换
+    pub id: i64,
     pub name: String,
     pub description: String,
-    pub category_id: i64, // 恢复为i64，使用SQL类型转换
+    pub category_id: i64,
     pub is_featured: i32,
     pub logo: Option<String>,
     pub introduction: Option<String>,
     pub icon: Option<String>,
     pub template_type: String,
     pub type_config: Option<String>,
-    pub git_repo_path: Option<String>, // 保持可选
-    pub current_version: Option<String>, // 保持可选
+    pub git_repo_path: Option<String>,
+    pub current_version: Option<String>,
     pub owner_id: Option<i64>,
+    pub owner_name: Option<String>,
     pub visibility: Option<String>,
     pub status: Option<String>,
     pub reviewed_at: Option<NaiveDateTime>,
