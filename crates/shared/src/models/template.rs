@@ -19,6 +19,7 @@ pub struct Template {
     pub current_version: Option<String>,
     pub owner_id: Option<i64>,
     pub owner_name: Option<String>,
+    pub owner_avatar: Option<String>,
     pub visibility: Option<String>,
     pub status: Option<String>,
     pub reviewed_at: Option<NaiveDateTime>,
@@ -240,6 +241,8 @@ pub struct TemplateItem {
     pub owner_id: Option<i64>,
     #[serde(rename = "ownerName")]
     pub owner_name: Option<String>,
+    #[serde(rename = "ownerAvatar")]
+    pub owner_avatar: Option<String>,
     #[serde(rename = "downloadCount")]
     pub download_count: Option<i32>,
     #[serde(rename = "createdAt")]
@@ -315,6 +318,8 @@ pub struct TemplateDetailExtResponse {
     pub owner_id: Option<i64>,
     #[serde(rename = "ownerName")]
     pub owner_name: Option<String>,
+    #[serde(rename = "ownerAvatar")]
+    pub owner_avatar: Option<String>,
     #[serde(rename = "downloadCount")]
     pub download_count: Option<i32>,
     #[serde(rename = "createdAt")]

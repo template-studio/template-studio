@@ -71,7 +71,8 @@ const avatarFullUrl = computed(() => {
   const avatar = userInfo.value.avatar;
   if (!avatar) return '';
   if (avatar.startsWith('http')) return avatar;
-  return `http://localhost:8001${avatar}`;
+  const base = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+  return `${base}${avatar}`;
 });
 
 onMounted(async () => {

@@ -26,7 +26,8 @@
       <div class="card-footer">
         <div class="card-author" @click.stop="goProfile">
           <div class="author-avatar">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <img v-if="ownerAvatarUrl" :src="ownerAvatarUrl" alt="" class="author-avatar-img" />
+            <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
           </div>
           <span class="author-name">{{ template.ownerName }}</span>
         </div>
@@ -211,6 +212,14 @@ app.init()`;
       router.push(`/u/${props.template.ownerName}`);
     }
   };
+
+  const ownerAvatarUrl = computed(() => {
+    const avatar = props.template.ownerAvatar;
+    if (!avatar) return '';
+    if (avatar.startsWith('http')) return avatar;
+    const base = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+    return `${base}${avatar}`;
+  });
 </script>
 
 <style scoped>
@@ -381,6 +390,13 @@ app.init()`;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.author-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .author-name {

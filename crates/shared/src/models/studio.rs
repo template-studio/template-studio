@@ -108,6 +108,12 @@ pub struct FeaturedTemplate {
     /// 创建时间
     #[serde(rename = "createdAt")]
     pub created_at: String,
+    /// 作者名称
+    #[serde(rename = "ownerName")]
+    pub owner_name: Option<String>,
+    /// 作者头像
+    #[serde(rename = "ownerAvatar")]
+    pub owner_avatar: Option<String>,
     /// 语言列表
     pub languages: Vec<StudioTemplateLanguage>,
 }

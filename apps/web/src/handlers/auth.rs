@@ -227,6 +227,7 @@ pub async fn public_profile(
             "typeConfig": tmpl.type_config,
             "visibility": tmpl.visibility,
             "ownerName": tmpl.owner_name,
+            "ownerAvatar": tmpl.owner_avatar,
             "downloadCount": tmpl.download_count,
             "createdAt": tmpl.created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
             "updatedAt": tmpl.updated_at.format("%Y-%m-%d %H:%M:%S").to_string(),

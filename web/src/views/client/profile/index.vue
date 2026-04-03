@@ -297,13 +297,21 @@
 
   // 头像 & 简介
   const avatarInput = ref(null);
-  const avatarUrl = ref(userStore.getUserInfo?.avatar || '');
+  const rawAvatar = ref(userStore.getUserInfo?.avatar || '');
   const bioText = ref(userStore.getUserInfo?.bio || '');
   const bioSaving = ref(false);
 
+  const getApiBase = () => (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+  const avatarUrl = computed(() => {
+    const a = rawAvatar.value;
+    if (!a) return '';
+    if (a.startsWith('http')) return a;
+    return `${getApiBase()}${a}`;
+  });
+
   watch(() => userStore.getUserInfo, (info) => {
     if (info) {
-      avatarUrl.value = info.avatar || '';
+      rawAvatar.value = info.avatar || '';
       bioText.value = info.bio || '';
     }
   }, { immediate: true });
@@ -322,7 +330,7 @@
     try {
       const res = await uploadAvatar(file);
       if (res.data?.code === 0) {
-        avatarUrl.value = res.data?.data?.avatar;
+        rawAvatar.value = res.data?.data?.avatar;
         message.success('头像更新成功');
         await userStore.getInfo();
       } else {

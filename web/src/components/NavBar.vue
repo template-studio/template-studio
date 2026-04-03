@@ -68,7 +68,8 @@
           <template v-if="isLoggedIn">
             <n-dropdown :options="userMenuOptions" @select="handleUserMenu">
               <div class="user-trigger">
-                <n-avatar round size="small" style="background: linear-gradient(135deg, #0f172a, var(--client-theme-color))">
+                <n-avatar v-if="userAvatar" round size="small" :src="userAvatar" />
+                <n-avatar v-else round size="small" style="background: linear-gradient(135deg, #0f172a, var(--client-theme-color))">
                   {{ userStore.getNickname?.charAt(0)?.toUpperCase() || 'U' }}
                 </n-avatar>
                 <span class="user-name">{{ userStore.getNickname }}</span>
@@ -103,6 +104,14 @@
   const userStore = useUser();
 
   const isLoggedIn = computed(() => !!userStore.getToken);
+
+  const userAvatar = computed(() => {
+    const avatar = userStore.getUserInfo?.avatar;
+    if (!avatar) return '';
+    if (avatar.startsWith('http')) return avatar;
+    const base = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+    return `${base}${avatar}`;
+  });
 
   applyClientTheme(getClientTheme());
   applyHeroPreset(getHeroPreset());

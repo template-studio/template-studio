@@ -67,7 +67,7 @@ impl TemplateRepository {
                    CAST(category_id AS SIGNED) as category_id, is_featured, logo, introduction,
                    icon, template_type, type_config, created_at, updated_at,
                    NULL as git_repo_path, NULL as current_version,
-                   owner_id, (SELECT username FROM users WHERE id = owner_id) as owner_name, visibility, status, reviewed_at, reviewed_by, download_count
+                   owner_id, (SELECT username FROM users WHERE id = owner_id) as owner_name, (SELECT avatar FROM users WHERE id = owner_id) as owner_avatar, visibility, status, reviewed_at, reviewed_by, download_count
             FROM templates
             WHERE id = ?
             "#
@@ -165,7 +165,7 @@ impl TemplateRepository {
                        CAST(t.category_id AS SIGNED) as category_id, t.is_featured, t.logo, t.introduction,
                        t.icon, t.template_type, t.type_config, t.created_at, t.updated_at,
                        NULL as git_repo_path, NULL as current_version,
-                       t.owner_id, (SELECT username FROM users WHERE id = t.owner_id) as owner_name, t.visibility, t.status, t.reviewed_at, t.reviewed_by, t.download_count
+                       t.owner_id, (SELECT username FROM users WHERE id = t.owner_id) as owner_name, (SELECT avatar FROM users WHERE id = t.owner_id) as owner_avatar, t.visibility, t.status, t.reviewed_at, t.reviewed_by, t.download_count
                 FROM templates t
                 INNER JOIN template_languages tl ON t.id = tl.template_id
                 WHERE tl.language_id = ?{} ORDER BY t.created_at DESC LIMIT ? OFFSET ?
@@ -192,7 +192,7 @@ impl TemplateRepository {
                        CAST(t.category_id AS SIGNED) as category_id, t.is_featured, t.logo, t.introduction,
                        t.icon, t.template_type, t.type_config, t.created_at, t.updated_at,
                        NULL as git_repo_path, NULL as current_version,
-                       t.owner_id, (SELECT username FROM users WHERE id = t.owner_id) as owner_name, t.visibility, t.status, t.reviewed_at, t.reviewed_by, t.download_count
+                       t.owner_id, (SELECT username FROM users WHERE id = t.owner_id) as owner_name, (SELECT avatar FROM users WHERE id = t.owner_id) as owner_avatar, t.visibility, t.status, t.reviewed_at, t.reviewed_by, t.download_count
                 FROM templates t WHERE t.category_id = ?{} ORDER BY t.created_at DESC LIMIT ? OFFSET ?
             "#, vis_filter);
 
@@ -217,7 +217,7 @@ impl TemplateRepository {
                        CAST(t.category_id AS SIGNED) as category_id, t.is_featured, t.logo, t.introduction,
                        t.icon, t.template_type, t.type_config, t.created_at, t.updated_at,
                        NULL as git_repo_path, NULL as current_version,
-                       t.owner_id, (SELECT username FROM users WHERE id = t.owner_id) as owner_name, t.visibility, t.status, t.reviewed_at, t.reviewed_by, t.download_count
+                       t.owner_id, (SELECT username FROM users WHERE id = t.owner_id) as owner_name, (SELECT avatar FROM users WHERE id = t.owner_id) as owner_avatar, t.visibility, t.status, t.reviewed_at, t.reviewed_by, t.download_count
                 FROM templates t WHERE t.is_featured = ?{} ORDER BY t.created_at DESC LIMIT ? OFFSET ?
             "#, vis_filter);
 
@@ -242,7 +242,7 @@ impl TemplateRepository {
                        CAST(t.category_id AS SIGNED) as category_id, t.is_featured, t.logo, t.introduction,
                        t.icon, t.template_type, t.type_config, t.created_at, t.updated_at,
                        NULL as git_repo_path, NULL as current_version,
-                       t.owner_id, (SELECT username FROM users WHERE id = t.owner_id) as owner_name, t.visibility, t.status, t.reviewed_at, t.reviewed_by, t.download_count
+                       t.owner_id, (SELECT username FROM users WHERE id = t.owner_id) as owner_name, (SELECT avatar FROM users WHERE id = t.owner_id) as owner_avatar, t.visibility, t.status, t.reviewed_at, t.reviewed_by, t.download_count
                 FROM templates t WHERE 1=1{} ORDER BY t.created_at DESC LIMIT ? OFFSET ?
             "#, vis_filter);
 
@@ -359,7 +359,7 @@ impl TemplateRepository {
                    CAST(category_id AS SIGNED) as category_id, is_featured, logo, introduction,
                    icon, template_type, type_config, created_at, updated_at,
                    NULL as git_repo_path, NULL as current_version,
-                   owner_id, (SELECT username FROM users WHERE id = owner_id) as owner_name, visibility, status, reviewed_at, reviewed_by, download_count
+                   owner_id, (SELECT username FROM users WHERE id = owner_id) as owner_name, (SELECT avatar FROM users WHERE id = owner_id) as owner_avatar, visibility, status, reviewed_at, reviewed_by, download_count
             FROM templates
             WHERE owner_id = ? AND visibility = 'public' AND status = 'active'
             ORDER BY created_at DESC
@@ -397,7 +397,7 @@ impl TemplateRepository {
                    CAST(category_id AS SIGNED) as category_id, is_featured, logo, introduction,
                    icon, template_type, type_config, created_at, updated_at,
                    NULL as git_repo_path, NULL as current_version,
-                   owner_id, (SELECT username FROM users WHERE id = owner_id) as owner_name, visibility, status, reviewed_at, reviewed_by, download_count
+                   owner_id, (SELECT username FROM users WHERE id = owner_id) as owner_name, (SELECT avatar FROM users WHERE id = owner_id) as owner_avatar, visibility, status, reviewed_at, reviewed_by, download_count
             FROM templates
             WHERE category_id = ? AND visibility = 'public' AND status = 'active' AND EXISTS (SELECT 1 FROM template_versions WHERE template_id = templates.id AND is_latest = true)
             ORDER BY created_at DESC
@@ -420,7 +420,7 @@ impl TemplateRepository {
                    CAST(category_id AS SIGNED) as category_id, is_featured, logo, introduction,
                    icon, template_type, type_config, created_at, updated_at,
                    NULL as git_repo_path, NULL as current_version,
-                   owner_id, (SELECT username FROM users WHERE id = owner_id) as owner_name, visibility, status, reviewed_at, reviewed_by, download_count
+                   owner_id, (SELECT username FROM users WHERE id = owner_id) as owner_name, (SELECT avatar FROM users WHERE id = owner_id) as owner_avatar, visibility, status, reviewed_at, reviewed_by, download_count
             FROM templates
             WHERE is_featured = 1 AND visibility = 'public' AND status = 'active' AND EXISTS (SELECT 1 FROM template_versions WHERE template_id = templates.id AND is_latest = true)
             ORDER BY created_at DESC
@@ -457,7 +457,7 @@ impl TemplateRepository {
                    CAST(category_id AS SIGNED) as category_id, is_featured, logo, introduction,
                    icon, template_type, type_config, created_at, updated_at,
                    NULL as git_repo_path, NULL as current_version,
-                   owner_id, (SELECT username FROM users WHERE id = owner_id) as owner_name, visibility, status, reviewed_at, reviewed_by, download_count
+                   owner_id, (SELECT username FROM users WHERE id = owner_id) as owner_name, (SELECT avatar FROM users WHERE id = owner_id) as owner_avatar, visibility, status, reviewed_at, reviewed_by, download_count
             FROM templates WHERE {} ORDER BY created_at DESC LIMIT ? OFFSET ?
             "#, where_sql)
         )
@@ -485,7 +485,7 @@ impl TemplateRepository {
                    CAST(category_id AS SIGNED) as category_id, is_featured, logo, introduction,
                    icon, template_type, type_config, created_at, updated_at,
                    NULL as git_repo_path, NULL as current_version,
-                   owner_id, (SELECT username FROM users WHERE id = owner_id) as owner_name, visibility, status, reviewed_at, reviewed_by, download_count
+                   owner_id, (SELECT username FROM users WHERE id = owner_id) as owner_name, (SELECT avatar FROM users WHERE id = owner_id) as owner_avatar, visibility, status, reviewed_at, reviewed_by, download_count
             FROM templates WHERE visibility = 'pending' AND status = 'active'
             ORDER BY created_at ASC LIMIT ? OFFSET ?
             "#
@@ -524,7 +524,7 @@ impl TemplateRepository {
                    CAST(category_id AS SIGNED) as category_id, is_featured, logo, introduction,
                    icon, template_type, type_config, created_at, updated_at,
                    NULL as git_repo_path, NULL as current_version,
-                   owner_id, (SELECT username FROM users WHERE id = owner_id) as owner_name, visibility, status, reviewed_at, reviewed_by, download_count
+                   owner_id, (SELECT username FROM users WHERE id = owner_id) as owner_name, (SELECT avatar FROM users WHERE id = owner_id) as owner_avatar, visibility, status, reviewed_at, reviewed_by, download_count
             FROM templates WHERE {} ORDER BY is_featured DESC, created_at DESC LIMIT ? OFFSET ?
             "#, where_sql)
         )
