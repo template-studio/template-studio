@@ -128,3 +128,4 @@ data/
 init.sh
 claude-progress.txt
 features.json
+rewrite.json
