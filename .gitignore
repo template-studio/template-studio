@@ -117,6 +117,7 @@ typings/
 
 
 .claude/
+.githooks/
 CLAUDE.md
 target/
 nul
