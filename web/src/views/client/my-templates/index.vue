@@ -38,25 +38,36 @@
 
       <!-- 模板列表 -->
       <div v-else class="template-grid">
-        <div v-for="tmpl in templates" :key="tmpl.id" class="template-card">
-          <div class="card-header">
-            <div class="card-title">{{ tmpl.name }}</div>
-            <span class="status-badge" :class="getStatusClass(tmpl.visibility)">
+        <div
+          v-for="tmpl in templates"
+          :key="tmpl.id"
+          class="template-card"
+          @click="goEditor(tmpl.id)"
+          @contextmenu.prevent="(e) => showContextMenu(e, tmpl)"
+        >
+          <!-- 顶部视觉区域 -->
+          <div class="card-visual-area">
+            <div class="visual-bg">
+              <div class="code-snippet">{{ getCodeSnippet(tmpl) }}</div>
+            </div>
+            <div class="status-badge" :class="getStatusClass(tmpl.visibility)">
               {{ getStatusLabel(tmpl.visibility) }}
-            </span>
+            </div>
+            <div class="card-hover-actions">
+              <button class="hover-action-btn" title="Fork" @click.stop="handleFork(tmpl)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+              </button>
+            </div>
           </div>
-          <p class="card-desc">{{ tmpl.description }}</p>
-          <div class="card-meta">
-            <span>{{ tmpl.templateType === 'basic' ? '基础模板' : tmpl.templateType === 'scaffold' ? '脚手架' : '数据驱动' }}</span>
-            <span>{{ formatDate(tmpl.createdAt) }}</span>
-          </div>
-          <div class="card-actions">
-            <n-button size="small" type="primary" quaternary @click="goEditor(tmpl.id)">编辑内容</n-button>
-            <n-button size="small" quaternary @click="handleFork(tmpl)">Fork</n-button>
-            <n-button size="small" quaternary @click="handleEdit(tmpl)">修改信息</n-button>
-            <n-button v-if="tmpl.visibility === 'private'" size="small" type="warning" quaternary @click="handleSubmitReview(tmpl.id)">提交审核</n-button>
-            <n-button v-if="tmpl.visibility === 'pending'" size="small" quaternary @click="handleWithdraw(tmpl.id)">撤回</n-button>
-            <n-button size="small" type="error" quaternary @click="handleDelete(tmpl.id, tmpl.name)">删除</n-button>
+
+          <!-- 内容区域 -->
+          <div class="card-content-area">
+            <h4 class="card-title">{{ tmpl.name }}</h4>
+            <p class="card-desc">{{ tmpl.description }}</p>
+            <div class="card-footer">
+              <span class="card-type">{{ getTypeLabel(tmpl.templateType) }}</span>
+              <span class="card-time">{{ formatDate(tmpl.createdAt) }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -66,6 +77,18 @@
         <n-pagination v-model:page="currentPage" :page-count="Math.ceil(total / pageSize)" @update:page="loadTemplates" />
       </div>
     </div>
+
+    <!-- 右键菜单 -->
+    <n-dropdown
+      placement="bottom-start"
+      trigger="manual"
+      :x="contextMenuX"
+      :y="contextMenuY"
+      :options="contextMenuOptions"
+      :show="showMenu"
+      @select="handleMenuSelect"
+      @clickoutside="showMenu = false"
+    />
 
     <!-- 创建/编辑弹窗 -->
     <n-modal v-model:show="showModal" :mask-closable="false">
@@ -143,12 +166,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, h } from 'vue';
 import { useRouter } from 'vue-router';
-import { useMessage, useDialog } from 'naive-ui';
+import { useMessage, useDialog, NIcon } from 'naive-ui';
+import {
+  CreateOutline, PencilOutline, TrashOutline,
+  GitBranchOutline, SendOutline, ArrowUndoOutline,
+} from '@vicons/ionicons5';
 import { listMyTemplates, createUserTemplate, updateUserTemplate, deleteUserTemplate, submitForReview } from '@/api/templates/contribution';
 import { forkTemplate } from '@/api/templates';
 import { getPublicCategories, getPublicLanguages } from '@/api/public/index';
+
+const renderIcon = (icon) => () => h(NIcon, { size: 16 }, { default: () => h(icon) });
 
 const router = useRouter();
 const message = useMessage();
@@ -197,6 +226,52 @@ const forkFormRules = {
   name: { required: true, message: '请输入新模板名称', trigger: ['blur', 'input'] },
   description: { required: true, message: '请输入新模板描述', trigger: ['blur', 'input'] },
 };
+
+// 右键菜单
+const showMenu = ref(false);
+const contextMenuX = ref(0);
+const contextMenuY = ref(0);
+const menuTemplate = ref(null);
+
+const contextMenuOptions = computed(() => {
+  const tmpl = menuTemplate.value;
+  if (!tmpl) return [];
+  const items = [
+    { label: '编辑内容', key: 'edit-content', icon: renderIcon(CreateOutline) },
+    { label: '修改信息', key: 'edit-info', icon: renderIcon(PencilOutline) },
+    { label: 'Fork', key: 'fork', icon: renderIcon(GitBranchOutline) },
+  ];
+  if (tmpl.visibility === 'private') {
+    items.push({ label: '提交审核', key: 'submit-review', icon: renderIcon(SendOutline) });
+  }
+  if (tmpl.visibility === 'pending') {
+    items.push({ label: '撤回', key: 'withdraw', icon: renderIcon(ArrowUndoOutline) });
+  }
+  items.push({ type: 'divider', key: 'd1' });
+  items.push({ label: '删除', key: 'delete', icon: renderIcon(TrashOutline), props: { style: 'color: #ef4444' } });
+  return items;
+});
+
+function showContextMenu(e, tmpl) {
+  menuTemplate.value = tmpl;
+  contextMenuX.value = e.clientX;
+  contextMenuY.value = e.clientY;
+  showMenu.value = true;
+}
+
+function handleMenuSelect(key) {
+  showMenu.value = false;
+  const tmpl = menuTemplate.value;
+  if (!tmpl) return;
+  switch (key) {
+    case 'edit-content': goEditor(tmpl.id); break;
+    case 'edit-info': handleEdit(tmpl); break;
+    case 'fork': handleFork(tmpl); break;
+    case 'submit-review': handleSubmitReview(tmpl.id); break;
+    case 'withdraw': handleWithdraw(tmpl.id); break;
+    case 'delete': handleDelete(tmpl.id, tmpl.name); break;
+  }
+}
 
 const typeOptions = [
   { label: '基础模板', value: 'basic' },
@@ -371,12 +446,20 @@ async function handleSubmitReview(id) {
 }
 
 async function handleWithdraw(id) {
-  // 撤回 = 改回 private
   try {
     await updateUserTemplate(id, { ...formData.value, id, visibility: 'private' });
     message.success('已撤回');
     loadTemplates();
   } catch { message.error('撤回失败'); }
+}
+
+function getTypeLabel(t) {
+  return { basic: '基础模板', scaffold: '脚手架', data_driven: '数据驱动' }[t] || t;
+}
+
+function getCodeSnippet(tmpl) {
+  const name = tmpl.name || 'Template';
+  return `// ${name}\nclass ${name.replace(/\s+/g, '')} {\n  constructor() {\n    this.name = '${name}'\n  }\n\n  init() {\n    console.log('Initializing...')\n    this.run()\n  }\n\n  run() {\n    console.log('Running', this.name)\n  }\n}`;
 }
 
 function getStatusLabel(v) {
@@ -397,7 +480,7 @@ function formatDate(d) {
   background: #f1f5f9;
 }
 .page-inner {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 32px 40px 64px;
 }
@@ -444,63 +527,184 @@ function formatDate(d) {
 .empty-state p { font-size: 16px; font-weight: 500; color: #64748b; margin: 16px 0 4px; }
 .empty-state span { font-size: 13px; }
 
+/* ===== 模板卡片（对齐模板市场风格）===== */
 .template-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
 }
+
 .template-card {
   background: #fff;
   border-radius: 12px;
+  overflow: hidden;
   border: 1px solid #e2e8f0;
-  padding: 20px;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: all 0.25s ease-out;
+  cursor: pointer;
+  position: relative;
 }
+
 .template-card:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+  border-color: var(--client-theme-color, #22c55e);
 }
-.card-header {
+
+/* 视觉区域 */
+.card-visual-area {
+  width: 100%;
+  height: 140px;
+  position: relative;
+  overflow: hidden;
+}
+
+.visual-bg {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  justify-content: center;
+  position: relative;
 }
-.card-title { font-size: 15px; font-weight: 600; color: #0f172a; }
+
+.visual-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(34, 197, 94, 0.03) 45%,
+    rgba(34, 197, 94, 0.08) 50%,
+    rgba(34, 197, 94, 0.03) 55%,
+    transparent 100%
+  );
+  animation: shimmer 4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(50%); }
+}
+
+.code-snippet {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  color: rgba(148, 163, 184, 0.4);
+  white-space: pre;
+  overflow: hidden;
+  padding: 16px 20px;
+  text-align: left;
+  position: relative;
+  z-index: 1;
+}
+
+/* 状态角标 */
 .status-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
   font-size: 11px;
   font-weight: 600;
   padding: 2px 10px;
-  border-radius: 10px;
+  border-radius: 6px;
+  z-index: 2;
+  letter-spacing: 0.3px;
+  backdrop-filter: blur(8px);
 }
-.status-badge.draft { background: #f1f5f9; color: #64748b; }
-.status-badge.pending { background: #fffbeb; color: #d97706; }
-.status-badge.published { background: #f0fdf4; color: #16a34a; }
-.status-badge.rejected { background: #fef2f2; color: #dc2626; }
+.status-badge.draft { background: rgba(241, 245, 249, 0.9); color: #64748b; }
+.status-badge.pending { background: rgba(255, 251, 235, 0.9); color: #d97706; }
+.status-badge.published { background: rgba(240, 253, 244, 0.9); color: #16a34a; }
+.status-badge.rejected { background: rgba(254, 242, 242, 0.9); color: #dc2626; }
+
+/* hover 操作 */
+.card-hover-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.template-card:hover .card-hover-actions {
+  opacity: 1;
+}
+
+.hover-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hover-action-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 内容区域 */
+.card-content-area {
+  padding: 16px 20px 20px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+}
+
+.template-card:hover .card-title {
+  color: var(--client-theme-color, #22c55e);
+}
 
 .card-desc {
   font-size: 13px;
   color: #64748b;
-  margin: 0 0 12px;
-  line-height: 1.5;
+  margin: 0 0 14px 0;
+  line-height: 1.6;
+  overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  overflow: hidden;
 }
-.card-meta {
+
+.card-footer {
   display: flex;
-  gap: 16px;
-  font-size: 12px;
-  color: #94a3b8;
-  margin-bottom: 12px;
-}
-.card-actions {
-  display: flex;
-  gap: 4px;
+  justify-content: space-between;
+  align-items: center;
   padding-top: 12px;
   border-top: 1px solid #f1f5f9;
+  font-size: 12px;
+  color: #94a3b8;
 }
+
+.card-type {
+  padding: 2px 8px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
 .pagination {
   display: flex;
   justify-content: center;
@@ -510,5 +714,10 @@ function formatDate(d) {
 @media (max-width: 768px) {
   .page-inner { padding: 20px; }
   .template-grid { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .visual-bg::before { animation: none; }
+  .template-card { transition: none; }
 }
 </style>

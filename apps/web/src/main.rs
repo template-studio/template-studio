@@ -119,6 +119,21 @@ async fn main() -> anyhow::Result<()> {
                 .ok();
             info!("Migration 020 applied: users.bio column added");
         }
+
+        // 021: PAT 表添加 scopes 字段
+        let scopes_exists: bool = sqlx::query_scalar(
+            "SELECT COUNT(*) > 0 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'personal_access_tokens' AND column_name = 'scopes'"
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap_or(false);
+        if !scopes_exists {
+            sqlx::query("ALTER TABLE personal_access_tokens ADD COLUMN scopes TEXT NOT NULL COMMENT '权限范围列表，JSON数组格式'")
+                .execute(&pool)
+                .await
+                .ok();
+            info!("Migration 021 applied: personal_access_tokens.scopes column added");
+        }
     }
 
     // 创建存储管理器

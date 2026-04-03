@@ -6,7 +6,7 @@ use axum::{
 };
 use serde_json::{json, Value};
 use template_studio_shared::models::user::{LoginRequest, ChangePasswordRequest, RegisterRequest, UpdateProfileRequest};
-use template_studio_shared::models::auth::AuthUser;
+use template_studio_shared::models::auth::{AuthUser, AuthType};
 use template_studio_shared::models::pat::CreatePatRequest;
 use validator::Validate;
 
@@ -83,12 +83,15 @@ pub async fn change_password(
     }
 }
 
-/// 创建 PAT 令牌
+/// 创建 PAT 令牌（仅限 JWT 认证）
 pub async fn create_pat(
     State(state): State<AppState>,
     Extension(auth_user): Extension<AuthUser>,
     Json(request): Json<CreatePatRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if matches!(auth_user.auth_type, AuthType::Pat) {
+        return error_response(StatusCode::FORBIDDEN, "不允许使用令牌创建新令牌");
+    }
     match state.pat_service.create(auth_user.user_id, &request).await {
         Ok(resp) => Ok(Json(json!({
             "code": 200,
@@ -99,11 +102,14 @@ pub async fn create_pat(
     }
 }
 
-/// 列出当前用户的 PAT 令牌
+/// 列出当前用户的 PAT 令牌（仅限 JWT 认证）
 pub async fn list_pats(
     State(state): State<AppState>,
     Extension(auth_user): Extension<AuthUser>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if matches!(auth_user.auth_type, AuthType::Pat) {
+        return error_response(StatusCode::FORBIDDEN, "不允许使用令牌管理令牌");
+    }
     match state.pat_service.list(auth_user.user_id).await {
         Ok(list) => Ok(Json(json!({
             "code": 200,
@@ -113,12 +119,15 @@ pub async fn list_pats(
     }
 }
 
-/// 删除 PAT 令牌
+/// 删除 PAT 令牌（仅限 JWT 认证）
 pub async fn delete_pat(
     State(state): State<AppState>,
     Extension(auth_user): Extension<AuthUser>,
     Path(id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if matches!(auth_user.auth_type, AuthType::Pat) {
+        return error_response(StatusCode::FORBIDDEN, "不允许使用令牌管理令牌");
+    }
     match state.pat_service.delete(id, auth_user.user_id).await {
         Ok(true) => Ok(Json(json!({
             "code": 200,

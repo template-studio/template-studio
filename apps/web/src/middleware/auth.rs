@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use axum::{
     extract::Request,
     http::StatusCode,
@@ -6,10 +7,12 @@ use axum::{
     extract::State,
 };
 use serde_json::json;
-use template_studio_shared::models::auth::AuthUser;
+use template_studio_shared::models::auth::{AuthUser, AuthType};
 use crate::AppState;
 
-/// JWT 认证中间件 - 从 token header 提取并验证 JWT
+const PAT_PREFIX: &str = "ts_pat_";
+
+/// 认证中间件 - 区分 JWT 和 PAT 认证
 pub async fn auth_middleware(
     State(state): State<AppState>,
     mut request: Request,
@@ -27,16 +30,36 @@ pub async fn auth_middleware(
         }
     };
 
-    match state.auth_service.verify_token(token) {
-        Ok(claims) => {
-            let auth_user = AuthUser {
-                user_id: claims.sub,
-                username: claims.username,
-            };
-            request.extensions_mut().insert(auth_user);
-            next.run(request).await
+    if token.starts_with(PAT_PREFIX) {
+        // PAT 令牌认证
+        match state.pat_service.validate(token).await {
+            Ok(validation) => {
+                let auth_user = AuthUser {
+                    user_id: validation.user_id,
+                    username: String::new(), // PAT 无法获取 username，按需查询
+                    auth_type: AuthType::Pat,
+                    scopes: Some(Arc::new(validation.scopes)),
+                };
+                request.extensions_mut().insert(auth_user);
+                next.run(request).await
+            }
+            Err(_) => unauthorized_response("令牌无效或已过期"),
         }
-        Err(_) => unauthorized_response("认证令牌无效或已过期"),
+    } else {
+        // JWT 会话认证
+        match state.auth_service.verify_token(token) {
+            Ok(claims) => {
+                let auth_user = AuthUser {
+                    user_id: claims.sub,
+                    username: claims.username,
+                    auth_type: AuthType::Jwt,
+                    scopes: None,
+                };
+                request.extensions_mut().insert(auth_user);
+                next.run(request).await
+            }
+            Err(_) => unauthorized_response("认证令牌无效或已过期"),
+        }
     }
 }
 

@@ -44,7 +44,7 @@ export function changePassword(data) {
 /**
  * @description: 创建 PAT 令牌
  */
-export function createPat(data: { name: string; expires_in_days?: number | null }) {
+export function createPat(data: { name: string; expires_in_days?: number | null; scopes?: string[] }) {
   return Alova.Post('/v1/admin/auth/tokens', data);
 }
 

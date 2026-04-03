@@ -1,11 +1,21 @@
 use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use bcrypt::{hash, DEFAULT_COST};
-use template_studio_shared::models::pat::{CreatePatRequest, CreatePatResponse, PatListItem};
+use template_studio_shared::models::pat::{CreatePatRequest, CreatePatResponse, PatListItem, PatValidation};
 use template_studio_repositories::PatRepository;
 
 const MAX_TOKENS_PER_USER: i64 = 20;
 const TOKEN_PREFIX: &str = "ts_pat_";
+
+const VALID_SCOPES: &[&str] = &[
+    "template:read",
+    "template:write",
+    "template:delete",
+    "template:publish",
+    "generate:use",
+    "release:create",
+    "release:rollback",
+];
 
 pub struct PatService {
     pat_repo: Arc<PatRepository>,
@@ -33,13 +43,17 @@ impl PatService {
                 .naive_utc()
         });
 
-        let id = self.pat_repo.create(user_id, &req.name, &token_hash, &token_prefix, expires_at).await?;
+        let validated_scopes = validate_scopes(&req.scopes)?;
+        let scopes_json = serde_json::to_string(&validated_scopes)?;
+
+        let id = self.pat_repo.create(user_id, &req.name, &token_hash, &token_prefix, &scopes_json, expires_at).await?;
 
         Ok(CreatePatResponse {
             id,
             name: req.name.clone(),
             token: raw_token,
             token_prefix,
+            scopes: validated_scopes,
             expires_at,
         })
     }
@@ -52,17 +66,15 @@ impl PatService {
         self.pat_repo.delete(id, user_id).await
     }
 
-    /// 通过原始令牌值验证，返回 user_id
-    pub async fn validate(&self, raw_token: &str) -> Result<i64> {
-        let token_hash = {
-            // 遍历所有 PAT 找到匹配的（bcrypt 无法反向查询）
-            // 优化：先用 prefix 缩小范围
+    /// 通过原始令牌值验证，返回 user_id 和 scopes
+    pub async fn validate(&self, raw_token: &str) -> Result<PatValidation> {
+        let pat = {
             let prefix_part = &raw_token[..TOKEN_PREFIX.len() + 8.min(raw_token.len() - TOKEN_PREFIX.len())];
             let all = self.pat_repo.list_by_prefix_like(prefix_part).await?;
             let mut found = None;
-            for pat in all {
-                if bcrypt::verify(raw_token, &pat.token_hash).unwrap_or(false) {
-                    found = Some(pat);
+            for p in all {
+                if bcrypt::verify(raw_token, &p.token_hash).unwrap_or(false) {
+                    found = Some(p);
                     break;
                 }
             }
@@ -70,16 +82,21 @@ impl PatService {
         };
 
         // 检查过期
-        if let Some(exp) = token_hash.expires_at {
+        if let Some(exp) = pat.expires_at {
             if chrono::Utc::now().naive_utc() > exp {
                 return Err(anyhow!("令牌已过期"));
             }
         }
 
         // 更新最后使用时间
-        let _ = self.pat_repo.update_last_used(token_hash.id).await;
+        let _ = self.pat_repo.update_last_used(pat.id).await;
 
-        Ok(token_hash.user_id)
+        let scopes: Vec<String> = serde_json::from_str(&pat.scopes).unwrap_or_default();
+
+        Ok(PatValidation {
+            user_id: pat.user_id,
+            scopes,
+        })
     }
 }
 
@@ -88,4 +105,16 @@ fn generate_random_string(len: usize) -> String {
     const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
     let mut rng = rand::thread_rng();
     (0..len).map(|_| CHARSET[rng.gen_range(0..CHARSET.len())] as char).collect()
+}
+
+fn validate_scopes(scopes: &[String]) -> Result<Vec<String>> {
+    let valid: Vec<String> = scopes
+        .iter()
+        .filter(|s| VALID_SCOPES.contains(&s.as_str()))
+        .cloned()
+        .collect();
+    if valid.is_empty() {
+        return Err(anyhow!("至少需要一个有效的权限范围"));
+    }
+    Ok(valid)
 }

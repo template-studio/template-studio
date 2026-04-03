@@ -7,6 +7,7 @@ pub struct PersonalAccessToken {
     pub name: String,
     pub token_hash: String,
     pub token_prefix: String,
+    pub scopes: String, // JSON 字符串
     pub last_used_at: Option<chrono::NaiveDateTime>,
     pub expires_at: Option<chrono::NaiveDateTime>,
     pub created_at: chrono::NaiveDateTime,
@@ -17,6 +18,7 @@ pub struct PatListItem {
     pub id: i64,
     pub name: String,
     pub token_prefix: String,
+    pub scopes: String, // JSON 字符串
     pub last_used_at: Option<chrono::NaiveDateTime>,
     pub expires_at: Option<chrono::NaiveDateTime>,
     pub created_at: chrono::NaiveDateTime,
@@ -25,14 +27,24 @@ pub struct PatListItem {
 #[derive(Debug, Deserialize)]
 pub struct CreatePatRequest {
     pub name: String,
-    pub expires_in_days: Option<i64>, // None = never expires
+    pub expires_in_days: Option<i64>,
+    #[serde(default)]
+    pub scopes: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct CreatePatResponse {
     pub id: i64,
     pub name: String,
-    pub token: String,       // 完整令牌，仅创建时返回一次
+    pub token: String,
     pub token_prefix: String,
+    pub scopes: Vec<String>,
     pub expires_at: Option<chrono::NaiveDateTime>,
+}
+
+/// PAT 验证结果
+#[derive(Debug)]
+pub struct PatValidation {
+    pub user_id: i64,
+    pub scopes: Vec<String>,
 }

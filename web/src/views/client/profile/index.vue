@@ -234,6 +234,9 @@
                     <span v-if="token.last_used_at"> · 最近使用 {{ formatDate(token.last_used_at) }}</span>
                     <span v-if="token.expires_at" class="token-expiry"> · {{ isExpired(token.expires_at) ? '已过期' : '过期于 ' + formatDate(token.expires_at) }}</span>
                   </div>
+                  <div v-if="token.scopes && parseScopes(token.scopes).length" class="token-scopes">
+                    <span v-for="scope in parseScopes(token.scopes)" :key="scope" class="scope-tag">{{ scopeLabelMap[scope] || scope }}</span>
+                  </div>
                 </div>
                 <n-button size="small" type="error" ghost @click="handleDeleteToken(token.id)">删除</n-button>
               </div>
@@ -251,6 +254,13 @@
                     :options="expiryOptions"
                     placeholder="选择过期时间"
                   />
+                </n-form-item>
+                <n-form-item label="权限范围">
+                  <n-checkbox-group v-model:value="newTokenScopes">
+                    <n-space item-style="display: flex;">
+                      <n-checkbox v-for="opt in scopeOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
+                    </n-space>
+                  </n-checkbox-group>
                 </n-form-item>
               </n-form>
               <div v-if="createdToken" class="token-created">
@@ -494,6 +504,7 @@
   const showCreateToken = ref(false);
   const newTokenName = ref('');
   const newTokenExpiry = ref(null);
+  const newTokenScopes = ref(['template:read', 'generate:use']);
   const createTokenLoading = ref(false);
   const createdToken = ref('');
 
@@ -504,6 +515,26 @@
     { label: '180 天', value: 180 },
     { label: '365 天', value: 365 },
   ];
+
+  const scopeOptions = [
+    { label: '查看模板', value: 'template:read' },
+    { label: '创建/编辑模板', value: 'template:write' },
+    { label: '删除模板', value: 'template:delete' },
+    { label: '提交审核/发布', value: 'template:publish' },
+    { label: '使用模板生成代码', value: 'generate:use' },
+    { label: '创建发布版本', value: 'release:create' },
+    { label: '回滚版本', value: 'release:rollback' },
+  ];
+
+  const scopeLabelMap = {
+    'template:read': '查看',
+    'template:write': '编辑',
+    'template:delete': '删除',
+    'template:publish': '发布',
+    'generate:use': '生成',
+    'release:create': '版本',
+    'release:rollback': '回滚',
+  };
 
   async function loadTokens() {
     try {
@@ -520,6 +551,7 @@
       const result = await createPat({
         name: newTokenName.value,
         expires_in_days: newTokenExpiry.value,
+        scopes: newTokenScopes.value,
       });
       createdToken.value = result?.token || '';
       message.success('令牌创建成功');
@@ -545,6 +577,7 @@
     showCreateToken.value = false;
     newTokenName.value = '';
     newTokenExpiry.value = null;
+    newTokenScopes.value = ['template:read', 'generate:use'];
     createdToken.value = '';
     loadTokens();
   }
@@ -552,6 +585,11 @@
   function copyToken() {
     navigator.clipboard.writeText(createdToken.value);
     message.success('已复制到剪贴板');
+  }
+
+  function parseScopes(scopes) {
+    if (Array.isArray(scopes)) return scopes;
+    try { return JSON.parse(scopes); } catch { return []; }
   }
 
   function formatDate(d) {
@@ -1056,6 +1094,23 @@
 
   .token-expiry {
     color: #f59e0b;
+  }
+
+  .token-scopes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+  }
+
+  .scope-tag {
+    display: inline-block;
+    padding: 1px 8px;
+    font-size: 11px;
+    color: #6366f1;
+    background: #eef2ff;
+    border-radius: 10px;
+    line-height: 20px;
   }
 
   .token-created {

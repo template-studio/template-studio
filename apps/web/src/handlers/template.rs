@@ -592,6 +592,18 @@ fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (Sta
     }))))
 }
 
+/// PAT scope 权限检查，无权限时返回 403
+fn check_scope(auth_user: &AuthUser, scope: &str) -> Result<(), (StatusCode, Json<Value>)> {
+    if auth_user.has_scope(scope) {
+        Ok(())
+    } else {
+        Err((StatusCode::FORBIDDEN, Json(json!({
+            "code": 403,
+            "message": format!("权限不足，需要 {} 权限", scope)
+        }))))
+    }
+}
+
 /// 检查文件是否为文本文件
 /// 通过读取文件前几个字节进行判断
 fn is_text_file(content: &[u8]) -> bool {
@@ -1329,6 +1341,7 @@ pub async fn fork_template(
     Extension(auth_user): Extension<AuthUser>,
     Json(mut request): Json<ForkTemplateRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    check_scope(&auth_user, "template:write")?;
     // 设置 owner_id 为当前用户
     request.owner_id = Some(auth_user.user_id);
 
@@ -1413,6 +1426,7 @@ pub async fn create_user_template(
     Extension(auth_user): Extension<AuthUser>,
     Json(request): Json<CreateTemplateRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    check_scope(&auth_user, "template:write")?;
     match state.template_service.create_user_template(auth_user.user_id, request).await {
         Ok(id) => Ok(Json(json!({ "code": 200, "message": "模板创建成功", "result": { "id": id } }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
@@ -1425,6 +1439,7 @@ pub async fn list_my_templates(
     Extension(auth_user): Extension<AuthUser>,
     Query(query): Query<UserTemplateListQuery>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    check_scope(&auth_user, "template:read")?;
     match state.template_service.list_user_templates(auth_user.user_id, query).await {
         Ok(resp) => Ok(Json(json!({ "code": 200, "result": resp }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
@@ -1438,6 +1453,7 @@ pub async fn update_user_template(
     Path(id): Path<i64>,
     Json(mut request): Json<UpdateTemplateRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    check_scope(&auth_user, "template:write")?;
     request.id = id;
     match state.template_service.update_user_template(auth_user.user_id, request).await {
         Ok(_) => Ok(Json(json!({ "code": 200, "message": "模板更新成功" }))),
@@ -1451,6 +1467,7 @@ pub async fn delete_user_template(
     Extension(auth_user): Extension<AuthUser>,
     Path(id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    check_scope(&auth_user, "template:delete")?;
     match state.template_service.delete_user_template(auth_user.user_id, id).await {
         Ok(_) => Ok(Json(json!({ "code": 200, "message": "模板删除成功" }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
@@ -1463,6 +1480,7 @@ pub async fn submit_for_review(
     Extension(auth_user): Extension<AuthUser>,
     Path(id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    check_scope(&auth_user, "template:publish")?;
     match state.template_service.submit_for_review(auth_user.user_id, id).await {
         Ok(_) => Ok(Json(json!({ "code": 200, "message": "已提交审核" }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
