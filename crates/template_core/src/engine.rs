@@ -19,6 +19,10 @@ pub(crate) static GLOBAL_ENV: Lazy<RwLock<Environment<'static>>> = Lazy::new(|| 
     // 启用严格模式：未定义的变量会导致错误
     env.set_undefined_behavior(minijinja::UndefinedBehavior::Strict);
 
+    // 去除模板标签产生的多余空行
+    env.set_trim_blocks(true);
+    env.set_lstrip_blocks(true);
+
     #[cfg(feature = "logging")]
     tracing::info!("MiniJinja engine initialized");
 
@@ -137,6 +141,10 @@ fn render_with_templates(
 
     // 复制严格模式配置
     env.set_undefined_behavior(minijinja::UndefinedBehavior::Strict);
+
+    // 去除模板标签产生的多余空行
+    env.set_trim_blocks(true);
+    env.set_lstrip_blocks(true);
 
     // 注册过滤器（这是必要的，因为每个 Environment 实例需要自己的过滤器）
     #[cfg(feature = "logging")]
