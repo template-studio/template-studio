@@ -10,6 +10,7 @@ pub struct User {
     pub password_hash: String,
     pub email: String,
     pub avatar: String,
+    pub bio: String,
     pub status: i8,
     pub last_login_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -23,6 +24,7 @@ pub struct UserListItem {
     pub username: String,
     pub email: String,
     pub avatar: String,
+    pub bio: String,
     pub status: i8,
     pub last_login_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -98,8 +100,27 @@ pub struct UserInfoResponse {
     pub username: String,
     pub email: String,
     pub avatar: String,
+    pub bio: String,
     pub roles: Vec<String>,
     pub permissions: Vec<PermissionItem>,
+}
+
+/// 公开用户信息（不包含敏感字段）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PublicUserProfile {
+    pub username: String,
+    pub avatar: String,
+    pub bio: String,
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+}
+
+/// 更新个人资料请求
+#[derive(Debug, Deserialize, Validate)]
+pub struct UpdateProfileRequest {
+    #[validate(length(max = 200, message = "个人简介最多200字"))]
+    pub bio: Option<String>,
+    pub avatar: Option<String>,
 }
 
 /// 权限项

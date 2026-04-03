@@ -351,6 +351,26 @@ impl TemplateRepository {
         Ok(languages)
     }
 
+    /// 获取指定用户的公开模板（用于公共主页）
+    pub async fn list_public_templates_by_owner(&self, owner_id: i64) -> Result<Vec<Template>> {
+        let templates = sqlx::query_as::<_, Template>(
+            r#"
+            SELECT CAST(id AS SIGNED) as id, name, description,
+                   CAST(category_id AS SIGNED) as category_id, is_featured, logo, introduction,
+                   icon, template_type, type_config, created_at, updated_at,
+                   NULL as git_repo_path, NULL as current_version,
+                   owner_id, (SELECT username FROM users WHERE id = owner_id) as owner_name, visibility, status, reviewed_at, reviewed_by, download_count
+            FROM templates
+            WHERE owner_id = ? AND visibility = 'public' AND status = 'active'
+            ORDER BY created_at DESC
+            "#
+        )
+        .bind(owner_id)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(templates)
+    }
+
     /// 统计总模板数
     pub async fn count_all(&self) -> Result<i64> {
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM templates")

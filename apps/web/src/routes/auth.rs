@@ -1,5 +1,5 @@
 use axum::{
-    routing::post,
+    routing::{get, post, put},
     Router,
 };
 use crate::handlers::{auth, email};
@@ -12,4 +12,5 @@ pub fn auth_routes() -> Router<AppState> {
         .route("/register", post(auth::register))
         .route("/forgot-password", post(email::forgot_password))
         .route("/reset-password", post(email::reset_password))
+        .route("/users/:username", get(auth::public_profile))
 }

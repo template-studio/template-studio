@@ -24,7 +24,7 @@
       </div>
 
       <div class="card-footer">
-        <div class="card-author">
+        <div class="card-author" @click.stop="goProfile">
           <div class="author-avatar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
           </div>
@@ -42,8 +42,11 @@
 <script setup>
   import { computed } from 'vue';
   import { NTag } from 'naive-ui';
+  import { useRouter } from 'vue-router';
   import { useLanguageStore } from '@/store/modules/languageStore';
   import { storeToRefs } from 'pinia';
+
+  const router = useRouter();
 
   const props = defineProps({
     template: {
@@ -202,6 +205,12 @@ app.init()`;
   const handleClick = () => {
     emit('click', props.template);
   };
+
+  const goProfile = () => {
+    if (props.template.ownerName) {
+      router.push(`/u/${props.template.ownerName}`);
+    }
+  };
 </script>
 
 <style scoped>
@@ -356,6 +365,11 @@ app.init()`;
   display: flex;
   align-items: center;
   gap: 8px;
+  cursor: pointer;
+}
+
+.card-author:hover .author-name {
+  color: var(--client-theme-color);
 }
 
 .author-avatar {

@@ -25,6 +25,38 @@
               <h2>基本信息</h2>
               <p class="panel-desc">管理您的个人账号信息</p>
             </div>
+
+            <!-- 头像 -->
+            <div class="avatar-section">
+              <div class="avatar-preview" @click="triggerAvatarUpload" style="cursor: pointer">
+                <img v-if="avatarUrl" :src="avatarUrl" alt="avatar" class="avatar-img" />
+                <div v-else class="avatar-placeholder">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <div class="avatar-overlay">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                </div>
+              </div>
+              <input ref="avatarInput" type="file" accept="image/*" style="display: none" @change="handleAvatarChange" />
+              <div class="avatar-hint">点击更换头像，支持 JPG/PNG，不超过 2MB</div>
+            </div>
+
+            <!-- 个人简介 -->
+            <div class="bio-section">
+              <label class="bio-label">个人简介</label>
+              <n-input
+                v-model:value="bioText"
+                type="textarea"
+                placeholder="介绍一下自己吧..."
+                :maxlength="200"
+                show-count
+                :rows="3"
+              />
+              <n-button type="primary" size="small" style="margin-top: 12px" @click="handleSaveBio" :loading="bioSaving">保存简介</n-button>
+            </div>
+
+            <n-divider />
+
             <div class="info-grid">
               <div class="info-card">
                 <div class="info-card-icon">
@@ -51,15 +83,6 @@
                 <div class="info-card-body">
                   <span class="info-label">角色</span>
                   <span class="info-value">{{ userRoles.join(', ') || '-' }}</span>
-                </div>
-              </div>
-              <div class="info-card">
-                <div class="info-card-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                </div>
-                <div class="info-card-body">
-                  <span class="info-label">注册时间</span>
-                  <span class="info-value">-</span>
                 </div>
               </div>
             </div>
@@ -257,7 +280,7 @@
   import { ref, computed, reactive, onMounted, watch } from 'vue';
   import { useMessage } from 'naive-ui';
   import { useUserStore } from '@/store/modules/user';
-  import { changePassword, createPat, listPats, deletePat } from '@/api/system/user';
+  import { changePassword, createPat, listPats, deletePat, updateProfile, uploadAvatar } from '@/api/system/user';
   import {
     applyClientTheme, getClientTheme,
     heroPresets, applyHeroPreset, getHeroPreset,
@@ -271,6 +294,62 @@
   const currentTheme = ref(getClientTheme());
   const currentHero = ref(getHeroPreset());
   const currentCardStyle = ref(getCardStyle());
+
+  // 头像 & 简介
+  const avatarInput = ref(null);
+  const avatarUrl = ref(userStore.getUserInfo?.avatar || '');
+  const bioText = ref(userStore.getUserInfo?.bio || '');
+  const bioSaving = ref(false);
+
+  watch(() => userStore.getUserInfo, (info) => {
+    if (info) {
+      avatarUrl.value = info.avatar || '';
+      bioText.value = info.bio || '';
+    }
+  }, { immediate: true });
+
+  function triggerAvatarUpload() {
+    avatarInput.value?.click();
+  }
+
+  async function handleAvatarChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      message.error('头像文件不能超过2MB');
+      return;
+    }
+    try {
+      const res = await uploadAvatar(file);
+      if (res.data?.code === 200) {
+        avatarUrl.value = res.data.result?.avatar;
+        message.success('头像更新成功');
+        await userStore.getInfo();
+      } else {
+        message.error(res.data?.message || '上传失败');
+      }
+    } catch {
+      message.error('上传失败');
+    }
+    e.target.value = '';
+  }
+
+  async function handleSaveBio() {
+    bioSaving.value = true;
+    try {
+      const res = await updateProfile({ bio: bioText.value });
+      if (res.data?.code === 200) {
+        message.success('简介已保存');
+        await userStore.getInfo();
+      } else {
+        message.error(res.data?.message || '保存失败');
+      }
+    } catch {
+      message.error('保存失败');
+    } finally {
+      bioSaving.value = false;
+    }
+  }
 
   onMounted(async () => {
     if (userStore.getToken && !userStore.getNickname) {
@@ -562,6 +641,71 @@
     font-size: 13px;
     color: #94a3b8;
     margin: 0;
+  }
+
+  /* ===== Avatar & Bio ===== */
+  .avatar-section {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  .avatar-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    position: relative;
+    background: #f1f5f9;
+    border: 2px solid #e2e8f0;
+    flex-shrink: 0;
+  }
+
+  .avatar-preview:hover .avatar-overlay {
+    opacity: 1;
+  }
+
+  .avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .avatar-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .avatar-hint {
+    font-size: 13px;
+    color: #94a3b8;
+  }
+
+  .bio-section {
+    margin-bottom: 8px;
+  }
+
+  .bio-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 8px;
   }
 
   /* ===== Info Grid ===== */

@@ -104,6 +104,21 @@ async fn main() -> anyhow::Result<()> {
             ).execute(&pool).await.ok();
             info!("Migration 019 applied: password_reset_tokens table created");
         }
+
+        // 020: users 表添加 bio 字段
+        let bio_exists: bool = sqlx::query_scalar(
+            "SELECT COUNT(*) > 0 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'bio'"
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap_or(false);
+        if !bio_exists {
+            sqlx::query("ALTER TABLE users ADD COLUMN bio VARCHAR(200) DEFAULT '' AFTER avatar")
+                .execute(&pool)
+                .await
+                .ok();
+            info!("Migration 020 applied: users.bio column added");
+        }
     }
 
     // 创建存储管理器
@@ -155,7 +170,7 @@ async fn main() -> anyhow::Result<()> {
     let system_setting_service = Arc::new(SystemSettingService::new(system_setting_repository.clone()));
     let jwt_config = JwtConfig::default();
     let auth_service = Arc::new(AuthService::new(user_repository.clone(), jwt_config));
-    let user_service = Arc::new(UserService::new(user_repository));
+    let user_service = Arc::new(UserService::new(user_repository.clone()));
     let role_service = Arc::new(RoleService::new(role_repository));
     let permission_service = Arc::new(PermissionService::new(permission_repository));
     let pat_service = Arc::new(PatService::new(pat_repository));
@@ -202,6 +217,8 @@ async fn main() -> anyhow::Result<()> {
         permission_service,
         pat_service,
         email_service,
+        user_repository,
+        template_repository,
         storage_manager,
     };
 
@@ -240,6 +257,8 @@ pub struct AppState {
     pub permission_service: Arc<PermissionService>,
     pub pat_service: Arc<PatService>,
     pub email_service: Arc<EmailService>,
+    pub user_repository: Arc<UserRepository>,
+    pub template_repository: Arc<TemplateRepository>,
     pub storage_manager: Arc<StorageManager>,
 }
 
@@ -265,6 +284,8 @@ pub fn create_app(state: AppState) -> Router {
         .nest("/api/v1/backup", backup_routes())
         // 公开API
         .nest("/api/v1", routes::public_routes())
+        // 头像静态文件
+        .nest_service("/avatars", tower_http::services::ServeDir::new("data/avatars"))
         .layer(CorsLayer::permissive())
         .with_state(state)
 }

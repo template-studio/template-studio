@@ -15,7 +15,7 @@ impl UserRepository {
 
     pub async fn find_by_username(&self, username: &str) -> Result<Option<User>> {
         let user = sqlx::query_as::<_, User>(
-            "SELECT id, username, password_hash, email, avatar, status, last_login_at, created_at, updated_at FROM users WHERE username = ?"
+            "SELECT id, username, password_hash, email, avatar, bio, status, last_login_at, created_at, updated_at FROM users WHERE username = ?"
         )
         .bind(username)
         .fetch_optional(&self.pool)
@@ -25,7 +25,7 @@ impl UserRepository {
 
     pub async fn find_by_id(&self, id: i64) -> Result<Option<User>> {
         let user = sqlx::query_as::<_, User>(
-            "SELECT id, username, password_hash, email, avatar, status, last_login_at, created_at, updated_at FROM users WHERE id = ?"
+            "SELECT id, username, password_hash, email, avatar, bio, status, last_login_at, created_at, updated_at FROM users WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -35,7 +35,7 @@ impl UserRepository {
 
     pub async fn list_users(&self) -> Result<Vec<UserListItem>> {
         let users = sqlx::query_as::<_, UserListItem>(
-            "SELECT id, username, email, avatar, status, last_login_at, created_at, updated_at FROM users ORDER BY id ASC"
+            "SELECT id, username, email, avatar, bio, status, last_login_at, created_at, updated_at FROM users ORDER BY id ASC"
         )
         .fetch_all(&self.pool)
         .await?;
@@ -152,5 +152,33 @@ impl UserRepository {
         }
         tx.commit().await?;
         Ok(())
+    }
+
+    /// 更新个人资料（bio、avatar）
+    pub async fn update_profile(&self, id: i64, bio: Option<&str>, avatar: Option<&str>) -> Result<bool> {
+        let mut sets = Vec::new();
+        if bio.is_some() { sets.push("bio = ?"); }
+        if avatar.is_some() { sets.push("avatar = ?"); }
+        if sets.is_empty() { return Ok(false); }
+
+        let sql = format!("UPDATE users SET {} WHERE id = ?", sets.join(", "));
+        let mut query = sqlx::query(&sql);
+        if let Some(v) = bio { query = query.bind(v); }
+        if let Some(v) = avatar { query = query.bind(v); }
+        query = query.bind(id);
+
+        let result = query.execute(&self.pool).await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// 根据用户名查找公开信息
+    pub async fn find_public_by_username(&self, username: &str) -> Result<Option<User>> {
+        let user = sqlx::query_as::<_, User>(
+            "SELECT id, username, password_hash, email, avatar, bio, status, last_login_at, created_at, updated_at FROM users WHERE username = ? AND status = 1"
+        )
+        .bind(username)
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(user)
     }
 }

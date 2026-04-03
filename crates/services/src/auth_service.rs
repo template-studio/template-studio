@@ -110,6 +110,7 @@ impl AuthService {
             username: user.username,
             email: user.email,
             avatar: user.avatar,
+            bio: user.bio,
             roles,
             permissions,
         })
