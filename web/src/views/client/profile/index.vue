@@ -321,8 +321,8 @@
     }
     try {
       const res = await uploadAvatar(file);
-      if (res.data?.code === 200) {
-        avatarUrl.value = res.data.result?.avatar;
+      if (res.data?.code === 0) {
+        avatarUrl.value = res.data?.data?.avatar;
         message.success('头像更新成功');
         await userStore.getInfo();
       } else {
@@ -338,7 +338,7 @@
     bioSaving.value = true;
     try {
       const res = await updateProfile({ bio: bioText.value });
-      if (res.data?.code === 200) {
+      if (res.data?.code === 0) {
         message.success('简介已保存');
         await userStore.getInfo();
       } else {

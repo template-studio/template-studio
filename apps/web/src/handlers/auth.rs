@@ -150,7 +150,7 @@ pub async fn update_profile(
         request.bio.as_deref(),
         request.avatar.as_deref(),
     ).await {
-        Ok(_) => Ok(Json(json!({ "code": 200, "message": "更新成功" }))),
+        Ok(_) => Ok(Json(json!({ "code": 0, "message": "更新成功" }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -195,7 +195,7 @@ pub async fn upload_avatar(
             (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "code": 500, "message": e.to_string() })))
         })?;
 
-        return Ok(Json(json!({ "code": 200, "message": "上传成功", "result": { "avatar": avatar_url } })));
+        return Ok(Json(json!({ "code": 0, "message": "上传成功", "data": { "avatar": avatar_url } })));
     }
     error_response(StatusCode::BAD_REQUEST, "未找到上传文件")
 }
