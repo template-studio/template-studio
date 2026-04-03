@@ -175,6 +175,8 @@ pub struct ForkTemplateRequest {
     pub introduction: Option<String>,
     #[serde(rename = "categoryId")]
     pub category_id: Option<i64>,
+    #[serde(rename = "ownerId")]
+    pub owner_id: Option<i64>,
 }
 
 /// 模板导出请求

@@ -293,8 +293,8 @@ impl TemplateRepository {
         // 插入新模板记录
         sqlx::query(
             r#"
-            INSERT INTO templates (id, name, description, category_id, template_type, type_config, introduction, is_featured)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+            INSERT INTO templates (id, name, description, category_id, template_type, type_config, introduction, is_featured, owner_id, visibility)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 'private')
             "#
         )
         .bind(new_template_id)
@@ -304,6 +304,7 @@ impl TemplateRepository {
         .bind(&template_type)
         .bind(&source.type_config)
         .bind(&request.introduction)
+        .bind(request.owner_id)
         .execute(&mut *tx)
         .await?;
 
