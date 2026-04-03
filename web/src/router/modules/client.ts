@@ -49,14 +49,6 @@ const routes: Array<RouteRecordRaw> = [
         },
         component: () => import('@/views/client/my-templates/index.vue'),
       },
-      {
-        path: 'reset-password',
-        name: 'reset-password',
-        meta: {
-          title: '重置密码',
-        },
-        component: () => import('@/views/client/reset-password/index.vue'),
-      },
     ],
   },
 

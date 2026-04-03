@@ -28,6 +28,16 @@ export const LoginRoute: RouteRecordRaw = {
   },
 };
 
+export const ResetPasswordRoute: RouteRecordRaw = {
+  path: '/reset-password',
+  name: 'ResetPassword',
+  component: () => import('@/views/client/reset-password/index.vue'),
+  meta: {
+    title: '重置密码',
+    ignoreAuth: true,
+  },
+};
+
 // 分离需要权限的路由和公开路由
 export const publicRoutes: RouteRecordRaw[] = routeModuleList.filter(
   (route) => route.meta?.ignoreAuth === true
@@ -38,6 +48,7 @@ export const asyncRoutes = routeModuleList.filter((route) => route.meta?.ignoreA
 //普通路由 无需验证权限（包含公开路由）
 export const constantRouter: RouteRecordRaw[] = [
   LoginRoute,
+  ResetPasswordRoute,
   ...publicRoutes, // 公开路由直接添加，无需动态加载
   RedirectRoute,
 ];

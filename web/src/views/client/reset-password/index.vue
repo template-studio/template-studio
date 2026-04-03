@@ -132,7 +132,6 @@ async function handleReset() {
 </script>
 
 <style scoped>
-@import url('../login/index.vue');
 .auth-page { display: flex; height: 100vh; overflow: hidden; background: #0f172a; }
 .auth-brand { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); }
 .brand-bg { position: absolute; inset: 0; overflow: hidden; }
