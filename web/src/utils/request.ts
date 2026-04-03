@@ -90,7 +90,9 @@ service.interceptors.response.use(
       } else if (status === 404) {
         message.error('API接口不存在，请检查后端服务');
       } else if (status === 401) {
-        message.error('未授权，请重新登录');
+        storage.clear();
+        window.location.href = '/login';
+        return Promise.reject(error);
       } else if (status >= 400) {
         message.error(data?.message || '请求错误');
       }

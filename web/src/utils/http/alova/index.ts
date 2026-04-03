@@ -115,18 +115,9 @@ export const Alova = createAlova({
         return result;
       }
       // 需要登录
-      if (code === 912) {
-        Modal?.warning({
-          title: '提示',
-          content: '登录身份已失效，请重新登录!',
-          okText: '确定',
-          closable: false,
-          maskClosable: false,
-          onOk: async () => {
-            storage.clear();
-            window.location.href = LoginPath;
-          },
-        });
+      if (code === 912 || code === 401) {
+        storage.clear();
+        window.location.href = LoginPath;
       } else {
         // 可按需处理错误 一般情况下不是 912 错误，不一定需要弹出 message
         Message?.error(message);
