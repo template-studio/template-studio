@@ -83,7 +83,7 @@ impl EmailService {
                 <h2 style="color:#0f172a">密码重置</h2>
                 <p style="color:#475569;font-size:15px;line-height:1.6">
                     您收到此邮件是因为您（或其他人）请求重置 Template Studio 账号的密码。<br/>
-                    请点击下方按钮重置密码，链接1小时内有效：
+                    请点击下方按钮重置密码，<strong>链接1小时内有效</strong>：
                 </p>
                 <div style="margin:30px 0;text-align:center">
                     <a href="{reset_url}" style="background:#0f172a;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">
