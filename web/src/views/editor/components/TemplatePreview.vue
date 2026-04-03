@@ -709,7 +709,7 @@
   }
 
   .preview-header {
-    height: 40px;
+    height: 48px;
     padding: 0 12px;
     border-bottom: 1px solid var(--editor-border, #e2e8f0);
     display: flex;

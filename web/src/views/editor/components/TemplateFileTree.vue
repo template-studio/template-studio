@@ -1484,7 +1484,7 @@
     max-width: 1000px;
     background: #ffffff;
     border-right: 1px solid var(--editor-border, #e2e8f0);
-    padding: 16px 12px 0 12px;
+    padding: 0;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -1493,11 +1493,14 @@
     flex-shrink: 0;
   }
   .explorer-title {
+    height: 48px;
+    padding: 0 12px;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--editor-border, #e2e8f0);
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 12px;
     color: var(--editor-muted, #64748b);
     flex-shrink: 0;
     display: flex;
@@ -1545,7 +1548,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     min-height: 0;
-    padding-right: 4px;
+    padding: 8px 12px 12px 12px;
   }
   .explorer-container::-webkit-scrollbar {
     width: 6px;
