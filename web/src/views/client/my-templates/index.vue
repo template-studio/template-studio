@@ -52,6 +52,7 @@
           </div>
           <div class="card-actions">
             <n-button size="small" type="primary" quaternary @click="goEditor(tmpl.id)">编辑内容</n-button>
+            <n-button size="small" quaternary @click="handleFork(tmpl)">Fork</n-button>
             <n-button size="small" quaternary @click="handleEdit(tmpl)">修改信息</n-button>
             <n-button v-if="tmpl.visibility === 'private'" size="small" type="warning" quaternary @click="handleSubmitReview(tmpl.id)">提交审核</n-button>
             <n-button v-if="tmpl.visibility === 'pending'" size="small" quaternary @click="handleWithdraw(tmpl.id)">撤回</n-button>
@@ -102,6 +103,42 @@
         </template>
       </n-card>
     </n-modal>
+
+    <!-- Fork模板弹窗 -->
+    <n-modal v-model:show="showForkModal" :mask-closable="false">
+      <n-card style="width: 600px" title="Fork 模板" :bordered="false" size="huge" role="dialog">
+        <template #header-extra>
+          <n-button quaternary circle @click="showForkModal = false">
+            <template #icon><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></template>
+          </n-button>
+        </template>
+        <n-form ref="forkFormRef" :model="forkFormData" :rules="forkFormRules" label-placement="left" :label-width="100">
+          <n-form-item label="源模板">
+            <div style="padding: 8px 12px; background: #f8fafc; border-radius: 6px; color: #64748b; width: 100%; border: 1px solid #e2e8f0;">
+              {{ forkingTemplate?.name }}
+            </div>
+          </n-form-item>
+          <n-form-item label="新模板名称" path="name">
+            <n-input v-model:value="forkFormData.name" placeholder="请输入新模板名称" />
+          </n-form-item>
+          <n-form-item label="新模板描述" path="description">
+            <n-input v-model:value="forkFormData.description" type="textarea" :rows="3" placeholder="请输入新模板描述" />
+          </n-form-item>
+          <n-form-item label="详细介绍" path="introduction">
+            <n-input v-model:value="forkFormData.introduction" type="textarea" :rows="4" placeholder="请输入详细介绍（可选）" />
+          </n-form-item>
+          <n-form-item label="分类" path="categoryId">
+            <n-select v-model:value="forkFormData.categoryId" :options="categoryOptions" placeholder="选择分类（默认使用源模板分类）" clearable />
+          </n-form-item>
+        </n-form>
+        <template #footer>
+          <div style="display: flex; gap: 12px; justify-content: flex-end">
+            <n-button @click="showForkModal = false">取消</n-button>
+            <n-button type="primary" @click="handleForkSubmit" :loading="forkSubmitting">确认 Fork</n-button>
+          </div>
+        </template>
+      </n-card>
+    </n-modal>
   </div>
 </template>
 
@@ -110,6 +147,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMessage, useDialog } from 'naive-ui';
 import { listMyTemplates, createUserTemplate, updateUserTemplate, deleteUserTemplate, submitForReview } from '@/api/templates/contribution';
+import { forkTemplate } from '@/api/templates';
 import { getPublicCategories, getPublicLanguages } from '@/api/public/index';
 
 const router = useRouter();
@@ -142,6 +180,22 @@ const formRules = {
   templateType: { required: true, message: '请选择类型', trigger: ['change', 'blur'] },
   categoryId: { required: true, type: 'number', message: '请选择分类', trigger: ['change', 'blur'] },
   description: { required: true, message: '请输入描述', trigger: ['blur', 'input'] },
+};
+
+// Fork 弹窗相关
+const showForkModal = ref(false);
+const forkingTemplate = ref(null);
+const forkFormRef = ref();
+const forkSubmitting = ref(false);
+const forkFormData = ref({
+  name: '',
+  description: '',
+  introduction: '',
+  categoryId: null,
+});
+const forkFormRules = {
+  name: { required: true, message: '请输入新模板名称', trigger: ['blur', 'input'] },
+  description: { required: true, message: '请输入新模板描述', trigger: ['blur', 'input'] },
 };
 
 const typeOptions = [
@@ -250,6 +304,44 @@ async function handleSubmit() {
     loadTemplates();
   } catch { message.error(editingId.value ? '更新失败' : '创建失败'); }
   finally { submitting.value = false; }
+}
+
+function handleFork(tmpl) {
+  forkingTemplate.value = tmpl;
+  forkFormData.value = {
+    name: `${tmpl.name} - Fork`,
+    description: tmpl.description || '',
+    introduction: tmpl.introduction || '',
+    categoryId: tmpl.categoryId || null,
+  };
+  showForkModal.value = true;
+}
+
+async function handleForkSubmit() {
+  try { await forkFormRef.value?.validate(); } catch { return; }
+  forkSubmitting.value = true;
+  try {
+    const res = await forkTemplate({
+      sourceId: forkingTemplate.value.id,
+      name: forkFormData.value.name,
+      description: forkFormData.value.description,
+      introduction: forkFormData.value.introduction,
+      categoryId: forkFormData.value.categoryId,
+    });
+    const data = res.data || res;
+    if (data.code === 0 && data.data) {
+      message.success('Fork 成功，正在跳转到编辑器...');
+      showForkModal.value = false;
+      router.push(`/editor/${data.data}`);
+    } else {
+      message.error(data.message || 'Fork 失败');
+    }
+  } catch (error) {
+    message.error('Fork 失败，请稍后重试');
+    console.error('Fork error:', error);
+  } finally {
+    forkSubmitting.value = false;
+  }
 }
 
 function handleDelete(id, name) {

@@ -7,7 +7,7 @@ use crate::handlers::{
     language::{list_languages, get_all_languages, get_popular_languages, update_language},
     template::{get_template, list_templates, get_template_file_content, add_template_file, delete_template_file, edit_template_file, move_template_file, upload_code, upload_zip,
         create_user_template, list_my_templates, update_user_template, delete_user_template, submit_for_review,
-        list_pending_templates, review_template_admin,
+        list_pending_templates, review_template_admin, fork_template,
     },
     var_preset::{create_var_preset, get_var_preset, get_var_preset_by_query, update_var_preset, delete_var_preset, toggle_var_preset, list_var_presets, get_all_var_presets},
     editor::{get_file_tree, restore_file},
@@ -156,6 +156,7 @@ fn user_template_routes() -> Router<AppState> {
     Router::new()
         .route("/list", get(list_my_templates))
         .route("/add", post(create_user_template))
+        .route("/fork", post(fork_template))
         .route("/:id", put(update_user_template).delete(delete_user_template))
         .route("/:id/submit-review", post(submit_for_review))
 }

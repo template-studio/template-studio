@@ -81,7 +81,7 @@ export function getTemplateTypes() {
 // Fork模板
 export function forkTemplate(data) {
   return request({
-    url: '/api/v1/template/templates/fork',
+    url: '/api/v1/admin/my/templates/fork',
     method: 'post',
     data,
   });

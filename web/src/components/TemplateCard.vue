@@ -7,6 +7,11 @@
       <div v-if="template.isFeatured" class="template-badge">
         <span>推荐</span>
       </div>
+      <div class="card-hover-actions">
+        <button class="hover-action-btn" title="Fork 模板" @click.stop="handleFork">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+        </button>
+      </div>
     </div>
 
     <div class="card-content-area">
@@ -56,7 +61,7 @@
     },
   });
 
-  const emit = defineEmits(['click']);
+  const emit = defineEmits(['click', 'fork']);
 
   const languageStore = useLanguageStore();
   const { languagesList } = storeToRefs(languageStore);
@@ -207,6 +212,10 @@ app.init()`;
     emit('click', props.template);
   };
 
+  const handleFork = () => {
+    emit('fork', props.template);
+  };
+
   const goProfile = () => {
     if (props.template.ownerName) {
       router.push(`/u/${props.template.ownerName}`);
@@ -245,6 +254,40 @@ app.init()`;
   height: 160px;
   position: relative;
   overflow: hidden;
+}
+
+.card-hover-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.template-card:hover .card-hover-actions {
+  opacity: 1;
+}
+
+.hover-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hover-action-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .visual-bg {
