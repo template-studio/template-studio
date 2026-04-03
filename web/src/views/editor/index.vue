@@ -1279,7 +1279,7 @@
   .template-editor-fullscreen {
     position: fixed;
     inset: 0;
-    background: #f5f5f5;
+    background: var(--editor-bg, #f5f5f5);
     display: flex;
     flex-direction: column;
   }
@@ -1288,15 +1288,15 @@
     flex: 1;
     display: flex;
     min-height: 0;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
   }
 
   .left-sidebar {
     display: flex;
     min-height: 0;
-    border-right: 1px solid #e0e0e0;
-    background: #fafafa;
-    transition: all 0.3s ease;
+    border-right: 1px solid var(--editor-border, #e2e8f0);
+    background: var(--editor-panel-bg, #fafbfc);
+    transition: all 0.2s ease;
   }
 
   .editor-container {
@@ -1305,7 +1305,7 @@
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
   }
 
   /* 基础模板编辑器占满宽度 */
@@ -1318,11 +1318,11 @@
     position: fixed;
     top: 80px;
     right: 24px;
-    background: #52c41a;
+    background: var(--editor-accent, #22c55e);
     color: #fff;
     padding: 8px 16px;
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(82, 196, 26, 0.3);
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
     font-size: 14px;
     font-weight: 500;
     z-index: 2000;
@@ -1332,7 +1332,7 @@
 
   .auto-save-fade-enter-active,
   .auto-save-fade-leave-active {
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
   }
 
   .auto-save-fade-enter-from {

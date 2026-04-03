@@ -69,7 +69,7 @@
               @mouseleave="handleHideFunctionDetail"
             >
               <div class="variable-info">
-                <n-icon size="16" color="#1890ff">
+                <n-icon size="16" color="#64748b">
                   <CodeSlash />
                 </n-icon>
                 <span class="variable-name">{{ syntax.display_name || syntax.name }}</span>
@@ -1173,8 +1173,8 @@
   /* 侧边栏容器 */
   .variable-sidebar {
     position: relative;
-    background: #fff;
-    border-right: 1px solid #e0e0e0;
+    background: #ffffff;
+    border-right: 1px solid var(--editor-border, #e2e8f0);
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -1186,9 +1186,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
-    border-bottom: 1px solid #e0e0e0;
-    background: #fafafa;
+    padding: 16px 12px 12px 12px;
+    border-bottom: 1px solid var(--editor-border, #e2e8f0);
   }
 
   .header-left {
@@ -1198,15 +1197,17 @@
   }
 
   .header-title {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
-    color: #333;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--editor-muted, #64748b);
   }
 
   .header-actions {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
   }
 
   .action-icon {
@@ -1219,7 +1220,7 @@
     background: transparent;
     border-radius: 4px;
     cursor: pointer;
-    color: #94a3b8;
+    color: var(--editor-muted, #94a3b8);
     opacity: 0;
     transition: all 0.15s ease;
     flex-shrink: 0;
@@ -1230,8 +1231,8 @@
   }
 
   .action-icon:hover {
-    background: #f1f5f9;
-    color: #722ed1;
+    background: var(--editor-hover-bg, #f1f5f9);
+    color: #8b5cf6;
   }
 
   /* 内容区域 */
@@ -1248,7 +1249,7 @@
     flex-direction: column;
     width: 80px;
     min-width: 80px;
-    border-right: 1px solid #e0e0e0;
+    border-right: 1px solid var(--editor-border, #e2e8f0);
     background: #fafafa;
     overflow-y: auto;
     scrollbar-width: none !important; /* Firefox */
@@ -1495,7 +1496,7 @@
   }
 
   .preset-item-modal {
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--editor-border, #e2e8f0);
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 12px;
@@ -1532,7 +1533,7 @@
   /* ========== 悬浮卡片样式 ========== */
   .function-detail-card {
     background: #fff;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--editor-border, #e2e8f0);
     border-radius: 8px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     padding: 16px;
@@ -1644,7 +1645,7 @@
   .param-item {
     padding: 8px;
     background: #fff;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--editor-border, #e2e8f0);
     border-radius: 4px;
   }
 

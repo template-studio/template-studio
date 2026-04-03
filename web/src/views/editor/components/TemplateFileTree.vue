@@ -1326,8 +1326,8 @@
               flex: '1',
               minWidth: '100px',
               padding: '2px 6px',
-              border: '1px solid #18a058',
-              borderRadius: '2px',
+              border: '1px solid #22c55e',
+              borderRadius: '4px',
               outline: 'none',
               fontSize: '13px',
             },
@@ -1357,9 +1357,9 @@
             {
               class: 'edit-confirm-btn',
               style: {
-                background: '#18a058',
+                background: '#22c55e',
                 border: 'none',
-                borderRadius: '2px',
+                borderRadius: '4px',
                 color: 'white',
                 cursor: 'pointer',
                 padding: '2px 6px',
@@ -1384,7 +1384,7 @@
             {
               class: 'edit-cancel-btn',
               style: {
-                background: '#d03050',
+                background: '#ef4444',
                 border: 'none',
                 borderRadius: '2px',
                 color: 'white',
@@ -1440,7 +1440,7 @@
     const iconStyle = {
       fontSize: '14px',
       marginLeft: '4px',
-      color: '#18a058',
+      color: '#22c55e',
       fontWeight: 'bold',
     };
 
@@ -1482,9 +1482,9 @@
   .template-explorer {
     min-width: 120px;
     max-width: 1000px;
-    background: #fff;
-    border-right: 1px solid #e0e0e0;
-    padding: 24px 12px 0 12px;
+    background: #ffffff;
+    border-right: 1px solid var(--editor-border, #e2e8f0);
+    padding: 16px 12px 0 12px;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -1493,9 +1493,12 @@
     flex-shrink: 0;
   }
   .explorer-title {
-    font-weight: bold;
-    margin-bottom: 16px;
-    color: #333;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    color: var(--editor-muted, #64748b);
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -1510,7 +1513,7 @@
   .title-actions {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
   }
 
   .action-icon {
@@ -1523,7 +1526,7 @@
     background: transparent;
     border-radius: 4px;
     cursor: pointer;
-    color: #94a3b8;
+    color: var(--editor-muted, #94a3b8);
     opacity: 0;
     transition: all 0.15s ease;
     flex-shrink: 0;
@@ -1534,8 +1537,8 @@
   }
 
   .action-icon:hover {
-    background: #f1f5f9;
-    color: #18a058;
+    background: var(--editor-hover-bg, #f1f5f9);
+    color: var(--editor-accent, #22c55e);
   }
   .explorer-container {
     flex: 1;
@@ -1575,12 +1578,12 @@
     font-size: 13px;
     font-family: 'Segoe UI', 'Consolas', 'Monaco', monospace;
     background: #ffffff;
-    border: 1px solid #007acc;
+    border: 1px solid var(--editor-accent, #22c55e);
     border-radius: 0;
     outline: none;
-    color: #333333;
+    color: var(--editor-primary, #1e293b);
     line-height: 18px;
-    box-shadow: 0 0 0 1px #007acc;
+    box-shadow: 0 0 0 1px var(--editor-accent, #22c55e);
     margin: 0;
     display: block;
   }
@@ -1597,9 +1600,9 @@
   /* 编辑确认和取消按钮样式 */
   .edit-confirm-btn,
   .edit-cancel-btn {
-    background: #18a058 !important;
+    background: var(--editor-accent, #22c55e) !important;
     border: none !important;
-    border-radius: 2px !important;
+    border-radius: 4px !important;
     color: white !important;
     cursor: pointer !important;
     padding: 2px 6px !important;
@@ -1610,22 +1613,20 @@
     min-width: 20px !important;
     height: 20px !important;
     line-height: 1 !important;
-    transition: all 0.2s ease !important;
+    transition: all 0.15s ease !important;
     font-weight: bold !important;
   }
 
   .edit-confirm-btn:hover {
-    background: #36ad6a !important;
-    transform: scale(1.05);
+    background: #16a34a !important;
   }
 
   .edit-cancel-btn {
-    background: #d03050 !important;
+    background: #ef4444 !important;
   }
 
   .edit-cancel-btn:hover {
-    background: #de576d !important;
-    transform: scale(1.05);
+    background: #dc2626 !important;
   }
 
   .edit-confirm-btn:active,
@@ -1659,20 +1660,20 @@
   }
 
   .resize-handle:hover {
-    background: rgba(24, 160, 88, 0.1);
+    background: rgba(34, 197, 94, 0.08);
   }
 
   .resize-handle:hover:before {
-    background: #18a058;
+    background: var(--editor-accent, #22c55e);
     height: 60px;
   }
 
   .resize-handle.is-resizing {
-    background: rgba(24, 160, 88, 0.2);
+    background: rgba(34, 197, 94, 0.15);
   }
 
   .resize-handle.is-resizing:before {
-    background: #18a058;
+    background: var(--editor-accent, #22c55e);
     height: 80px;
   }
 
@@ -1685,17 +1686,17 @@
   /* 拖拽移动样式 */
   :deep(.n-tree-node.dragging) {
     opacity: 0.5;
-    background: rgba(0, 123, 204, 0.1);
+    background: rgba(34, 197, 94, 0.08);
   }
 
   :deep(.n-tree-node.drag-over) {
-    background: rgba(0, 123, 204, 0.2);
-    border: 2px dashed #007acc;
+    background: rgba(34, 197, 94, 0.12);
+    border: 2px dashed var(--editor-accent, #22c55e);
     border-radius: 4px;
   }
 
   :deep(.n-tree-node.drag-over .n-tree-node-content) {
-    background: rgba(0, 123, 204, 0.1);
+    background: rgba(34, 197, 94, 0.08);
   }
 
   /* 拖拽时的全局样式 */
@@ -1713,8 +1714,8 @@
 
   /* 根目录拖拽样式 */
   .explorer-container.drag-over-root {
-    background: rgba(0, 123, 204, 0.1);
-    border: 2px dashed #007acc;
+    background: rgba(34, 197, 94, 0.08);
+    border: 2px dashed var(--editor-accent, #22c55e);
     border-radius: 4px;
     position: relative;
     animation: drag-over-pulse 1s infinite;
@@ -1726,39 +1727,38 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: #007acc;
+    color: var(--editor-accent, #22c55e);
     font-size: 14px;
     font-weight: 500;
     background: rgba(255, 255, 255, 0.95);
     padding: 8px 12px;
     border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0, 123, 204, 0.3);
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
     pointer-events: none;
     z-index: 1000;
-    border: 1px solid #007acc;
+    border: 1px solid var(--editor-accent, #22c55e);
   }
 
   /* 根目录拖放区域样式 */
   .root-drop-zone {
     margin-top: 12px;
     padding: 12px 8px;
-    border: 2px dashed #e0e0e0;
+    border: 2px dashed var(--editor-border, #e2e8f0);
     border-radius: 6px;
-    background: #fafafa;
+    background: var(--editor-panel-bg, #fafbfc);
     transition: all 0.2s ease;
     flex-shrink: 0;
   }
 
   .root-drop-zone:hover {
-    border-color: #18a058;
-    background: rgba(24, 160, 88, 0.05);
+    border-color: var(--editor-accent, #22c55e);
+    background: rgba(34, 197, 94, 0.05);
   }
 
   .root-drop-zone.drag-over {
-    border-color: #18a058;
-    background: rgba(24, 160, 88, 0.15);
-    transform: scale(1.02);
-    box-shadow: 0 2px 12px rgba(24, 160, 88, 0.3);
+    border-color: var(--editor-accent, #22c55e);
+    background: rgba(34, 197, 94, 0.12);
+    box-shadow: 0 2px 12px rgba(34, 197, 94, 0.2);
   }
 
   .root-drop-zone-content {
@@ -1766,28 +1766,28 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    color: #999;
+    color: var(--editor-muted, #94a3b8);
     font-size: 12px;
   }
 
   .root-drop-zone:hover .root-drop-zone-content {
-    color: #18a058;
+    color: var(--editor-accent, #22c55e);
   }
 
   .root-drop-zone.drag-over .root-drop-zone-content {
-    color: #18a058;
+    color: var(--editor-accent, #22c55e);
     font-weight: 500;
   }
 
   @keyframes drag-over-pulse {
     0% {
-      border-color: #007acc;
+      border-color: var(--editor-accent, #22c55e);
     }
     50% {
-      border-color: #4db3ff;
+      border-color: #4ade80;
     }
     100% {
-      border-color: #007acc;
+      border-color: var(--editor-accent, #22c55e);
     }
   }
 </style>

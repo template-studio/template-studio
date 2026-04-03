@@ -677,12 +677,12 @@
 
 <style scoped>
   .template-preview {
-    background: #fff;
-    border-left: 1px solid #e0e0e0;
+    background: #ffffff;
+    border-left: 1px solid var(--editor-border, #e2e8f0);
     display: flex;
     flex-direction: column;
     height: 100%;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     position: relative;
     flex-shrink: 0;
   }
@@ -709,15 +709,15 @@
   }
 
   .preview-header {
-    height: 48px;
-    padding: 0 16px;
-    border-bottom: 1px solid #e0e0e0;
+    height: 40px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--editor-border, #e2e8f0);
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
-    transition: padding 0.3s ease;
-    background: #f8f9fa;
+    transition: padding 0.2s ease;
+    background: var(--editor-panel-bg, #fafbfc);
   }
 
   .file-info {
@@ -726,8 +726,8 @@
   }
 
   .file-path {
-    font-size: 13px;
-    color: #666;
+    font-size: 12px;
+    color: var(--editor-muted, #64748b);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -736,7 +736,7 @@
   .preview-meta {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     margin-right: 8px;
   }
 
@@ -744,40 +744,40 @@
     display: inline-flex;
     align-items: center;
     padding: 2px 8px;
-    border-radius: 10px;
+    border-radius: 4px;
     font-size: 11px;
     font-weight: 500;
     cursor: default;
-    background: #e8e8e8;
-    color: #666;
-    transition: all 0.2s;
+    background: var(--editor-hover-bg, #f1f5f9);
+    color: var(--editor-muted, #64748b);
+    transition: all 0.15s;
   }
 
   .engine-tag:hover {
-    background: #d8d8d8;
+    background: #e2e8f0;
   }
 
   .engine-tag.wasm {
-    background: #e6f7e6;
-    color: #52c41a;
+    background: #ecfdf5;
+    color: var(--editor-accent, #22c55e);
   }
 
   .engine-tag.wasm:hover {
-    background: #d6f4d6;
+    background: #d1fae5;
   }
 
   .render-time {
     font-size: 11px;
-    color: #999;
+    color: var(--editor-muted, #94a3b8);
     padding: 2px 6px;
-    background: #f5f5f5;
-    border-radius: 8px;
+    background: var(--editor-hover-bg, #f1f5f9);
+    border-radius: 4px;
   }
 
   .preview-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
   }
 
   .collapse-btn {
@@ -835,20 +835,20 @@
   }
 
   .resize-handle:hover {
-    background-color: rgba(24, 144, 255, 0.1);
+    background-color: rgba(34, 197, 94, 0.08);
   }
 
   .resize-handle:hover:before {
-    background-color: #1890ff;
+    background-color: var(--editor-accent, #22c55e);
     height: 60px;
   }
 
   .resize-handle.resizing {
-    background-color: rgba(24, 144, 255, 0.2);
+    background-color: rgba(34, 197, 94, 0.15);
   }
 
   .resize-handle.resizing:before {
-    background-color: #1890ff;
+    background-color: var(--editor-accent, #22c55e);
     height: 80px;
   }
 
