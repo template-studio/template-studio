@@ -7,33 +7,22 @@
     <div class="explorer-title">
       <span class="title-text">模板资源</span>
       <div class="title-actions">
-        <n-button size="small" @click="handleExport" quaternary class="action-btn" title="下载模板">
-          <template #icon>
-            <n-icon>
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
-              </svg>
-            </n-icon>
+        <n-tooltip trigger="hover" :delay="500">
+          <template #trigger>
+            <button class="action-icon" @click="handleExport">
+              <n-icon size="16"><DownloadOutline /></n-icon>
+            </button>
           </template>
-        </n-button>
-        <n-button
-          size="small"
-          @click="emit('show-releases')"
-          quaternary
-          class="action-btn"
-          title="版本管理"
-        >
-          <template #icon>
-            <n-icon>
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path
-                  fill="currentColor"
-                  d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"
-                />
-              </svg>
-            </n-icon>
+          下载模板
+        </n-tooltip>
+        <n-tooltip trigger="hover" :delay="500">
+          <template #trigger>
+            <button class="action-icon" @click="emit('show-releases')">
+              <n-icon size="16"><GitBranchOutline /></n-icon>
+            </button>
           </template>
-        </n-button>
+          版本管理
+        </n-tooltip>
       </div>
     </div>
     <div
@@ -126,7 +115,7 @@
 
 <script setup>
   import { ref, watch, h, computed, onMounted, onUnmounted } from 'vue';
-  import { NTree, NButton, useMessage, NIcon } from 'naive-ui';
+  import { NTree, NTooltip, useMessage, NIcon } from 'naive-ui';
   import {
     ChevronForward,
     FileTrayFullOutline,
@@ -134,6 +123,8 @@
     FolderOpenOutline,
     Trash,
     CreateOutline as Edit,
+    DownloadOutline,
+    GitBranchOutline,
   } from '@vicons/ionicons5';
   import { exportTemplate } from '@/api/templates';
   import { useRoute } from 'vue-router';
@@ -1522,15 +1513,29 @@
     gap: 4px;
   }
 
-  .action-btn {
+  .action-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #94a3b8;
+    opacity: 0;
+    transition: all 0.15s ease;
     flex-shrink: 0;
-    padding: 4px 8px !important;
-    min-width: auto;
   }
 
-  .action-btn:hover {
-    background: #e8f5e8 !important;
-    color: #18a058 !important;
+  .explorer-title:hover .action-icon {
+    opacity: 1;
+  }
+
+  .action-icon:hover {
+    background: #f1f5f9;
+    color: #18a058;
   }
   .explorer-container {
     flex: 1;
