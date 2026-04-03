@@ -305,24 +305,30 @@ impl ReleaseService {
     async fn generate_next_version(&self, template_id: i64) -> Result<String> {
         let latest = self.get_latest_version(template_id).await.ok();
 
-        let (major, minor) = if let Some(v) = latest {
-            // 解析版本号
+        let (major, minor, patch) = if let Some(v) = latest {
             let parts: Vec<u32> = v.trim_start_matches('v')
                 .split('.')
                 .map(|s| s.parse().unwrap_or(0))
                 .collect();
 
             match parts.as_slice() {
-                [major, minor, _patch] => (*major, *minor),
-                [major, minor] => (*major, *minor),
-                [major] => (*major, 0),
-                _ => (1, 0),
+                [major, minor, patch] => {
+                    let (new_minor, new_patch) = if *patch >= 9 {
+                        (*minor + 1, 0)
+                    } else {
+                        (*minor, *patch + 1)
+                    };
+                    (*major, new_minor, new_patch)
+                }
+                [major, minor] => (*major, *minor, 1),
+                [major] => (*major, 0, 1),
+                _ => (1, 0, 0),
             }
         } else {
-            (1, 0)  // 第一个版本
+            (1, 0, 0) // 第一个版本
         };
 
-        Ok(format!("v{}.{}.0", major, minor + 1))
+        Ok(format!("v{}.{}.{}", major, minor, patch))
     }
 
     /// 验证版本号是否有效（不低于当前版本）
