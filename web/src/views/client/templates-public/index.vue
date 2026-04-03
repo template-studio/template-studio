@@ -309,7 +309,9 @@
       if (data.code === 0 && data.data) {
         message.success('Fork 成功，正在跳转到编辑器...');
         showForkModal.value = false;
-        router.push(`/editor/${data.data}`);
+        router.push(`/editor/${data.data}`).then(() => {
+          message.info('如文件树未加载，请刷新页面');
+        });
       } else {
         message.error(data.message || 'Fork 失败');
       }
