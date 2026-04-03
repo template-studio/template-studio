@@ -23,6 +23,11 @@ pub struct ResetPasswordRequest {
     pub password: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct TestEmailQuery {
+    pub email: String,
+}
+
 /// 忘记密码 - 发送重置邮件
 pub async fn forgot_password(
     State(state): State<AppState>,
@@ -63,6 +68,23 @@ pub async fn reset_password(
             "message": "密码重置成功"
         }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
+    }
+}
+
+/// 发送测试邮件（管理员）
+pub async fn test_email(
+    State(state): State<AppState>,
+    Json(query): Json<TestEmailQuery>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if query.email.is_empty() {
+        return error_response(StatusCode::BAD_REQUEST, "请输入收件邮箱");
+    }
+    match state.email_service.send_test_email(&query.email).await {
+        Ok(_) => Ok(Json(json!({
+            "code": 0,
+            "message": "测试邮件发送成功"
+        }))),
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &format!("发送失败: {}", e)),
     }
 }
 

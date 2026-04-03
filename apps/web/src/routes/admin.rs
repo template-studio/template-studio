@@ -13,6 +13,7 @@ use crate::handlers::{
     editor::{get_file_tree, restore_file},
     statistics::{get_overview, get_category_distribution, get_language_popularity, get_template_complexity, get_usage_trends},
     system_setting::{get_settings, update_setting, batch_update_settings},
+    email::test_email,
     user_management,
     role_management,
     permission_management,
@@ -38,6 +39,7 @@ pub fn admin_routes() -> Router<AppState> {
         .nest("/users", users_admin_routes())
         .nest("/roles", roles_admin_routes())
         .nest("/permissions", permissions_admin_routes())
+        .route("/email/test", post(test_email))
 }
 
 /// 分类管理路由

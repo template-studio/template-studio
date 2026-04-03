@@ -168,6 +168,24 @@ impl EmailService {
         transport.send(&email)?;
         Ok(())
     }
+
+    /// 发送测试邮件
+    pub async fn send_test_email(&self, to: &str) -> Result<()> {
+        let smtp = self.get_smtp_config().await?;
+        let subject = "Template Studio - SMTP 测试邮件";
+        let body = format!(
+            r#"<div style="max-width:600px;margin:0 auto;font-family:sans-serif;padding:40px 20px">
+                <h2 style="color:#0f172a">SMTP 测试成功</h2>
+                <p style="color:#475569;font-size:15px;line-height:1.6">
+                    恭喜！您的 SMTP 邮件服务配置正确，密码重置功能已可用。
+                </p>
+                <p style="color:#94a3b8;font-size:13px;margin-top:30px">
+                    此邮件由 Template Studio 系统自动发送，请勿回复。
+                </p>
+            </div>"#
+        );
+        self.send_email(&smtp, to, subject, &body).await
+    }
 }
 
 struct SmtpConfig {

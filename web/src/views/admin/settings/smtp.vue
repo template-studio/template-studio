@@ -43,6 +43,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useMessage } from 'naive-ui';
 import { getSettings, batchUpdateSettings } from '@/api/system/settings';
+import request from '@/utils/request';
 
 const message = useMessage();
 const loading = ref(false);
@@ -112,7 +113,14 @@ async function handleTest() {
   testing.value = true;
   try {
     await handleSave();
-    message.info('测试功能开发中，请先保存设置后使用忘记密码功能验证');
+    const res = await request.post('/api/v1/admin/email/test', { email: testEmail.value });
+    if (res.data?.code === 0) {
+      message.success('测试邮件已发送，请检查收件箱');
+    } else {
+      message.error(res.data?.message || '发送失败');
+    }
+  } catch (e) {
+    message.error(e?.response?.data?.message || '发送失败，请检查 SMTP 配置');
   } finally {
     testing.value = false;
   }
