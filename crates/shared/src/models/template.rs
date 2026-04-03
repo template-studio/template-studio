@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -20,7 +20,7 @@ pub struct Template {
     pub owner_id: Option<i64>,
     pub visibility: Option<String>,
     pub status: Option<String>,
-    pub reviewed_at: Option<String>,
+    pub reviewed_at: Option<NaiveDateTime>,
     pub reviewed_by: Option<i64>,
     pub download_count: Option<i32>,
     pub created_at: DateTime<Utc>,
