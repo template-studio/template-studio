@@ -9,40 +9,22 @@
         <span class="header-title">变量</span>
       </div>
       <div class="header-actions">
-        <!-- Variable Studio 按钮 -->
-        <n-button
-          size="small"
-          @click="emit('show-quick-design')"
-          quaternary
-          class="action-btn"
-          title="Variable Studio（可视化设计，所见即所得）"
-        >
-          <template #icon>
-            <n-icon size="14">
-              <ConstructOutline />
-            </n-icon>
+        <n-tooltip trigger="hover" :delay="500">
+          <template #trigger>
+            <button class="action-icon" @click="emit('show-quick-design')">
+              <n-icon size="16"><ConstructOutline /></n-icon>
+            </button>
           </template>
-        </n-button>
-
-        <!-- 测试数据按钮 -->
-        <n-button
-          size="small"
-          @click="emit('show-test-data')"
-          quaternary
-          class="action-btn"
-          title="测试数据"
-        >
-          <template #icon>
-            <n-icon size="14">
-              <svg viewBox="0 0 24 24" width="14" height="14">
-                <path
-                  fill="currentColor"
-                  d="M9 3L7 17c0 2.76 2.24 5 5 5s5-2.24 5-5L15 3H9zm2 2h2v2h-2V5zm0 4h2v2h-2V9zm0 4h2v2h-2v-2z"
-                />
-              </svg>
-            </n-icon>
+          Variable Studio
+        </n-tooltip>
+        <n-tooltip trigger="hover" :delay="500">
+          <template #trigger>
+            <button class="action-icon" @click="emit('show-test-data')">
+              <n-icon size="16"><FlaskOutline /></n-icon>
+            </button>
           </template>
-        </n-button>
+          测试数据
+        </n-tooltip>
       </div>
     </div>
 
@@ -509,6 +491,7 @@
     NInput,
     NCheckbox,
     NPagination,
+    NTooltip,
     useMessage,
   } from 'naive-ui';
   import {
@@ -528,6 +511,7 @@
     PersonOutline,
     Settings,
     AddOutline,
+    FlaskOutline,
   } from '@vicons/ionicons5';
   import { getTemplateExpose } from '@/api/templateExpose';
   import {
@@ -1225,14 +1209,29 @@
     gap: 4px;
   }
 
-  .action-btn {
-    padding: 4px 8px !important;
-    min-width: auto;
+  .action-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #94a3b8;
+    opacity: 0;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
   }
 
-  .action-btn:hover {
-    background: #f9f0ff !important;
-    color: #722ed1 !important;
+  .sidebar-header:hover .action-icon {
+    opacity: 1;
+  }
+
+  .action-icon:hover {
+    background: #f1f5f9;
+    color: #722ed1;
   }
 
   /* 内容区域 */
