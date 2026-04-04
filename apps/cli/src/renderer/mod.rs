@@ -216,7 +216,7 @@ impl LocalRenderer {
 
         if error_count > 0 {
             warn!("⚠️  共有 {} 个文件渲染失败，请检查日志获取详细信息", error_count);
-            warn!("   日志文件位置: ~/.ciclebyte/template_studio_rust/logs/template-cli.log");
+            warn!("   日志文件位置: ~/.cicbyte/template_studio/logs/template-cli.log");
         }
 
         info!("✅ 成功渲染 {} 个文件", rendered_files.len());

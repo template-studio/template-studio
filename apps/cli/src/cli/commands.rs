@@ -67,8 +67,8 @@ pub async fn handle_create(
         // 下载模板到本地缓存
         let cache_dir = dirs::home_dir()
             .unwrap_or_else(|| std::path::PathBuf::from("."))
-            .join(".ciclebyte")
-            .join("template_studio_rust")
+            .join(".cicbyte")
+            .join("template_studio")
             .join("data")
             .join("templates")
             .join(template.id.clone())

@@ -5,11 +5,11 @@ use dirs::home_dir;
 
 /// 数据库路径
 pub fn get_database_path() -> Result<PathBuf, std::io::Error> {
-    // C:\Users\{user}\.ciclebyte\template_studio_rust\db\desktop.db
+    // C:\Users\{user}\.cicbyte\template_studio\db\desktop.db
     let mut db_dir = home_dir()
         .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "无法获取用户主目录"))?;
-    db_dir.push(".ciclebyte");
-    db_dir.push("template_studio_rust");
+    db_dir.push(".cicbyte");
+    db_dir.push("template_studio");
     db_dir.push("db");
 
     // 确保目录存在

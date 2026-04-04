@@ -22,20 +22,20 @@ pub struct WebServerConfig {
 impl Default for Config {
     fn default() -> Self {
         // 默认模板存储路径（与CLI共享）
-        // Windows: C:\Users\{user}\.ciclebyte\template_studio_rust\data\templates
-        // Linux/Mac: ~/.ciclebyte/template_studio_rust/data/templates
+        // Windows: C:\Users\{user}\.cicbyte\template_studio\data\templates
+        // Linux/Mac: ~/.cicbyte/template_studio/data/templates
         let template_path = if cfg!(windows) {
             dirs::home_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
-                .join(".ciclebyte")
-                .join("template_studio_rust")
+                .join(".cicbyte")
+                .join("template_studio")
                 .join("data")
                 .join("templates")
         } else {
             dirs::home_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
-                .join(".ciclebyte")
-                .join("template_studio_rust")
+                .join(".cicbyte")
+                .join("template_studio")
                 .join("data")
                 .join("templates")
         };
@@ -56,14 +56,14 @@ impl Config {
         let config_dir = if cfg!(windows) {
             dirs::home_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
-                .join(".ciclebyte")
-                .join("template_studio_rust")
+                .join(".cicbyte")
+                .join("template_studio")
                 .join("config")
         } else {
             dirs::home_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
-                .join(".ciclebyte")
-                .join("template_studio_rust")
+                .join(".cicbyte")
+                .join("template_studio")
                 .join("config")
         };
 

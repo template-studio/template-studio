@@ -455,8 +455,8 @@ impl App {
         // 确定本地缓存路径：{template_id}/{version}/
         let cache_dir = dirs::home_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join(".ciclebyte")
-            .join("template_studio_rust")
+            .join(".cicbyte")
+            .join("template_studio")
             .join("data")
             .join("templates")
             .join(version.template_id.to_string())

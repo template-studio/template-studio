@@ -54,8 +54,8 @@ fn init_file_logging() -> Result<()> {
     // 获取日志目录
     let log_dir = dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join(".ciclebyte")
-        .join("template_studio_rust")
+        .join(".cicbyte")
+        .join("template_studio")
         .join("logs");
 
     // 创建日志目录

@@ -30,20 +30,20 @@ pub struct StorageConfig {
 impl Default for Config {
     fn default() -> Self {
         // 默认模板存储路径
-        // Windows: C:\Users\{user}\.ciclebyte\template_studio_rust\data\templates
-        // Linux/Mac: ~/.ciclebyte/template_studio_rust/data/templates
+        // Windows: C:\Users\{user}\.cicbyte\template_studio\data\templates
+        // Linux/Mac: ~/.cicbyte/template_studio/data/templates
         let template_path = if cfg!(windows) {
             dirs::home_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
-                .join(".ciclebyte")
-                .join("template_studio_rust")
+                .join(".cicbyte")
+                .join("template_studio")
                 .join("data")
                 .join("templates")
         } else {
             dirs::home_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
-                .join(".ciclebyte")
-                .join("template_studio_rust")
+                .join(".cicbyte")
+                .join("template_studio")
                 .join("data")
                 .join("templates")
         };
@@ -69,13 +69,13 @@ impl Config {
         let config_path = if let Some(ref path) = custom_path {
             PathBuf::from(path)
         } else {
-            // 默认配置路径: ~/.ciclebyte/template_studio_rust/config/config.toml
+            // 默认配置路径: ~/.cicbyte/template_studio/config/config.toml
             let home_dir = dirs::home_dir()
                 .context("无法确定用户主目录")?;
 
             let config_dir = home_dir
-                .join(".ciclebyte")
-                .join("template_studio_rust")
+                .join(".cicbyte")
+                .join("template_studio")
                 .join("config");
 
             // 确保配置目录存在
@@ -120,8 +120,8 @@ impl Config {
             .context("无法确定用户主目录")?;
 
         let config_dir = home_dir
-            .join(".ciclebyte")
-            .join("template_studio_rust")
+            .join(".cicbyte")
+            .join("template_studio")
             .join("config");
 
         std::fs::create_dir_all(&config_dir)

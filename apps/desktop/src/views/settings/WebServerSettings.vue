@@ -130,17 +130,17 @@ const testResult = ref(null)
 // 配置文件路径（动态替换用户名）
 const configFilePath = computed(() => {
   if (username.value) {
-    return `C:\\Users\\${username.value}\\.ciclebyte\\template_studio_rust\\config\\scaffold-desktop.yaml`
+    return `C:\\Users\\${username.value}\\.cicbyte\\template_studio\\config\\scaffold-desktop.yaml`
   }
-  return 'C:\\Users\\{user}\\.ciclebyte\\template_studio_rust\\config\\scaffold-desktop.yaml'
+  return 'C:\\Users\\{user}\\.cicbyte\\template_studio\\config\\scaffold-desktop.yaml'
 })
 
 // 默认模板路径（动态替换用户名）
 const defaultTemplatePath = computed(() => {
   if (username.value) {
-    return `C:\\Users\\${username.value}\\.ciclebyte\\template_studio_rust\\data\\templates`
+    return `C:\\Users\\${username.value}\\.cicbyte\\template_studio\\data\\templates`
   }
-  return 'C:\\Users\\{user}\\.ciclebyte\\template_studio_rust\\data\\templates'
+  return 'C:\\Users\\{user}\\.cicbyte\\template_studio\\data\\templates'
 })
 
 // 加载配置

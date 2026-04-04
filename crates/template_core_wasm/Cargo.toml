@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["Template Studio Team"]
 description = "Template Studio Template Core WASM bindings - Browser-side template rendering"
 license = "MIT"
-repository = "https://github.com/your-org/template_studio_rust"
+repository = "https://github.com/your-org/template_studio"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
