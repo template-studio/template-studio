@@ -9,12 +9,11 @@
       </router-view>
     </div>
 
-    <!-- 全局 Footer - 分页 -->
-    <div
-      v-if="layoutStore.footerPagination.visible && layoutStore.footerPagination.total > 0"
-      class="content-footer"
-    >
+    <!-- 全局 Footer -->
+    <div v-if="layoutStore.footerType" class="content-footer">
+      <!-- 分页 footer -->
       <a-pagination
+        v-if="layoutStore.footerType === 'pagination' && layoutStore.footerPagination.total > 0"
         v-model:current="layoutStore.footerPagination.current"
         v-model:pageSize="layoutStore.footerPagination.pageSize"
         :total="layoutStore.footerPagination.total"
@@ -25,6 +24,17 @@
         @change="handlePageChange"
         @showSizeChange="handleSizeChange"
       />
+      <!-- 概览 footer -->
+      <div v-else-if="layoutStore.footerType === 'overview'" class="footer-overview">
+        <div
+          v-for="(item, index) in layoutStore.footerOverview.items"
+          :key="index"
+          class="overview-item"
+        >
+          <span class="overview-label">{{ item.label }}</span>
+          <span class="overview-value">{{ item.value }}</span>
+        </div>
+      </div>
     </div>
 
     <!-- Loading Overlay -->
@@ -139,6 +149,30 @@ onMounted(() => {
   background: var(--color-surface);
   flex-shrink: 0;
   padding: 0 var(--spacing-lg);
+}
+
+.footer-overview {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xl);
+  width: 100%;
+}
+
+.overview-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.overview-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.overview-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
 }
 
 /* Responsive adjustments */

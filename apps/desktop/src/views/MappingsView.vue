@@ -145,6 +145,9 @@ import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import { invoke } from '@tauri-apps/api/core'
 import { getAllLanguages } from '@/api/languages'
+import { useLayoutStore } from '@/stores/layout'
+
+const layoutStore = useLayoutStore()
 
 // 数据库类型列表
 const databaseTypes = ref([
@@ -328,6 +331,37 @@ const filteredMappings = computed(() => {
     m.targetType.toLowerCase().includes(search)
   )
 })
+
+// 概览数据
+const overviewData = computed(() => {
+  const langKey = activeLang.value
+  const dbKey = activeDbType.value
+  if (!langKey || !dbKey || !mappings.value[langKey] || !mappings.value[langKey][dbKey]) {
+    return [
+      { label: '当前语言', value: currentLanguageName.value || '-' },
+      { label: '当前数据库', value: databaseTypes.value.find(d => d.key === dbKey)?.label || '-' },
+      { label: '总映射数', value: '0' },
+      { label: '已配置', value: '0' },
+      { label: '未配置', value: '0' }
+    ]
+  }
+  const all = mappings.value[langKey][dbKey]
+  const configured = all.filter(m => m.targetType).length
+  return [
+    { label: '当前语言', value: currentLanguageName.value },
+    { label: '当前数据库', value: databaseTypes.value.find(d => d.key === dbKey)?.label || dbKey },
+    { label: '总映射数', value: String(all.length) },
+    { label: '已配置', value: String(configured) },
+    { label: '未配置', value: String(all.length - configured) }
+  ]
+})
+
+// 更新 footer 概览
+const updateFooterOverview = () => {
+  layoutStore.showFooterOverview(overviewData.value)
+}
+
+watch([activeLang, activeDbType, mappings], updateFooterOverview, { deep: true })
 
 // 加载映射数据
 const loadMappings = async () => {
@@ -524,18 +558,20 @@ watch(activeLang, () => {
   loadLanguageFieldTypes()
 })
 
-onMounted(() => {
-  loadMappings()
+onMounted(async () => {
+  await loadMappings()
+  updateFooterOverview()
 })
 </script>
 
 <style scoped>
 .mappings-view {
-  padding: 24px;
+  padding: var(--spacing-lg);
   height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--color-background);
+  overflow: hidden;
 }
 
 .page-header {
