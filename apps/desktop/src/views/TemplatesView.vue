@@ -88,13 +88,17 @@
               <div class="card-footer">
                 <div class="card-author">
                   <div class="author-avatar">
-                    <UserOutlined />
+                    <img v-if="getOwnerAvatarUrl(template)" :src="getOwnerAvatarUrl(template)" alt="" class="author-avatar-img" />
+                    <UserOutlined v-else />
                   </div>
-                  <span class="author-name">Template Studio</span>
+                  <span class="author-name">{{ template.ownerName || 'Template Studio' }}</span>
                 </div>
-                <a-button type="primary" size="small" @click.stop="useTemplate(template)">
-                  使用
-                </a-button>
+                <div class="card-footer-right">
+                  <span class="creation-time">{{ formatCreationTime(template.createdAt) }}</span>
+                  <a-button type="primary" size="small" @click.stop="useTemplate(template)">
+                    使用
+                  </a-button>
+                </div>
               </div>
             </div>
           </div>
@@ -1141,6 +1145,46 @@ const getCategoryName = (categoryId) => {
   return cat?.name || categoryId
 }
 
+// 获取作者头像URL
+const getOwnerAvatarUrl = (template) => {
+  const avatar = template.ownerAvatar
+  if (!avatar) return ''
+  if (avatar.startsWith('http')) return avatar
+  return avatar
+}
+
+// 格式化创建时间
+const formatCreationTime = (createdAt) => {
+  if (!createdAt) return ''
+  try {
+    const date = new Date(createdAt)
+    const now = new Date()
+    const diffTime = Math.abs(now - date)
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+
+    if (diffDays === 0) {
+      const diffHours = Math.floor(diffTime / (1000 * 60 * 60))
+      if (diffHours === 0) {
+        const diffMinutes = Math.floor(diffTime / (1000 * 60))
+        return diffMinutes <= 0 ? '刚刚' : `${diffMinutes}分钟前`
+      }
+      return `${diffHours}小时前`
+    } else if (diffDays === 1) {
+      return '昨天'
+    } else if (diffDays < 7) {
+      return `${diffDays}天前`
+    } else if (diffDays < 30) {
+      return `${Math.floor(diffDays / 7)}周前`
+    } else if (diffDays < 365) {
+      return `${Math.floor(diffDays / 30)}个月前`
+    } else {
+      return `${Math.floor(diffDays / 365)}年前`
+    }
+  } catch {
+    return ''
+  }
+}
+
 // 加载版本列表
 const loadVersions = async (templateId) => {
   try {
@@ -2153,6 +2197,27 @@ onMounted(async () => {
   font-size: 12px;
   color: #64748b;
   font-weight: 500;
+}
+
+.author-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.card-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.creation-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #94a3b8;
 }
 
 /* 模板配置向导 */
