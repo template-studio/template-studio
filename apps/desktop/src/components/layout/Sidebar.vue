@@ -249,12 +249,12 @@ const openSettings = () => {
 }
 
 .sidebar-bottom {
-  padding: var(--spacing-md);
+  padding: 0 var(--spacing-md);
+  height: 56px;
   border-top: 1px solid var(--color-border);
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
+  align-items: center;
 }
 
 /* Settings Section */

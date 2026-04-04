@@ -111,18 +111,19 @@
             创建第一个数据源
           </a-button>
         </a-empty>
-
-        <!-- 分页 -->
-        <Pagination
-          v-if="filteredDatasources.length > 0"
-          v-model:current="currentPage"
-          v-model:pageSize="pageSize"
-          :total="filteredDatasources.length"
-          @change="handlePageChange"
-          @sizeChange="handleSizeChange"
-        />
       </a-spin>
     </div>
+
+    <!-- 底部 Footer - 分页 -->
+    <Pagination
+      v-if="filteredDatasources.length > 0"
+      v-model:current="currentPage"
+      v-model:pageSize="pageSize"
+      :total="filteredDatasources.length"
+      fixed
+      @change="handlePageChange"
+      @sizeChange="handleSizeChange"
+    />
 
     <!-- 创建/编辑对话框 -->
     <a-modal
@@ -722,8 +723,7 @@ onMounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: var(--spacing-lg);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 /* 顶部工具栏 */
@@ -732,7 +732,8 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--spacing-md);
-  padding: var(--spacing-sm) 0;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  flex-shrink: 0;
 }
 
 .toolbar-left {
@@ -764,6 +765,9 @@ onMounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 0 var(--spacing-lg);
 }
 
 .datasources-content > :deep(.ant-spin-container) {

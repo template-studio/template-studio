@@ -35,14 +35,15 @@ onMounted(() => {
 <style scoped>
 .main-content {
   height: 100%;
+  display: flex;
+  flex-direction: column;
   position: relative;
   background: var(--color-background);
 }
 
 .content-wrapper {
-  height: 100%;
+  flex: 1;
   overflow-y: auto;
-  padding: var(--spacing-lg);
 }
 
 /* Page transitions */
