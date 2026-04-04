@@ -1,8 +1,8 @@
 <template>
   <div class="home-view">
     <div class="welcome-section">
-      <h1>欢迎使用 CodeGen Studio</h1>
-      <p>强大的数据库代码生成器，支持多种编程语言和框架</p>
+      <h1>欢迎使用 Template Studio</h1>
+      <p>强大的模板脚手架与代码生成工具，支持多种编程语言和框架</p>
     </div>
 
     <!-- 快速操作 -->

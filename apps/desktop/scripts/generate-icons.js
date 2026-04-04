@@ -1,5 +1,5 @@
 /**
- * CodeGen Studio 图标生成脚本
+ * Template Studio 图标生成脚本
  *
  * 使用方法：
  * 1. 安装依赖：npm install sharp --save-dev
@@ -39,7 +39,7 @@ const ICONS = [
 ];
 
 async function generateIcons() {
-  console.log('🚀 开始生成 CodeGen Studio 图标...\n');
+  console.log('🚀 开始生成 Template Studio 图标...\n');
 
   // 检查 SVG 文件是否存在
   if (!fs.existsSync(SVG_FILE)) {

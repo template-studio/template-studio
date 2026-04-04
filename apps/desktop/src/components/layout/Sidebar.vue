@@ -38,8 +38,8 @@
         </div>
         <transition name="fade">
           <div v-show="!layoutStore.sidebarCollapsed" class="logo-text">
-            <span class="logo-main">CodeGen <span class="brand-accent">Studio</span></span>
-            <span class="logo-shadow">CodeGen <span class="brand-accent">Studio</span></span>
+            <span class="logo-main">Template <span class="brand-accent">Studio</span></span>
+            <span class="logo-shadow">Template <span class="brand-accent">Studio</span></span>
           </div>
         </transition>
       </div>

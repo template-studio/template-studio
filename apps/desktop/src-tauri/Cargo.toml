@@ -1,7 +1,7 @@
 [package]
 name = "desktop"
 version = "0.1.0"
-description = "CodeGen Studio - A Tauri App"
+description = "Template Studio - A Tauri App"
 authors = ["you"]
 edition = "2021"
 
