@@ -5,6 +5,7 @@ import { useThemeStore } from '@/stores/theme'
 import { useConfigStore } from '@/stores/config'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ProjectWorkspaceLayout from '@/components/layout/ProjectWorkspaceLayout.vue'
+import zhCN from 'ant-design-vue/es/locale/zh_CN'
 
 const route = useRoute()
 const themeStore = useThemeStore()
@@ -50,13 +51,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div id="app">
-    <!-- 主应用布局 -->
-    <AppLayout v-if="!isProjectWorkspace" />
+  <a-config-provider :locale="zhCN">
+    <div id="app">
+      <!-- 主应用布局 -->
+      <AppLayout v-if="!isProjectWorkspace" />
 
-    <!-- 项目工作区布局 -->
-    <ProjectWorkspaceLayout v-else />
-  </div>
+      <!-- 项目工作区布局 -->
+      <ProjectWorkspaceLayout v-else />
+    </div>
+  </a-config-provider>
 </template>
 
 <style>
