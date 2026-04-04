@@ -4,9 +4,18 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <h2 class="page-title">数据源管理</h2>
-        <span class="result-count">共 {{ datasources.length }} 个数据源</span>
+        <span class="result-count">共 {{ filteredDatasources.length }} 个数据源</span>
       </div>
-      <div class="toolbar-right" v-if="datasources.length > 0">
+      <div class="toolbar-right">
+        <SearchBar
+          v-model="searchQuery"
+          placeholder="搜索数据源名称..."
+          :filters="databaseFilters"
+          :sort-options="sortOptions"
+          @search="handleSearch"
+          @filter="handleFilter"
+          @sort="handleSort"
+        />
         <a-button type="primary" size="large" @click="openCreateDialog">
           <template #icon>
             <PlusOutlined />
@@ -19,9 +28,9 @@
     <!-- 数据源卡片列表 -->
     <div class="datasources-content">
       <a-spin :spinning="loading">
-        <div v-if="datasources.length > 0" class="datasources-grid">
+        <div v-if="paginatedDatasources.length > 0" class="datasources-grid">
           <div
-            v-for="datasource in datasources"
+            v-for="datasource in paginatedDatasources"
             :key="datasource.id"
             class="datasource-card"
             @click="openEditDialog(datasource)"
@@ -90,8 +99,8 @@
 
         <!-- 空状态 -->
         <a-empty
-          v-else-if="!loading"
-          description="暂无数据源"
+          v-else-if="!loading && filteredDatasources.length === 0"
+          :description="searchQuery ? '没有找到匹配的数据源' : '暂无数据源'"
           :image="Empty.PRESENTED_IMAGE_SIMPLE"
           class="empty-state"
         >
@@ -102,6 +111,16 @@
             创建第一个数据源
           </a-button>
         </a-empty>
+
+        <!-- 分页 -->
+        <Pagination
+          v-if="filteredDatasources.length > 0"
+          v-model:current="currentPage"
+          v-model:pageSize="pageSize"
+          :total="filteredDatasources.length"
+          @change="handlePageChange"
+          @sizeChange="handleSizeChange"
+        />
       </a-spin>
     </div>
 
@@ -243,10 +262,33 @@ import {
 import { Empty, message, Modal } from 'ant-design-vue'
 import { open } from '@tauri-apps/plugin-dialog'
 import * as datasourcesApi from '../api/datasources'
+import { SearchBar, Pagination } from '../components/common'
 
 // 状态
 const loading = ref(false)
 const datasources = ref([])
+
+// 搜索、筛选、排序、分页状态
+const searchQuery = ref('')
+const filterValue = ref(undefined)
+const sortValue = ref('created_at:desc')
+const currentPage = ref(1)
+const pageSize = ref(12)
+
+// 筛选选项
+const databaseFilters = [
+  { label: 'MySQL', value: 'mysql' },
+  { label: 'PostgreSQL', value: 'postgresql' },
+  { label: 'SQLite', value: 'sqlite' }
+]
+
+// 排序选项
+const sortOptions = [
+  { label: '最新创建', value: 'created_at:desc' },
+  { label: '最早创建', value: 'created_at:asc' },
+  { label: '名称 A-Z', value: 'name:asc' },
+  { label: '名称 Z-A', value: 'name:desc' }
+]
 
 // 对话框状态
 const dialogVisible = ref(false)
@@ -268,6 +310,62 @@ const formData = reactive({
   password: '',
   database: '',
   sqliteFile: ''
+})
+
+// 筛选后的数据源列表
+const filteredDatasources = computed(() => {
+  let result = [...datasources.value]
+
+  // 搜索筛选
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(ds =>
+      ds.name.toLowerCase().includes(query) ||
+      (ds.host && ds.host.toLowerCase().includes(query)) ||
+      (ds.username && ds.username.toLowerCase().includes(query))
+    )
+  }
+
+  // 数据库类型筛选
+  if (filterValue.value) {
+    result = result.filter(ds => ds.type_ === filterValue.value)
+  }
+
+  // 排序
+  if (sortValue.value) {
+    const [field, order] = sortValue.value.split(':')
+    result.sort((a, b) => {
+      let valueA, valueB
+
+      switch (field) {
+        case 'name':
+          valueA = a.name.toLowerCase()
+          valueB = b.name.toLowerCase()
+          break
+        case 'created_at':
+          valueA = new Date(a.created_at).getTime()
+          valueB = new Date(b.created_at).getTime()
+          break
+        default:
+          return 0
+      }
+
+      if (order === 'asc') {
+        return valueA > valueB ? 1 : -1
+      } else {
+        return valueA < valueB ? 1 : -1
+      }
+    })
+  }
+
+  return result
+})
+
+// 分页后的数据源列表
+const paginatedDatasources = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredDatasources.value.slice(start, end)
 })
 
 // 表单验证规则
@@ -583,6 +681,34 @@ const confirmDelete = (datasource) => {
       }
     }
   })
+}
+
+// 搜索处理
+const handleSearch = () => {
+  currentPage.value = 1
+}
+
+// 筛选处理
+const handleFilter = (value) => {
+  filterValue.value = value
+  currentPage.value = 1
+}
+
+// 排序处理
+const handleSort = (value) => {
+  sortValue.value = value
+  currentPage.value = 1
+}
+
+// 分页处理
+const handlePageChange = (page) => {
+  currentPage.value = page
+}
+
+// 每页条数变化
+const handleSizeChange = (page, size) => {
+  currentPage.value = page
+  pageSize.value = size
 }
 
 // 组件挂载时加载数据

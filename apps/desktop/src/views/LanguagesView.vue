@@ -4,9 +4,18 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <h2 class="page-title">语言管理</h2>
-        <span class="result-count">共 {{ languages.length }} 种语言</span>
+        <span class="result-count">共 {{ filteredLanguages.length }} 种语言</span>
       </div>
-      <div class="toolbar-right" v-if="languages.length > 0">
+      <div class="toolbar-right">
+        <SearchBar
+          v-model="searchQuery"
+          placeholder="搜索语言名称..."
+          :filters="languageFilters"
+          :sort-options="sortOptions"
+          @search="handleSearch"
+          @filter="handleFilter"
+          @sort="handleSort"
+        />
         <a-button type="primary" size="large" @click="openCreateDialog">
           <template #icon>
             <PlusOutlined />
@@ -19,9 +28,9 @@
     <!-- 语言卡片列表 -->
     <div class="languages-content">
       <a-spin :spinning="loading">
-        <div v-if="languages.length > 0" class="languages-grid">
+        <div v-if="paginatedLanguages.length > 0" class="languages-grid">
           <div
-            v-for="language in languages"
+            v-for="language in paginatedLanguages"
             :key="language.id"
             class="language-card"
             @click="openEditDialog(language)"
@@ -85,8 +94,8 @@
 
         <!-- 空状态 -->
         <a-empty
-          v-else-if="!loading"
-          description="暂无语言"
+          v-else-if="!loading && filteredLanguages.length === 0"
+          :description="searchQuery ? '没有找到匹配的语言' : '暂无语言'"
           :image="Empty.PRESENTED_IMAGE_SIMPLE"
           class="empty-state"
         >
@@ -97,6 +106,16 @@
             添加第一个语言
           </a-button>
         </a-empty>
+
+        <!-- 分页 -->
+        <Pagination
+          v-if="filteredLanguages.length > 0"
+          v-model:current="currentPage"
+          v-model:pageSize="pageSize"
+          :total="filteredLanguages.length"
+          @change="handlePageChange"
+          @sizeChange="handleSizeChange"
+        />
       </a-spin>
     </div>
 
@@ -338,6 +357,7 @@ import {
   deleteLanguageFieldType,
   batchSaveLanguageFieldTypes
 } from '../api/languages'
+import { SearchBar, Pagination } from '../components/common'
 
 // 路由
 const router = useRouter()
@@ -345,6 +365,27 @@ const router = useRouter()
 // 状态
 const loading = ref(false)
 const languages = ref([])
+
+// 搜索、筛选、排序、分页状态
+const searchQuery = ref('')
+const filterValue = ref(undefined)
+const sortValue = ref('name:asc')
+const currentPage = ref(1)
+const pageSize = ref(12)
+
+// 筛选选项
+const languageFilters = [
+  { label: '内置语言', value: 'builtin' },
+  { label: '自定义语言', value: 'custom' }
+]
+
+// 排序选项
+const sortOptions = [
+  { label: '名称 A-Z', value: 'name:asc' },
+  { label: '名称 Z-A', value: 'name:desc' },
+  { label: '最新添加', value: 'created_at:desc' },
+  { label: '最早添加', value: 'created_at:asc' }
+]
 
 // 类型字段管理对话框状态
 const fieldTypesDialogVisible = ref(false)
@@ -386,6 +427,65 @@ const fieldTypeColumns = [
   { title: '描述', key: 'description' },
   { title: '操作', key: 'action', width: 100, align: 'center' }
 ]
+
+// 筛选后的语言列表
+const filteredLanguages = computed(() => {
+  let result = [...languages.value]
+
+  // 搜索筛选
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(lang =>
+      lang.name.toLowerCase().includes(query) ||
+      (lang.description && lang.description.toLowerCase().includes(query))
+    )
+  }
+
+  // 类型筛选
+  if (filterValue.value) {
+    if (filterValue.value === 'builtin') {
+      result = result.filter(lang => lang.is_builtin)
+    } else if (filterValue.value === 'custom') {
+      result = result.filter(lang => !lang.is_builtin)
+    }
+  }
+
+  // 排序
+  if (sortValue.value) {
+    const [field, order] = sortValue.value.split(':')
+    result.sort((a, b) => {
+      let valueA, valueB
+
+      switch (field) {
+        case 'name':
+          valueA = a.name.toLowerCase()
+          valueB = b.name.toLowerCase()
+          break
+        case 'created_at':
+          valueA = new Date(a.created_at).getTime()
+          valueB = new Date(b.created_at).getTime()
+          break
+        default:
+          return 0
+      }
+
+      if (order === 'asc') {
+        return valueA > valueB ? 1 : -1
+      } else {
+        return valueA < valueB ? 1 : -1
+      }
+    })
+  }
+
+  return result
+})
+
+// 分页后的语言列表
+const paginatedLanguages = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredLanguages.value.slice(start, end)
+})
 
 // Emoji 建议
 const emojiSuggestions = computed(() => {
@@ -795,6 +895,34 @@ const confirmDelete = (language) => {
       }
     }
   })
+}
+
+// 搜索处理
+const handleSearch = () => {
+  currentPage.value = 1
+}
+
+// 筛选处理
+const handleFilter = (value) => {
+  filterValue.value = value
+  currentPage.value = 1
+}
+
+// 排序处理
+const handleSort = (value) => {
+  sortValue.value = value
+  currentPage.value = 1
+}
+
+// 分页处理
+const handlePageChange = (page) => {
+  currentPage.value = page
+}
+
+// 每页条数变化
+const handleSizeChange = (page, size) => {
+  currentPage.value = page
+  pageSize.value = size
 }
 
 // 组件挂载时加载数据

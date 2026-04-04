@@ -4,9 +4,18 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <h2 class="page-title">项目列表</h2>
-        <span class="result-count">共 {{ projects.length }} 个项目</span>
+        <span class="result-count">共 {{ filteredProjects.length }} 个项目</span>
       </div>
-      <div class="toolbar-right" v-if="projects.length > 0">
+      <div class="toolbar-right">
+        <SearchBar
+          v-model="searchQuery"
+          placeholder="搜索项目名称或描述..."
+          :filters="databaseFilters"
+          :sort-options="sortOptions"
+          @search="handleSearch"
+          @filter="handleFilter"
+          @sort="handleSort"
+        />
         <a-button type="primary" size="large" @click="openCreateDialog">
           <template #icon>
             <PlusOutlined />
@@ -19,9 +28,9 @@
     <!-- 项目卡片列表 -->
     <div class="projects-content">
       <a-spin :spinning="loading">
-        <div v-if="projects.length > 0" class="projects-grid">
+        <div v-if="paginatedProjects.length > 0" class="projects-grid">
           <div
-            v-for="project in projects"
+            v-for="project in paginatedProjects"
             :key="project.id"
             class="project-card"
             @click="openProject(project.id)"
@@ -111,8 +120,8 @@
 
         <!-- 空状态 -->
         <a-empty
-          v-else-if="!loading"
-          description="暂无项目"
+          v-else-if="!loading && filteredProjects.length === 0"
+          :description="searchQuery ? '没有找到匹配的项目' : '暂无项目'"
           :image="Empty.PRESENTED_IMAGE_SIMPLE"
           class="empty-state"
         >
@@ -123,6 +132,16 @@
             创建第一个项目
           </a-button>
         </a-empty>
+
+        <!-- 分页 -->
+        <Pagination
+          v-if="filteredProjects.length > 0"
+          v-model:current="currentPage"
+          v-model:pageSize="pageSize"
+          :total="filteredProjects.length"
+          @change="handlePageChange"
+          @sizeChange="handleSizeChange"
+        />
       </a-spin>
     </div>
 
@@ -262,6 +281,7 @@ import { invoke } from '@tauri-apps/api/core'
 import * as projectsApi from '../api/projects'
 import * as datasourcesApi from '../api/datasources'
 import * as languagesApi from '../api/languages'
+import { SearchBar, Pagination } from '../components/common'
 
 const router = useRouter()
 
@@ -271,6 +291,30 @@ const projects = ref([])
 const datasources = ref([])
 const languages = ref([])
 const datasourcesLoading = ref(false)
+
+// 搜索、筛选、排序、分页状态
+const searchQuery = ref('')
+const filterValue = ref(undefined)
+const sortValue = ref('created_at:desc')
+const currentPage = ref(1)
+const pageSize = ref(12)
+
+// 筛选选项
+const databaseFilters = [
+  { label: 'MySQL', value: 'mysql' },
+  { label: 'PostgreSQL', value: 'postgresql' },
+  { label: 'SQLite', value: 'sqlite' }
+]
+
+// 排序选项
+const sortOptions = [
+  { label: '最新创建', value: 'created_at:desc' },
+  { label: '最早创建', value: 'created_at:asc' },
+  { label: '名称 A-Z', value: 'name:asc' },
+  { label: '名称 Z-A', value: 'name:desc' },
+  { label: '表数量最多', value: 'table_count:desc' },
+  { label: '表数量最少', value: 'table_count:asc' }
+]
 
 // 对话框状态
 const dialogVisible = ref(false)
@@ -295,6 +339,69 @@ const formData = reactive({
 const selectedDatasource = computed(() => {
   if (!formData.datasourceId) return null
   return datasources.value.find(ds => ds.id === formData.datasourceId)
+})
+
+// 筛选后的项目列表
+const filteredProjects = computed(() => {
+  let result = [...projects.value]
+
+  // 搜索筛选
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(project =>
+      project.name.toLowerCase().includes(query) ||
+      (project.description && project.description.toLowerCase().includes(query)) ||
+      (project.database_name && project.database_name.toLowerCase().includes(query))
+    )
+  }
+
+  // 数据库类型筛选
+  if (filterValue.value) {
+    result = result.filter(project => {
+      const dbType = project.datasource?.type_ || 'default'
+      return dbType === filterValue.value
+    })
+  }
+
+  // 排序
+  if (sortValue.value) {
+    const [field, order] = sortValue.value.split(':')
+    result.sort((a, b) => {
+      let valueA, valueB
+
+      switch (field) {
+        case 'name':
+          valueA = a.name.toLowerCase()
+          valueB = b.name.toLowerCase()
+          break
+        case 'created_at':
+          valueA = new Date(a.created_at).getTime()
+          valueB = new Date(b.created_at).getTime()
+          break
+        case 'table_count':
+          valueA = a.table_count || 0
+          valueB = b.table_count || 0
+          break
+        default:
+          return 0
+      }
+
+      if (order === 'asc') {
+        return valueA > valueB ? 1 : -1
+      } else {
+        return valueA < valueB ? 1 : -1
+      }
+    })
+  }
+
+  return result
+})
+
+// 分页后的项目列表
+const paginatedProjects = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredProjects.value.slice(start, end)
 })
 
 // 过滤后的其它语言列表（排除已选的主语言）
@@ -651,6 +758,34 @@ const confirmDelete = (project) => {
       }
     }
   })
+}
+
+// 搜索处理
+const handleSearch = () => {
+  currentPage.value = 1
+}
+
+// 筛选处理
+const handleFilter = (value) => {
+  filterValue.value = value
+  currentPage.value = 1
+}
+
+// 排序处理
+const handleSort = (value) => {
+  sortValue.value = value
+  currentPage.value = 1
+}
+
+// 分页处理
+const handlePageChange = (page) => {
+  currentPage.value = page
+}
+
+// 每页条数变化
+const handleSizeChange = (page, size) => {
+  currentPage.value = page
+  pageSize.value = size
 }
 
 // 组件挂载时加载数据

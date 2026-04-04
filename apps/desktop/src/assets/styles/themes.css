@@ -815,6 +815,49 @@
   color: var(--color-text-dark) !important;
 }
 
+/* Pagination quick jumper dark theme */
+[data-theme="dark"] .ant-pagination-options-quick-jumper input {
+  background-color: var(--color-surface-dark) !important;
+  border-color: var(--color-border-dark) !important;
+  color: var(--color-text-dark) !important;
+}
+
+[data-theme="dark"] .ant-pagination-options-quick-jumper input::placeholder {
+  color: var(--color-text-secondary-dark) !important;
+}
+
+[data-theme="dark"] .ant-pagination-options-quick-jumper input:focus {
+  border-color: var(--color-primary-dark) !important;
+  box-shadow: 0 0 0 2px rgba(144, 202, 249, 0.2) !important;
+}
+
+/* Pagination size changer dark theme */
+[data-theme="dark"] .ant-pagination-options-size-changer .ant-select-selector {
+  background-color: var(--color-surface-dark) !important;
+  border-color: var(--color-border-dark) !important;
+  color: var(--color-text-dark) !important;
+}
+
+[data-theme="dark"] .ant-pagination-options-size-changer .ant-select-selection-item {
+  color: var(--color-text-dark) !important;
+}
+
+[data-theme="dark"] .ant-pagination-options-size-changer:hover .ant-select-selector {
+  border-color: var(--color-primary-dark) !important;
+}
+
+/* Pagination total text dark theme */
+[data-theme="dark"] .ant-pagination-total-text {
+  color: var(--color-text-secondary-dark) !important;
+}
+
+/* Pagination disabled state dark theme */
+[data-theme="dark"] .ant-pagination-disabled .ant-pagination-item-link {
+  background-color: var(--color-surface-2-dark) !important;
+  border-color: var(--color-border-dark) !important;
+  color: var(--color-text-muted-dark) !important;
+}
+
 /* DatePicker dark theme */
 [data-theme="dark"] .ant-picker {
   background-color: var(--color-surface-dark) !important;
