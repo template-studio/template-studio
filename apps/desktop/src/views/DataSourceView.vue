@@ -871,12 +871,12 @@ onMounted(() => {
 }
 
 .status-active {
-  color: #52c41a;
+  color: var(--color-success);
   animation: pulse 2s ease-in-out infinite;
 }
 
 .status-inactive {
-  color: #8c8c8c;
+  color: var(--color-text-muted);
 }
 
 /* 操作按钮 */
@@ -902,7 +902,7 @@ onMounted(() => {
 
 .card-actions .ant-btn:hover {
   transform: scale(1.1);
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--color-hover);
 }
 
 /* 对话框样式 */

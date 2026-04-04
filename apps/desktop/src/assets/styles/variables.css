@@ -2,22 +2,42 @@
   /* Color System */
   --color-background: #ffffff;
   --color-surface: #f5f5f5;
+  --color-surface-2: #fafafa;
+  --color-surface-3: #f8f9fa;
+  --color-card-bg: #ffffff;
   --color-primary: #1976d2;
   --color-secondary: #424242;
   --color-text: #212121;
   --color-text-secondary: #757575;
+  --color-text-muted: #999999;
   --color-border: #e0e0e0;
+  --color-border-light: #f0f0f0;
   --color-accent: #ff4081;
+  --color-overlay: rgba(255, 255, 255, 0.8);
+  --color-code-bg: #1e1e1e;
+
+  /* Status Colors */
+  --color-success: #52c41a;
+  --color-warning: #faad14;
+  --color-error: #ff4d4f;
+  --color-info: #1890ff;
 
   /* Dark Theme Colors */
   --color-background-dark: #121212;
   --color-surface-dark: #1e1e1e;
+  --color-surface-2-dark: #252525;
+  --color-surface-3-dark: #2a2a2a;
+  --color-card-bg-dark: #1e1e1e;
   --color-primary-dark: #90caf9;
   --color-secondary-dark: #b0b0b0;
   --color-text-dark: #ffffff;
   --color-text-secondary-dark: #a0a0a0;
+  --color-text-muted-dark: #666666;
   --color-border-dark: #333333;
+  --color-border-light-dark: #2a2a2a;
   --color-accent-dark: #f48fb1;
+  --color-overlay-dark: rgba(0, 0, 0, 0.6);
+  --color-code-bg-dark: #1e1e1e;
 
   /* Layout Colors */
   --color-sidebar: #F4F4F4;
@@ -74,12 +94,19 @@
 [data-theme="dark"] {
   --color-background: var(--color-background-dark);
   --color-surface: var(--color-surface-dark);
+  --color-surface-2: var(--color-surface-2-dark);
+  --color-surface-3: var(--color-surface-3-dark);
+  --color-card-bg: var(--color-card-bg-dark);
   --color-primary: var(--color-primary-dark);
   --color-secondary: var(--color-secondary-dark);
   --color-text: var(--color-text-dark);
   --color-text-secondary: var(--color-text-secondary-dark);
+  --color-text-muted: var(--color-text-muted-dark);
   --color-border: var(--color-border-dark);
+  --color-border-light: var(--color-border-light-dark);
   --color-accent: var(--color-accent-dark);
+  --color-overlay: var(--color-overlay-dark);
+  --color-code-bg: var(--color-code-bg-dark);
   --color-sidebar: var(--color-sidebar-dark);
   --color-navbar: var(--color-navbar-dark);
   --color-hover: var(--color-hover-dark);

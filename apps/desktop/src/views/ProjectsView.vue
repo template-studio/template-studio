@@ -1041,7 +1041,7 @@ onMounted(async () => {
 
 .card-actions .ant-btn:hover {
   transform: scale(1.1);
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--color-hover);
 }
 
 /* 表单项提示 */

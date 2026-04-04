@@ -453,7 +453,7 @@ const closeWindow = async () => {
   font-size: 1.1rem;
   font-weight: 800;
   letter-spacing: 1px;
-  color: #333;
+  color: var(--color-text);
   font-family: 'Fira Code', 'Lato', 'Segoe UI', 'Arial', sans-serif;
   background: linear-gradient(90deg, #18a058 0%, #2196f3 100%);
   -webkit-background-clip: text;
@@ -471,7 +471,8 @@ const closeWindow = async () => {
   font-size: 1.1rem;
   font-weight: 800;
   letter-spacing: 1px;
-  color: rgba(51, 51, 51, 0.2);
+  color: var(--color-text-muted);
+  opacity: 0.3;
   font-family: 'Fira Code', 'Lato', 'Segoe UI', 'Arial', sans-serif;
   position: absolute;
   top: 2px;

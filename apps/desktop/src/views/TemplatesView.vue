@@ -366,7 +366,7 @@
           <div v-else-if="!variableDefinitions || variableDefinitions.length === 0" class="no-variables">
             <a-empty description="该模板没有配置变量">
               <template #image>
-                <SettingOutlined style="font-size: 64px; color: #d9d9d9;" />
+                <SettingOutlined style="font-size: 64px; color: var(--color-text-muted);" />
               </template>
             </a-empty>
           </div>
@@ -623,7 +623,7 @@
                     :image="null"
                   >
                     <template #description>
-                      <span style="color: #999;">暂无文件</span>
+                      <span style="color: var(--color-text-muted);">暂无文件</span>
                     </template>
                   </a-empty>
                 </div>
@@ -653,7 +653,7 @@
                 <!-- 无文件选中提示 -->
                 <div v-if="!currentFileContent" class="no-file-selected">
                   <div class="no-file-icon">
-                    <FileTextOutlined style="font-size: 48px; color: #d9d9d9;" />
+                    <FileTextOutlined style="font-size: 48px; color: var(--color-text-muted);" />
                   </div>
                   <div class="no-file-text">请选择左侧文件进行预览</div>
                 </div>
@@ -1427,7 +1427,7 @@ const renderVariableLabel = (variable) => {
   const label = variable.title
   if (variable.required) {
     return h('span', {}, [
-      h('span', { style: { color: '#ff4d4f', marginRight: '4px' } }, '*'),
+      h('span', { style: { color: 'var(--color-error)', marginRight: '4px' } }, '*'),
       label
     ])
   }
@@ -2137,7 +2137,7 @@ onMounted(async () => {
 .template-desc {
   margin: 0 0 12px 0;
   font-size: 13px;
-  color: #64748b;
+  color: var(--color-text-secondary);
   line-height: 1.6;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -2153,9 +2153,9 @@ onMounted(async () => {
 }
 
 .template-tag {
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  color: #475569;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 4px;
@@ -2165,7 +2165,7 @@ onMounted(async () => {
 .template-card:hover .template-tag {
   background: rgba(24, 144, 255, 0.08);
   border-color: rgba(24, 144, 255, 0.2);
-  color: #1890ff;
+  color: var(--color-primary);
 }
 
 .card-footer {
@@ -2173,7 +2173,7 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   padding-top: 12px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--color-border-light);
 }
 
 .card-author {
@@ -2213,7 +2213,7 @@ onMounted(async () => {
 
 .author-name {
   font-size: 12px;
-  color: #64748b;
+  color: var(--color-text-secondary);
   font-weight: 500;
 }
 
@@ -2228,7 +2228,7 @@ onMounted(async () => {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--color-text-muted);
 }
 
 /* 模板配置向导 */
@@ -2322,14 +2322,14 @@ onMounted(async () => {
 }
 
 .step-item.active .step-dot {
-  background: #1890ff;
+  background: var(--color-info);
   color: #fff;
   transform: scale(1.15);
   box-shadow: 0 2px 8px rgba(24, 144, 255, 0.4);
 }
 
 .step-item.completed .step-dot {
-  background: #52c41a;
+  background: var(--color-success);
   color: #fff;
 }
 
@@ -2342,12 +2342,12 @@ onMounted(async () => {
 }
 
 .step-item.active .step-text {
-  color: #1890ff;
+  color: var(--color-info);
   font-weight: 600;
 }
 
 .step-item.completed .step-text {
-  color: #52c41a;
+  color: var(--color-success);
 }
 
 .wizard-content {
@@ -2557,7 +2557,7 @@ onMounted(async () => {
 
 .section-divider .anticon {
   font-size: 18px;
-  color: #1890ff;
+  color: var(--color-info);
 }
 
 /* 旋转动画 */
@@ -2760,7 +2760,7 @@ onMounted(async () => {
 .normal-mode :deep(.ant-form-item-required::before) {
   display: inline-block;
   margin-right: 4px;
-  color: #ff4d4f;
+  color: var(--color-error);
   font-size: 14px;
   font-family: SimSun, sans-serif;
   line-height: 1;
@@ -2846,11 +2846,11 @@ onMounted(async () => {
 }
 
 .editor-footer .ok {
-  color: #52c41a;
+  color: var(--color-success);
 }
 
 .editor-footer .err {
-  color: #ff4d4f;
+  color: var(--color-error);
 }
 
 /* 保持旧的样式用于兼容 */
@@ -2881,7 +2881,7 @@ onMounted(async () => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #f5f5f5;
+  background: var(--color-surface);
   min-height: 0;
   height: 100%;  /* 确保始终占满父容器高度 */
   overflow: hidden;
@@ -2890,8 +2890,8 @@ onMounted(async () => {
 /* 预览顶部 Header - 更紧凑的设计 */
 .preview-header {
   height: 48px;
-  background: #fff;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2910,12 +2910,12 @@ onMounted(async () => {
 .preview-title {
   font-size: 15px;
   font-weight: 600;
-  color: #1890ff;
+  color: var(--color-info);
 }
 
 .preview-header .template-name {
   font-size: 13px;
-  color: #999;
+  color: var(--color-text-muted);
 }
 
 .preview-header .header-actions {
@@ -2943,8 +2943,8 @@ onMounted(async () => {
 /* 左侧文件资源管理器 */
 .file-explorer {
   width: 280px;
-  background: #fff;
-  border-right: 1px solid #e0e0e0;
+  background: var(--color-background);
+  border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -2953,8 +2953,8 @@ onMounted(async () => {
 
 .explorer-header {
   height: 48px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--color-surface-3);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -2966,7 +2966,7 @@ onMounted(async () => {
 .explorer-title {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--color-text);
   line-height: normal;
 }
 
@@ -2994,7 +2994,7 @@ onMounted(async () => {
 }
 
 .explorer-content .ant-tree-node-selected .ant-tree-node-content-wrapper {
-  background: #e6f7ff;
+  background: var(--color-active);
 }
 
 /* 右侧代码预览 */
@@ -3002,7 +3002,7 @@ onMounted(async () => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--color-background);
   overflow: hidden;
   height: 100%;  /* 确保占满父容器高度 */
 }
@@ -3010,8 +3010,8 @@ onMounted(async () => {
 /* 右侧文件信息栏 */
 .preview-main .file-header {
   height: 48px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--color-surface-3);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3031,7 +3031,7 @@ onMounted(async () => {
 .preview-main .file-name {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--color-text);
   font-family: 'Consolas', 'Monaco', monospace;
   line-height: normal;
 }
@@ -3043,17 +3043,17 @@ onMounted(async () => {
   line-height: 1;
   border: none;
   background: transparent;
-  color: #666;
+  color: var(--color-text-secondary);
   transition: all 0.2s ease;
 }
 
 .preview-main .file-header .ant-btn:hover:not(:disabled) {
-  color: #1890ff;
+  color: var(--color-primary);
   background: rgba(24, 144, 255, 0.06);
 }
 
 .preview-main .file-header .ant-btn:disabled {
-  color: #d9d9d9;
+  color: var(--color-text-muted);
 }
 
 .preview-main .no-file-selected {
@@ -3062,7 +3062,7 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #999;
+  color: var(--color-text-muted);
 }
 
 .preview-main .no-file-icon {

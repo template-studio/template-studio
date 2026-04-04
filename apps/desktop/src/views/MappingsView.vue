@@ -115,7 +115,7 @@
             <template #option="{ value, label, description }">
               <div>
                 <div style="font-weight: 500">{{ label }}</div>
-                <div v-if="description" style="font-size: 12px; color: #999">{{ description }}</div>
+                <div v-if="description" style="font-size: 12px; color: var(--color-text-muted)">{{ description }}</div>
               </div>
             </template>
           </a-auto-complete>

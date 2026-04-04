@@ -143,7 +143,7 @@
 
       <!-- 步骤 0：连接中 -->
       <div v-if="importStep.current === 0" style="margin-top: 24px; text-align: center; padding: 60px 0">
-        <LoadingOutlined style="font-size: 48px; color: #1890ff; margin-bottom: 16px" />
+        <LoadingOutlined style="font-size: 48px; color: var(--color-info); margin-bottom: 16px" />
         <div style="font-size: 16px">{{ importProgress.message }}</div>
       </div>
 
@@ -243,9 +243,9 @@
           <a-list size="small" :data-source="importProgress.details">
             <template #renderItem="{ item }">
               <a-list-item>
-                <CheckCircleOutlined v-if="item.status === 'success'" style="color: #52c41a" />
-                <LoadingOutlined v-else-if="item.status === 'loading'" style="color: #1890ff" />
-                <CloseCircleOutlined v-else style="color: #ff4d4f" />
+                <CheckCircleOutlined v-if="item.status === 'success'" style="color: var(--color-success)" />
+                <LoadingOutlined v-else-if="item.status === 'loading'" style="color: var(--color-info)" />
+                <CloseCircleOutlined v-else style="color: var(--color-error)" />
                 <span style="margin-left: 8px">{{ item.table }} - {{ item.message }}</span>
               </a-list-item>
             </template>
@@ -255,10 +255,10 @@
 
       <!-- 步骤 4：完成 -->
       <div v-if="importStep.current === 3" style="margin-top: 24px; text-align: center">
-        <CheckCircleOutlined style="font-size: 48px; color: #52c41a; margin-bottom: 16px" />
+        <CheckCircleOutlined style="font-size: 48px; color: var(--color-success); margin-bottom: 16px" />
         <div style="font-size: 16px; margin-bottom: 8px">导入完成！</div>
         <div style="color: var(--color-text-secondary)">成功导入 {{ importProgress.successCount }} 张表</div>
-        <div v-if="importProgress.failCount > 0" style="color: #ff4d4f; margin-top: 8px">
+        <div v-if="importProgress.failCount > 0" style="color: var(--color-error); margin-top: 8px">
           失败 {{ importProgress.failCount }} 张表
         </div>
       </div>
@@ -420,7 +420,7 @@ CREATE TABLE users (<br>
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
             <a-space v-if="record.is_primary_key">
-              <KeyOutlined style="color: #faad14" />
+              <KeyOutlined style="color: var(--color-warning)" />
               <span style="font-weight: 600">{{ record.name }}</span>
             </a-space>
             <span v-else>{{ record.name }}</span>
@@ -734,7 +734,7 @@ CREATE TABLE users (<br>
                   <template #bodyCell="{ column, record }">
                     <template v-if="column.key === 'name'">
                       <div v-if="record.isPrimaryKey" style="display: flex; align-items: center; gap: 4px;">
-                        <KeyOutlined style="color: #faad14; font-size: 12px;" />
+                        <KeyOutlined style="color: var(--color-warning); font-size: 12px;" />
                         <span style="font-weight: 500;">{{ record.name }}</span>
                       </div>
                       <span v-else>{{ record.name }}</span>

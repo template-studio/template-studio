@@ -19,15 +19,15 @@ export default defineConfig(async () => ({
   clearScreen: false,
   // 2. tauri expects a fixed port, fail if that port is not available
   server: {
-    port: 5173,  // 使用 Vite 默认端口（Tauri 开发模式）
-    strictPort: true,  // 端口被占用时报错，避免端口混乱
+    port: 14200,
+    strictPort: true,
     host: host || "127.0.0.1",
-    open: false,  // 阻止浏览器自动打开，只显示 Tauri 窗口
+    open: false,
     hmr: host
       ? {
           protocol: "ws",
           host,
-          port: 5174,  // HMR 端口 = 主端口 + 1
+          port: 14201,
         }
       : undefined,
     watch: {

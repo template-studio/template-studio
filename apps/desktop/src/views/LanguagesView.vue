@@ -952,7 +952,7 @@ onMounted(() => {
 
 .card-actions .ant-btn:hover:not(:disabled) {
   transform: scale(1.1);
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--color-hover);
 }
 
 /* Emoji 建议提示 */
@@ -974,7 +974,7 @@ onMounted(() => {
 
 .emoji-suggestion:hover {
   transform: scale(1.2);
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--color-hover);
 }
 
 /* 颜色选择器 */
@@ -988,7 +988,7 @@ onMounted(() => {
   width: 24px;
   height: 24px;
   border-radius: 4px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--color-border);
 }
 
 /* 类型字段管理 */

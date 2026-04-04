@@ -68,7 +68,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--color-overlay);
   /* Using semi-transparent white for both themes, could be enhanced with CSS variables if needed */
   display: flex;
   align-items: center;
