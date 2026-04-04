@@ -4369,3 +4369,79 @@ fn parse_sql_data_type_length(data_type: &sqlparser::ast::DataType) -> Option<i6
         _ => None,
     }
 }
+
+/// 统计数据结构
+#[derive(Debug, serde::Serialize)]
+pub struct Statistics {
+    pub total_projects: i64,
+    pub total_datasources: i64,
+    pub total_languages: i64,
+    pub total_tables: i64,
+}
+
+/// 最近项目结构
+#[derive(Debug, serde::Serialize)]
+pub struct RecentProject {
+    pub id: i64,
+    pub name: String,
+    pub description: Option<String>,
+    pub database_name: Option<String>,
+    pub table_count: i64,
+    pub created_at: String,
+}
+
+impl Database {
+    /// 获取统计数据
+    pub async fn get_statistics(&self) -> Result<Statistics, sqlx::Error> {
+        let pool = &self.pool;
+
+        let project_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM projects")
+            .fetch_one(pool)
+            .await?;
+
+        let datasource_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM datasources")
+            .fetch_one(pool)
+            .await?;
+
+        let language_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM languages")
+            .fetch_one(pool)
+            .await?;
+
+        let table_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM project_tables")
+            .fetch_one(pool)
+            .await?;
+
+        Ok(Statistics {
+            total_projects: project_count,
+            total_datasources: datasource_count,
+            total_languages: language_count,
+            total_tables: table_count,
+        })
+    }
+
+    /// 获取最近的项目列表
+    pub async fn get_recent_projects(&self, limit: i64) -> Result<Vec<RecentProject>, sqlx::Error> {
+        let pool = &self.pool;
+
+        let rows = sqlx::query(
+            "SELECT id, name, description, database_name, table_count, created_at
+             FROM projects
+             ORDER BY created_at DESC
+             LIMIT ?"
+        )
+        .bind(limit)
+        .fetch_all(pool)
+        .await?;
+
+        let projects = rows.iter().map(|row| RecentProject {
+            id: row.get("id"),
+            name: row.get("name"),
+            description: row.get("description"),
+            database_name: row.get("database_name"),
+            table_count: row.get("table_count"),
+            created_at: row.get("created_at"),
+        }).collect();
+
+        Ok(projects)
+    }
+}

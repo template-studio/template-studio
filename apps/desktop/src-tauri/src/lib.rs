@@ -599,6 +599,35 @@ fn update_template_path(template_path: String) -> Result<String, String> {
 
 // ===== 数据库相关命令 =====
 
+/// 获取统计数据
+#[tauri::command]
+async fn db_get_statistics(
+    database: tauri::State<'_, DbState>,
+) -> Result<String, String> {
+    let db = database.as_ref();
+
+    let stats = db.get_statistics().await
+        .map_err(|e| format!("获取统计数据失败: {}", e))?;
+
+    serde_json::to_string(&stats)
+        .map_err(|e| format!("序列化失败: {}", e))
+}
+
+/// 获取最近项目列表
+#[tauri::command]
+async fn db_get_recent_projects(
+    limit: Option<i64>,
+    database: tauri::State<'_, DbState>,
+) -> Result<String, String> {
+    let db = database.as_ref();
+
+    let projects = db.get_recent_projects(limit.unwrap_or(5)).await
+        .map_err(|e| format!("获取最近项目失败: {}", e))?;
+
+    serde_json::to_string(&projects)
+        .map_err(|e| format!("序列化失败: {}", e))
+}
+
 /// 获取所有项目
 #[tauri::command]
 async fn db_get_all_projects(
@@ -2286,6 +2315,8 @@ pub fn run() {
             update_template_path,
             get_username,
             // 数据库命令
+            db_get_statistics,
+            db_get_recent_projects,
             db_get_all_projects,
             db_get_project,
             db_create_project,
