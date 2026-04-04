@@ -118,7 +118,6 @@ typings/
 
 .claude/
 .githooks/
-CLAUDE.md
 target/
 
 # Config (contains secrets)

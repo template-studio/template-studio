@@ -36,19 +36,20 @@
 
 - **📦 模板管理** - 支持模板的创建、编辑、分类和版本管理
 - **🚀 代码生成** - 基于模板快速生成项目脚手架
-- **🔧 模板引擎** - 强大的 MiniJinja/Tera 模板引擎，支持变量替换和条件渲染
+- **🔧 模板引擎** - 基于 MiniJinja 的模板引擎，支持变量替换、条件渲染、自定义 filter 和 builtin 函数
 - **📊 依赖分析** - 自动分析模板文件依赖关系，优化渲染顺序
+- **🔐 RBAC 权限系统** - 基于角色的访问控制，支持 JWT 认证和个人访问令牌 (PAT)
 - **🌐 Web 管理界面** - 基于 Naive UI 的现代化管理后台
 - **💻 CLI 工具** - 支持命令行和 TUI 两种交互模式
-- **🖥️ 桌面应用** - 跨平台的脚手架生成器和代码生成器
+- **🖥️ 桌面应用** - 基于 Tauri 2.x 的跨平台桌面应用，支持离线使用
 
 ### 🏗️ 技术架构
 
 **后端技术栈：**
 - Axum - 高性能异步 Web 框架
-- SQLx - 类型安全的数据库操作
+- SQLx - 类型安全的数据库操作（支持 MySQL / SQLite / PostgreSQL）
 - Tokio - 异步运行时
-- MiniJinja/Tera - 模板引擎
+- MiniJinja - 模板引擎（支持编译到 WASM 用于浏览器端渲染）
 - Git2 - Git 版本控制集成
 
 **前端技术栈：**
@@ -129,52 +130,55 @@ cargo run -p template-studio-cli -- list
 ```
 template-studio/
 ├── apps/                      # 应用层
-│   ├── web/                   # Web 后端服务器
-│   ├── cli/                   # CLI 工具
-│   ├── scaffold-desktop/      # 脚手架桌面应用
-│   └── codegen-desktop/       # 代码生成桌面应用
-├── crates/                    # 核心库
-│   ├── template_core/         # 模板引擎核心
-│   ├── infrastructure/        # 基础设施层
-│   ├── repositories/          # 数据访问层
-│   ├── services/              # 业务逻辑层
-│   └── shared/                # 共享类型和工具
-├── web/                       # Web 前端
-│   ├── src/
-│   │   ├── api/              # API 服务层
-│   │   ├── components/       # 可复用组件
-│   │   ├── views/            # 页面组件
-│   │   └── router/           # 路由配置
-│   └── package.json
-├── migrations/                # 数据库迁移文件
+│   ├── web/                   # Axum Web 后端服务器
+│   ├── cli/                   # CLI 工具（支持 TUI 模式）
+│   └── desktop/               # Tauri 桌面应用
+│       ├── src/               # Vue 3 前端
+│       └── src-tauri/         # Tauri Rust 后端
+├── crates/                    # 核心 Rust 库
+│   ├── shared/                # 共享类型、模型、工具
+│   ├── infrastructure/        # 基础设施层（数据库池、配置、Git、日志）
+│   ├── repositories/          # 数据访问层（12 个仓库模块）
+│   ├── services/              # 业务逻辑层（20 个服务模块）
+│   ├── template_core/         # 模板引擎核心（基于 MiniJinja）
+│   └── template_core_wasm/    # 模板引擎 WASM 绑定（浏览器端渲染）
+├── web/                       # Vue 3 Web 前端（Naive UI）
+│   └── src/
+│       ├── api/               # API 服务层
+│       ├── components/        # 可复用组件
+│       ├── views/             # 页面组件
+│       ├── store/             # Pinia 状态管理
+│       └── router/            # 路由配置
+├── migrations/                # SQL 数据库迁移文件
 ├── config/                    # 配置文件
-├── data/                      # 数据目录
-│   ├── templates/            # 模板文件存储
-│   └── releases/            # 版本发布数据
-└── Cargo.toml                # Rust workspace 配置
+├── data/                      # 运行时数据（模板、版本、头像）
+└── Cargo.toml                # Rust workspace 配置（9 个成员 crate）
 ```
 
 ### 分层架构
 
 ```
 ┌─────────────────────────────────────────┐
-│          前端层 (Vue 3 + Naive UI)        │
+│        前端层 (Vue 3 + Naive UI)         │
 ├─────────────────────────────────────────┤
-│          应用层 (Axum HTTP Handlers)     │
+│       应用层 (Axum HTTP Handlers)        │
 ├─────────────────────────────────────────┤
 │       业务逻辑层 (Services)              │
-│  - TemplateService                       │
-│  - CategoryService                       │
-│  - RenderService                         │
+│  - TemplateService / CategoryService     │
+│  - AuthService / RBACService             │
+│  - RenderService / ReviewService         │
 ├─────────────────────────────────────────┤
 │       数据访问层 (Repositories)          │
-│  - TemplateRepository                    │
-│  - CategoryRepository                    │
+│  - TemplateRepository / UserRepository   │
+│  - CategoryRepository / RoleRepository   │
 ├─────────────────────────────────────────┤
 │    基础设施层 (Infrastructure)           │
-│  - Database Pool                         │
-│  - Storage Manager                       │
-│  - Git Service                           │
+│  - Database Pool (MySQL/SQLite/PG)       │
+│  - Storage Manager / Git Service         │
+├─────────────────────────────────────────┤
+│    模板引擎 (template_core)              │
+│  - MiniJinja 渲染 / 条件文件生成         │
+│  - WASM 绑定（浏览器端渲染）             │
 └─────────────────────────────────────────┘
 ```
 
@@ -297,7 +301,7 @@ pnpm run type-check
 ### 桌面应用开发
 
 ```bash
-cd apps/scaffold-desktop
+cd apps/desktop
 
 # 开发模式
 pnpm run tauri:dev
@@ -311,15 +315,16 @@ pnpm run tauri:build
 ## 路线图
 
 ### v0.1.0 (当前版本)
-- ✅ 基础模板管理功能
-- ✅ Web 管理界面
-- ✅ CLI 工具
-- ✅ 模板渲染引擎
-- 🚧 桌面应用完善中
+- 🚧 基础模板管理功能
+- 🚧 Web 管理界面
+- 🚧 CLI 工具
+- 🚧 模板渲染引擎（MiniJinja）
+- 🚧 RBAC 权限系统 + JWT 认证
+- 🚧 桌面应用（Tauri 2.x）
+- 🚧 模板审核流程
 
 ### v0.2.0 (计划中)
 - 🔲 模板市场
-- 🔲 用户权限系统
 - 🔲 模板分享和协作
 - 🔲 更多内置模板
 

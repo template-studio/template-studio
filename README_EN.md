@@ -36,19 +36,20 @@ Contributions and suggestions are welcome!
 
 - **📦 Template Management** - Create, edit, categorize, and version templates
 - **🚀 Code Generation** - Generate project scaffolding based on templates
-- **🔧 Template Engine** - Powerful MiniJinja/Tera engine with variable substitution and conditional rendering
+- **🔧 Template Engine** - MiniJinja-based engine with variable substitution, conditional rendering, custom filters and builtin functions
 - **📊 Dependency Analysis** - Automatically analyze template file dependencies and optimize rendering order
+- **🔐 RBAC Permission System** - Role-based access control with JWT authentication and Personal Access Tokens (PAT)
 - **🌐 Web Management Interface** - Modern admin panel built with Naive UI
 - **💻 CLI Tools** - Both CLI and TUI interaction modes supported
-- **🖥️ Desktop Applications** - Cross-platform scaffold generator and code generator
+- **🖥️ Desktop Application** - Cross-platform Tauri 2.x desktop app with offline support
 
 ### 🏗️ Technical Architecture
 
 **Backend Stack:**
 - Axum - High-performance async web framework
-- SQLx - Type-safe database operations
+- SQLx - Type-safe database operations (MySQL / SQLite / PostgreSQL)
 - Tokio - Async runtime
-- MiniJinja/Tera - Template engines
+- MiniJinja - Template engine (compiles to WASM for browser-side rendering)
 - Git2 - Git version control integration
 
 **Frontend Stack:**
@@ -58,7 +59,7 @@ Contributions and suggestions are welcome!
 - Alova - HTTP client with caching
 - CodeMirror 6 - Code editor
 
-**Desktop Apps:**
+**Desktop App:**
 - Tauri 2.x - Lightweight desktop app framework
 - Ant Design Vue - UI component library
 
@@ -129,29 +130,29 @@ cargo run -p template-studio-cli -- list
 ```
 template-studio/
 ├── apps/                      # Application layer
-│   ├── web/                   # Web backend server
-│   ├── cli/                   # CLI tools
-│   ├── scaffold-desktop/      # Scaffold desktop app
-│   └── codegen-desktop/       # Code generator desktop app
-├── crates/                    # Core libraries
-│   ├── template_core/         # Template engine core
-│   ├── infrastructure/        # Infrastructure layer
-│   ├── repositories/          # Data access layer
-│   ├── services/              # Business logic layer
-│   └── shared/                # Shared types and utilities
-├── web/                       # Web frontend
-│   ├── src/
-│   │   ├── api/              # API service layer
-│   │   ├── components/       # Reusable components
-│   │   ├── views/            # Page components
-│   │   └── router/           # Route configuration
-│   └── package.json
-├── migrations/                # Database migration files
+│   ├── web/                   # Axum web backend server
+│   ├── cli/                   # CLI tool (with TUI mode)
+│   └── desktop/               # Tauri desktop app
+│       ├── src/               # Vue 3 frontend
+│       └── src-tauri/         # Tauri Rust backend
+├── crates/                    # Core Rust libraries
+│   ├── shared/                # Shared types, models, utilities
+│   ├── infrastructure/        # Infrastructure (DB pool, config, git, logging)
+│   ├── repositories/          # Data access layer (12 modules)
+│   ├── services/              # Business logic layer (20 modules)
+│   ├── template_core/         # Template engine core (MiniJinja)
+│   └── template_core_wasm/    # Template engine WASM bindings (browser-side rendering)
+├── web/                       # Vue 3 web frontend (Naive UI)
+│   └── src/
+│       ├── api/               # API service layer
+│       ├── components/        # Reusable components
+│       ├── views/             # Page components
+│       ├── store/             # Pinia state management
+│       └── router/            # Route configuration
+├── migrations/                # SQL database migration files
 ├── config/                    # Configuration files
-├── data/                      # Data directory
-│   ├── templates/            # Template file storage
-│   └── releases/            # Version release data
-└── Cargo.toml                # Rust workspace config
+├── data/                      # Runtime data (templates, versions, avatars)
+└── Cargo.toml                # Rust workspace config (9 member crates)
 ```
 
 ### Layered Architecture
@@ -163,18 +164,21 @@ template-studio/
 │       Application Layer (Axum Handlers)  │
 ├─────────────────────────────────────────┤
 │       Business Logic Layer (Services)    │
-│  - TemplateService                       │
-│  - CategoryService                       │
-│  - RenderService                         │
+│  - TemplateService / CategoryService     │
+│  - AuthService / RBACService             │
+│  - RenderService / ReviewService         │
 ├─────────────────────────────────────────┤
 │       Data Access Layer (Repositories)   │
-│  - TemplateRepository                    │
-│  - CategoryRepository                    │
+│  - TemplateRepository / UserRepository   │
+│  - CategoryRepository / RoleRepository   │
 ├─────────────────────────────────────────┤
 │    Infrastructure Layer                  │
-│  - Database Pool                         │
-│  - Storage Manager                       │
-│  - Git Service                           │
+│  - Database Pool (MySQL/SQLite/PG)       │
+│  - Storage Manager / Git Service         │
+├─────────────────────────────────────────┤
+│    Template Engine (template_core)       │
+│  - MiniJinja rendering / conditional     │
+│  - WASM bindings (browser-side)          │
 └─────────────────────────────────────────┘
 ```
 
@@ -297,7 +301,7 @@ pnpm run type-check
 ### Desktop App Development
 
 ```bash
-cd apps/scaffold-desktop
+cd apps/desktop
 
 # Development mode
 pnpm run tauri:dev
@@ -311,15 +315,16 @@ pnpm run tauri:build
 ## Roadmap
 
 ### v0.1.0 (Current Version)
-- ✅ Basic template management
-- ✅ Web management interface
-- ✅ CLI tools
-- ✅ Template rendering engine
-- 🚧 Desktop apps in progress
+- 🚧 Basic template management
+- 🚧 Web management interface
+- 🚧 CLI tools
+- 🚧 Template rendering engine (MiniJinja)
+- 🚧 RBAC permission system + JWT authentication
+- 🚧 Desktop application (Tauri 2.x)
+- 🚧 Template review workflow
 
 ### v0.2.0 (Planned)
 - 🔲 Template marketplace
-- 🔲 User permission system
 - 🔲 Template sharing and collaboration
 - 🔲 More built-in templates
 
