@@ -3474,7 +3474,7 @@ struct SQLiteColumnInfo {
 
 /// 读取 MySQL 数据库的表列表
 pub async fn fetch_mysql_tables(
-    pool: &SqlitePool,
+    _pool: &SqlitePool,
     datasource: &Datasource,
     database_name: &str,
 ) -> Result<String, String> {
@@ -3530,7 +3530,7 @@ pub async fn fetch_mysql_tables(
 
 /// 读取 PostgreSQL 数据库的表列表
 pub async fn fetch_postgresql_tables(
-    pool: &SqlitePool,
+    _pool: &SqlitePool,
     datasource: &Datasource,
     database_name: &str,
 ) -> Result<String, String> {
@@ -3590,7 +3590,7 @@ pub async fn fetch_postgresql_tables(
 
 /// 读取 SQLite 数据库的表列表
 pub async fn fetch_sqlite_tables(
-    pool: &SqlitePool,
+    _pool: &SqlitePool,
     datasource: &Datasource,
 ) -> Result<String, String> {
     let sqlite_file = datasource.sqlite_file.as_ref()
@@ -3790,7 +3790,7 @@ async fn import_mysql_single_table(
         .map_err(|e| format!("更新列计数失败: {}", e))?;
 
     // 更新项目的表数量
-    sqlx::query("UPDATE projects SET table_count = table_count + 1, updated_at = datetime('now') WHERE id = ?1")
+    let _ = sqlx::query("UPDATE projects SET table_count = table_count + 1, updated_at = datetime('now') WHERE id = ?1")
         .bind(project_id)
         .execute(pool)
         .await
@@ -3906,7 +3906,7 @@ async fn import_postgresql_single_table(
         .map_err(|e| format!("更新列计数失败: {}", e))?;
 
     // 更新项目的表数量
-    sqlx::query("UPDATE projects SET table_count = table_count + 1, updated_at = datetime('now') WHERE id = ?1")
+    let _ = sqlx::query("UPDATE projects SET table_count = table_count + 1, updated_at = datetime('now') WHERE id = ?1")
         .bind(project_id)
         .execute(pool)
         .await
@@ -4013,7 +4013,7 @@ async fn import_sqlite_single_table(
         .map_err(|e| format!("更新列计数失败: {}", e))?;
 
     // 更新项目的表数量
-    sqlx::query("UPDATE projects SET table_count = table_count + 1, updated_at = datetime('now') WHERE id = ?1")
+    let _ = sqlx::query("UPDATE projects SET table_count = table_count + 1, updated_at = datetime('now') WHERE id = ?1")
         .bind(project_id)
         .execute(pool)
         .await
@@ -4028,7 +4028,7 @@ async fn import_sqlite_single_table(
 
 /// 只解析SQL，返回表结构信息（不写入数据库）
 pub async fn parse_sql_only(
-    pool: &SqlitePool,
+    _pool: &SqlitePool,
     _project_id: i64,
     sql_content: &str,
     sql_dialect: &str,

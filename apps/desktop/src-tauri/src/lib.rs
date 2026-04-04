@@ -1,14 +1,14 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-use template_studio_template_core::{render_string, render_tree, TemplateFile, Variables};
+use template_studio_template_core::{render_string, TemplateFile, Variables};
 use tauri::Manager;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 
 mod config;
 mod database;
 
 use config::Config;
-use database::{Database, TestConnectionParams, DatasourceParams, import_tables_from_datasource, Language,
+use database::{Database, TestConnectionParams, DatasourceParams, import_tables_from_datasource,
                 fetch_mysql_tables, fetch_postgresql_tables, fetch_sqlite_tables, import_single_table};
 
 /// 数据库状态包装器，用于线程安全的异步访问
@@ -171,8 +171,7 @@ async fn render_template_preview(
     variables: serde_json::Value,
     version: Option<String>,
 ) -> Result<String, String> {
-    use template_studio_template_core::{render_tree, TemplateFile, Variables};
-    use std::path::Path;
+    use template_studio_template_core::{render_tree, Variables};
 
     println!("渲染模板预览:");
     println!("  模板ID: {}", template_id);
@@ -233,7 +232,7 @@ async fn generate_project(
     output_path: String,
     version: Option<String>,
 ) -> Result<String, String> {
-    use template_studio_template_core::{render_tree, TemplateFile, Variables};
+    use template_studio_template_core::{render_tree, Variables};
     use std::fs;
     use std::path::Path;
 
@@ -298,7 +297,7 @@ async fn generate_project(
 
     let mut success_count = 0;
     let mut error_count = 0;
-    let mut binary_count = 0;
+    let mut _binary_count = 0;
     let mut _skipped_count = 0;
 
     for file_node in rendered_tree {
@@ -340,7 +339,7 @@ async fn generate_project(
                     // None 或空字符串：二进制文件或读取失败，直接复制原文件
                     match fs::copy(&source_path, &file_path) {
                         Ok(_) => {
-                            binary_count += 1;
+                            _binary_count += 1;
                             println!("复制文件: {}", file_node.file_path);
                         }
                         Err(e) => {
@@ -508,8 +507,6 @@ fn scan_directory_recursive(
 /// 检查模板版本是否已下载
 #[tauri::command]
 fn check_template_downloaded(template_id: String, version: String) -> bool {
-    use std::path::PathBuf;
-
     if let Ok(config) = Config::load() {
         let template_path = config.get_template_path(&template_id, &version);
         template_path.exists()
