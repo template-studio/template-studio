@@ -56,7 +56,7 @@
       <a-spin :spinning="loading">
         <div class="templates-grid">
           <div
-            v-for="template in filteredTemplates"
+            v-for="template in paginatedTemplates"
             :key="template.id"
             class="template-card"
             :class="{ selected: selectedTemplate?.id === template.id }"
@@ -692,6 +692,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch, h, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useLayoutStore } from '@/stores/layout'
 import { message, Modal } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
 import { debounce } from 'lodash-es'
@@ -744,6 +745,7 @@ import { vue } from '@codemirror/lang-vue'
 
 const router = useRouter()
 const route = useRoute()
+const layoutStore = useLayoutStore()
 
 // 状态
 const loading = ref(false)
@@ -909,6 +911,14 @@ const filteredTemplates = computed(() => {
   }
 
   return result
+})
+
+// 分页后的模板
+const paginatedTemplates = computed(() => {
+  const { current, pageSize: size } = layoutStore.footerPagination
+  const start = (current - 1) * size
+  const end = start + size
+  return filteredTemplates.value.slice(start, end)
 })
 
 // 选择模板
@@ -1907,6 +1917,11 @@ watch(searchKeyword, () => {
   // 前端过滤会自动更新
 })
 
+// 同步分页状态到 store
+watch(filteredTemplates, (newVal) => {
+  layoutStore.showFooterPagination(newVal.length, layoutStore.footerPagination.current, layoutStore.footerPagination.pageSize)
+})
+
 // 监听输出路径变化，检查是否存在
 const checkOutputPathExists = debounce(async () => {
   if (!finalOutputPath.value) {
@@ -1944,6 +1959,7 @@ onMounted(async () => {
   await loadCategories()
   await loadLanguages()
   await loadTemplates()
+  layoutStore.showFooterPagination(filteredTemplates.value.length, 1, 10)
 })
 </script>
 
@@ -1952,8 +1968,7 @@ onMounted(async () => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: var(--spacing-lg);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 /* 顶部工具栏 */
@@ -1962,7 +1977,15 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--spacing-md);
-  padding: var(--spacing-sm) 0;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  flex-shrink: 0;
+}
+
+.templates-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 0 var(--spacing-lg);
 }
 
 .toolbar-left {
@@ -2022,8 +2045,8 @@ onMounted(async () => {
 /* 模板列表 */
 .templates-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: var(--spacing-lg);
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--spacing-md);
 }
 
 /* 模板卡片 */

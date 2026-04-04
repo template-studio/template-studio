@@ -46,7 +46,7 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   // 需要 footer 的路由
-  const footerRoutes = ['/projects', '/datasource', '/languages']
+  const footerRoutes = ['/projects', '/datasource', '/languages', '/templates']
 
   // 分页 footer 操作
   const showFooterPagination = (total, current = 1, pageSize = 12) => {
