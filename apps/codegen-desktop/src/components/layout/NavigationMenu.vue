@@ -12,6 +12,13 @@
       <span>首页</span>
     </a-menu-item>
 
+    <a-menu-item key="/templates">
+      <template #icon>
+        <FileTextOutlined />
+      </template>
+      <span>脚手架</span>
+    </a-menu-item>
+
     <a-menu-item key="/languages">
       <template #icon>
         <CodeOutlined />
@@ -55,6 +62,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useLayoutStore } from '@/stores/layout'
 import {
   HomeOutlined,
+  FileTextOutlined,
   DatabaseOutlined,
   FolderOutlined,
   CodeOutlined,

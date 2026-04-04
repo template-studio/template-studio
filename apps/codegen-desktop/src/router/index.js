@@ -12,6 +12,11 @@ const routes = [
     component: HomeView
   },
   {
+    path: '/templates',
+    name: 'Templates',
+    component: () => import('@/views/TemplatesView.vue')
+  },
+  {
     path: '/datasource',
     name: 'DataSource',
     component: () => import('@/views/DataSourceView.vue')
