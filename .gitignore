@@ -120,6 +120,10 @@ typings/
 .githooks/
 CLAUDE.md
 target/
+
+# Config (contains secrets)
+config/config.toml
+config/config.dev.toml
 nul
 data/
 *.pdb

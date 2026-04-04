@@ -3,7 +3,7 @@ host = "127.0.0.1"
 port = 8080
 
 [database]
-url = "mysql://root:hasd721ba9@192.168.31.93:39507/template_studio_rust"
+url = "mysql://user:password@localhost:3306/template_studio"
 max_connections = 10
 
 [storage]
