@@ -9,6 +9,24 @@
       </router-view>
     </div>
 
+    <!-- 全局 Footer - 分页 -->
+    <div
+      v-if="layoutStore.footerPagination.visible && layoutStore.footerPagination.total > 0"
+      class="content-footer"
+    >
+      <a-pagination
+        v-model:current="layoutStore.footerPagination.current"
+        v-model:pageSize="layoutStore.footerPagination.pageSize"
+        :total="layoutStore.footerPagination.total"
+        :show-size-changer="true"
+        :show-quick-jumper="true"
+        :show-total="(total, range) => `共 ${total} 条，当前 ${range[0]}-${range[1]}`"
+        :page-size-options="['12', '24', '36', '48']"
+        @change="handlePageChange"
+        @showSizeChange="handleSizeChange"
+      />
+    </div>
+
     <!-- Loading Overlay -->
     <div v-if="isLoading" class="loading-overlay">
       <a-spin size="large" />
@@ -23,8 +41,15 @@ import { useLayoutStore } from '@/stores/layout'
 const layoutStore = useLayoutStore()
 const isLoading = ref(false)
 
+const handlePageChange = (page, size) => {
+  layoutStore.updateFooterPagination({ current: page, pageSize: size })
+}
+
+const handleSizeChange = (current, size) => {
+  layoutStore.updateFooterPagination({ current: 1, pageSize: size })
+}
+
 onMounted(() => {
-  // Initialize layout
   console.log('MainContent mounted with layout:', {
     isMobile: layoutStore.isMobile,
     sidebarCollapsed: layoutStore.sidebarCollapsed
@@ -44,22 +69,21 @@ onMounted(() => {
 .content-wrapper {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Page transitions */
 .page-enter-active,
 .page-leave-active {
-  transition: all var(--transition-normal);
+  transition: opacity var(--transition-normal);
 }
 
 .page-enter-from {
   opacity: 0;
-  transform: translateX(20px);
 }
 
 .page-leave-to {
   opacity: 0;
-  transform: translateX(-20px);
 }
 
 /* Loading overlay */
@@ -105,18 +129,33 @@ onMounted(() => {
   background: var(--color-hover);
 }
 
+/* 全局 Footer */
+.content-footer {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  flex-shrink: 0;
+  padding: 0 var(--spacing-lg);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .content-wrapper {
-    padding: var(--spacing-md);
+  .content-footer {
+    padding: 0 var(--spacing-md);
+    height: auto;
+    min-height: 56px;
+  }
+
+  .content-footer :deep(.ant-pagination) {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .content-footer :deep(.ant-pagination-options) {
+    margin-top: var(--spacing-sm);
   }
 }
-
-@media (max-width: 480px) {
-  .content-wrapper {
-    padding: var(--spacing-sm);
-  }
-}
-
-/* Scrollbar theme adjustments now handled by global CSS variables */
 </style>

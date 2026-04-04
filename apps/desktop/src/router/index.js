@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
+import { useLayoutStore } from '@/stores/layout'
 
 const routes = [
   {
@@ -90,12 +91,10 @@ const router = createRouter({
   routes
 })
 
-// Navigation guard for development
-if (import.meta.env.DEV) {
-  router.beforeEach((to, from, next) => {
-    console.log(`Navigating from ${from.path} to ${to.path}`)
-    next()
-  })
-}
+// 路由守卫：控制 footer 显示/隐藏
+router.beforeEach((to) => {
+  const layoutStore = useLayoutStore()
+  layoutStore.onRouteChange(to.path)
+})
 
 export default router

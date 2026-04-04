@@ -135,17 +135,6 @@
       </a-spin>
     </div>
 
-    <!-- 底部 Footer - 分页 -->
-    <Pagination
-      v-if="filteredProjects.length > 0"
-      v-model:current="currentPage"
-      v-model:pageSize="pageSize"
-      :total="filteredProjects.length"
-      fixed
-      @change="handlePageChange"
-      @sizeChange="handleSizeChange"
-    />
-
     <!-- 创建/编辑对话框 -->
     <a-modal
       v-model:open="dialogVisible"
@@ -263,7 +252,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   PlusOutlined,
@@ -282,9 +271,11 @@ import { invoke } from '@tauri-apps/api/core'
 import * as projectsApi from '../api/projects'
 import * as datasourcesApi from '../api/datasources'
 import * as languagesApi from '../api/languages'
-import { SearchBar, Pagination } from '../components/common'
+import { SearchBar } from '../components/common'
+import { useLayoutStore } from '@/stores/layout'
 
 const router = useRouter()
+const layoutStore = useLayoutStore()
 
 // 状态
 const loading = ref(false)
@@ -293,12 +284,10 @@ const datasources = ref([])
 const languages = ref([])
 const datasourcesLoading = ref(false)
 
-// 搜索、筛选、排序、分页状态
+// 搜索、筛选、排序状态
 const searchQuery = ref('')
 const filterValue = ref(undefined)
 const sortValue = ref('created_at:desc')
-const currentPage = ref(1)
-const pageSize = ref(12)
 
 // 筛选选项
 const databaseFilters = [
@@ -400,8 +389,9 @@ const filteredProjects = computed(() => {
 
 // 分页后的项目列表
 const paginatedProjects = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
+  const { current, pageSize: size } = layoutStore.footerPagination
+  const start = (current - 1) * size
+  const end = start + size
   return filteredProjects.value.slice(start, end)
 })
 
@@ -763,31 +753,25 @@ const confirmDelete = (project) => {
 
 // 搜索处理
 const handleSearch = () => {
-  currentPage.value = 1
+  layoutStore.updateFooterPagination({ current: 1 })
 }
 
 // 筛选处理
 const handleFilter = (value) => {
   filterValue.value = value
-  currentPage.value = 1
+  layoutStore.updateFooterPagination({ current: 1 })
 }
 
 // 排序处理
 const handleSort = (value) => {
   sortValue.value = value
-  currentPage.value = 1
+  layoutStore.updateFooterPagination({ current: 1 })
 }
 
-// 分页处理
-const handlePageChange = (page) => {
-  currentPage.value = page
-}
-
-// 每页条数变化
-const handleSizeChange = (page, size) => {
-  currentPage.value = page
-  pageSize.value = size
-}
+// 同步分页状态到 store
+watch(filteredProjects, (newVal) => {
+  layoutStore.showFooterPagination(newVal.length, layoutStore.footerPagination.current, layoutStore.footerPagination.pageSize)
+})
 
 // 组件挂载时加载数据
 onMounted(async () => {
@@ -796,6 +780,7 @@ onMounted(async () => {
     loadDatasources(),
     loadLanguages()
   ])
+  layoutStore.showFooterPagination(filteredProjects.value.length, layoutStore.footerPagination.current, layoutStore.footerPagination.pageSize)
 })
 </script>
 

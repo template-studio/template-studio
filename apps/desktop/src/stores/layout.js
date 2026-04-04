@@ -9,6 +9,14 @@ export const useLayoutStore = defineStore('layout', () => {
     height: window.innerHeight
   })
 
+  // 全局分页 footer 状态
+  const footerPagination = ref({
+    visible: false,
+    current: 1,
+    pageSize: 12,
+    total: 0
+  })
+
   // Computed
   const isMobile = computed(() => windowSize.value.width < 768)
   const isTablet = computed(() => windowSize.value.width >= 768 && windowSize.value.width < 1024)
@@ -37,10 +45,34 @@ export const useLayoutStore = defineStore('layout', () => {
     }
   }
 
+  // 需要 footer 的路由
+  const footerRoutes = ['/projects', '/datasource', '/languages']
+
+  // 分页 footer 操作
+  const showFooterPagination = (total, current = 1, pageSize = 12) => {
+    footerPagination.value = { visible: true, current, pageSize, total }
+  }
+
+  const hideFooterPagination = () => {
+    footerPagination.value.visible = false
+  }
+
+  const updateFooterPagination = (data) => {
+    Object.assign(footerPagination.value, data)
+  }
+
+  // 路由切换时判断是否显示 footer
+  const onRouteChange = (path) => {
+    if (!footerRoutes.some(r => path.startsWith(r))) {
+      hideFooterPagination()
+    }
+  }
+
   return {
     // State
     sidebarCollapsed,
     windowSize,
+    footerPagination,
 
     // Computed
     isMobile,
@@ -51,6 +83,10 @@ export const useLayoutStore = defineStore('layout', () => {
     // Actions
     toggleSidebar,
     setSidebarCollapsed,
-    updateWindowSize
+    updateWindowSize,
+    showFooterPagination,
+    hideFooterPagination,
+    updateFooterPagination,
+    onRouteChange
   }
 })
