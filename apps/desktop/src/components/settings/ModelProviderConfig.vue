@@ -118,9 +118,12 @@
         <a-tag class="model-count">{{ totalModelCount }} 个</a-tag>
       </div>
 
-      <div class="add-model-row">
-        <a-button type="primary" size="small" @click="showAddModelDialog">
-          <PlusOutlined /> 添加模型
+      <div class="model-toolbar">
+        <a-button type="primary" size="small" @click="openManagePopup">
+          <SettingOutlined /> 获取模型列表
+        </a-button>
+        <a-button size="small" @click="showAddModelDialog">
+          <PlusOutlined /> 手动添加
         </a-button>
       </div>
 
@@ -128,8 +131,8 @@
         <a-spin :spinning="loadingModels">
           <div v-if="modelGroups.length === 0" class="empty-models">
             <a-empty description="暂无模型">
-              <a-button type="primary" @click="showAddModelDialog">
-                添加第一个模型
+              <a-button type="primary" @click="openManagePopup">
+                获取模型列表
               </a-button>
             </a-empty>
           </div>
@@ -147,37 +150,41 @@
                 <a-tag class="group-count">{{ group.count }}</a-tag>
               </div>
               <div v-show="expandedGroups.has(group.groupId)" class="group-content">
-                <a-list
-                  :data-source="group.models"
-                  size="small"
-                  :split="false"
+                <div
+                  v-for="item in group.models"
+                  :key="item.id"
+                  class="model-item"
                 >
-                  <template #renderItem="{ item }">
-                    <a-list-item class="model-item">
-                      <div class="model-main">
-                        <div class="model-id">{{ item.modelId }}</div>
-                        <div class="model-name">{{ item.modelName }}</div>
-                        <div v-if="item.description" class="model-description">
-                          {{ item.description }}
-                        </div>
-                      </div>
-                      <template #actions>
-                        <a-button type="text" size="small" @click="editModel(item)">
-                          <EditOutlined />
-                        </a-button>
-                        <a-button type="text" size="small" danger @click="deleteModel(item.id)">
-                          <DeleteOutlined />
-                        </a-button>
-                      </template>
-                    </a-list-item>
-                  </template>
-                </a-list>
+                  <div class="model-main">
+                    <div class="model-id">{{ item.modelId }}</div>
+                    <div class="model-name">{{ item.modelName }}</div>
+                    <div v-if="item.description" class="model-description">
+                      {{ item.description }}
+                    </div>
+                  </div>
+                  <div class="model-actions">
+                    <a-button type="text" size="small" @click="editModel(item)">
+                      <EditOutlined />
+                    </a-button>
+                    <a-button type="text" size="small" danger @click="deleteModel(item.id)">
+                      <DeleteOutlined />
+                    </a-button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </a-spin>
       </div>
     </div>
+
+    <!-- 模型管理弹窗 -->
+    <ManageModelsPopup
+      v-model:visible="managePopupVisible"
+      :provider-name="providerName"
+      :provider-display-name="displayName"
+      @refresh="loadModels"
+    />
 
     <!-- 添加/编辑模型对话框 -->
     <a-modal
@@ -239,13 +246,13 @@ import {
   ApiOutlined,
   DeleteOutlined,
   PlusOutlined,
-  QuestionCircleOutlined,
   CaretRightOutlined,
   EditOutlined,
-  DatabaseOutlined,
-  GlobalOutlined
+  GlobalOutlined,
+  SettingOutlined
 } from '@ant-design/icons-vue'
 import { useAIConfigStore } from '@/stores/ai-config'
+import ManageModelsPopup from './ManageModelsPopup.vue'
 
 const props = defineProps({
   providerType: {
@@ -289,6 +296,9 @@ const modelGroups = ref([])
 const loadingModels = ref(false)
 const expandedGroups = ref(new Set(['chat', 'code']))
 
+// 模型管理弹窗
+const managePopupVisible = ref(false)
+
 // 模型对话框
 const modelDialogVisible = ref(false)
 const editingModel = ref(null)
@@ -311,7 +321,8 @@ const providerWebsite = computed(() => {
     deepseek: 'https://www.deepseek.com',
     glm: 'https://open.bigmodel.cn',
     openai: 'https://platform.openai.com',
-    ollama: 'https://ollama.ai'
+    ollama: 'https://ollama.ai',
+    mimo: 'https://mimo.xiaomi.com/zh'
   }
   return websites[props.providerType] || null
 })
@@ -348,15 +359,6 @@ const handleSaveApiKey = async () => {
   message.success('API 密钥已保存')
 }
 
-const handleDeleteApiKey = async () => {
-  localConfig.apiKey = ''
-  await emit('configChange', props.providerName, {
-    ...localConfig,
-    apiKey: null
-  })
-  message.success('API 密钥已删除')
-}
-
 const handleSaveEndpoint = async () => {
   await emit('configChange', props.providerName, {
     ...localConfig,
@@ -383,6 +385,10 @@ const toggleGroup = (groupId) => {
   } else {
     expandedGroups.value.add(groupId)
   }
+}
+
+const openManagePopup = () => {
+  managePopupVisible.value = true
 }
 
 const showAddModelDialog = () => {
@@ -520,10 +526,11 @@ onMounted(async () => {
   margin-left: auto;
 }
 
-/* 添加模型按钮行 */
-.add-model-row {
+/* 模型工具栏 */
+.model-toolbar {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   margin-bottom: 10px;
 }
 
@@ -531,7 +538,6 @@ onMounted(async () => {
 .models-content {
   max-height: 400px;
   overflow-y: auto;
-  margin-top: 10px;
 }
 
 .empty-models {
@@ -542,7 +548,7 @@ onMounted(async () => {
 .model-groups {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .model-group {
@@ -556,7 +562,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   background: var(--color-surface);
   cursor: pointer;
   transition: background-color 0.2s;
@@ -594,7 +600,15 @@ onMounted(async () => {
 }
 
 .model-item {
-  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  transition: background-color 0.15s;
+}
+
+.model-item:hover {
+  background: var(--color-surface);
 }
 
 .model-main {
@@ -612,12 +626,18 @@ onMounted(async () => {
 .model-name {
   font-size: 12px;
   color: var(--color-text-secondary);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .model-description {
   font-size: 11px;
   color: var(--color-text-tertiary);
+}
+
+.model-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
 /* 滚动条样式 */

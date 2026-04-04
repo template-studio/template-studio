@@ -1,6 +1,7 @@
 <template>
   <a-menu
     :selectedKeys="selectedKeys"
+    :openKeys="openKeys"
     mode="inline"
     class="navigation-menu"
     @click="handleMenuClick"
@@ -19,33 +20,36 @@
       <span>脚手架</span>
     </a-menu-item>
 
-    <a-menu-item key="/languages">
+    <a-sub-menu key="codegen">
       <template #icon>
         <CodeOutlined />
       </template>
-      <span>语言管理</span>
-    </a-menu-item>
-
-    <a-menu-item key="/datasource">
-      <template #icon>
-        <DatabaseOutlined />
-      </template>
-      <span>数据源</span>
-    </a-menu-item>
-
-    <a-menu-item key="/projects">
-      <template #icon>
-        <FolderOutlined />
-      </template>
-      <span>项目</span>
-    </a-menu-item>
-
-    <a-menu-item key="/mappings">
-      <template #icon>
-        <SwapOutlined />
-      </template>
-      <span>映射管理</span>
-    </a-menu-item>
+      <template #title>代码生成器</template>
+      <a-menu-item key="/languages">
+        <template #icon>
+          <CodeOutlined />
+        </template>
+        <span>语言管理</span>
+      </a-menu-item>
+      <a-menu-item key="/datasource">
+        <template #icon>
+          <DatabaseOutlined />
+        </template>
+        <span>数据源</span>
+      </a-menu-item>
+      <a-menu-item key="/projects">
+        <template #icon>
+          <FolderOutlined />
+        </template>
+        <span>项目</span>
+      </a-menu-item>
+      <a-menu-item key="/mappings">
+        <template #icon>
+          <SwapOutlined />
+        </template>
+        <span>映射管理</span>
+      </a-menu-item>
+    </a-sub-menu>
 
     <a-menu-item key="/settings">
       <template #icon>
@@ -75,8 +79,14 @@ const route = useRoute()
 const layoutStore = useLayoutStore()
 
 // 使用计算属性直接从路由获取选中状态，避免状态不同步
+const codegenRoutes = ['/languages', '/datasource', '/projects', '/mappings']
+
 const selectedKeys = computed(() => {
   return [route.path]
+})
+
+const openKeys = computed(() => {
+  return codegenRoutes.some(r => route.path.startsWith(r)) ? ['codegen'] : []
 })
 
 const handleMenuClick = ({ key }) => {
@@ -169,6 +179,28 @@ const handleMenuClick = ({ key }) => {
 
 .navigation-menu :deep(.ant-menu-item-icon) {
   font-size: 16px;
+}
+
+/* SubMenu 样式对齐 */
+.navigation-menu :deep(.ant-menu-submenu-title) {
+  margin: 2px 0;
+  border-radius: var(--border-radius-md);
+  color: var(--color-text);
+  border: 0.5px solid transparent;
+  transition: background-color var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+
+.navigation-menu :deep(.ant-menu-submenu-title:hover) {
+  background: var(--color-surface) !important;
+  color: var(--color-primary) !important;
+}
+
+.navigation-menu :deep(.ant-menu-submenu .ant-menu-item) {
+  padding-left: 48px !important;
+}
+
+.navigation-menu :deep(.ant-menu-submenu-arrow) {
+  color: var(--color-text-secondary);
 }
 
 /* Collapsed state adjustments - 完全复制 a-button type="text" 的样式 */

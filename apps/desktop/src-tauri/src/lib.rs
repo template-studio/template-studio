@@ -1690,6 +1690,110 @@ async fn ai_update_model(
     Ok(())
 }
 
+/// 从提供商 API 获取可用模型列表
+#[tauri::command]
+async fn ai_fetch_models(
+    provider_name: String,
+    database: tauri::State<'_, DbState>,
+) -> Result<String, String> {
+    let db = database.as_ref();
+
+    // 获取提供商配置
+    let provider_config = db.get_ai_provider(&provider_name).await
+        .map_err(|e| format!("获取提供商失败: {}", e))?
+        .ok_or_else(|| "提供商不存在".to_string())?;
+
+    let api_key = provider_config["apiKey"]
+        .as_str()
+        .ok_or_else(|| "请先配置 API 密钥".to_string())?;
+
+    let base_url = provider_config["apiEndpoint"]
+        .as_str()
+        .unwrap_or_else(|| get_default_endpoint(&provider_name).leak());
+
+    // 构建 /models 端点
+    let models_endpoint = if base_url.ends_with("/models") {
+        base_url.to_string()
+    } else if base_url.ends_with('/') {
+        format!("{}models", base_url)
+    } else {
+        format!("{}/models", base_url)
+    };
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("创建 HTTP 客户端失败: {}", e))?;
+
+    let response = client
+        .get(&models_endpoint)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .send()
+        .await
+        .map_err(|e| format!("请求模型列表失败: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(format!("API 返回错误 ({}): {}", status, body));
+    }
+
+    let response_json: serde_json::Value = response.json().await
+        .map_err(|e| format!("解析响应失败: {}", e))?;
+
+    // 解析 OpenAI 兼容格式的模型列表
+    let models_array = response_json["data"]
+        .as_array()
+        .ok_or_else(|| "API 返回格式错误：缺少 data 字段".to_string())?;
+
+    let models: Vec<serde_json::Value> = models_array
+        .iter()
+        .filter_map(|m| {
+            let model_id = m["id"].as_str()?;
+            Some(serde_json::json!({
+                "modelId": model_id,
+                "modelName": model_id,
+                "ownedBy": m["owned_by"].as_str().unwrap_or("")
+            }))
+        })
+        .collect();
+
+    serde_json::to_string(&models)
+        .map_err(|e| format!("序列化失败: {}", e))
+}
+
+/// 批量添加 AI 模型
+#[tauri::command]
+async fn ai_batch_add_models(
+    provider_name: String,
+    models: serde_json::Value,
+    database: tauri::State<'_, DbState>,
+) -> Result<i64, String> {
+    let db = database.as_ref();
+
+    let models_array = models.as_array()
+        .ok_or_else(|| "models 格式错误：应为数组".to_string())?;
+
+    let mut model_tuples: Vec<(&str, &str, &str, &str, Option<&str>, i32)> = Vec::new();
+    for m in models_array {
+        let model_id = m.get("modelId").and_then(|v| v.as_str()).unwrap_or("");
+        let model_name = m.get("modelName").and_then(|v| v.as_str()).unwrap_or(model_id);
+        let group_id = m.get("groupId").and_then(|v| v.as_str()).unwrap_or("chat");
+        let description = m.get("description").and_then(|v| v.as_str());
+        let max_tokens = m.get("maxTokens").and_then(|v| v.as_i64()).unwrap_or(4096) as i32;
+
+        if !model_id.is_empty() {
+            model_tuples.push((model_id, model_name, &provider_name, group_id, description, max_tokens));
+        }
+    }
+
+    let count = db.batch_add_ai_models(&model_tuples)
+        .await
+        .map_err(|e| format!("批量添加模型失败: {}", e))?;
+
+    Ok(count)
+}
+
 // ===== AI SQL 生成和修复命令 =====
 
 /// AI 生成 SQL（支持多轮对话）
@@ -1872,6 +1976,7 @@ fn get_default_endpoint(provider: &str) -> String {
         "glm" => "https://open.bigmodel.cn/api/paas/v4".to_string(),
         "openai" => "https://api.openai.com/v1".to_string(),
         "longcat" => "https://api.longcat.chat/openai".to_string(),
+        "mimo" => "https://api.xiaomimimo.com/v1".to_string(),
         _ => "https://api.openai.com/v1".to_string(),
     }
 }
@@ -2248,6 +2353,8 @@ pub fn run() {
             ai_add_model,
             ai_delete_model,
             ai_update_model,
+            ai_fetch_models,
+            ai_batch_add_models,
             ai_generate_sql,
             ai_fix_sql,
             parse_ai_sql,

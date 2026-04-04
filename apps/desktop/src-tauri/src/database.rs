@@ -137,6 +137,10 @@ impl Database {
             self.migration_010_create_project_mappings().await?;
         }
 
+        if current_version < 11 {
+            self.migration_011_add_mimo_provider().await?;
+        }
+
         Ok(())
     }
 
@@ -597,7 +601,8 @@ impl Database {
                 provider_name, display_name, provider_type, api_endpoint, is_enabled
             ) VALUES
                 ('deepseek', 'DeepSeek', 'deepseek', 'https://api.deepseek.com/v1', 0),
-                ('glm', '智谱 GLM', 'glm', 'https://open.bigmodel.cn/api/paas/v4', 0)"
+                ('glm', '智谱 GLM', 'glm', 'https://open.bigmodel.cn/api/paas/v4', 0),
+                ('mimo', 'Xiaomi MiMo', 'openai', 'https://api.xiaomimimo.com/v1', 0)"
         )
         .execute(&self.pool)
         .await?;
@@ -609,7 +614,9 @@ impl Database {
                 ('deepseek-coder', 'DeepSeek Coder', 'deepseek', 'code', 'DeepSeek 代码模型'),
                 ('glm-4', 'GLM-4', 'glm', 'chat', '智谱 GLM-4 模型'),
                 ('glm-4-flash', 'GLM-4 Flash', 'glm', 'chat', '智谱 GLM-4 Flash 快速模型'),
-                ('glm-4-plus', 'GLM-4 Plus', 'glm', 'chat', '智谱 GLM-4 Plus 增强模型')"
+                ('glm-4-plus', 'GLM-4 Plus', 'glm', 'chat', '智谱 GLM-4 Plus 增强模型'),
+                ('mimo-v2-flash', 'MiMo-V2-Flash', 'mimo', 'chat', '309B 参数，激活 15B，轻量快速'),
+                ('mimo-v2-pro', 'MiMo-V2-Pro', 'mimo', 'chat', '旗舰级 Agent 基座模型')"
         )
         .execute(&self.pool)
         .await?;
@@ -815,6 +822,34 @@ impl Database {
         self.init_default_system_mappings().await?;
 
         sqlx::query("INSERT INTO schema_migrations (version) VALUES (10)")
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    /// 迁移 011: 添加 MiMo 预置提供商和模型
+    async fn migration_011_add_mimo_provider(&self) -> Result<(), sqlx::Error> {
+        println!("执行迁移 011: 添加 MiMo 预置提供商和模型");
+
+        sqlx::query(
+            "INSERT OR IGNORE INTO ai_providers (
+                provider_name, display_name, provider_type, api_endpoint, is_enabled
+            ) VALUES
+                ('mimo', 'Xiaomi MiMo', 'openai', 'https://api.xiaomimimo.com/v1', 0)"
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query(
+            "INSERT OR IGNORE INTO ai_models (model_id, model_name, provider_name, group_id, description) VALUES
+                ('mimo-v2-flash', 'MiMo-V2-Flash', 'mimo', 'chat', '309B 参数，激活 15B，轻量快速'),
+                ('mimo-v2-pro', 'MiMo-V2-Pro', 'mimo', 'chat', '旗舰级 Agent 基座模型')"
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query("INSERT INTO schema_migrations (version) VALUES (11)")
             .execute(&self.pool)
             .await?;
 
@@ -2657,6 +2692,34 @@ impl Database {
         .await?;
 
         Ok(result.last_insert_rowid())
+    }
+
+    /// 批量添加 AI 模型（忽略已存在的 model_id）
+    pub async fn batch_add_ai_models(
+        &self,
+        models: &[(&str, &str, &str, &str, Option<&str>, i32)],
+    ) -> Result<i64, sqlx::Error> {
+        let mut count = 0i64;
+        for (model_id, model_name, provider_name, group_id, description, max_tokens) in models {
+            let result = sqlx::query(
+                "INSERT INTO ai_models (model_id, model_name, provider_name, group_id, description, max_tokens)
+                 SELECT ?1, ?2, ?3, ?4, ?5, ?6
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM ai_models WHERE model_id = ?1 AND provider_name = ?3
+                 )"
+            )
+            .bind(model_id)
+            .bind(model_name)
+            .bind(provider_name)
+            .bind(group_id)
+            .bind(description)
+            .bind(max_tokens)
+            .execute(&self.pool)
+            .await?;
+
+            count += result.rows_affected() as i64;
+        }
+        Ok(count)
     }
 
     /// 删除 AI 模型

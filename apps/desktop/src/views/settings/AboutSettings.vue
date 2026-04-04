@@ -80,7 +80,7 @@
 
       <div class="setting-row">
         <div class="setting-row-title">许可证</div>
-        <div class="setting-value">MIT License</div>
+        <div class="setting-value">Apache License 2.0</div>
       </div>
 
       <div class="setting-divider"></div>
@@ -224,22 +224,22 @@ const techStack = [
 const resourceLinks = [
   {
     name: 'GitHub',
-    url: 'https://github.com',
+    url: 'https://github.com/template-studio/template-studio',
     icon: GithubOutlined
   },
   {
     name: '文档',
-    url: 'https://docs.example.com',
+    url: 'https://github.com/template-studio/template-studio#readme',
     icon: BookOutlined
   },
   {
     name: '反馈问题',
-    url: 'https://github.com/issues',
+    url: 'https://github.com/template-studio/template-studio/issues',
     icon: BugOutlined
   },
   {
-    name: '官方网站',
-    url: 'https://example.com',
+    name: '许可证',
+    url: 'https://github.com/template-studio/template-studio/blob/master/LICENSE',
     icon: GlobalOutlined
   }
 ]

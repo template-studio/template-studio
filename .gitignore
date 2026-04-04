@@ -136,3 +136,4 @@ features.json
 rewrite.json
 
 .trae/
+.reference/

@@ -202,6 +202,36 @@ export const useAIConfigStore = defineStore('ai-config', {
       }
     },
 
+    // 从提供商 API 获取可用模型列表
+    async fetchProviderModels(providerName) {
+      try {
+        const result = await invoke('ai_fetch_models', { providerName })
+        return JSON.parse(result)
+      } catch (error) {
+        message.error('获取模型列表失败: ' + error)
+        return []
+      }
+    },
+
+    // 批量添加模型
+    async batchAddModels(providerName, models) {
+      try {
+        const count = await invoke('ai_batch_add_models', {
+          providerName,
+          models
+        })
+        if (count > 0) {
+          message.success(`成功添加 ${count} 个模型`)
+        } else {
+          message.info('没有新模型需要添加')
+        }
+        return count
+      } catch (error) {
+        message.error('批量添加模型失败: ' + error)
+        return 0
+      }
+    },
+
     // 设置默认提供商
     setDefaultProvider(providerName) {
       this.defaultProvider = providerName
