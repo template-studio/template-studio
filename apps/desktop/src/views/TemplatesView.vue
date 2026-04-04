@@ -66,28 +66,31 @@
               <div class="visual-bg">
                 <div class="code-preview">{{ getCodeSnippet(template) }}</div>
               </div>
-              <a-badge v-if="template.isFeatured === 1" count="推荐" :number-style="{ backgroundColor: '#52c41a' }" />
+              <div v-if="template.isFeatured === 1" class="template-badge">
+                <span>推荐</span>
+              </div>
             </div>
 
             <div class="card-content">
               <h3 class="template-name">{{ template.name }}</h3>
               <p class="template-desc">{{ template.description }}</p>
 
-              <div class="template-meta">
-                <a-tag
+              <div class="template-languages">
+                <span
                   v-for="lang in template.languages"
                   :key="lang.languageId"
-                  color="blue"
+                  class="template-tag"
                 >
                   {{ getLanguageName(lang.languageId) }}
-                </a-tag>
-                <a-tag color="purple">{{ getCategoryName(template.categoryId) }}</a-tag>
+                </span>
               </div>
 
               <div class="card-footer">
-                <div class="author">
-                  <UserOutlined />
-                  <span>Template Studio</span>
+                <div class="card-author">
+                  <div class="author-avatar">
+                    <UserOutlined />
+                  </div>
+                  <span class="author-name">Template Studio</span>
                 </div>
                 <a-button type="primary" size="small" @click.stop="useTemplate(template)">
                   使用
@@ -1989,7 +1992,7 @@ onMounted(async () => {
 
 .template-card:hover {
   transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
   border-color: var(--color-primary);
 }
 
@@ -2007,96 +2010,149 @@ onMounted(async () => {
 .visual-bg {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #1890ff 0%, #52c41a 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: hidden;
 }
 
 .visual-bg::before {
   content: '';
   position: absolute;
-  top: -50%;
-  left: -50%;
+  top: 0;
+  left: -100%;
   width: 200%;
-  height: 200%;
+  height: 100%;
   background: linear-gradient(
-    45deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.1) 50%,
-    transparent 70%
+    90deg,
+    transparent 0%,
+    rgba(24, 144, 255, 0.03) 45%,
+    rgba(24, 144, 255, 0.08) 50%,
+    rgba(24, 144, 255, 0.03) 55%,
+    transparent 100%
   );
-  animation: shimmer 3s infinite;
+  animation: shimmer 4s ease-in-out infinite;
 }
 
 @keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(50%); }
 }
 
 .code-preview {
-  font-family: 'Courier New', 'Consolas', monospace;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
   font-size: 10px;
-  line-height: 1.4;
-  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.5;
+  color: rgba(148, 163, 184, 0.4);
   white-space: pre;
-  padding: var(--spacing-md);
+  padding: 16px 20px;
   text-align: left;
   position: relative;
   z-index: 1;
-  max-width: 100%;
   overflow: hidden;
 }
 
+.template-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(24, 144, 255, 0.9);
+  backdrop-filter: blur(8px);
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  z-index: 2;
+  letter-spacing: 0.3px;
+}
+
 .card-content {
-  padding: var(--spacing-md);
+  padding: 16px 20px 20px;
 }
 
 .template-name {
-  margin: 0 0 var(--spacing-xs) 0;
+  margin: 0 0 6px 0;
   font-size: 16px;
   font-weight: 600;
   color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+}
+
+.template-card:hover .template-name {
+  color: var(--color-primary);
 }
 
 .template-desc {
-  margin: 0 0 var(--spacing-sm) 0;
+  margin: 0 0 12px 0;
   font-size: 13px;
-  color: var(--color-text-secondary);
+  color: #64748b;
   line-height: 1.6;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: 42px;
 }
 
-.template-meta {
-  margin-bottom: var(--spacing-sm);
+.template-languages {
   display: flex;
-  gap: var(--spacing-xs);
   flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.template-tag {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.template-card:hover .template-tag {
+  background: rgba(24, 144, 255, 0.08);
+  border-color: rgba(24, 144, 255, 0.2);
+  color: #1890ff;
 }
 
 .card-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: var(--spacing-sm);
-  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
 }
 
-.author {
+.card-author {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  color: var(--color-text-secondary);
-  font-size: 13px;
+  gap: 8px;
+}
+
+.author-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+  font-size: 12px;
+}
+
+.author-name {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
 }
 
 /* 模板配置向导 */
