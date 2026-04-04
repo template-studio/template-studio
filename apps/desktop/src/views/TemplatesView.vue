@@ -88,8 +88,8 @@
               <div class="card-footer">
                 <div class="card-author">
                   <div class="author-avatar">
-                    <img v-if="getOwnerAvatarUrl(template)" :src="getOwnerAvatarUrl(template)" alt="" class="author-avatar-img" />
-                    <UserOutlined v-else />
+                    <UserOutlined class="author-avatar-fallback" />
+                    <img v-if="getOwnerAvatarUrl(template)" :src="getOwnerAvatarUrl(template)" alt="" class="author-avatar-img" @error="$event.target.style.display='none'" />
                   </div>
                   <span class="author-name">{{ template.ownerName || 'Template Studio' }}</span>
                 </div>
@@ -1150,7 +1150,9 @@ const getOwnerAvatarUrl = (template) => {
   const avatar = template.ownerAvatar
   if (!avatar) return ''
   if (avatar.startsWith('http')) return avatar
-  return avatar
+  // 相对路径拼接 API 基础地址
+  const base = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080').replace(/\/+$/, '')
+  return `${base}${avatar.startsWith('/') ? '' : '/'}${avatar}`
 }
 
 // 格式化创建时间
@@ -2191,19 +2193,28 @@ onMounted(async () => {
   flex-shrink: 0;
   color: #fff;
   font-size: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.author-avatar-fallback {
+  font-size: 12px;
+  color: #fff;
+}
+
+.author-avatar-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
 }
 
 .author-name {
   font-size: 12px;
   color: #64748b;
   font-weight: 500;
-}
-
-.author-avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 6px;
 }
 
 .card-footer-right {
