@@ -2148,6 +2148,17 @@ impl Database {
         Ok(())
     }
 
+    /// 更新列位置
+    pub async fn update_column_position(&self, column_id: i64, position: i32) -> Result<(), sqlx::Error> {
+        sqlx::query("UPDATE db_columns SET ordinal_position = ?1 WHERE id = ?2")
+            .bind(position)
+            .bind(column_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
     /// ===== 语言操作 =====
 
     /// 创建语言

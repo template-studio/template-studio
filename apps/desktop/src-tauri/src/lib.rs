@@ -1040,6 +1040,23 @@ async fn db_delete_column(
     Ok(())
 }
 
+/// 重新排序列
+#[tauri::command]
+async fn db_reorder_columns(
+    _table_id: i64,
+    column_ids: Vec<i64>,
+    database: tauri::State<'_, DbState>,
+) -> Result<(), String> {
+    let db = database.as_ref();
+
+    for (index, column_id) in column_ids.iter().enumerate() {
+        db.update_column_position(*column_id, (index + 1) as i32).await
+            .map_err(|e| format!("更新列位置失败: {}", e))?;
+    }
+
+    Ok(())
+}
+
 /// 解析SQL并创建表和字段
 #[tauri::command]
 async fn cmd_parse_sql_and_create(
@@ -2337,6 +2354,7 @@ pub fn run() {
             db_create_column,
             db_update_column,
             db_delete_column,
+            db_reorder_columns,
             cmd_parse_sql_and_create,
             // 语言命令
             db_get_all_languages,

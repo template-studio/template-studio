@@ -46,11 +46,49 @@
       </div>
     </div>
 
+    <!-- 搜索筛选排序工具栏 -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <a-input
+          v-model:value="searchQuery"
+          placeholder="搜索表名或说明..."
+          allow-clear
+          style="width: 240px"
+          @change="handleSearch"
+        >
+          <template #prefix><SearchOutlined /></template>
+        </a-input>
+        <a-select
+          v-model:value="filterValue"
+          placeholder="筛选引擎"
+          allow-clear
+          style="width: 140px"
+          @change="handleFilter"
+        >
+          <a-select-option v-for="f in engineFilters" :key="f.value" :value="f.value">{{ f.label }}</a-select-option>
+        </a-select>
+        <a-select
+          v-model:value="sortValue"
+          style="width: 160px"
+          @change="handleSort"
+        >
+          <a-select-option v-for="s in sortOptions" :key="s.value" :value="s.value">{{ s.label }}</a-select-option>
+        </a-select>
+      </div>
+      <div class="toolbar-right">
+        <span class="result-count">共 {{ filteredTables.length }} 张表</span>
+        <a-button @click="exportTables" :disabled="filteredTables.length === 0">
+          <template #icon><ExportOutlined /></template>
+          导出SQL
+        </a-button>
+      </div>
+    </div>
+
     <!-- 表列表 -->
     <a-card :bordered="false" class="table-card">
       <a-table
         :columns="columns"
-        :data-source="tables"
+        :data-source="filteredTables"
         :row-key="record => record.id"
         :row-selection="rowSelection"
         :pagination="{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `共 ${total} 张表` }"
@@ -188,7 +226,7 @@
 
           <a-table
             :columns="importTableColumns"
-            :data-source="filteredTables"
+            :data-source="filteredImportTables"
             :row-selection="importRowSelection"
             :pagination="{ pageSize: 20, size: 'small', showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }"
             :scroll="{ y: 400 }"
@@ -404,9 +442,12 @@ CREATE TABLE users (<br>
       </div>
 
       <!-- 新增字段按钮 -->
-      <div style="margin-bottom: 16px">
+      <div style="margin-bottom: 16px; display: flex; gap: 8px">
         <a-button type="primary" @click="showAddColumnDialog">
           <PlusOutlined /> 新增字段
+        </a-button>
+        <a-button v-if="selectedColumnKeys.length > 0" danger @click="batchDeleteColumns">
+          <DeleteOutlined /> 批量删除 ({{ selectedColumnKeys.length }})
         </a-button>
       </div>
 
@@ -414,8 +455,16 @@ CREATE TABLE users (<br>
         :columns="columnColumns"
         :data-source="currentColumns"
         :row-key="record => record.id"
+        :row-selection="columnRowSelection"
         :pagination="false"
         size="small"
+        :custom-row="(record, index) => ({
+          draggable: true,
+          ondragstart: (e) => handleColumnDragStart(e, index),
+          ondragover: (e) => handleColumnDragOver(e, index),
+          ondrop: (e) => handleColumnDrop(e, index),
+          ondragend: handleColumnDragEnd
+        })"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
@@ -817,7 +866,7 @@ CREATE TABLE users (<br>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SQLEditor from '@/components/SQLEditor.vue'
 import SQLDiffEditor from '@/components/SQLDiffEditor.vue'
@@ -835,11 +884,15 @@ import {
   UploadOutlined,
   RobotOutlined,
   MessageOutlined,
-  SettingOutlined
+  SettingOutlined,
+  ExportOutlined,
+  DragOutlined,
+  DeleteOutlined
 } from '@ant-design/icons-vue'
 import { TableConfigDrawer } from '@/components/tableConfig'
 import { message, Modal } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
+import { save } from '@tauri-apps/plugin-dialog'
 import * as projectsApi from '../../api/projects'
 
 const route = useRoute()
@@ -850,6 +903,75 @@ const loading = ref(false)
 const importing = ref(false)
 const project = ref(null)
 const tables = ref([])
+
+// 搜索、筛选、排序状态
+const searchQuery = ref('')
+const filterValue = ref(undefined)
+const sortValue = ref('name:asc')
+
+// 筛选选项
+const engineFilters = [
+  { label: 'InnoDB', value: 'InnoDB' },
+  { label: 'MyISAM', value: 'MyISAM' },
+  { label: 'Memory', value: 'Memory' }
+]
+
+// 排序选项
+const sortOptions = [
+  { label: '名称 A-Z', value: 'name:asc' },
+  { label: '名称 Z-A', value: 'name:desc' },
+  { label: '列数最多', value: 'column_count:desc' },
+  { label: '列数最少', value: 'column_count:asc' },
+  { label: '最新更新', value: 'updated_at:desc' },
+  { label: '最早更新', value: 'updated_at:asc' }
+]
+
+// 过滤和排序后的表列表
+const filteredTables = computed(() => {
+  let result = [...tables.value]
+
+  // 搜索筛选
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(t =>
+      t.name.toLowerCase().includes(query) ||
+      (t.comment && t.comment.toLowerCase().includes(query))
+    )
+  }
+
+  // 引擎筛选
+  if (filterValue.value) {
+    result = result.filter(t => t.engine === filterValue.value)
+  }
+
+  // 排序
+  if (sortValue.value) {
+    const [field, order] = sortValue.value.split(':')
+    result.sort((a, b) => {
+      let valueA, valueB
+      switch (field) {
+        case 'name':
+          valueA = a.name.toLowerCase()
+          valueB = b.name.toLowerCase()
+          break
+        case 'column_count':
+          valueA = a.column_count || 0
+          valueB = b.column_count || 0
+          break
+        case 'updated_at':
+          valueA = new Date(a.updated_at).getTime()
+          valueB = new Date(b.updated_at).getTime()
+          break
+        default:
+          return 0
+      }
+      if (order === 'asc') return valueA > valueB ? 1 : -1
+      return valueA < valueB ? 1 : -1
+    })
+  }
+
+  return result
+})
 
 // 表格行选择
 const selectedRowKeys = ref([])
@@ -976,8 +1098,8 @@ const importRowSelection = {
   }
 }
 
-// 过滤后的表列表
-const filteredTables = computed(() => {
+// 过滤后的导入表列表
+const filteredImportTables = computed(() => {
   if (!searchKeyword.value) {
     return availableTables.value
   }
@@ -1000,6 +1122,21 @@ const importTableColumns = [
 const columnsDrawerVisible = ref(false)
 const currentTable = ref(null)
 const currentColumns = ref([])
+
+// 列拖拽排序状态
+let dragColumnIndex = null
+
+// 列批量选择状态
+const selectedColumnKeys = ref([])
+
+const columnRowSelection = {
+  selectedRowKeys: selectedColumnKeys,
+  onChange: (selectedKeys) => {
+    selectedColumnKeys.value = selectedKeys
+  },
+  columnWidth: 30,
+  columnTitle: ' '
+}
 
 // 表格列定义
 const columns = [
@@ -1051,6 +1188,72 @@ const loadTables = async () => {
     message.error('加载表列表失败: ' + error)
   } finally {
     loading.value = false
+  }
+}
+
+// 搜索处理
+const handleSearch = () => {
+  // 搜索是实时的，无需额外处理
+}
+
+// 筛选处理
+const handleFilter = (value) => {
+  filterValue.value = value
+}
+
+// 排序处理
+const handleSort = (value) => {
+  sortValue.value = value
+}
+
+// 导出 SQL DDL
+const exportTables = async () => {
+  try {
+    const dbType = project.value?.datasource?.type_ || 'mysql'
+    let sql = ''
+
+    for (const table of filteredTables.value) {
+      // 加载表的列信息
+      const columns = await projectsApi.getTableColumns(table.id)
+
+      sql += '-- ' + (table.comment || table.name) + '\n'
+      sql += 'CREATE TABLE `' + table.name + '` (\n'
+
+      const columnDefs = columns.map(col => {
+        let def = '  `' + col.name + '` ' + col.data_type
+        if (col.length) def += '(' + col.length + ')'
+        if (!col.is_nullable) def += ' NOT NULL'
+        if (col.default_value) def += ' DEFAULT ' + col.default_value
+        if (col.comment) def += " COMMENT '" + col.comment + "'"
+        return def
+      })
+
+      // 添加主键
+      const primaryKeys = columns.filter(c => c.is_primary_key).map(c => '`' + c.name + '`')
+      if (primaryKeys.length > 0) {
+        columnDefs.push('  PRIMARY KEY (' + primaryKeys.join(', ') + ')')
+      }
+
+      sql += columnDefs.join(',\n')
+      sql += '\n)'
+
+      if (table.engine) sql += ' ENGINE=' + table.engine
+      if (table.comment) sql += " COMMENT='" + table.comment + "'"
+      sql += ';\n\n'
+    }
+
+    // 保存文件
+    const filePath = await save({
+      defaultPath: (project.value?.name || 'tables') + '.sql',
+      filters: [{ name: 'SQL', extensions: ['sql'] }]
+    })
+
+    if (filePath) {
+      await invoke('write_file', { path: filePath, content: sql })
+      message.success('SQL 文件导出成功')
+    }
+  } catch (error) {
+    message.error('导出失败: ' + error)
   }
 }
 
@@ -1714,6 +1917,81 @@ const deleteColumn = async (column) => {
   }
 }
 
+// 批量删除列
+const batchDeleteColumns = async () => {
+  if (selectedColumnKeys.value.length === 0) {
+    message.warning('请先选择要删除的字段')
+    return
+  }
+
+  Modal.confirm({
+    title: '确认删除',
+    content: `确定要删除选中的 ${selectedColumnKeys.value.length} 个字段吗？此操作不可恢复！`,
+    okText: '确定',
+    cancelText: '取消',
+    okType: 'danger',
+    onOk: async () => {
+      try {
+        await Promise.all(
+          selectedColumnKeys.value.map(id => projectsApi.deleteColumn(id))
+        )
+        message.success(`成功删除 ${selectedColumnKeys.value.length} 个字段`)
+        selectedColumnKeys.value = []
+        await viewColumns(currentTable.value)
+        await loadTables()
+      } catch (error) {
+        message.error('批量删除失败: ' + error)
+      }
+    }
+  })
+}
+
+// 列拖拽排序
+const handleColumnDragStart = (e, index) => {
+  dragColumnIndex = index
+  e.dataTransfer.effectAllowed = 'move'
+  e.target.closest('tr').style.opacity = '0.5'
+}
+
+const handleColumnDragOver = (e, index) => {
+  e.preventDefault()
+  e.dataTransfer.dropEffect = 'move'
+}
+
+const handleColumnDrop = async (e, index) => {
+  e.preventDefault()
+  if (dragColumnIndex === null || dragColumnIndex === index) return
+
+  const draggedColumn = currentColumns.value[dragColumnIndex]
+  const targetColumn = currentColumns.value[index]
+
+  // 交换位置
+  const newColumns = [...currentColumns.value]
+  newColumns.splice(dragColumnIndex, 1)
+  newColumns.splice(index, 0, draggedColumn)
+
+  // 更新 ordinal_position
+  for (let i = 0; i < newColumns.length; i++) {
+    newColumns[i].ordinal_position = i + 1
+  }
+
+  currentColumns.value = newColumns
+
+  // 保存到后端
+  try {
+    await projectsApi.reorderColumns(currentTable.value.id, newColumns.map(c => c.id))
+    message.success('字段排序已更新')
+  } catch (error) {
+    message.error('排序保存失败: ' + error)
+    await viewColumns(currentTable.value) // 回滚
+  }
+}
+
+const handleColumnDragEnd = (e) => {
+  dragColumnIndex = null
+  e.target.closest('tr').style.opacity = '1'
+}
+
 // 格式化数字
 const formatNumber = (num) => {
   if (!num) return '-'
@@ -1988,6 +2266,32 @@ onMounted(async () => {
 
 .table-card {
   margin-top: var(--spacing-md);
+}
+
+/* 工具栏 */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm) 0;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.result-count {
+  color: var(--color-text-secondary);
+  font-size: 14px;
 }
 
 :deep(.ant-table) {

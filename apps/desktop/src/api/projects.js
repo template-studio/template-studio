@@ -201,6 +201,16 @@ export function deleteColumn(columnId) {
 }
 
 /**
+ * 重新排序列
+ * @param {number} tableId - 表 ID
+ * @param {number[]} columnIds - 列 ID 数组（按新顺序）
+ * @returns {Promise<void>}
+ */
+export function reorderColumns(tableId, columnIds) {
+  return invoke('db_reorder_columns', { tableId, columnIds })
+}
+
+/**
  * 解析SQL并创建表和字段
  * @param {number} projectId - 项目 ID
  * @param {string} sqlContent - SQL内容
