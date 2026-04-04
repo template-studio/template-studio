@@ -130,9 +130,9 @@ const testResult = ref(null)
 // 配置文件路径（动态替换用户名）
 const configFilePath = computed(() => {
   if (username.value) {
-    return `C:\\Users\\${username.value}\\.cicbyte\\template_studio\\config\\scaffold-desktop.yaml`
+    return `C:\\Users\\${username.value}\\.cicbyte\\template_studio\\config\\template-studio-desktop.yaml`
   }
-  return 'C:\\Users\\{user}\\.cicbyte\\template_studio\\config\\scaffold-desktop.yaml'
+  return 'C:\\Users\\{user}\\.cicbyte\\template_studio\\config\\template-studio-desktop.yaml'
 })
 
 // 默认模板路径（动态替换用户名）

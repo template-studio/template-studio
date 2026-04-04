@@ -71,7 +71,7 @@ impl Config {
         std::fs::create_dir_all(&config_dir)
             .context("创建配置目录失败")?;
 
-        Ok(config_dir.join("desktop.yaml"))
+        Ok(config_dir.join("template-studio-desktop.yaml"))
     }
 
     /// 从文件加载配置
