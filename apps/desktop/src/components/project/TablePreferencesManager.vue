@@ -8,7 +8,7 @@
         :class="['nav-item', { active: activeMainTab === tab.key }]"
         @click="activeMainTab = tab.key"
       >
-        <span class="nav-icon">{{ tab.icon }}</span>
+        <component :is="tab.icon" class="nav-icon" />
         <span class="nav-label">{{ tab.label }}</span>
       </div>
     </div>
@@ -252,7 +252,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
-import { SaveOutlined } from '@ant-design/icons-vue'
+import { SaveOutlined, TableOutlined, FontSizeOutlined, DatabaseOutlined } from '@ant-design/icons-vue'
 
 const props = defineProps({
   projectId: {
@@ -270,9 +270,9 @@ const saving = ref(false)
 
 // 外层 Tab 配置
 const mainTabs = [
-  { key: 'fields', icon: '📋', label: '字段规范' },
-  { key: 'naming', icon: '🔤', label: '命名规范' },
-  { key: 'storage', icon: '⚙️', label: '存储配置' }
+  { key: 'fields', icon: TableOutlined, label: '字段规范' },
+  { key: 'naming', icon: FontSizeOutlined, label: '命名规范' },
+  { key: 'storage', icon: DatabaseOutlined, label: '存储配置' }
 ]
 
 // 内层 Tab 配置（字段规范）
@@ -517,7 +517,7 @@ defineExpose({ savePreferences })
 
 .nav-icon {
   margin-right: 8px;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .nav-label {

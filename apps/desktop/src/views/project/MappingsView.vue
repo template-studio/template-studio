@@ -1,157 +1,131 @@
 <template>
   <div class="project-mappings-view">
-    <a-card :bordered="false" class="mappings-card">
-      <div class="card-header">
-        <h2 class="card-title">
-          <SwapOutlined style="margin-right: 8px" />
-          映射管理
-          <span v-if="backendLanguageName || frontendLanguageName" class="language-info">
-            <span v-if="backendLanguageName">{{ backendLanguageName }}</span>
-            <span v-if="backendLanguageName && frontendLanguageName" class="lang-separator">|</span>
-            <span v-if="frontendLanguageName">{{ frontendLanguageName }}</span>
-          </span>
+    <!-- 页面头部 -->
+    <div class="page-header">
+      <div class="header-left">
+        <h2 class="page-title">
+          <SwapOutlined />
+          <span>映射管理</span>
         </h2>
-        <div class="header-actions">
-          <a-button type="primary" @click="showAddDialog">
-            <PlusOutlined style="margin-right: 4px" />
-            添加映射
-          </a-button>
-          <a-button @click="resetToDefault">
-            <ReloadOutlined style="margin-right: 4px" />
-            重置
-          </a-button>
-          <a-button @click="showSwitchLanguageDialog">
-            <SwapOutlined style="margin-right: 4px" />
-            切换语言
-          </a-button>
+        <div v-if="backendLanguageName || frontendLanguageName" class="language-tags">
+          <a-tag v-if="frontendLanguageName" color="blue">
+            <template #icon><CodeOutlined /></template>
+            {{ frontendLanguageName }}
+          </a-tag>
+          <a-tag v-if="backendLanguageName" color="green">
+            <template #icon><ApiOutlined /></template>
+            {{ backendLanguageName }}
+          </a-tag>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a-button @click="resetToDefault">
+          <template #icon><ReloadOutlined /></template>
+          重置
+        </a-button>
+        <a-button @click="showSwitchLanguageDialog">
+          <template #icon><SwapOutlined /></template>
+          切换语言
+        </a-button>
+        <a-button type="primary" @click="showAddDialog">
+          <template #icon><PlusOutlined /></template>
+          添加映射
+        </a-button>
+      </div>
+    </div>
+
+    <!-- 映射内容区 -->
+    <div class="mappings-container">
+      <!-- 左侧 Tab -->
+      <div class="scope-tabs">
+        <div
+          :class="['scope-tab', { active: activeScope === 'frontend' }]"
+          @click="handleScopeChange('frontend')"
+        >
+          <CodeOutlined />
+          <span>前端映射</span>
+          <a-badge :count="frontendMappings.length" :number-style="{ backgroundColor: '#1890ff' }" />
+        </div>
+        <div
+          :class="['scope-tab', { active: activeScope === 'backend' }]"
+          @click="handleScopeChange('backend')"
+        >
+          <ApiOutlined />
+          <span>后端映射</span>
+          <a-badge :count="backendMappings.length" :number-style="{ backgroundColor: '#52c41a' }" />
         </div>
       </div>
 
-      <!-- 前后端Tab -->
-      <a-tabs v-model:activeKey="activeScope" tab-position="left" type="card" size="large" @change="handleScopeChange">
-        <a-tab-pane key="frontend" tab="前端映射">
-          <div class="mapping-content">
-            <a-alert
-              v-if="!frontendLanguageId"
-              message="请先设置前端语言"
-              type="warning"
-              show-icon
-              style="margin-bottom: 16px"
-            />
-            <a-table
-              :columns="columns"
-              :data-source="frontendMappings"
-              :pagination="false"
-              :scroll="{ x: 800 }"
-              row-key="id"
-              class="mapping-table"
-              :loading="loading"
-            >
-              <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'dbType'">
-                  <span style="font-weight: 500">{{ record.db_type }}</span>
-                </template>
-                <template v-else-if="column.key === 'sourceType'">
-                  <span style="font-weight: 500">{{ record.source_type }}</span>
-                </template>
-                <template v-else-if="column.key === 'targetType'">
-                  <a-input
-                    v-if="editingKey === record.id"
-                    v-model:value="record.target_type"
-                    @blur="saveMapping(record)"
-                    @keyup.enter="saveMapping(record)"
-                    @keyup.esc="cancelEdit(record)"
-                    ref="editingInput"
-                    size="small"
-                  />
-                  <span v-else @dblclick="editMapping(record)" style="cursor: pointer">
-                    {{ record.target_type }}
-                  </span>
-                </template>
-                <template v-else-if="column.key === 'action'">
-                  <a-space>
-                    <a-button type="link" size="small" @click="editMapping(record)">
-                      编辑
-                    </a-button>
-                    <a-popconfirm
-                      title="确定要删除这个映射吗？"
-                      ok-text="确定"
-                      cancel-text="取消"
-                      @confirm="deleteMapping(record)"
-                    >
-                      <a-button type="link" size="small" danger>
-                        删除
-                      </a-button>
-                    </a-popconfirm>
-                  </a-space>
-                </template>
-              </template>
-            </a-table>
-          </div>
-        </a-tab-pane>
+      <!-- 右侧表格 -->
+      <div class="mapping-content">
+        <a-alert
+          v-if="activeScope === 'frontend' && !frontendLanguageId"
+          message="请先设置前端语言"
+          type="warning"
+          show-icon
+          style="margin-bottom: 16px"
+        />
+        <a-alert
+          v-if="activeScope === 'backend' && !backendLanguageId"
+          message="请先选择后端语言"
+          type="warning"
+          show-icon
+          style="margin-bottom: 16px"
+        />
 
-        <a-tab-pane key="backend" tab="后端映射">
-          <div class="mapping-content">
-            <a-alert
-              v-if="!backendLanguageId"
-              message="请先选择后端语言"
-              type="warning"
-              show-icon
-              style="margin-bottom: 16px"
-            />
-            <a-table
-              :columns="columns"
-              :data-source="backendMappings"
-              :pagination="false"
-              :scroll="{ x: 800 }"
-              row-key="id"
-              class="mapping-table"
-              :loading="loading"
-            >
-              <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'dbType'">
-                  <span style="font-weight: 500">{{ record.db_type }}</span>
-                </template>
-                <template v-else-if="column.key === 'sourceType'">
-                  <span style="font-weight: 500">{{ record.source_type }}</span>
-                </template>
-                <template v-else-if="column.key === 'targetType'">
-                  <a-input
-                    v-if="editingKey === record.id"
-                    v-model:value="record.target_type"
-                    @blur="saveMapping(record)"
-                    @keyup.enter="saveMapping(record)"
-                    @keyup.esc="cancelEdit(record)"
-                    ref="editingInput"
-                    size="small"
-                  />
-                  <span v-else @dblclick="editMapping(record)" style="cursor: pointer">
-                    {{ record.target_type }}
-                  </span>
-                </template>
-                <template v-else-if="column.key === 'action'">
-                  <a-space>
-                    <a-button type="link" size="small" @click="editMapping(record)">
-                      编辑
-                    </a-button>
-                    <a-popconfirm
-                      title="确定要删除这个映射吗？"
-                      ok-text="确定"
-                      cancel-text="取消"
-                      @confirm="deleteMapping(record)"
-                    >
-                      <a-button type="link" size="small" danger>
-                        删除
-                      </a-button>
-                    </a-popconfirm>
-                  </a-space>
-                </template>
-              </template>
-            </a-table>
-          </div>
-        </a-tab-pane>
-      </a-tabs>
-    </a-card>
+        <a-table
+          :columns="columns"
+          :data-source="activeScope === 'frontend' ? frontendMappings : backendMappings"
+          :pagination="false"
+          :scroll="{ x: 600 }"
+          row-key="id"
+          class="mapping-table"
+          :loading="loading"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'sourceType'">
+              <code class="type-code">{{ record.source_type }}</code>
+            </template>
+            <template v-else-if="column.key === 'targetType'">
+              <div v-if="editingKey === record.id" class="editing-cell">
+                <a-input
+                  v-model:value="record.target_type"
+                  @blur="saveMapping(record)"
+                  @keyup.enter="saveMapping(record)"
+                  @keyup.esc="cancelEdit(record)"
+                  ref="editingInput"
+                  size="small"
+                  autofocus
+                />
+              </div>
+              <div v-else class="target-type-cell" @dblclick="editMapping(record)">
+                <code class="type-code target">{{ record.target_type }}</code>
+                <EditOutlined class="edit-hint" />
+              </div>
+            </template>
+            <template v-else-if="column.key === 'action'">
+              <a-space>
+                <a-button type="link" size="small" @click="editMapping(record)">
+                  <template #icon><EditOutlined /></template>
+                  编辑
+                </a-button>
+                <a-popconfirm
+                  title="确定要删除这个映射吗？"
+                  ok-text="确定"
+                  cancel-text="取消"
+                  @confirm="deleteMapping(record)"
+                >
+                  <a-button type="link" size="small" danger>
+                    <template #icon><DeleteOutlined /></template>
+                    删除
+                  </a-button>
+                </a-popconfirm>
+              </a-space>
+            </template>
+          </template>
+        </a-table>
+      </div>
+    </div>
 
     <!-- 添加映射对话框 -->
     <a-modal
@@ -214,7 +188,11 @@ import { invoke } from '@tauri-apps/api/core'
 import {
   SwapOutlined,
   ReloadOutlined,
-  PlusOutlined
+  PlusOutlined,
+  CodeOutlined,
+  ApiOutlined,
+  EditOutlined,
+  DeleteOutlined
 } from '@ant-design/icons-vue'
 import { message, Modal } from 'ant-design-vue'
 import * as projectsApi from '@/api/projects'
@@ -255,35 +233,28 @@ const switchForm = reactive({
 const frontendLanguageName = computed(() => {
   if (!frontendLanguageId.value) return ''
   const lang = languages.value.find(l => l.id === frontendLanguageId.value)
-  return lang ? `${lang.icon} ${lang.name}` : ''
+  return lang ? lang.name : ''
 })
 
 const backendLanguageName = computed(() => {
   if (!backendLanguageId.value) return ''
   const lang = languages.value.find(l => l.id === backendLanguageId.value)
-  return lang ? `${lang.icon} ${lang.name}` : ''
+  return lang ? lang.name : ''
 })
 
 // 表格列定义
 const columns = [
   {
-    title: '数据库类型',
-    dataIndex: 'db_type',
-    key: 'dbType',
-    width: 120,
-    fixed: 'left'
-  },
-  {
     title: '数据库字段类型',
     dataIndex: 'source_type',
     key: 'sourceType',
-    width: 150
+    width: 200
   },
   {
     title: '语言字段类型',
     dataIndex: 'target_type',
     key: 'targetType',
-    width: 150
+    width: 200
   },
   {
     title: '操作',
@@ -371,7 +342,8 @@ const confirmSwitchLanguage = async () => {
 }
 
 // 处理作用域切换
-const handleScopeChange = () => {
+const handleScopeChange = (scope) => {
+  activeScope.value = scope
   editingKey.value = null
 }
 
@@ -533,28 +505,41 @@ onMounted(async () => {
 <style scoped>
 .project-mappings-view {
   padding: var(--spacing-lg);
-  min-height: calc(100vh - var(--navbar-height));
-  background: var(--color-background);
-}
-
-.mappings-card {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-background);
+  overflow: hidden;
 }
 
-.card-header {
+/* 页面头部 */
+.page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  flex-shrink: 0;
 }
 
-.card-title {
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.page-title {
   margin: 0;
   font-size: 24px;
   font-weight: 600;
   color: var(--color-text);
   display: flex;
   align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.language-tags {
+  display: flex;
+  gap: var(--spacing-xs);
 }
 
 .header-actions {
@@ -562,53 +547,121 @@ onMounted(async () => {
   gap: var(--spacing-sm);
 }
 
-.language-info {
-  margin-left: 12px;
-  font-size: 14px;
-  font-weight: normal;
-  color: var(--color-text-secondary);
+/* 映射容器 */
+.mappings-container {
+  flex: 1;
+  display: flex;
+  gap: var(--spacing-md);
+  overflow: hidden;
+  min-height: 0;
 }
 
-.lang-separator {
-  margin: 0 4px;
-  color: var(--color-text-secondary);
+/* 左侧 Tab */
+.scope-tabs {
+  width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
 }
 
+.scope-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.scope-tab:hover {
+  color: var(--color-text);
+  background: var(--color-hover);
+}
+
+.scope-tab.active {
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+  border-color: var(--color-primary);
+  font-weight: 500;
+}
+
+.scope-tab .ant-badge {
+  margin-left: auto;
+}
+
+/* 右侧内容 */
 .mapping-content {
-  padding: var(--spacing-sm);
-}
-
-/* 左侧垂直Tab样式 */
-:deep(.ant-tabs-left) {
-  .ant-tabs-nav {
-    min-width: 100px;
-    border-right: 1px solid var(--color-border);
-  }
-
-  .ant-tabs-tab {
-    text-align: center;
-    padding: 12px 16px;
-  }
-
-  .ant-tabs-content {
-    padding-left: var(--spacing-md);
-  }
-}
-
-.mapping-table {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
   background: var(--color-surface);
   border-radius: var(--border-radius-md);
-  overflow: hidden;
+  border: 1px solid var(--color-border);
+  padding: var(--spacing-md);
+}
+
+/* 表格样式 */
+.mapping-table {
+  background: transparent;
 }
 
 .mapping-table :deep(.ant-table-thead > tr > th) {
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background);
+  border-bottom: 2px solid var(--color-border);
   font-weight: 600;
   color: var(--color-text);
 }
 
 .mapping-table :deep(.ant-table-tbody > tr:hover > td) {
   background: var(--color-hover);
+}
+
+.mapping-table :deep(.ant-table-tbody > tr > td) {
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+/* 类型代码样式 */
+.type-code {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 13px;
+  padding: 2px 8px;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  border-radius: 4px;
+}
+
+.type-code.target {
+  background: var(--color-success-bg, #f6ffed);
+  color: var(--color-success);
+}
+
+/* 编辑单元格 */
+.editing-cell {
+  display: flex;
+  align-items: center;
+}
+
+.target-type-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.target-type-cell:hover .edit-hint {
+  opacity: 1;
+}
+
+.edit-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 </style>

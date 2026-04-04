@@ -4418,7 +4418,7 @@ impl Database {
             .fetch_one(pool)
             .await?;
 
-        let table_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM project_tables")
+        let table_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM db_tables")
             .fetch_one(pool)
             .await?;
 

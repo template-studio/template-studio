@@ -2183,6 +2183,14 @@ fn get_username() -> Result<String, String> {
     }
 }
 
+/// 获取系统主题
+#[tauri::command]
+fn get_system_theme() -> Result<String, String> {
+    // 在 Windows 上检测系统主题需要访问注册表，这里返回默认值
+    // 用户可以在设置中手动切换主题
+    Ok("light".to_string())
+}
+
 /// 下载模板版本到本地
 /// 注意：version 参数应该是实际的版本号（如 "1.0.0"）
 /// 前端会自动选择 is_latest 的版本，与 CLI 保持完全一致的逻辑
@@ -2331,6 +2339,7 @@ pub fn run() {
             update_web_server_config,
             update_template_path,
             get_username,
+            get_system_theme,
             // 数据库命令
             db_get_statistics,
             db_get_recent_projects,
