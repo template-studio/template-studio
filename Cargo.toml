@@ -2,8 +2,7 @@
 members = [
     "apps/web",
     "apps/cli",
-    "apps/scaffold-desktop/src-tauri",
-    "apps/codegen-desktop/src-tauri",
+    "apps/desktop/src-tauri",
     "crates/shared",
     "crates/infrastructure",
     "crates/repositories",
