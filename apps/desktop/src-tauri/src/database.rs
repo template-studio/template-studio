@@ -141,6 +141,10 @@ impl Database {
             self.migration_011_add_mimo_provider().await?;
         }
 
+        if current_version < 12 {
+            self.migration_012_add_cherry_studio_provider().await?;
+        }
+
         Ok(())
     }
 
@@ -602,7 +606,8 @@ impl Database {
             ) VALUES
                 ('deepseek', 'DeepSeek', 'deepseek', 'https://api.deepseek.com/v1', 0),
                 ('glm', '智谱 GLM', 'glm', 'https://open.bigmodel.cn/api/paas/v4', 0),
-                ('mimo', 'Xiaomi MiMo', 'openai', 'https://api.xiaomimimo.com/v1', 0)"
+                ('mimo', 'Xiaomi MiMo', 'openai', 'https://api.xiaomimimo.com/v1', 0),
+                ('cherry-studio', 'Cherry Studio', 'openai', 'http://127.0.0.1:23333', 0)"
         )
         .execute(&self.pool)
         .await?;
@@ -850,6 +855,26 @@ impl Database {
         .await?;
 
         sqlx::query("INSERT INTO schema_migrations (version) VALUES (11)")
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    /// 迁移 012: 添加 Cherry Studio 预置提供商
+    async fn migration_012_add_cherry_studio_provider(&self) -> Result<(), sqlx::Error> {
+        println!("执行迁移 012: 添加 Cherry Studio 预置提供商");
+
+        sqlx::query(
+            "INSERT OR IGNORE INTO ai_providers (
+                provider_name, display_name, provider_type, api_endpoint, is_enabled
+            ) VALUES
+                ('cherry-studio', 'Cherry Studio', 'openai', 'http://127.0.0.1:23333', 0)"
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query("INSERT INTO schema_migrations (version) VALUES (12)")
             .execute(&self.pool)
             .await?;
 
