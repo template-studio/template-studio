@@ -949,6 +949,310 @@ async fn cmd_list_database_tables(params: TestConnectionParams) -> Result<String
     }
 }
 
+/// 获取表的列信息
+#[tauri::command]
+async fn cmd_get_table_columns(params: TestConnectionParams, table_name: String) -> Result<String, String> {
+    use sqlx::mysql::MySqlPool;
+    use sqlx::postgres::PgPool;
+    use sqlx::sqlite::SqlitePool;
+    use sqlx::Row;
+
+    let db_type = params.type_.clone();
+
+    match db_type.as_str() {
+        "mysql" => {
+            let host = params.host.unwrap_or_else(|| "localhost".to_string());
+            let port = params.port.unwrap_or(3306);
+            let username = params.username.unwrap_or_default();
+            let password = params.password.unwrap_or_default();
+            let database = params.database.unwrap_or_default();
+
+            let url = format!("mysql://{}:{}@{}:{}/{}", username, password, host, port, database);
+            let pool = MySqlPool::connect(&url).await
+                .map_err(|e| format!("连接失败: {}", e))?;
+
+            let rows = sqlx::query(
+                "SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_KEY, COLUMN_DEFAULT, COLUMN_COMMENT \
+                 FROM INFORMATION_SCHEMA.COLUMNS \
+                 WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? \
+                 ORDER BY ORDINAL_POSITION"
+            )
+            .bind(&database)
+            .bind(&table_name)
+            .fetch_all(&pool)
+            .await
+            .map_err(|e| format!("查询失败: {}", e))?;
+
+            let columns: Vec<serde_json::Value> = rows.iter().map(|row| {
+                serde_json::json!({
+                    "name": row.get::<String, _>(0),
+                    "type": row.get::<String, _>(1),
+                    "nullable": row.get::<String, _>(2) == "YES",
+                    "key": row.get::<String, _>(3),
+                    "default": row.get::<Option<String>, _>(4),
+                    "comment": row.get::<Option<String>, _>(5)
+                })
+            }).collect();
+
+            pool.close().await;
+            serde_json::to_string(&columns).map_err(|e| format!("序列化失败: {}", e))
+        }
+        "postgresql" => {
+            let host = params.host.unwrap_or_else(|| "localhost".to_string());
+            let port = params.port.unwrap_or(5432);
+            let username = params.username.unwrap_or_default();
+            let password = params.password.unwrap_or_default();
+            let database = params.database.unwrap_or_else(|| "postgres".to_string());
+
+            let url = format!("postgres://{}:{}@{}:{}/{}", username, password, host, port, database);
+            let pool = PgPool::connect(&url).await
+                .map_err(|e| format!("连接失败: {}", e))?;
+
+            let rows = sqlx::query(
+                "SELECT column_name, data_type, is_nullable, \
+                 CASE WHEN constraint_type = 'PRIMARY KEY' THEN 'PRI' ELSE '' END as column_key, \
+                 column_default, '' as column_comment \
+                 FROM information_schema.columns c \
+                 LEFT JOIN information_schema.key_column_usage k \
+                   ON c.table_name = k.table_name AND c.column_name = k.column_name \
+                 LEFT JOIN information_schema.table_constraints t \
+                   ON k.constraint_name = t.constraint_name AND t.constraint_type = 'PRIMARY KEY' \
+                 WHERE c.table_schema = 'public' AND c.table_name = $1 \
+                 ORDER BY c.ordinal_position"
+            )
+            .bind(&table_name)
+            .fetch_all(&pool)
+            .await
+            .map_err(|e| format!("查询失败: {}", e))?;
+
+            let columns: Vec<serde_json::Value> = rows.iter().map(|row| {
+                serde_json::json!({
+                    "name": row.get::<String, _>(0),
+                    "type": row.get::<String, _>(1),
+                    "nullable": row.get::<String, _>(2) == "YES",
+                    "key": row.get::<String, _>(3),
+                    "default": row.get::<Option<String>, _>(4),
+                    "comment": row.get::<String, _>(5)
+                })
+            }).collect();
+
+            pool.close().await;
+            serde_json::to_string(&columns).map_err(|e| format!("序列化失败: {}", e))
+        }
+        "sqlite" => {
+            let sqlite_file = params.sqlite_file.unwrap_or_default();
+            let url = format!("sqlite:{}", sqlite_file);
+            let pool = SqlitePool::connect(&url).await
+                .map_err(|e| format!("连接失败: {}", e))?;
+
+            let rows = sqlx::query(&format!("PRAGMA table_info('{}')", table_name.replace('\'', "''")))
+                .fetch_all(&pool)
+                .await
+                .map_err(|e| format!("查询失败: {}", e))?;
+
+            let columns: Vec<serde_json::Value> = rows.iter().map(|row| {
+                serde_json::json!({
+                    "name": row.get::<String, _>(1),
+                    "type": row.get::<String, _>(2),
+                    "nullable": row.get::<bool, _>(3) == false,
+                    "key": if row.get::<bool, _>(5) { "PRI" } else { "" },
+                    "default": row.get::<Option<String>, _>(4),
+                    "comment": ""
+                })
+            }).collect();
+
+            pool.close().await;
+            serde_json::to_string(&columns).map_err(|e| format!("序列化失败: {}", e))
+        }
+        _ => Err(format!("不支持的数据库类型: {}", db_type))
+    }
+}
+
+/// 查询表数据（带分页）
+#[tauri::command]
+async fn cmd_query_table_data(
+    params: TestConnectionParams,
+    table_name: String,
+    limit: i64,
+    offset: i64,
+) -> Result<String, String> {
+    use sqlx::Column;
+    use sqlx::mysql::MySqlPool;
+    use sqlx::postgres::PgPool;
+    use sqlx::sqlite::SqlitePool;
+    use sqlx::Row;
+
+    let db_type = params.type_.clone();
+
+    match db_type.as_str() {
+        "mysql" => {
+            let host = params.host.unwrap_or_else(|| "localhost".to_string());
+            let port = params.port.unwrap_or(3306);
+            let username = params.username.unwrap_or_default();
+            let password = params.password.unwrap_or_default();
+            let database = params.database.unwrap_or_default();
+
+            let url = format!("mysql://{}:{}@{}:{}/{}", username, password, host, port, database);
+            let pool = MySqlPool::connect(&url).await
+                .map_err(|e| format!("连接失败: {}", e))?;
+
+            // 先获取总行数
+            let count_sql = format!("SELECT COUNT(*) FROM `{}`", table_name.replace('`', "``"));
+            let total: i64 = sqlx::query_scalar(&count_sql)
+                .fetch_one(&pool)
+                .await
+                .map_err(|e| format!("查询总数失败: {}", e))?;
+
+            // 查询数据
+            let data_sql = format!("SELECT * FROM `{}` LIMIT {} OFFSET {}", table_name.replace('`', "``"), limit, offset);
+            let rows = sqlx::query(&data_sql)
+                .fetch_all(&pool)
+                .await
+                .map_err(|e| format!("查询失败: {}", e))?;
+
+            let columns: Vec<String> = if let Some(first) = rows.first() {
+                (0..first.columns().len()).map(|i| first.columns()[i].name().to_string()).collect()
+            } else {
+                vec![]
+            };
+
+            let data: Vec<Vec<serde_json::Value>> = rows.iter().map(|row| {
+                (0..row.columns().len()).map(|i| {
+                    // 尝试获取不同类型的值
+                    if let Ok(v) = row.try_get::<String, _>(i) {
+                        serde_json::Value::String(v)
+                    } else if let Ok(v) = row.try_get::<i64, _>(i) {
+                        serde_json::json!(v)
+                    } else if let Ok(v) = row.try_get::<f64, _>(i) {
+                        serde_json::json!(v)
+                    } else if let Ok(v) = row.try_get::<bool, _>(i) {
+                        serde_json::json!(v)
+                    } else {
+                        // 尝试获取为 Option<String>
+                        match row.try_get::<Option<String>, _>(i) {
+                            Ok(Some(v)) => serde_json::Value::String(v),
+                            _ => serde_json::Value::Null
+                        }
+                    }
+                }).collect()
+            }).collect();
+
+            pool.close().await;
+            serde_json::to_string(&serde_json::json!({
+                "columns": columns,
+                "rows": data,
+                "total": total
+            })).map_err(|e| format!("序列化失败: {}", e))
+        }
+        "postgresql" => {
+            let host = params.host.unwrap_or_else(|| "localhost".to_string());
+            let port = params.port.unwrap_or(5432);
+            let username = params.username.unwrap_or_default();
+            let password = params.password.unwrap_or_default();
+            let database = params.database.unwrap_or_else(|| "postgres".to_string());
+
+            let url = format!("postgres://{}:{}@{}:{}/{}", username, password, host, port, database);
+            let pool = PgPool::connect(&url).await
+                .map_err(|e| format!("连接失败: {}", e))?;
+
+            let count_sql = format!("SELECT COUNT(*) FROM \"{}\"", table_name.replace('"', "\"\""));
+            let total: i64 = sqlx::query_scalar(&count_sql)
+                .fetch_one(&pool)
+                .await
+                .map_err(|e| format!("查询总数失败: {}", e))?;
+
+            let data_sql = format!("SELECT * FROM \"{}\" LIMIT {} OFFSET {}", table_name.replace('"', "\"\""), limit, offset);
+            let rows = sqlx::query(&data_sql)
+                .fetch_all(&pool)
+                .await
+                .map_err(|e| format!("查询失败: {}", e))?;
+
+            let columns: Vec<String> = if let Some(first) = rows.first() {
+                (0..first.columns().len()).map(|i| first.columns()[i].name().to_string()).collect()
+            } else {
+                vec![]
+            };
+
+            let data: Vec<Vec<serde_json::Value>> = rows.iter().map(|row| {
+                (0..row.columns().len()).map(|i| {
+                    if let Ok(v) = row.try_get::<String, _>(i) {
+                        serde_json::Value::String(v)
+                    } else if let Ok(v) = row.try_get::<i64, _>(i) {
+                        serde_json::json!(v)
+                    } else if let Ok(v) = row.try_get::<f64, _>(i) {
+                        serde_json::json!(v)
+                    } else if let Ok(v) = row.try_get::<bool, _>(i) {
+                        serde_json::json!(v)
+                    } else {
+                        match row.try_get::<Option<String>, _>(i) {
+                            Ok(Some(v)) => serde_json::Value::String(v),
+                            _ => serde_json::Value::Null
+                        }
+                    }
+                }).collect()
+            }).collect();
+
+            pool.close().await;
+            serde_json::to_string(&serde_json::json!({
+                "columns": columns,
+                "rows": data,
+                "total": total
+            })).map_err(|e| format!("序列化失败: {}", e))
+        }
+        "sqlite" => {
+            let sqlite_file = params.sqlite_file.unwrap_or_default();
+            let url = format!("sqlite:{}", sqlite_file);
+            let pool = SqlitePool::connect(&url).await
+                .map_err(|e| format!("连接失败: {}", e))?;
+
+            let count_sql = format!("SELECT COUNT(*) FROM \"{}\"", table_name.replace('"', "\"\""));
+            let total: i64 = sqlx::query_scalar(&count_sql)
+                .fetch_one(&pool)
+                .await
+                .map_err(|e| format!("查询总数失败: {}", e))?;
+
+            let data_sql = format!("SELECT * FROM \"{}\" LIMIT {} OFFSET {}", table_name.replace('"', "\"\""), limit, offset);
+            let rows = sqlx::query(&data_sql)
+                .fetch_all(&pool)
+                .await
+                .map_err(|e| format!("查询失败: {}", e))?;
+
+            let columns: Vec<String> = if let Some(first) = rows.first() {
+                (0..first.columns().len()).map(|i| first.columns()[i].name().to_string()).collect()
+            } else {
+                vec![]
+            };
+
+            let data: Vec<Vec<serde_json::Value>> = rows.iter().map(|row| {
+                (0..row.columns().len()).map(|i| {
+                    if let Ok(v) = row.try_get::<String, _>(i) {
+                        serde_json::Value::String(v)
+                    } else if let Ok(v) = row.try_get::<i64, _>(i) {
+                        serde_json::json!(v)
+                    } else if let Ok(v) = row.try_get::<f64, _>(i) {
+                        serde_json::json!(v)
+                    } else if let Ok(v) = row.try_get::<bool, _>(i) {
+                        serde_json::json!(v)
+                    } else {
+                        match row.try_get::<Option<String>, _>(i) {
+                            Ok(Some(v)) => serde_json::Value::String(v),
+                            _ => serde_json::Value::Null
+                        }
+                    }
+                }).collect()
+            }).collect();
+
+            pool.close().await;
+            serde_json::to_string(&serde_json::json!({
+                "columns": columns,
+                "rows": data,
+                "total": total
+            })).map_err(|e| format!("序列化失败: {}", e))
+        }
+        _ => Err(format!("不支持的数据库类型: {}", db_type))
+    }
+}
+
 /// 获取项目的所有表
 #[tauri::command]
 async fn db_get_project_tables(
@@ -2453,6 +2757,8 @@ pub fn run() {
             db_delete_datasource,
             test_datasource_connection,
             cmd_list_database_tables,
+            cmd_get_table_columns,
+            cmd_query_table_data,
             db_get_project_tables,
             db_create_table,
             cmd_import_tables_from_datasource,

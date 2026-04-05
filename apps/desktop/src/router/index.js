@@ -23,6 +23,11 @@ const routes = [
     component: () => import('@/views/DataSourceView.vue')
   },
   {
+    path: '/datasource/:id/browse',
+    name: 'DatabaseBrowser',
+    component: () => import('@/views/DatabaseBrowserView.vue')
+  },
+  {
     path: '/projects',
     name: 'Projects',
     component: () => import('@/views/ProjectsView.vue')

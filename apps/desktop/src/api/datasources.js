@@ -195,3 +195,61 @@ export async function getDatabaseTables(datasource) {
     throw error
   }
 }
+
+/**
+ * 获取表的列信息
+ * @param {Object} datasource - 数据源配置
+ * @param {string} tableName - 表名
+ * @returns {Promise<Array>} 列信息列表
+ */
+export async function getTableColumns(datasource, tableName) {
+  try {
+    const result = await invoke('cmd_get_table_columns', {
+      params: {
+        type: datasource.type_,
+        host: datasource.host,
+        port: datasource.port,
+        username: datasource.username,
+        password: datasource.password,
+        database: datasource.database,
+        sqliteFile: datasource.sqlite_file
+      },
+      tableName
+    })
+    return JSON.parse(result)
+  } catch (error) {
+    console.error('获取表列信息失败:', error)
+    throw error
+  }
+}
+
+/**
+ * 查询表数据（带分页）
+ * @param {Object} datasource - 数据源配置
+ * @param {string} tableName - 表名
+ * @param {number} limit - 每页行数
+ * @param {number} offset - 偏移量
+ * @returns {Promise<Object>} { columns, rows, total }
+ */
+export async function queryTableData(datasource, tableName, limit = 100, offset = 0) {
+  try {
+    const result = await invoke('cmd_query_table_data', {
+      params: {
+        type: datasource.type_,
+        host: datasource.host,
+        port: datasource.port,
+        username: datasource.username,
+        password: datasource.password,
+        database: datasource.database,
+        sqliteFile: datasource.sqlite_file
+      },
+      tableName,
+      limit,
+      offset
+    })
+    return JSON.parse(result)
+  } catch (error) {
+    console.error('查询表数据失败:', error)
+    throw error
+  }
+}

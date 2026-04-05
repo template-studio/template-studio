@@ -236,60 +236,12 @@
       </template>
     </a-modal>
 
-    <!-- 数据库浏览器抽屉 -->
-    <a-drawer
-      v-model:open="browserVisible"
-      :title="browserDatasource ? `浏览数据库 - ${browserDatasource.name}` : '浏览数据库'"
-      width="600"
-      placement="right"
-    >
-      <div v-if="browserLoading" class="browser-loading">
-        <a-spin size="large" />
-        <p>正在连接数据库...</p>
-      </div>
-      <div v-else-if="browserTables.length > 0" class="browser-content">
-        <div class="browser-header">
-          <div class="browser-breadcrumb" v-if="browserSelectedDb">
-            <span class="breadcrumb-item" @click="backToDatabases">
-              <DatabaseOutlined /> 数据库列表
-            </span>
-            <span class="breadcrumb-separator">/</span>
-            <span class="breadcrumb-item active">
-              <TableOutlined /> {{ browserSelectedDb }}
-            </span>
-          </div>
-          <span class="browser-count" v-else>
-            共 {{ browserTables.length }} 个数据库
-          </span>
-        </div>
-        <a-table
-          :data-source="browserTables"
-          :pagination="{ pageSize: 50, size: 'small' }"
-          size="small"
-          :scroll="{ y: 500 }"
-        >
-          <a-table-column title="名称" data-index="name" :width="300">
-            <template #default="{ record }">
-              <div
-                class="browser-item"
-                :class="{ 'is-database': record.isDatabase }"
-                @click="record.isDatabase ? selectDatabase(record.name) : null"
-              >
-                <DatabaseOutlined v-if="record.isDatabase" style="margin-right: 8px; color: var(--color-success)" />
-                <TableOutlined v-else style="margin-right: 8px; color: var(--color-primary)" />
-                <span style="font-weight: 500">{{ record.name }}</span>
-              </div>
-            </template>
-          </a-table-column>
-        </a-table>
-      </div>
-      <a-empty v-else description="暂无数据" />
-    </a-drawer>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   PlusOutlined,
   DatabaseOutlined,
@@ -301,8 +253,7 @@ import {
   CloseCircleOutlined,
   DeleteOutlined,
   EditOutlined,
-  EyeOutlined,
-  TableOutlined
+  EyeOutlined
 } from '@ant-design/icons-vue'
 import { Empty, message, Modal } from 'ant-design-vue'
 import { open } from '@tauri-apps/plugin-dialog'
@@ -310,6 +261,7 @@ import * as datasourcesApi from '../api/datasources'
 import { SearchBar } from '../components/common'
 import { useLayoutStore } from '@/stores/layout'
 
+const router = useRouter()
 const layoutStore = useLayoutStore()
 
 // 状态
@@ -320,12 +272,6 @@ const datasources = ref([])
 const searchQuery = ref('')
 const filterValue = ref(undefined)
 const sortValue = ref('created_at:desc')
-
-// 数据库浏览器状态
-const browserVisible = ref(false)
-const browserLoading = ref(false)
-const browserDatasource = ref(null)
-const browserTables = ref([])
 
 // 筛选选项
 const databaseFilters = [
@@ -679,64 +625,9 @@ const testConnection = async (datasource) => {
   }
 }
 
-// 浏览器状态
-const browserSelectedDb = ref('')
-
 // 打开数据库浏览器
-const openBrowser = async (datasource) => {
-  browserDatasource.value = datasource
-  browserVisible.value = true
-  browserLoading.value = true
-  browserTables.value = []
-  browserSelectedDb.value = datasource.database || ''
-
-  try {
-    const result = await datasourcesApi.getDatabaseTables(datasource)
-    // 如果没有指定数据库，返回的是数据库列表
-    if (!datasource.database && datasource.type_ !== 'sqlite') {
-      browserTables.value = result.map(name => ({ name, isDatabase: true }))
-    } else {
-      browserTables.value = result.map(name => ({ name, isDatabase: false }))
-    }
-  } catch (error) {
-    message.error('获取数据库表失败: ' + error)
-  } finally {
-    browserLoading.value = false
-  }
-}
-
-// 选择数据库
-const selectDatabase = async (dbName) => {
-  browserSelectedDb.value = dbName
-  browserLoading.value = true
-  browserTables.value = []
-
-  try {
-    const datasource = { ...browserDatasource.value, database: dbName }
-    const tables = await datasourcesApi.getDatabaseTables(datasource)
-    browserTables.value = tables.map(name => ({ name, isDatabase: false }))
-  } catch (error) {
-    message.error('获取表列表失败: ' + error)
-  } finally {
-    browserLoading.value = false
-  }
-}
-
-// 返回数据库列表
-const backToDatabases = async () => {
-  browserSelectedDb.value = ''
-  browserLoading.value = true
-  browserTables.value = []
-
-  try {
-    const datasource = { ...browserDatasource.value, database: '' }
-    const result = await datasourcesApi.getDatabaseTables(datasource)
-    browserTables.value = result.map(name => ({ name, isDatabase: true }))
-  } catch (error) {
-    message.error('获取数据库列表失败: ' + error)
-  } finally {
-    browserLoading.value = false
-  }
+const openBrowser = (datasource) => {
+  router.push(`/datasource/${datasource.id}/browse`)
 }
 
 // 提交表单
@@ -1165,82 +1056,5 @@ onMounted(async () => {
 
 :deep(.ant-input-number-input) {
   width: 100%;
-}
-
-/* 数据库浏览器样式 */
-.browser-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 300px;
-  gap: var(--spacing-md);
-}
-
-.browser-loading p {
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-
-.browser-content {
-  height: 100%;
-}
-
-.browser-header {
-  margin-bottom: var(--spacing-md);
-  padding-bottom: var(--spacing-sm);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.browser-count {
-  color: var(--color-text-secondary);
-  font-size: 14px;
-}
-
-.browser-breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.breadcrumb-item {
-  cursor: pointer;
-  color: var(--color-primary);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.breadcrumb-item:hover {
-  text-decoration: underline;
-}
-
-.breadcrumb-item.active {
-  color: var(--color-text);
-  cursor: default;
-  font-weight: 500;
-}
-
-.breadcrumb-item.active:hover {
-  text-decoration: none;
-}
-
-.breadcrumb-separator {
-  color: var(--color-text-secondary);
-}
-
-.browser-item {
-  cursor: pointer;
-  padding: 4px 0;
-  display: flex;
-  align-items: center;
-}
-
-.browser-item.is-database:hover {
-  color: var(--color-primary);
-}
-
-.browser-item:not(.is-database) {
-  cursor: default;
 }
 </style>

@@ -50,6 +50,7 @@ export const useLayoutStore = defineStore('layout', () => {
 
   // 需要 footer 的路由
   const footerRoutes = ['/projects', '/datasource', '/languages', '/templates', '/mappings']
+  const noFooterRoutes = ['/datasource/', '/project/'] // 子页面不显示 footer
 
   // 分页 footer
   const showFooterPagination = (total, current = 1, pageSize = 12) => {
@@ -74,6 +75,11 @@ export const useLayoutStore = defineStore('layout', () => {
 
   // 路由切换时判断是否显示 footer
   const onRouteChange = (path) => {
+    // 子页面不显示 footer
+    if (noFooterRoutes.some(r => path.startsWith(r) && path !== r)) {
+      hideFooter()
+      return
+    }
     if (!footerRoutes.some(r => path.startsWith(r))) {
       hideFooter()
     }
