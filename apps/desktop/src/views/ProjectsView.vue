@@ -159,12 +159,37 @@
         </a-form-item>
 
         <a-form-item label="项目描述" name="description">
-          <a-textarea
-            v-model:value="formData.description"
-            placeholder="简要描述项目用途（可选）"
-            size="large"
-            :rows="3"
-          />
+          <div class="description-input-wrapper">
+            <a-textarea
+              v-model:value="formData.description"
+              placeholder="简要描述项目用途（可选）"
+              size="large"
+              :rows="3"
+            />
+            <div
+              class="ai-btn-overlay"
+              @click="optimizeDescription"
+              @mouseenter="aiHover = true"
+              @mouseleave="aiHover = false"
+              :style="{ cursor: (!formData.name || aiOptimizing) ? 'not-allowed' : 'pointer' }"
+            >
+              <a-spin v-if="aiOptimizing" size="small" />
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 12 12" fill="none" :style="{ opacity: (!formData.name || aiOptimizing) ? 0.35 : 1 }">
+                <g clip-path="url(#aiClip2)">
+                  <path d="M5.25371 1.57519C5.51471 0.889687 6.48371 0.889687 6.74621 1.57519L7.63346 3.90469C7.71371 4.11769 7.88096 4.28644 8.09471 4.36744L10.4242 5.25394C11.1105 5.51494 11.1105 6.48394 10.4242 6.74644L8.09471 7.63369C7.98968 7.67375 7.89429 7.73554 7.8148 7.81503C7.73532 7.89452 7.67352 7.9899 7.63346 8.09494L6.74621 10.4244C6.48371 11.1107 5.51471 11.1107 5.25371 10.4244L4.36646 8.09494C4.3264 7.9899 4.26461 7.89452 4.18512 7.81503C4.10563 7.73554 4.01024 7.67375 3.90521 7.63369L1.57571 6.74644C0.889461 6.48394 0.889461 5.51494 1.57571 5.25394L3.90521 4.36669C4.11821 4.28569 4.28546 4.11844 4.36646 3.90544L5.25371 1.57594V1.57519Z" fill="url(#aiGrad2)" fill-opacity="0.9"></path>
+                </g>
+                <defs>
+                  <linearGradient id="aiGrad2" x1="10" y1="1" x2="4" y2="10" gradientUnits="userSpaceOnUse">
+                    <stop offset="0.13" stop-color="#1976d2"></stop>
+                    <stop offset="0.93" stop-color="#90caf9"></stop>
+                  </linearGradient>
+                  <clipPath id="aiClip2">
+                    <rect width="12" height="12" fill="white"></rect>
+                  </clipPath>
+                </defs>
+              </svg>
+            </div>
+          </div>
         </a-form-item>
 
         <a-form-item label="数据源" name="datasourceId">
@@ -311,6 +336,7 @@ const dialogVisible = ref(false)
 const isEditMode = ref(false)
 const editingId = ref(null)
 const submitting = ref(false)
+const aiOptimizing = ref(false)
 
 // 表单引用
 const formRef = ref()
@@ -668,6 +694,69 @@ const handleDatasourceChange = (datasourceId) => {
 // 打开项目详情
 const openProject = (id) => {
   router.push(`/project/${id}`)
+}
+
+// AI 按钮悬浮状态
+const aiHover = ref(false)
+
+// AI 优化项目描述
+const optimizeDescription = async () => {
+  if (!formData.name) {
+    message.warning('请先输入项目名称')
+    return
+  }
+
+  aiOptimizing.value = true
+  try {
+    const prompt = `请为以下项目生成一段简洁专业的项目描述（2-3句话，中文）：
+项目名称：${formData.name}
+${formData.description ? `当前描述：${formData.description}` : ''}
+要求：描述项目的用途、技术栈和主要功能，语言简洁专业。`
+
+    const { invoke } = await import('@tauri-apps/api/core')
+
+    // 获取默认 AI 提供商
+    const aiConfigStore = await import('@/stores/ai-config').then(m => m.useAIConfigStore())
+    await aiConfigStore.initialize()
+    const provider = aiConfigStore.getDefaultProvider
+
+    if (!provider) {
+      message.warning('请先配置 AI 服务')
+      return
+    }
+
+    const modelsGrouped = await aiConfigStore.getProviderModelsGrouped(provider.providerName)
+    let modelId = ''
+    if (Array.isArray(modelsGrouped) && modelsGrouped.length > 0) {
+      for (const group of modelsGrouped) {
+        if (group.models && group.models.length > 0) {
+          modelId = group.models[0].modelId
+          break
+        }
+      }
+    }
+
+    if (!modelId) {
+      message.warning('请先为 AI 服务添加模型')
+      return
+    }
+
+    const result = await invoke('ai_generate_sql', {
+      provider: provider.providerName,
+      model: modelId,
+      messages: [{ role: 'user', content: prompt }]
+    })
+
+    const parsed = JSON.parse(result)
+    if (parsed.content) {
+      formData.description = parsed.content.trim()
+      message.success('描述已优化')
+    }
+  } catch (error) {
+    message.error('AI 优化失败: ' + error)
+  } finally {
+    aiOptimizing.value = false
+  }
 }
 
 // 提交表单
@@ -1198,5 +1287,52 @@ onMounted(async () => {
 
 :deep(.ant-input-number-input) {
   width: 100%;
+}
+
+/* AI 优化按钮 */
+.description-input-wrapper {
+  position: relative;
+}
+
+.description-input-wrapper :deep(.ant-input) {
+  padding-right: 44px;
+  padding-bottom: 36px;
+}
+
+.ai-btn-overlay {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(25, 118, 210, 0.1);
+  border-radius: 4px;
+  z-index: 100;
+  transition: background 0.2s ease;
+}
+
+.ai-btn-overlay:hover {
+  background: rgba(25, 118, 210, 0.2);
+}
+
+.ai-btn-overlay:active {
+  background: rgba(25, 118, 210, 0.3);
+}
+
+.ai-btn-overlay svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 暗黑模式适配 */
+[data-theme="dark"] .ai-btn-overlay {
+  background: rgba(144, 202, 249, 0.12);
+}
+
+[data-theme="dark"] .ai-btn-overlay:hover {
+  background: rgba(144, 202, 249, 0.22);
 }
 </style>
