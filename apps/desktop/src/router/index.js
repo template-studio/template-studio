@@ -45,7 +45,6 @@ const routes = [
   {
     path: '/project/:id',
     name: 'ProjectWorkspace',
-    redirect: to => `/project/${to.params.id}/tables`,
     component: () => import('@/views/ProjectWorkspaceView.vue')
   },
   {

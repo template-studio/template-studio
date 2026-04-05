@@ -58,6 +58,12 @@
           class="navigation-menu"
           @click="handleMenuClick"
         >
+          <a-menu-item key="overview">
+            <template #icon>
+              <DashboardOutlined />
+            </template>
+            <span>工作台</span>
+          </a-menu-item>
           <a-menu-item key="tables">
             <template #icon>
               <TableOutlined />
@@ -245,7 +251,8 @@ import {
   SettingOutlined,
   StarOutlined,
   BulbOutlined,
-  SwapOutlined
+  SwapOutlined,
+  DashboardOutlined
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 
@@ -306,6 +313,7 @@ const selectedKeys = ref(['tables'])
 // 当前页面标题
 const currentPageTitle = computed(() => {
   const titleMap = {
+    overview: '工作台',
     tables: '表管理',
     preferences: '规范管理',
     mappings: '映射管理'
@@ -327,6 +335,9 @@ watch(
         'mappings': 'mappings'
       }
       selectedKeys.value = [pathToKey[subRoute] || 'tables']
+    } else if (newPath.match(/\/project\/[^/]+$/)) {
+      // 工作台页面（没有子路由）
+      selectedKeys.value = ['overview']
     }
   },
   { immediate: true }
@@ -334,7 +345,11 @@ watch(
 
 // 菜单点击处理
 const handleMenuClick = ({ key }) => {
-  router.push(`/project/${projectId.value}/${key}`)
+  if (key === 'overview') {
+    router.push(`/project/${projectId.value}`)
+  } else {
+    router.push(`/project/${projectId.value}/${key}`)
+  }
 }
 
 // 返回项目列表
@@ -527,12 +542,23 @@ const closeWindow = async () => {
 .navigation-menu {
   border: none !important;
   border-right: none !important;
-  background: transparent;
+  background: transparent !important;
 }
 
+.navigation-menu :deep(.ant-menu),
 .navigation-menu :deep(.ant-menu-inline),
 .navigation-menu :deep(.ant-menu-root) {
   border-right: none !important;
+  background: transparent !important;
+}
+
+.navigation-menu :deep(.ant-menu-sub),
+.navigation-menu :deep(.ant-menu-submenu) {
+  background: transparent !important;
+}
+
+.navigation-menu :deep(.ant-menu-submenu-title) {
+  background: transparent !important;
 }
 
 .navigation-menu :deep(.ant-menu-item) {

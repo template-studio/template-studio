@@ -100,13 +100,24 @@ const handleMenuClick = ({ key }) => {
 .navigation-menu {
   border: none !important;
   border-right: none !important;
-  background: transparent;
+  background: transparent !important;
 }
 
 /* 强制移除 Ant Design 菜单的右边框 */
+.navigation-menu :deep(.ant-menu),
 .navigation-menu :deep(.ant-menu-inline),
 .navigation-menu :deep(.ant-menu-root) {
   border-right: none !important;
+  background: transparent !important;
+}
+
+.navigation-menu :deep(.ant-menu-sub),
+.navigation-menu :deep(.ant-menu-submenu) {
+  background: transparent !important;
+}
+
+.navigation-menu :deep(.ant-menu-submenu-title) {
+  background: transparent !important;
 }
 
 .navigation-menu :deep(.ant-menu-item) {
