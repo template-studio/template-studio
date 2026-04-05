@@ -1,5 +1,35 @@
 <template>
   <div class="project-workspace">
+    <!-- 项目信息卡片 -->
+    <div class="project-card">
+      <div class="project-card-header">
+        <div class="project-card-icon">
+          <FolderOutlined />
+        </div>
+        <div class="project-card-info">
+          <h2 class="project-card-name">{{ project?.name || '加载中...' }}</h2>
+          <span v-if="project?.description" class="project-card-desc">{{ project.description }}</span>
+        </div>
+      </div>
+      <div class="project-card-meta">
+        <div class="meta-item" v-if="project?.datasource">
+          <DatabaseOutlined class="meta-icon" />
+          <a-tag :color="getDatabaseColor(project.datasource.type_)" size="small">
+            {{ project.datasource.type_?.toUpperCase() }}
+          </a-tag>
+          <span class="meta-text">{{ project.datasource.name }}</span>
+        </div>
+        <div class="meta-item" v-if="project?.database_name">
+          <span class="meta-label">数据库</span>
+          <span class="meta-value font-mono">{{ project.database_name }}</span>
+        </div>
+        <div class="meta-item">
+          <ClockCircleOutlined class="meta-icon" />
+          <span class="meta-text">更新于 {{ formatTime(project?.updated_at) }}</span>
+        </div>
+      </div>
+    </div>
+
     <!-- 统计卡片 -->
     <div class="stats-grid">
       <div class="stat-card" @click="navigateTo('tables')">
@@ -97,30 +127,6 @@
         </div>
       </div>
 
-      <!-- 数据源信息 -->
-      <div class="section" v-if="project?.datasource">
-        <h3 class="section-title">数据源信息</h3>
-        <div class="datasource-info">
-          <div class="info-row">
-            <span class="info-label">名称</span>
-            <span class="info-value">{{ project.datasource.name }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">类型</span>
-            <a-tag :color="getDatabaseColor(project.datasource.type_)">
-              {{ project.datasource.type_?.toUpperCase() }}
-            </a-tag>
-          </div>
-          <div class="info-row" v-if="project.datasource.host">
-            <span class="info-label">主机</span>
-            <span class="info-value">{{ project.datasource.host }}:{{ project.datasource.port }}</span>
-          </div>
-          <div class="info-row" v-if="project.database_name">
-            <span class="info-label">数据库</span>
-            <span class="info-value font-mono">{{ project.database_name }}</span>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -130,13 +136,13 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import {
-  ArrowLeftOutlined,
   TableOutlined,
   ColumnHeightOutlined,
   SwapOutlined,
   ClockCircleOutlined,
   ControlOutlined,
   DatabaseOutlined,
+  FolderOutlined,
   RightOutlined
 } from '@ant-design/icons-vue'
 import * as projectsApi from '@/api/projects'
@@ -189,11 +195,6 @@ const navigateTo = (page) => {
   router.push(`/project/${projectId}/${page}`)
 }
 
-// 返回项目列表
-const goBack = () => {
-  router.push('/projects')
-}
-
 // 跳转到数据源
 const goToDataSource = () => {
   if (project.value?.datasource_id) {
@@ -236,55 +237,89 @@ onMounted(() => {
   padding: 20px;
 }
 
-/* 头部 */
-.workspace-header {
-  margin-bottom: 24px;
+/* 项目信息卡片 */
+.project-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  padding: 20px;
+  margin-bottom: 16px;
 }
 
-.header-left {
+.project-card-header {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
-.back-btn {
+.project-card-icon {
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  margin-top: 2px;
+  background: rgba(25, 118, 210, 0.1);
+  border-radius: var(--border-radius-md);
+  font-size: 24px;
+  color: var(--color-primary);
 }
 
-.project-info {
+.project-card-info {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
-.project-name {
+.project-card-name {
   margin: 0;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--color-text);
   line-height: 1.3;
 }
 
-.project-meta {
+.project-card-desc {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.project-card-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
 }
 
-.database-name {
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
   color: var(--color-text-secondary);
-  font-family: 'Courier New', monospace;
 }
 
-.project-desc {
-  font-size: 13px;
+.meta-icon {
+  font-size: 14px;
   color: var(--color-text-muted);
+}
+
+.meta-text {
+  color: var(--color-text-secondary);
+}
+
+.meta-label {
+  color: var(--color-text-muted);
+}
+
+.meta-value {
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.font-mono {
+  font-family: 'Courier New', monospace;
 }
 
 /* 统计卡片 */
@@ -493,34 +528,5 @@ onMounted(() => {
   background: var(--color-bg-secondary);
   padding: 2px 8px;
   border-radius: 10px;
-}
-
-/* 数据源信息 */
-.datasource-info {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.info-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.info-label {
-  width: 60px;
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  flex-shrink: 0;
-}
-
-.info-value {
-  font-size: 14px;
-  color: var(--color-text);
-}
-
-.font-mono {
-  font-family: 'Courier New', monospace;
 }
 </style>
