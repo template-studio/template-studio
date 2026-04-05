@@ -264,7 +264,7 @@ const fetchOverview = async () => {
   try {
     const [remote, local] = await Promise.all([fetchRemoteTables(), fetchLocalTables()])
     const remoteMap = new Map(remote.map(t => [t.name, t]))
-    const localMap = new Map(local.map(t => [t.name, t]))
+    const localMap = new Map(local.map(t => [stripBackticks(t.name), t]))
 
     for (const [name, rTable] of remoteMap) {
       if (!localMap.has(name)) newTables.value.push(rTable)
@@ -413,33 +413,54 @@ const handleImportSingle = async (table) => {
   }
 }
 
-const generateCreateTableDdl = async (table) => {
-  const cols = await projectsApi.getTableColumns(table.id)
-  let sql = 'CREATE TABLE `' + table.name + '` (\n'
-  const defs = cols.map(col => {
-    let d = '  `' + col.name + '` ' + col.data_type
-    if (col.length) d += '(' + col.length + ')'
-    if (!col.is_nullable) d += ' NOT NULL'
-    if (col.default_value) d += ' DEFAULT ' + col.default_value
-    if (col.comment) d += " COMMENT '" + col.comment.replace(/'/g, "\\'") + "'"
-    return d
-  })
-  const pks = cols.filter(c => c.is_primary_key).map(c => '`' + c.name + '`')
-  if (pks.length > 0) defs.push('  PRIMARY KEY (' + pks.join(', ') + ')')
-  sql += defs.join(',\n') + '\n)'
-  if (table.engine) sql += ' ENGINE=' + table.engine
-  if (table.comment) sql += " COMMENT='" + table.comment.replace(/'/g, "\\'") + "'"
-  sql += ';'
-  return sql
-}
+const stripBackticks = (s) => s ? s.replace(/^`|`$/g, '') : s
 
 const handlePushToRemote = async (table) => {
   pushingName.value = table.name
   try {
-    const ddl = await generateCreateTableDdl(table)
+    const tableName = stripBackticks(table.name)
+    if (!tableName) throw new Error('表名为空')
+    const cols = await projectsApi.getTableColumns(table.id)
+    if (!cols.length) throw new Error(`表 "${tableName}" 没有字段定义`)
     const params = getConnParams()
-    await invoke('cmd_execute_sql_on_remote', { params, sql: ddl })
-    message.success(`表 "${table.name}" 已同步到远程数据库`)
+    const columns = cols.map(c => {
+      let dataType = c.data_type || ''
+      let length = typeof c.length === 'number' ? c.length : null
+      // data_type 可能包含长度信息，如 "tinyint(none)" 或 "varchar(50)" 或 "tinyint(some(1))"
+      const parenMatch = dataType.match(/^(.+?)\((.+)\)$/)
+      if (parenMatch) {
+        dataType = parenMatch[1]
+        if (length == null) {
+          const inner = parenMatch[2].trim()
+          if (inner !== 'none' && inner !== 'None') {
+            const someMatch = inner.match(/^some\((\d+)\)$/)
+            if (someMatch) {
+              length = parseInt(someMatch[1], 10)
+            } else {
+              const num = parseInt(inner, 10)
+              if (!isNaN(num)) length = num
+            }
+          }
+        }
+      }
+      return {
+        name: stripBackticks(c.name),
+        data_type: dataType,
+        length,
+        is_nullable: !!c.is_nullable,
+        is_primary_key: !!c.is_primary_key,
+        default_value: c.default_value || null,
+        comment: c.comment || null
+      }
+    })
+    await invoke('cmd_push_table_to_remote', {
+      params,
+      tableName,
+      tableEngine: table.engine || null,
+      tableComment: table.comment || null,
+      columns
+    })
+    message.success(`表 "${tableName}" 已同步到远程数据库`)
     removedTables.value = removedTables.value.filter(t => t.name !== table.name)
     syncedTables.value.push(table)
   } catch (e) {
