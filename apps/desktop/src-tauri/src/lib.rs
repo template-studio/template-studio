@@ -1359,6 +1359,222 @@ async fn cmd_query_table_data(
     }
 }
 
+/// 获取数据库连接状态信息
+#[tauri::command]
+async fn cmd_get_connection_status(
+    params: TestConnectionParams,
+    pool_cache: tauri::State<'_, BrowserPoolCache>,
+) -> Result<String, String> {
+    use sqlx::Row;
+
+    let db_type = params.type_.clone();
+    let start = std::time::Instant::now();
+
+    match db_type.as_str() {
+        "mysql" => {
+            let host = params.host.unwrap_or_else(|| "localhost".to_string());
+            let port = params.port.unwrap_or(3306);
+            let username = params.username.unwrap_or_default();
+            let password = params.password.unwrap_or_default();
+            let database = params.database.unwrap_or_default();
+
+            // 构建连接 URL（无数据库时不带路径）
+            let url = if database.is_empty() {
+                format!("mysql://{}:{}@{}:{}", username, password, host, port)
+            } else {
+                format!("mysql://{}:{}@{}:{}/{}", username, password, host, port, database)
+            };
+            let pool = pool_cache.get_or_create_mysql(&url).await?;
+            let latency = start.elapsed().as_millis();
+
+            // 获取服务器版本
+            let version: String = sqlx::query_scalar("SELECT VERSION()")
+                .fetch_one(&pool)
+                .await
+                .unwrap_or_else(|_| "未知".to_string());
+
+            // 获取活跃连接数
+            let active_connections: i64 = sqlx::query_scalar(
+                "SELECT COUNT(*) FROM information_schema.processlist"
+            )
+            .fetch_one(&pool)
+            .await
+            .unwrap_or(0);
+
+            // 获取最大连接数
+            let max_connections: i64 = sqlx::query(
+                "SHOW VARIABLES LIKE 'max_connections'"
+            )
+            .fetch_optional(&pool)
+            .await
+            .ok()
+            .flatten()
+            .map(|row| row.get::<String, _>(1).parse::<i64>().unwrap_or(0))
+            .unwrap_or(0);
+
+            // 获取运行时间
+            let uptime: i64 = sqlx::query(
+                "SHOW VARIABLES LIKE 'uptime'"
+            )
+            .fetch_optional(&pool)
+            .await
+            .ok()
+            .flatten()
+            .map(|row| row.get::<String, _>(1).parse::<i64>().unwrap_or(0))
+            .unwrap_or(0);
+
+            // 数据库特定信息（仅当指定了数据库时查询）
+            let (db_size, table_count) = if !database.is_empty() {
+                let size: String = sqlx::query_scalar(
+                    "SELECT CONCAT(ROUND(SUM(data_length + index_length) / 1024 / 1024, 2), ' MB') \
+                     FROM information_schema.tables WHERE table_schema = ?"
+                )
+                .bind(&database)
+                .fetch_one(&pool)
+                .await
+                .unwrap_or_else(|_| "未知".to_string());
+
+                let count: i64 = sqlx::query_scalar(
+                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = ?"
+                )
+                .bind(&database)
+                .fetch_one(&pool)
+                .await
+                .unwrap_or(0);
+
+                (size, count)
+            } else {
+                ("未知".to_string(), 0)
+            };
+
+            serde_json::to_string(&serde_json::json!({
+                "status": "connected",
+                "type": "MySQL",
+                "version": version,
+                "host": host,
+                "port": port,
+                "database": if database.is_empty() { None::<String> } else { Some(database) },
+                "latency_ms": latency,
+                "active_connections": active_connections,
+                "max_connections": max_connections,
+                "uptime_seconds": uptime,
+                "database_size": db_size,
+                "table_count": table_count,
+                "pool_size": pool.size(),
+                "pool_idle": pool.num_idle(),
+            })).map_err(|e| format!("序列化失败: {}", e))
+        }
+        "postgresql" => {
+            let host = params.host.unwrap_or_else(|| "localhost".to_string());
+            let port = params.port.unwrap_or(5432);
+            let username = params.username.unwrap_or_default();
+            let password = params.password.unwrap_or_default();
+            let database = params.database.unwrap_or_else(|| "postgres".to_string());
+
+            let url = format!("postgres://{}:{}@{}:{}/{}", username, password, host, port, database);
+            let pool = pool_cache.get_or_create_pg(&url).await?;
+            let latency = start.elapsed().as_millis();
+
+            let version: String = sqlx::query_scalar("SELECT version()")
+                .fetch_one(&pool)
+                .await
+                .unwrap_or_else(|_| "未知".to_string());
+
+            let active_connections: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM pg_stat_activity WHERE state = 'active'"
+            )
+            .fetch_one(&pool)
+            .await
+            .unwrap_or(0);
+
+            let max_connections: i64 = sqlx::query_scalar::<_, String>(
+                "SHOW max_connections"
+            )
+            .fetch_one(&pool)
+            .await
+            .ok()
+            .and_then(|v| v.parse::<i64>().ok())
+            .unwrap_or(0);
+
+            let db_size: String = sqlx::query_scalar(
+                "SELECT pg_size_pretty(pg_database_size($1))"
+            )
+            .bind(&database)
+            .fetch_one(&pool)
+            .await
+            .unwrap_or_else(|_| "未知".to_string());
+
+            let table_count: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'"
+            )
+            .fetch_one(&pool)
+            .await
+            .unwrap_or(0);
+
+            serde_json::to_string(&serde_json::json!({
+                "status": "connected",
+                "type": "PostgreSQL",
+                "version": version,
+                "host": host,
+                "port": port,
+                "database": database,
+                "latency_ms": latency,
+                "active_connections": active_connections,
+                "max_connections": max_connections,
+                "database_size": db_size,
+                "table_count": table_count,
+                "pool_size": pool.size(),
+                "pool_idle": pool.num_idle(),
+            })).map_err(|e| format!("序列化失败: {}", e))
+        }
+        "sqlite" => {
+            let sqlite_file = params.sqlite_file.unwrap_or_default();
+            let url = format!("sqlite:{}", sqlite_file);
+            let pool = pool_cache.get_or_create_sqlite(&url).await?;
+            let latency = start.elapsed().as_millis();
+
+            let version: String = sqlx::query_scalar("SELECT sqlite_version()")
+                .fetch_one(&pool)
+                .await
+                .unwrap_or_else(|_| "未知".to_string());
+
+            let table_count: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+            )
+            .fetch_one(&pool)
+            .await
+            .unwrap_or(0);
+
+            // 获取文件大小
+            let file_size = std::fs::metadata(&sqlite_file)
+                .map(|m| {
+                    let bytes = m.len();
+                    if bytes > 1024 * 1024 {
+                        format!("{:.2} MB", bytes as f64 / 1024.0 / 1024.0)
+                    } else if bytes > 1024 {
+                        format!("{:.2} KB", bytes as f64 / 1024.0)
+                    } else {
+                        format!("{} B", bytes)
+                    }
+                })
+                .unwrap_or_else(|_| "未知".to_string());
+
+            serde_json::to_string(&serde_json::json!({
+                "status": "connected",
+                "type": "SQLite",
+                "version": version,
+                "file": sqlite_file,
+                "latency_ms": latency,
+                "database_size": file_size,
+                "table_count": table_count,
+                "pool_size": pool.size(),
+                "pool_idle": pool.num_idle(),
+            })).map_err(|e| format!("序列化失败: {}", e))
+        }
+        _ => Err(format!("不支持的数据库类型: {}", db_type))
+    }
+}
+
 /// 获取项目的所有表
 #[tauri::command]
 async fn db_get_project_tables(
@@ -2866,6 +3082,7 @@ pub fn run() {
             cmd_list_database_tables,
             cmd_get_table_columns,
             cmd_query_table_data,
+            cmd_get_connection_status,
             db_get_project_tables,
             db_create_table,
             cmd_import_tables_from_datasource,

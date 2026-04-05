@@ -253,3 +253,30 @@ export async function queryTableData(datasource, tableName, limit = 100, offset 
     throw error
   }
 }
+
+/**
+ * 获取数据库连接状态信息
+ * @param {Object} datasource - 数据源配置
+ * @returns {Promise<Object>} 连接状态信息
+ */
+export async function getConnectionStatus(datasource) {
+  try {
+    const params = {
+      type: datasource.type_,
+      host: datasource.host,
+      port: datasource.port,
+      username: datasource.username,
+      password: datasource.password,
+      sqliteFile: datasource.sqlite_file
+    }
+    // 仅在有值时传递 database，避免空字符串导致连接失败
+    if (datasource.database) {
+      params.database = datasource.database
+    }
+    const result = await invoke('cmd_get_connection_status', { params })
+    return JSON.parse(result)
+  } catch (error) {
+    console.error('获取连接状态失败:', error)
+    throw error
+  }
+}

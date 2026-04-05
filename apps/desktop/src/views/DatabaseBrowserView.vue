@@ -276,6 +276,18 @@ const loadDatasource = async () => {
   }
 }
 
+// 更新数据库概览 footer
+const updateDbOverview = () => {
+  const dbCount = databases.value.length
+  const tableCount = databases.value.reduce((sum, db) => sum + db.tables.length, 0)
+  layoutStore.showFooterOverview([
+    { label: '数据源', value: datasource.value?.name || '-' },
+    { label: '类型', value: datasource.value?.type_?.toUpperCase() || '-' },
+    { label: '数据库', value: dbCount },
+    { label: '已加载表', value: tableCount }
+  ])
+}
+
 // 加载数据库列表
 const loadDatabases = async () => {
   if (!datasource.value) return
@@ -302,6 +314,8 @@ const loadDatabases = async () => {
         await loadTables(ds.database)
       }
     }
+    // 显示数据库概览 footer
+    updateDbOverview()
   } catch (error) {
     message.error('加载数据库列表失败: ' + error)
   } finally {
@@ -323,7 +337,8 @@ const toggleDatabase = async (dbName) => {
   selectedTable.value = ''
   tableData.value = null
   columns.value = []
-  layoutStore.hideFooter()
+  // 恢复概览 footer
+  updateDbOverview()
 
   // 如果还没有加载表，加载
   const db = databases.value.find(d => d.name === dbName)
@@ -340,6 +355,10 @@ const loadTables = async (dbName) => {
     const db = databases.value.find(d => d.name === dbName)
     if (db) {
       db.tables = tables
+    }
+    // 更新概览（未选中表时）
+    if (!selectedTable.value) {
+      updateDbOverview()
     }
   } catch (error) {
     message.error('加载表列表失败: ' + error)
@@ -416,8 +435,7 @@ const refreshTree = async () => {
   selectedTable.value = ''
   tableData.value = null
   columns.value = []
-  layoutStore.hideFooter()
-  await loadDatabases()
+  await loadDatabases() // loadDatabases 末尾会调用 updateDbOverview
 }
 
 // 拖拽调整侧边栏宽度

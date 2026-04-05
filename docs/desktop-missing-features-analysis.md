@@ -1,7 +1,7 @@
 # Template Studio Desktop 应用功能分析与进展报告
 
 > 初始分析日期：2026-06-08
-> 最后更新：2026-06-09（晚间更新）
+> 最后更新：2026-06-09（深夜更新）
 > 分析范围：`apps/desktop/` 目录下的完整代码
 
 ---
@@ -94,6 +94,66 @@
 - ✅ 新增 `get_system_theme` Tauri 命令
 - ✅ 解决 "Command get_system_theme not found" 错误
 
+#### 10. 数据库浏览器 ✅
+
+**文件：** `src/views/DatabaseBrowserView.vue`、`src/views/DataSourceView.vue`
+
+- ✅ 独立页面（替代原有 Drawer），参考 dbx IDE 风格布局
+- ✅ 左侧数据库/表树 + 右侧数据内容区
+- ✅ 左侧树支持：展开/折叠数据库、表搜索、拖拽调整宽度
+- ✅ 右侧支持两种视图：数据表格（带分页）和列信息
+- ✅ `a-segmented` 切换数据/列信息视图
+- ✅ 全局 Footer 集成：数据视图显示分页，列信息视图显示概览
+- ✅ 路由：`/datasource/:id/browse`
+- ✅ 后端新增 `cmd_get_table_columns` 命令（获取列名、类型、可空、键、默认值、注释）
+- ✅ 后端新增 `cmd_query_table_data` 命令（查询表数据，支持 MySQL/PostgreSQL/SQLite）
+- ✅ 所有类型统一 CAST 为字符串返回，避免类型转换丢失数据
+- ✅ 前端新增 `getTableColumns` 和 `queryTableData` API
+
+#### 11. 数据库查询性能优化 ✅
+
+**文件：** `src-tauri/src/lib.rs`
+
+- ✅ 新增 `BrowserPoolCache` 全局连接池缓存，避免每次查询新建连接
+- ✅ MySQL 快速行数估算：`SELECT TABLE_ROWS FROM INFORMATION_SCHEMA.TABLES`
+- ✅ PostgreSQL 快速行数估算：`SELECT reltuples FROM pg_class`
+- ✅ 估算值为 0 时自动回退到 `COUNT(*)`
+- ✅ `cmd_get_table_columns` 和 `cmd_query_table_data` 均使用缓存池
+
+#### 12. Ant Design 暗黑模式适配 ✅
+
+**文件：** `src/App.vue`
+
+- ✅ `a-config-provider` 添加 `theme` 属性
+- ✅ 使用 `theme.darkAlgorithm` 切换暗黑算法
+- ✅ 同步 CSS 变量到 Ant Design token（背景色、文字色、边框色、主色调）
+- ✅ 所有 Ant Design 组件自动适配暗黑模式（segmented、pagination、tag、button 等）
+
+#### 13. 全局 Footer 分页选项可配置 ✅
+
+**文件：** `src/stores/layout.js`、`src/components/layout/MainContent.vue`
+
+- ✅ layout store 新增 `footerPageSizeOptions` 状态
+- ✅ `showFooterPagination` 支持自定义 page-size-options
+- ✅ 数据库浏览器使用 `['50', '100', '200', '500']`
+- ✅ 其他页面使用默认值 `['10', '15', '20', '25', '30']`
+- ✅ 切换页面时自动重置为对应页面的选项
+
+#### 14. 连接状态监控 ✅
+
+**文件：** `src/views/DataSourceView.vue`、`src/api/datasources.js`、`src-tauri/src/lib.rs`
+
+- ✅ 数据源卡片新增"连接状态"按钮（DashboardOutlined 图标）
+- ✅ 点击弹出状态弹窗，展示连接状态指示器（绿点/红点）
+- ✅ MySQL：版本、主机端口、数据库、延迟、活跃连接数、最大连接数、运行时间、数据库大小、表数量、连接池状态
+- ✅ PostgreSQL：版本、主机端口、数据库、延迟、活跃连接数、最大连接数、数据库大小、表数量、连接池状态
+- ✅ SQLite：版本、文件路径、延迟、文件大小、表数量、连接池状态
+- ✅ 后端新增 `cmd_get_connection_status` 命令
+- ✅ 前端新增 `getConnectionStatus` API
+- ✅ 使用连接池缓存，避免重复建立连接
+- ✅ 延迟 < 50ms 绿色显示，>= 50ms 黄色警告
+- ✅ 修复 MySQL 空数据库时连接 URL 构建问题
+
 ---
 
 ### 4. ProjectWorkspaceView (项目工作区)
@@ -155,16 +215,14 @@
 ### 8. DataSourceView (数据源管理)
 
 **文件：** `src/views/DataSourceView.vue`
-**状态：** ✅ 功能完整（已增强）
+**状态：** ✅ 功能完整
 
 **已实现：**
 - ✅ 数据源 CRUD（MySQL/PostgreSQL/SQLite）
 - ✅ 连接测试
 - ✅ 搜索/筛选/排序/分页（2026-06-09 新增）
-
-**缺失内容：**
-- ❌ 无数据库浏览器（查看数据库中的表、视图等）
-- ❌ 无连接池状态监控
+- ✅ 数据库浏览器（独立页面，IDE 风格布局，2026-06-09 新增）
+- ✅ 连接状态监控（弹窗展示版本、延迟、连接池、服务器信息，2026-06-09 新增）
 
 ---
 
@@ -241,6 +299,7 @@
 | `/home` | 首页 | ✅ |
 | `/templates` | 模板库 | ✅ |
 | `/datasource` | 数据源 | ✅ |
+| `/datasource/:id/browse` | 数据库浏览器 | ✅ 2026-06-09 新增 |
 | `/projects` | 项目列表 | ✅ |
 | `/mappings` | 全局映射 | ✅ |
 | `/languages` | 语言管理 | ✅ |
@@ -272,10 +331,11 @@
 | releases.js | HTTP (axios) | 调用远程 API | ✅ 完整 |
 | templateVariables.js | HTTP (axios) | 调用远程 API | ✅ 完整 |
 | templateFiles.js | HTTP (axios) | 调用远程 API | ✅ 完整 |
-| datasources.js | Tauri invoke | 调用本地命令 | ✅ 完整 |
+| datasources.js | Tauri invoke | 调用本地命令 | ✅ 完整（含 getTableColumns、queryTableData） |
 | projects.js | Tauri invoke | 调用本地命令 | ✅ 完整 |
 | languages.js | Tauri invoke | 调用本地命令 | ✅ 完整 |
 | tableConfig.js | Tauri invoke | 调用本地命令 | ✅ 完整 |
+| statistics.js | Tauri invoke | 调用本地命令 | ✅ 完整 |
 
 ### 关键发现
 
@@ -331,8 +391,11 @@
 - `footerType`: `null | 'pagination' | 'overview'`
 - `footerPagination`: 分页状态（current、pageSize、total）
 - `footerOverview`: 概览状态（items 数组）
+- `footerPageSizeOptions`: 可配置的分页大小选项（不同页面可不同）
 - 通过 `showFooterPagination`、`showFooterOverview`、`hideFooter` 方法控制
+- `showFooterPagination` 支持自定义 `pageSizeOptions` 参数
 - 路由守卫 `onRouteChange` 自动管理 footer 显示/隐藏
+- 子页面（`/datasource/:id/browse`、`/project/*`）不显示全局 footer
 
 ---
 
@@ -409,14 +472,17 @@
 | ProjectsView | ✅ | ✅ | ✅ | ✅ | ✅ 完整 |
 | DataSourceView | ✅ | ✅ | ✅ | ✅ | ✅ 完整 |
 | LanguagesView | ✅ | ✅ | ✅ | ✅ | ✅ 完整 |
-| project/TablesView | ❌ | ❌ | ❌ | ❌ | 缺失 |
+| project/TablesView | ✅ | ✅ | ✅ | ✅ | ✅ 完整 |
+| DatabaseBrowserView | ✅ | - | - | ✅ | ✅ 完整 |
 
 ### 全局 Footer
 
-- ✅ 分页 footer（Projects、DataSource、Languages、Templates）
+- ✅ 分页 footer（Projects、DataSource、Languages、Templates、DatabaseBrowser）
 - ✅ 概览 footer（Mappings - 显示当前语言/数据库/映射统计）
+- ✅ 概览 footer（DatabaseBrowser 列信息视图 - 显示数据库/表/列数/主键/可空列）
 - ✅ 与侧边栏 footer 对齐（56px 高度）
 - ✅ 设置页面不显示 footer
+- ✅ 分页大小选项可配置（数据库浏览器使用 50/100/200/500）
 
 ### 导入导出
 
@@ -458,8 +524,7 @@
 
 ### 数据源管理
 
-- 数据源 CRUD、连接测试、搜索/筛选/排序/分页 — **完整 (90%)**
-- 缺失：数据库浏览、连接监控
+- 数据源 CRUD、连接测试、搜索/筛选/排序/分页、数据库浏览器、连接状态监控 — **完整 (100%)**
 
 ### 代码生成
 
@@ -534,13 +599,15 @@
 4. ~~**全局 Footer**~~ ✅ 分页 footer + 概览 footer
 5. ~~**中文本地化**~~ ✅ Ant Design Vue 全局 locale
 
-### 第二阶段：功能完善（当前阶段）
+### 第二阶段：功能完善（基本完成）
 
 6. **代码生成入口** ⬅️ 优先 - 在项目工作区添加独立的代码生成/预览页面
 7. ~~**项目表管理增强**~~ ✅ 已完成 - 搜索/筛选/排序/导出/列拖拽/批量删除
-8. **DisplaySettings 接入** - 完成设置页面
-9. **404 路由** - 添加通配符路由和兜底页面
-10. **模板排序** - 添加按创建时间、热度、名称排序
+8. ~~**数据库浏览器**~~ ✅ 已完成 - 独立页面、IDE 风格布局、连接池缓存
+9. ~~**Ant Design 暗黑模式**~~ ✅ 已完成 - 全局 darkAlgorithm 适配
+10. **DisplaySettings 接入** - 完成设置页面
+11. **404 路由** - 添加通配符路由和兜底页面
+12. **模板排序** - 添加按创建时间、热度、名称排序
 
 ### 第三阶段：体验优化
 
@@ -572,6 +639,8 @@
 ### 性能问题
 
 - ~~所有列表页面无分页，数据量大时会有性能问题~~ ✅ 已通过全局 Footer 分页解决
+- ~~数据库浏览器每次查询新建连接~~ ✅ 已通过 BrowserPoolCache 连接池缓存解决
+- ~~COUNT(*) 对大表很慢~~ ✅ 已通过快速行数估算（MySQL TABLE_ROWS / PostgreSQL reltuples）解决
 - 模板列表一次性加载所有数据（已分页显示）
 - 无数据缓存机制
 
@@ -585,29 +654,36 @@
 
 ## 十二、总结
 
-Template Studio Desktop 应用的核心功能框架已基本搭建完成，第一阶段的核心功能补全已完成。
+Template Studio Desktop 应用的核心功能框架已基本搭建完成，第一阶段和第二阶段的核心功能已基本完成。
 
-**当前完成度：约 80%**
+**当前完成度：约 87%**
 
 **已完成：**
 - ✅ 首页动态化（统计卡片 + 最近项目）
 - ✅ 列表页面增强（搜索/筛选/排序/分页）
 - ✅ 公共组件（SearchBar、Pagination、EmptyState、ConfirmDialog）
-- ✅ 全局 Footer 系统（分页 + 概览）
+- ✅ 全局 Footer 系统（分页 + 概览 + 可配置分页大小）
 - ✅ Ant Design 中文本地化
+- ✅ Ant Design 暗黑模式全局适配（darkAlgorithm + CSS 变量同步）
 - ✅ 布局优化（footer 对齐、过渡动画）
 - ✅ TablesView 增强（搜索/筛选/排序/导出/列拖拽/批量删除）
 - ✅ 项目映射管理页面重设计
 - ✅ 规范管理页面优化（emoji → Ant Design 图标）
 - ✅ 系统主题检测修复
+- ✅ 数据库浏览器（独立页面、IDE 风格布局、连接池缓存、快速查询）
+- ✅ 连接状态监控（版本、延迟、连接池、服务器信息弹窗）
+- ✅ 数据源管理功能完整（CRUD + 测试 + 浏览 + 状态监控）
 
 **主要优势：**
 - 模板配置向导功能完整
 - 表管理功能强大（AI 建表、SQL 导入、搜索/筛选/排序/导出）
-- 暗黑模式支持良好
+- 数据库浏览器体验良好（树形导航、数据/列信息双视图、分页）
+- 数据源管理全面（CRUD + 连接测试 + 浏览 + 状态监控）
+- 暗黑模式全面支持（Ant Design 组件 + 自定义 CSS 变量）
 - 布局组件结构清晰
 - 列表页面体验统一
 - 页面设计专业化（无 emoji，使用 Ant Design 图标）
+- 查询性能优化（连接池缓存 + 快速行数估算）
 
 **下一步重点：**
 1. 代码生成独立入口（P0）
@@ -615,4 +691,4 @@ Template Studio Desktop 应用的核心功能框架已基本搭建完成，第�
 3. 404 路由（P1）
 4. 模板排序（P1）
 
-建议按照上述开发顺序逐步完善，优先完成第二阶段的功能完善。
+建议按照上述开发顺序逐步完善，优先完成第二阶段剩余的功能。
