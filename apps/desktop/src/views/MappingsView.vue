@@ -54,10 +54,32 @@
               style="width: 240px"
               allow-clear
             />
-            <a-button type="primary" @click="showAddMappingDialog">
-              <template #icon><PlusOutlined /></template>
-              添加映射
-            </a-button>
+            <div class="toolbar-actions">
+              <a-button @click="showTemplateDialog">
+                <template #icon><AppstoreOutlined /></template>
+                模板
+              </a-button>
+              <a-dropdown>
+                <a-button>
+                  <template #icon><ExportOutlined /></template>
+                  导出
+                </a-button>
+                <template #overlay>
+                  <a-menu @click="handleExport">
+                    <a-menu-item key="current">导出当前配置</a-menu-item>
+                    <a-menu-item key="all">导出全部映射</a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
+              <a-button @click="triggerImport">
+                <template #icon><ImportOutlined /></template>
+                导入
+              </a-button>
+              <a-button type="primary" @click="showAddMappingDialog">
+                <template #icon><PlusOutlined /></template>
+                添加映射
+              </a-button>
+            </div>
           </div>
 
           <a-table
@@ -135,15 +157,58 @@
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <!-- 模板选择对话框 -->
+    <a-modal
+      v-model:open="templateDialogVisible"
+      title="映射模板"
+      width="600px"
+      :footer="null"
+    >
+      <div class="template-list">
+        <div
+          v-for="template in mappingTemplates"
+          :key="template.id"
+          class="template-card"
+          @click="applyTemplate(template)"
+        >
+          <div class="template-header">
+            <h4 class="template-name">{{ template.name }}</h4>
+            <a-tag :color="template.dbType === 'mysql' ? 'blue' : template.dbType === 'postgresql' ? 'green' : 'orange'">
+              {{ template.dbType.toUpperCase() }}
+            </a-tag>
+          </div>
+          <p class="template-desc">{{ template.description }}</p>
+          <div class="template-preview">
+            <span v-for="(item, idx) in template.mappings.slice(0, 4)" :key="idx" class="preview-item">
+              <code>{{ item.pattern }}</code> → <code>{{ item.targetType }}</code>
+            </span>
+            <span v-if="template.mappings.length > 4" class="preview-more">
+              +{{ template.mappings.length - 4 }} 更多...
+            </span>
+          </div>
+        </div>
+      </div>
+    </a-modal>
+
+    <!-- 隐藏的文件输入 -->
+    <input
+      ref="fileInputRef"
+      type="file"
+      accept=".json"
+      style="display: none"
+      @change="handleImportFile"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { message } from 'ant-design-vue'
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { message, Modal } from 'ant-design-vue'
+import { PlusOutlined, ExportOutlined, ImportOutlined, AppstoreOutlined } from '@ant-design/icons-vue'
 import { invoke } from '@tauri-apps/api/core'
+import { save, open } from '@tauri-apps/plugin-dialog'
 import { getAllLanguages } from '@/api/languages'
 import { useLayoutStore } from '@/stores/layout'
 
@@ -392,22 +457,32 @@ const loadMappings = async () => {
     await loadLanguageFieldTypes()
 
     // 加载映射数据（按语言组织）
-    const result = await invoke('db_get_all_type_mappings')
+    const result = await invoke('db_get_system_type_mappings')
     const loadedMappings = {}
 
     if (result) {
       const data = typeof result === 'string' ? JSON.parse(result) : result
-      // 按语言组织数据
+      // 按语言组织数据（后端返回 language_name, db_type）
       for (const mapping of data) {
-        const langKey = mapping.langType
-        const dbKey = mapping.dbType
+        const langKey = mapping.language_name?.toLowerCase().replace(/\s+/g, '_') || mapping.langType
+        const dbKey = mapping.db_type || mapping.dbType
+        if (!langKey || !dbKey) continue
+
         if (!loadedMappings[langKey]) {
           loadedMappings[langKey] = {}
         }
         if (!loadedMappings[langKey][dbKey]) {
           loadedMappings[langKey][dbKey] = []
         }
-        loadedMappings[langKey][dbKey].push(mapping)
+        loadedMappings[langKey][dbKey].push({
+          id: mapping.id,
+          pattern: mapping.pattern,
+          targetType: mapping.target_type,
+          priority: mapping.priority,
+          language_id: mapping.language_id,
+          dbType: dbKey,
+          langType: langKey
+        })
       }
     }
 
@@ -527,29 +602,382 @@ const closeMappingDialog = () => {
 // 保存映射到后端
 const saveMappingsToBackend = async () => {
   try {
-    // 将所有映射扁平化
+    // 将所有映射扁平化，映射为后端期望的格式
     const allMappings = []
     for (const langKey in mappings.value) {
+      // 查找 language_id
+      const lang = availableLanguages.value.find(l => l.key === langKey)
+      const languageId = lang?.id || 0
+
       for (const dbKey in mappings.value[langKey]) {
         for (const mapping of mappings.value[langKey][dbKey]) {
           // 只保存已配置的映射（有目标类型的）
           if (mapping.targetType) {
             allMappings.push({
-              ...mapping,
-              dbType: dbKey,
-              langType: langKey
+              language_id: languageId,
+              db_type: dbKey,
+              pattern: mapping.pattern,
+              target_type: mapping.targetType,
+              priority: mapping.priority || 10
             })
           }
         }
       }
     }
 
-    await invoke('db_save_all_type_mappings', {
-      mappings: allMappings
+    await invoke('db_batch_save_system_type_mappings', {
+      mappings: JSON.stringify(allMappings)
     })
   } catch (error) {
     console.error('保存映射到后端失败:', error)
     // 不显示错误，因为可能后端命令还没实现
+  }
+}
+
+// ===== 映射模板 =====
+
+const templateDialogVisible = ref(false)
+
+const mappingTemplates = [
+  {
+    id: 'mysql-java-mybatis',
+    name: 'MySQL → Java (MyBatis)',
+    description: '适用于 MyBatis/MyBatis-Plus 的常用 MySQL 到 Java 类型映射',
+    dbType: 'mysql',
+    langType: 'java',
+    mappings: [
+      { pattern: 'VARCHAR(%)', targetType: 'String', priority: 10 },
+      { pattern: 'CHAR(%)', targetType: 'String', priority: 10 },
+      { pattern: 'TEXT', targetType: 'String', priority: 10 },
+      { pattern: 'LONGTEXT', targetType: 'String', priority: 10 },
+      { pattern: 'INT', targetType: 'Integer', priority: 10 },
+      { pattern: 'BIGINT', targetType: 'Long', priority: 10 },
+      { pattern: 'SMALLINT', targetType: 'Integer', priority: 10 },
+      { pattern: 'TINYINT(1)', targetType: 'Boolean', priority: 20 },
+      { pattern: 'TINYINT(%)', targetType: 'Integer', priority: 10 },
+      { pattern: 'DECIMAL(%,%)', targetType: 'BigDecimal', priority: 10 },
+      { pattern: 'FLOAT', targetType: 'Float', priority: 10 },
+      { pattern: 'DOUBLE', targetType: 'Double', priority: 10 },
+      { pattern: 'BOOLEAN', targetType: 'Boolean', priority: 10 },
+      { pattern: 'DATE', targetType: 'LocalDate', priority: 10 },
+      { pattern: 'TIMESTAMP', targetType: 'LocalDateTime', priority: 10 },
+      { pattern: 'DATETIME', targetType: 'LocalDateTime', priority: 10 },
+      { pattern: 'TIME', targetType: 'LocalTime', priority: 10 },
+      { pattern: 'BLOB', targetType: 'byte[]', priority: 10 },
+      { pattern: 'JSON', targetType: 'String', priority: 10 }
+    ]
+  },
+  {
+    id: 'mysql-java-jpa',
+    name: 'MySQL → Java (JPA)',
+    description: '适用于 JPA/Hibernate 的 MySQL 到 Java 类型映射',
+    dbType: 'mysql',
+    langType: 'java',
+    mappings: [
+      { pattern: 'VARCHAR(%)', targetType: 'String', priority: 10 },
+      { pattern: 'CHAR(%)', targetType: 'String', priority: 10 },
+      { pattern: 'TEXT', targetType: 'String', priority: 10 },
+      { pattern: 'LONGTEXT', targetType: 'String', priority: 10 },
+      { pattern: 'INT', targetType: 'Integer', priority: 10 },
+      { pattern: 'BIGINT', targetType: 'Long', priority: 10 },
+      { pattern: 'SMALLINT', targetType: 'Short', priority: 10 },
+      { pattern: 'TINYINT(1)', targetType: 'Boolean', priority: 20 },
+      { pattern: 'TINYINT(%)', targetType: 'Byte', priority: 10 },
+      { pattern: 'DECIMAL(%,%)', targetType: 'BigDecimal', priority: 10 },
+      { pattern: 'FLOAT', targetType: 'Float', priority: 10 },
+      { pattern: 'DOUBLE', targetType: 'Double', priority: 10 },
+      { pattern: 'BOOLEAN', targetType: 'Boolean', priority: 10 },
+      { pattern: 'DATE', targetType: 'LocalDate', priority: 10 },
+      { pattern: 'TIMESTAMP', targetType: 'Instant', priority: 10 },
+      { pattern: 'DATETIME', targetType: 'LocalDateTime', priority: 10 },
+      { pattern: 'TIME', targetType: 'LocalTime', priority: 10 },
+      { pattern: 'BLOB', targetType: 'byte[]', priority: 10 },
+      { pattern: 'JSON', targetType: 'String', priority: 10 }
+    ]
+  },
+  {
+    id: 'postgresql-java-mybatis',
+    name: 'PostgreSQL → Java (MyBatis)',
+    description: '适用于 MyBatis 的 PostgreSQL 到 Java 类型映射',
+    dbType: 'postgresql',
+    langType: 'java',
+    mappings: [
+      { pattern: 'VARCHAR(%)', targetType: 'String', priority: 10 },
+      { pattern: 'CHAR(%)', targetType: 'String', priority: 10 },
+      { pattern: 'TEXT', targetType: 'String', priority: 10 },
+      { pattern: 'INTEGER', targetType: 'Integer', priority: 10 },
+      { pattern: 'BIGINT', targetType: 'Long', priority: 10 },
+      { pattern: 'SMALLINT', targetType: 'Integer', priority: 10 },
+      { pattern: 'BOOLEAN', targetType: 'Boolean', priority: 10 },
+      { pattern: 'DECIMAL(%,%)', targetType: 'BigDecimal', priority: 10 },
+      { pattern: 'NUMERIC(%,%)', targetType: 'BigDecimal', priority: 10 },
+      { pattern: 'REAL', targetType: 'Float', priority: 10 },
+      { pattern: 'DOUBLE PRECISION', targetType: 'Double', priority: 10 },
+      { pattern: 'DATE', targetType: 'LocalDate', priority: 10 },
+      { pattern: 'TIMESTAMP', targetType: 'LocalDateTime', priority: 10 },
+      { pattern: 'TIMESTAMPTZ', targetType: 'OffsetDateTime', priority: 10 },
+      { pattern: 'TIME', targetType: 'LocalTime', priority: 10 },
+      { pattern: 'BYTEA', targetType: 'byte[]', priority: 10 },
+      { pattern: 'JSON', targetType: 'String', priority: 10 },
+      { pattern: 'JSONB', targetType: 'String', priority: 10 },
+      { pattern: 'UUID', targetType: 'String', priority: 10 },
+      { pattern: 'SERIAL', targetType: 'Integer', priority: 10 },
+      { pattern: 'BIGSERIAL', targetType: 'Long', priority: 10 }
+    ]
+  },
+  {
+    id: 'mysql-python-sqlalchemy',
+    name: 'MySQL → Python (SQLAlchemy)',
+    description: '适用于 SQLAlchemy 的 MySQL 到 Python 类型映射',
+    dbType: 'mysql',
+    langType: 'python',
+    mappings: [
+      { pattern: 'VARCHAR(%)', targetType: 'String', priority: 10 },
+      { pattern: 'CHAR(%)', targetType: 'String', priority: 10 },
+      { pattern: 'TEXT', targetType: 'Text', priority: 10 },
+      { pattern: 'LONGTEXT', targetType: 'Text', priority: 10 },
+      { pattern: 'INT', targetType: 'Integer', priority: 10 },
+      { pattern: 'BIGINT', targetType: 'BigInteger', priority: 10 },
+      { pattern: 'SMALLINT', targetType: 'SmallInteger', priority: 10 },
+      { pattern: 'TINYINT(1)', targetType: 'Boolean', priority: 20 },
+      { pattern: 'TINYINT(%)', targetType: 'SmallInteger', priority: 10 },
+      { pattern: 'DECIMAL(%,%)', targetType: 'Numeric', priority: 10 },
+      { pattern: 'FLOAT', targetType: 'Float', priority: 10 },
+      { pattern: 'DOUBLE', targetType: 'Float', priority: 10 },
+      { pattern: 'BOOLEAN', targetType: 'Boolean', priority: 10 },
+      { pattern: 'DATE', targetType: 'Date', priority: 10 },
+      { pattern: 'TIMESTAMP', targetType: 'DateTime', priority: 10 },
+      { pattern: 'DATETIME', targetType: 'DateTime', priority: 10 },
+      { pattern: 'TIME', targetType: 'Time', priority: 10 },
+      { pattern: 'BLOB', targetType: 'LargeBinary', priority: 10 },
+      { pattern: 'JSON', targetType: 'JSON', priority: 10 }
+    ]
+  },
+  {
+    id: 'mysql-typescript-prisma',
+    name: 'MySQL → TypeScript (Prisma)',
+    description: '适用于 Prisma 的 MySQL 到 TypeScript 类型映射',
+    dbType: 'mysql',
+    langType: 'typescript',
+    mappings: [
+      { pattern: 'VARCHAR(%)', targetType: 'string', priority: 10 },
+      { pattern: 'CHAR(%)', targetType: 'string', priority: 10 },
+      { pattern: 'TEXT', targetType: 'string', priority: 10 },
+      { pattern: 'LONGTEXT', targetType: 'string', priority: 10 },
+      { pattern: 'INT', targetType: 'number', priority: 10 },
+      { pattern: 'BIGINT', targetType: 'bigint', priority: 10 },
+      { pattern: 'SMALLINT', targetType: 'number', priority: 10 },
+      { pattern: 'TINYINT(1)', targetType: 'boolean', priority: 20 },
+      { pattern: 'TINYINT(%)', targetType: 'number', priority: 10 },
+      { pattern: 'DECIMAL(%,%)', targetType: 'Decimal', priority: 10 },
+      { pattern: 'FLOAT', targetType: 'number', priority: 10 },
+      { pattern: 'DOUBLE', targetType: 'number', priority: 10 },
+      { pattern: 'BOOLEAN', targetType: 'boolean', priority: 10 },
+      { pattern: 'DATE', targetType: 'Date', priority: 10 },
+      { pattern: 'TIMESTAMP', targetType: 'Date', priority: 10 },
+      { pattern: 'DATETIME', targetType: 'Date', priority: 10 },
+      { pattern: 'TIME', targetType: 'string', priority: 10 },
+      { pattern: 'BLOB', targetType: 'Buffer', priority: 10 },
+      { pattern: 'JSON', targetType: 'JsonValue', priority: 10 }
+    ]
+  }
+]
+
+// 显示模板对话框
+const showTemplateDialog = () => {
+  templateDialogVisible.value = true
+}
+
+// 应用模板
+const applyTemplate = async (template) => {
+  const langKey = template.langType
+  const dbKey = template.dbType
+
+  // 确保映射结构存在
+  if (!mappings.value[langKey]) {
+    mappings.value[langKey] = {}
+  }
+
+  // 应用模板映射
+  const templateMap = {}
+  for (const item of template.mappings) {
+    templateMap[item.pattern] = item
+  }
+
+  // 合并到现有映射
+  if (mappings.value[langKey][dbKey]) {
+    for (let i = 0; i < mappings.value[langKey][dbKey].length; i++) {
+      const existing = mappings.value[langKey][dbKey][i]
+      if (templateMap[existing.pattern]) {
+        mappings.value[langKey][dbKey][i] = {
+          ...existing,
+          targetType: templateMap[existing.pattern].targetType,
+          priority: templateMap[existing.pattern].priority
+        }
+      }
+    }
+  }
+
+  // 切换到模板对应的数据库和语言
+  activeDbType.value = dbKey
+  activeLang.value = langKey
+
+  // 保存到后端
+  await saveMappingsToBackend()
+
+  templateDialogVisible.value = false
+  message.success(`已应用模板: ${template.name}`)
+}
+
+// ===== 导出/导入 =====
+
+const fileInputRef = ref(null)
+
+// 导出映射
+const handleExport = async ({ key }) => {
+  try {
+    let exportData
+
+    if (key === 'current') {
+      // 导出当前语言+数据库的映射
+      const langKey = activeLang.value
+      const dbKey = activeDbType.value
+      const currentData = mappings.value[langKey]?.[dbKey] || []
+      const configured = currentData.filter(m => m.targetType)
+
+      exportData = {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        scope: 'single',
+        langType: langKey,
+        dbType: dbKey,
+        mappings: configured.map(m => ({
+          pattern: m.pattern,
+          targetType: m.targetType,
+          priority: m.priority
+        }))
+      }
+    } else {
+      // 导出全部映射
+      const allMappings = []
+      for (const langKey in mappings.value) {
+        for (const dbKey in mappings.value[langKey]) {
+          for (const mapping of mappings.value[langKey][dbKey]) {
+            if (mapping.targetType) {
+              allMappings.push({
+                langType: langKey,
+                dbType: dbKey,
+                pattern: mapping.pattern,
+                targetType: mapping.targetType,
+                priority: mapping.priority
+              })
+            }
+          }
+        }
+      }
+
+      exportData = {
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        scope: 'all',
+        mappings: allMappings
+      }
+    }
+
+    // 使用 Tauri 对话框保存文件
+    const filePath = await save({
+      defaultPath: `mappings-${key === 'current' ? `${activeLang.value}-${activeDbType.value}` : 'all'}.json`,
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    })
+
+    if (filePath) {
+      // 写入文件
+      await invoke('write_text_file', { path: filePath, content: JSON.stringify(exportData, null, 2) })
+      message.success(`已导出 ${exportData.mappings.length} 条映射`)
+    }
+  } catch (error) {
+    if (error !== 'cancelled') {
+      message.error('导出失败: ' + error)
+    }
+  }
+}
+
+// 触发导入
+const triggerImport = () => {
+  fileInputRef.value?.click()
+}
+
+// 处理导入文件
+const handleImportFile = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  // 重置 input 以便再次选择同一文件
+  event.target.value = ''
+
+  try {
+    const text = await file.text()
+    const data = JSON.parse(text)
+
+    if (!data.mappings || !Array.isArray(data.mappings)) {
+      message.error('无效的映射文件格式')
+      return
+    }
+
+    const mappingCount = data.mappings.length
+
+    Modal.confirm({
+      title: '确认导入',
+      content: `即将导入 ${mappingCount} 条映射规则，已有相同类型的映射将被覆盖。是否继续？`,
+      okText: '导入',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          // 导入映射
+          for (const item of data.mappings) {
+            const langKey = item.langType
+            const dbKey = item.dbType
+
+            if (!langKey || !dbKey || !item.pattern) continue
+
+            // 确保结构存在
+            if (!mappings.value[langKey]) {
+              mappings.value[langKey] = {}
+            }
+            if (!mappings.value[langKey][dbKey]) {
+              // 如果没有模板，创建空模板
+              mappings.value[langKey][dbKey] = standardDbFields[dbKey]?.map((field, index) => ({
+                id: `${langKey}_${dbKey}_${index}`,
+                pattern: field.pattern,
+                targetType: '',
+                priority: field.priority,
+                sort_order: index,
+                dbType: dbKey,
+                langType: langKey
+              })) || []
+            }
+
+            // 查找并更新匹配的映射
+            const index = mappings.value[langKey][dbKey].findIndex(m => m.pattern === item.pattern)
+            if (index !== -1) {
+              mappings.value[langKey][dbKey][index] = {
+                ...mappings.value[langKey][dbKey][index],
+                targetType: item.targetType || '',
+                priority: item.priority || 10
+              }
+            }
+          }
+
+          // 保存到后端
+          await saveMappingsToBackend()
+          message.success(`成功导入 ${mappingCount} 条映射规则`)
+        } catch (error) {
+          message.error('导入失败: ' + error)
+        }
+      }
+    })
+  } catch (error) {
+    message.error('文件解析失败: ' + error)
   }
 }
 
@@ -752,6 +1180,11 @@ onMounted(async () => {
   margin-bottom: 16px;
 }
 
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .type-code {
   font-family: 'Fira Code', 'Consolas', monospace;
   font-size: 13px;
@@ -799,5 +1232,72 @@ onMounted(async () => {
 
 :deep(.ant-table-tbody > tr:hover > td) {
   background: var(--color-hover);
+}
+
+/* 模板对话框 */
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.template-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.template-card:hover {
+  border-color: var(--color-primary);
+  background: var(--color-hover);
+}
+
+.template-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.template-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.template-desc {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.template-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.preview-item {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.preview-item code {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+  padding: 1px 4px;
+  background: var(--color-bg-secondary);
+  border-radius: 3px;
+  color: var(--color-primary);
+}
+
+.preview-more {
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 </style>

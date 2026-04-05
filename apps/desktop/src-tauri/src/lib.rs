@@ -96,6 +96,12 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+/// 写入文本文件
+#[tauri::command]
+fn write_text_file(path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, &content).map_err(|e| format!("写入文件失败: {}", e))
+}
+
 /// 最小化窗口
 #[tauri::command]
 fn window_minimize(app: tauri::AppHandle) {
@@ -3048,6 +3054,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             greet,
+            write_text_file,
             window_minimize,
             window_maximize,
             window_close,
