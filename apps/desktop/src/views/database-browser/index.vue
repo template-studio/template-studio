@@ -187,7 +187,7 @@ import {
   DownOutlined,
   KeyOutlined
 } from '@ant-design/icons-vue'
-import * as datasourcesApi from '../api/datasources'
+import * as datasourcesApi from '@/api/datasources'
 import { useLayoutStore } from '@/stores/layout'
 
 const route = useRoute()
