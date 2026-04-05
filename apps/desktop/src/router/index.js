@@ -87,6 +87,12 @@ const routes = [
     path: '/help',
     name: 'Help',
     component: () => import('@/views/HelpView.vue')
+  },
+  // 404 通配符路由（必须放在最后）
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@/views/NotFoundView.vue')
   }
 ]
 

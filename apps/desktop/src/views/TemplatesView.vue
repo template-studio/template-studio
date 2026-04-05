@@ -10,13 +10,22 @@
         <a-input
           v-model:value="searchKeyword"
           placeholder="搜索模板..."
-          style="width: 240px;"
+          style="width: 200px;"
           allow-clear
         >
           <template #prefix>
             <SearchOutlined />
           </template>
         </a-input>
+        <a-select
+          v-model:value="sortValue"
+          style="width: 140px;"
+          size="default"
+        >
+          <a-select-option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </a-select-option>
+        </a-select>
       </div>
     </div>
 
@@ -754,6 +763,16 @@ const selectedCategory = ref('all')
 const selectedLanguage = ref('all')
 const selectedTemplate = ref(null)
 
+// 排序状态
+const sortValue = ref('newest')
+const sortOptions = [
+  { label: '最新创建', value: 'newest' },
+  { label: '最早创建', value: 'oldest' },
+  { label: '名称 A-Z', value: 'name_asc' },
+  { label: '名称 Z-A', value: 'name_desc' },
+  { label: '推荐优先', value: 'featured' }
+]
+
 // 模板配置向导
 const showWizardModal = ref(false)
 const currentStep = ref(1)
@@ -909,6 +928,24 @@ const filteredTemplates = computed(() => {
       return t.languages?.some(l => l.languageId === Number(selectedLanguage.value))
     })
   }
+
+  // 排序
+  result = [...result].sort((a, b) => {
+    switch (sortValue.value) {
+      case 'newest':
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      case 'oldest':
+        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+      case 'name_asc':
+        return (a.name || '').localeCompare(b.name || '')
+      case 'name_desc':
+        return (b.name || '').localeCompare(a.name || '')
+      case 'featured':
+        return (b.isFeatured || 0) - (a.isFeatured || 0)
+      default:
+        return 0
+    }
+  })
 
   return result
 })
