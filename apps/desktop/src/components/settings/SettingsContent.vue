@@ -57,7 +57,7 @@
           :provider-type="getProviderType(currentSubTab)"
           :provider-name="currentSubTab"
           :api-key-placeholder="getApiKeyPlaceholder(getProviderType(currentSubTab))"
-          :api-endpoint-placeholder="getApiUrlPlaceholder(getProviderType(currentSubTab))"
+          :api-endpoint-placeholder="getApiUrlPlaceholder(currentSubTab)"
           :initial-config="getProviderConfig(currentSubTab)"
           @config-change="handleProviderConfigChange"
           @provider-toggle="handleProviderToggle"
@@ -75,6 +75,39 @@
         <GeneralBasicSettings />
       </div>
     </transition>
+
+    <!-- 模型选择对话框 -->
+    <a-modal
+      v-model:open="testModelDialogVisible"
+      title="选择测试模型"
+      @ok="executeConnectionTest"
+      ok-text="测试连接"
+      cancel-text="取消"
+      width="400px"
+    >
+      <div style="margin-bottom: 12px; color: var(--color-text-secondary);">
+        请选择一个模型进行连接测试：
+      </div>
+      <a-select
+        v-model:value="testSelectedModel"
+        style="width: 100%"
+        placeholder="选择模型"
+        show-search
+        :filter-option="(input, option) => option.label.toLowerCase().includes(input.toLowerCase())"
+      >
+        <a-select-option
+          v-for="model in testModelList"
+          :key="model.modelId"
+          :value="model.modelId"
+          :label="model.modelName || model.modelId"
+        >
+          <div style="display: flex; justify-content: space-between;">
+            <span>{{ model.modelName || model.modelId }}</span>
+            <span style="color: var(--color-text-muted); font-size: 12px;">{{ model.modelId }}</span>
+          </div>
+        </a-select-option>
+      </a-select>
+    </a-modal>
   </div>
 </template>
 
@@ -148,20 +181,17 @@ const getApiKeyPlaceholder = (providerType) => {
   }
 }
 
-// 获取 API 地址占位符
-const getApiUrlPlaceholder = (providerType) => {
-  switch (providerType) {
-    case 'deepseek':
-      return 'https://api.deepseek.com/v1'
-    case 'glm':
-      return 'https://open.bigmodel.cn/api/paas/v4'
-    case 'openai':
-      return 'https://api.openai.com/v1'
-    case 'ollama':
-      return 'http://localhost:11434/v1'
-    default:
-      return '请输入 API 地址'
+// 获取 API 地址占位符（基于提供商名称）
+const getApiUrlPlaceholder = (providerName) => {
+  const defaultEndpoints = {
+    'deepseek': 'https://api.deepseek.com/v1',
+    'glm': 'https://open.bigmodel.cn/api/paas/v4',
+    'openai': 'https://api.openai.com/v1',
+    'ollama': 'http://localhost:11434/v1',
+    'mimo': 'https://api.xiaomimimo.com/v1',
+    'cherry-studio': 'http://127.0.0.1:23333/v1'
   }
+  return defaultEndpoints[providerName] || '请输入 API 地址'
 }
 
 // 获取提供商配置
@@ -198,6 +228,13 @@ const handleProviderToggle = async (providerName, enabled) => {
   await aiConfigStore.toggleProvider(providerName, enabled)
 }
 
+// 连接测试相关状态
+const testModelDialogVisible = ref(false)
+const testModelList = ref([])
+const testSelectedModel = ref('')
+const testProviderName = ref('')
+const testLoading = ref(false)
+
 // 处理连接测试
 const handleConnectionTest = async (providerName) => {
   const provider = aiConfigStore.getProviderByName(providerName)
@@ -211,16 +248,52 @@ const handleConnectionTest = async (providerName) => {
     return
   }
 
+  // 获取已添加的模型列表
+  try {
+    const modelsGrouped = await aiConfigStore.getProviderModelsGrouped(providerName)
+    const allModels = []
+    if (Array.isArray(modelsGrouped)) {
+      modelsGrouped.forEach(group => {
+        if (group.models) {
+          group.models.forEach(m => allModels.push(m))
+        }
+      })
+    }
+
+    if (allModels.length === 0) {
+      message.warning('请先添加模型后再测试连接')
+      return
+    }
+
+    // 显示模型选择对话框
+    testModelList.value = allModels
+    testSelectedModel.value = allModels[0]?.modelId || ''
+    testProviderName.value = providerName
+    testModelDialogVisible.value = true
+  } catch (error) {
+    message.error('获取模型列表失败: ' + error)
+  }
+}
+
+// 执行连接测试
+const executeConnectionTest = async () => {
+  if (!testSelectedModel.value) {
+    message.warning('请选择一个模型')
+    return
+  }
+
+  testModelDialogVisible.value = false
+
   try {
     message.loading({ content: '正在测试连接...', key: 'connectionTest', duration: 0 })
 
-    // 调用后端测试连接命令
     const { invoke } = await import('@tauri-apps/api/core')
     const result = await invoke('ai_test_connection', {
-      providerName: provider.providerName,
-      providerType: provider.providerType,
-      apiKey: provider.apiKey || '',
-      apiEndpoint: provider.apiEndpoint || ''
+      providerName: testProviderName.value,
+      providerType: aiConfigStore.getProviderByName(testProviderName.value)?.providerType || 'openai',
+      apiKey: aiConfigStore.getProviderByName(testProviderName.value)?.apiKey || '',
+      apiEndpoint: aiConfigStore.getProviderByName(testProviderName.value)?.apiEndpoint || '',
+      model: testSelectedModel.value
     })
 
     message.destroy('connectionTest')

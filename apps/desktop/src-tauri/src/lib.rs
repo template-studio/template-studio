@@ -2579,19 +2579,17 @@ async fn ai_test_connection(
     provider_type: String,
     api_key: String,
     api_endpoint: String,
+    _model: String,
 ) -> Result<String, String> {
     use reqwest::Client;
 
     let client = Client::new();
 
-    // 根据提供商类型构建测试请求
-    let (url, body) = match provider_type.as_str() {
+    // 使用 /models 接口快速检测连通性
+    let url = match provider_type.as_str() {
         "ollama" => {
             let base = if api_endpoint.is_empty() { "http://localhost:11434" } else { &api_endpoint };
-            (
-                format!("{}/api/tags", base),
-                serde_json::json!({})
-            )
+            format!("{}/api/tags", base)
         }
         _ => {
             let base = if api_endpoint.is_empty() {
@@ -2599,31 +2597,19 @@ async fn ai_test_connection(
             } else {
                 api_endpoint.clone()
             };
-            let url = if base.ends_with("/chat/completions") {
-                base
-            } else {
-                format!("{}/chat/completions", base.trim_end_matches('/'))
-            };
-            (
-                url,
-                serde_json::json!({
-                    "model": "gpt-3.5-turbo",
-                    "messages": [{"role": "user", "content": "Hi"}],
-                    "max_tokens": 5
-                })
-            )
+            format!("{}/models", base.trim_end_matches('/'))
         }
     };
 
-    let mut request = client.post(&url)
-        .header("Content-Type", "application/json");
+    let mut request = client.get(&url)
+        .timeout(std::time::Duration::from_secs(5));
 
     if !api_key.is_empty() {
         request = request.header("Authorization", format!("Bearer {}", api_key));
     }
 
-    let response = request.json(&body).send().await
-        .map_err(|e| format!("请求失败: {}", e))?;
+    let response = request.send().await
+        .map_err(|e| format!("连接失败: {}", e))?;
 
     let status = response.status();
     if status.is_success() {
@@ -2817,6 +2803,7 @@ fn get_default_endpoint(provider: &str) -> String {
         "openai" => "https://api.openai.com/v1".to_string(),
         "longcat" => "https://api.longcat.chat/openai".to_string(),
         "mimo" => "https://api.xiaomimimo.com/v1".to_string(),
+        "cherry-studio" => "http://127.0.0.1:23333/v1".to_string(),
         _ => "https://api.openai.com/v1".to_string(),
     }
 }

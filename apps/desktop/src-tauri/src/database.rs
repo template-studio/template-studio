@@ -607,7 +607,7 @@ impl Database {
                 ('deepseek', 'DeepSeek', 'deepseek', 'https://api.deepseek.com/v1', 0),
                 ('glm', '智谱 GLM', 'glm', 'https://open.bigmodel.cn/api/paas/v4', 0),
                 ('mimo', 'Xiaomi MiMo', 'openai', 'https://api.xiaomimimo.com/v1', 0),
-                ('cherry-studio', 'Cherry Studio', 'openai', 'http://127.0.0.1:23333', 0)"
+                ('cherry-studio', 'Cherry Studio', 'openai', 'http://127.0.0.1:23333/v1', 0)"
         )
         .execute(&self.pool)
         .await?;
@@ -869,7 +869,7 @@ impl Database {
             "INSERT OR IGNORE INTO ai_providers (
                 provider_name, display_name, provider_type, api_endpoint, is_enabled
             ) VALUES
-                ('cherry-studio', 'Cherry Studio', 'openai', 'http://127.0.0.1:23333', 0)"
+                ('cherry-studio', 'Cherry Studio', 'openai', 'http://127.0.0.1:23333/v1', 0)"
         )
         .execute(&self.pool)
         .await?;

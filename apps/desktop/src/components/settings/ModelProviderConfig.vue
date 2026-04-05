@@ -39,13 +39,13 @@
             v-model:value="localConfig.apiKey"
             :placeholder="apiKeyPlaceholder"
             style="width: 280px"
+            @blur="handleConfigChange"
           />
-          <a-button size="small" @click="handleSaveApiKey">
-            <SaveOutlined /> 保存
-          </a-button>
-          <a-button size="small" @click="handleTestConnection">
-            <ApiOutlined /> 测试
-          </a-button>
+          <a-tooltip title="测试连接">
+            <a-button @click="handleTestConnection">
+              <ApiOutlined />
+            </a-button>
+          </a-tooltip>
           <CheckCircleOutlined v-if="localConfig.apiKey" class="status-icon success" />
         </div>
       </div>
@@ -63,10 +63,8 @@
             v-model:value="localConfig.apiEndpoint"
             :placeholder="apiEndpointPlaceholder"
             style="width: 280px"
+            @blur="handleConfigChange"
           />
-          <a-button size="small" @click="handleSaveEndpoint">
-            <SaveOutlined /> 保存
-          </a-button>
         </div>
       </div>
     </div>
@@ -88,7 +86,7 @@
           :step="0.1"
           :marks="{ 0: '0', 1: '1', 2: '2' }"
           style="width: 200px"
-          @change="handleSaveAdvanced"
+          @change="handleAdvancedChange"
         />
       </div>
 
@@ -106,7 +104,7 @@
           :max="128000"
           :step="1000"
           style="width: 200px"
-          @change="handleSaveAdvanced"
+          @change="handleAdvancedChange"
         />
       </div>
     </div>
@@ -119,12 +117,16 @@
       </div>
 
       <div class="model-toolbar">
-        <a-button type="primary" size="small" @click="openManagePopup">
-          <SettingOutlined /> 获取模型列表
-        </a-button>
-        <a-button size="small" @click="showAddModelDialog">
-          <PlusOutlined /> 手动添加
-        </a-button>
+        <a-tooltip title="获取模型列表">
+          <a-button type="primary" size="small" @click="openManagePopup">
+            <SettingOutlined />
+          </a-button>
+        </a-tooltip>
+        <a-tooltip title="手动添加模型">
+          <a-button size="small" @click="showAddModelDialog">
+            <PlusOutlined />
+          </a-button>
+        </a-tooltip>
       </div>
 
       <div class="models-content">
@@ -132,7 +134,7 @@
           <div v-if="modelGroups.length === 0" class="empty-models">
             <a-empty description="暂无模型">
               <a-button type="primary" @click="openManagePopup">
-                获取模型列表
+                <SettingOutlined /> 获取模型列表
               </a-button>
             </a-empty>
           </div>
@@ -242,7 +244,6 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import {
   CheckCircleOutlined,
-  SaveOutlined,
   ApiOutlined,
   DeleteOutlined,
   PlusOutlined,
@@ -290,6 +291,23 @@ const localConfig = reactive({
   maxTokens: 4096,
   ...props.initialConfig
 })
+
+// 监听 initialConfig 变化，同步到 localConfig
+watch(
+  () => props.initialConfig,
+  (newConfig) => {
+    if (newConfig) {
+      Object.assign(localConfig, {
+        apiKey: newConfig.apiKey || '',
+        apiEndpoint: newConfig.apiEndpoint || '',
+        enabled: newConfig.enabled || false,
+        temperature: newConfig.temperature || 0.7,
+        maxTokens: newConfig.maxTokens || 4096
+      })
+    }
+  },
+  { deep: true, immediate: false }
+)
 
 // 模型数据
 const modelGroups = ref([])
@@ -351,28 +369,17 @@ const handleToggle = async (enabled) => {
   emit('providerToggle', props.providerName, enabled)
 }
 
-const handleSaveApiKey = async () => {
-  await emit('configChange', props.providerName, {
-    ...localConfig,
-    apiKey: localConfig.apiKey
-  })
-  message.success('API 密钥已保存')
+// 统一配置变更处理（即时保存）
+const handleConfigChange = async () => {
+  // 只在有实际配置时保存
+  if (localConfig.apiKey || localConfig.apiEndpoint) {
+    emit('configChange', props.providerName, { ...localConfig })
+  }
 }
 
-const handleSaveEndpoint = async () => {
-  await emit('configChange', props.providerName, {
-    ...localConfig,
-    apiEndpoint: localConfig.apiEndpoint
-  })
-  message.success('API 地址已保存')
-}
-
-const handleSaveAdvanced = async () => {
-  await emit('configChange', props.providerName, {
-    ...localConfig,
-    temperature: localConfig.temperature,
-    maxTokens: localConfig.maxTokens
-  })
+// 高级设置变更（即时保存）
+const handleAdvancedChange = async () => {
+  emit('configChange', props.providerName, { ...localConfig })
 }
 
 const handleTestConnection = () => {
@@ -512,7 +519,7 @@ onMounted(async () => {
 .setting-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .status-icon.success {

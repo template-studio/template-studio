@@ -1180,7 +1180,7 @@ onMounted(async () => {
 
 :deep(.ant-input),
 :deep(.ant-input-number),
-:deep(.ant-select),
+:deep(.ant-select-selector),
 :deep(.ant-input-password) {
   font-size: 14px;
 }
