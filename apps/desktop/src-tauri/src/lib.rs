@@ -1134,6 +1134,48 @@ async fn cmd_get_table_columns(
     }
 }
 
+/// 在远程数据库执行 SQL（用于同步本地表到远程）
+#[tauri::command]
+async fn cmd_execute_sql_on_remote(
+    params: TestConnectionParams,
+    sql: String,
+    pool_cache: tauri::State<'_, BrowserPoolCache>,
+) -> Result<String, String> {
+    let db_type = params.type_.clone();
+
+    match db_type.as_str() {
+        "mysql" => {
+            let host = params.host.unwrap_or_else(|| "localhost".to_string());
+            let port = params.port.unwrap_or(3306);
+            let username = params.username.unwrap_or_default();
+            let password = params.password.unwrap_or_default();
+            let database = params.database.unwrap_or_default();
+            let url = format!("mysql://{}:{}@{}:{}/{}", username, password, host, port, database);
+            let pool = pool_cache.get_or_create_mysql(&url).await?;
+            sqlx::query(&sql).execute(&pool).await.map_err(|e| format!("执行失败: {}", e))?;
+        }
+        "postgresql" => {
+            let host = params.host.unwrap_or_else(|| "localhost".to_string());
+            let port = params.port.unwrap_or(5432);
+            let username = params.username.unwrap_or_default();
+            let password = params.password.unwrap_or_default();
+            let database = params.database.unwrap_or_else(|| "postgres".to_string());
+            let url = format!("postgres://{}:{}@{}:{}/{}", username, password, host, port, database);
+            let pool = pool_cache.get_or_create_pg(&url).await?;
+            sqlx::query(&sql).execute(&pool).await.map_err(|e| format!("执行失败: {}", e))?;
+        }
+        "sqlite" => {
+            let sqlite_file = params.sqlite_file.unwrap_or_default();
+            let url = format!("sqlite:{}", sqlite_file);
+            let pool = pool_cache.get_or_create_sqlite(&url).await?;
+            sqlx::query(&sql).execute(&pool).await.map_err(|e| format!("执行失败: {}", e))?;
+        }
+        _ => return Err(format!("不支持的数据库类型: {}", db_type))
+    }
+
+    Ok("ok".to_string())
+}
+
 /// 查询表数据（带分页，使用连接池缓存 + 快速行数估算 + 并行查询）
 #[tauri::command]
 async fn cmd_query_table_data(
@@ -3188,6 +3230,7 @@ pub fn run() {
             cmd_fetch_postgresql_tables,
             cmd_fetch_sqlite_tables,
             cmd_import_single_table,
+            cmd_execute_sql_on_remote,
             // AI 服务命令
             ai_get_all_providers,
             ai_get_provider,

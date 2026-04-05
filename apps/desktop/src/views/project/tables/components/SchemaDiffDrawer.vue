@@ -24,7 +24,7 @@
       <template v-if="view === 'overview' && !loading && !error">
         <div class="overview-summary">
           <a-tag v-if="newTables.length > 0" color="success">远程新增 {{ newTables.length }}</a-tag>
-          <a-tag v-if="removedTables.length > 0" color="error">本地多余 {{ removedTables.length }}</a-tag>
+          <a-tag v-if="removedTables.length > 0" color="warning">本地新增 {{ removedTables.length }}</a-tag>
           <a-tag v-if="syncedTables.length > 0" color="blue">已同步 {{ syncedTables.length }}</a-tag>
         </div>
 
@@ -39,10 +39,6 @@
               <template v-else-if="column.key === 'type'">
                 <a-tag :color="record.table_type === 'view' ? 'purple' : 'blue'">{{ record.table_type === 'view' ? '视图' : '表' }}</a-tag>
               </template>
-              <template v-else-if="column.key === 'engine'">
-                <span v-if="record.engine">{{ record.engine }}</span>
-                <span v-else class="text-muted">-</span>
-              </template>
               <template v-else-if="column.key === 'action'">
                 <a-button type="link" size="small" @click="handleImportSingle(record)" :loading="importingName === record.name">导入</a-button>
               </template>
@@ -52,7 +48,7 @@
 
         <!-- 本地多余表 -->
         <template v-if="removedTables.length > 0">
-          <h4 class="section-title"><MinusCircleOutlined style="color: var(--color-error)" /> 本地多余（可删除）</h4>
+          <h4 class="section-title"><MinusCircleOutlined style="color: var(--color-warning)" /> 本地新增（未同步到远程）</h4>
           <a-table :columns="overviewColumns" :data-source="removedTables" :row-key="r => r.name" :pagination="false" size="small">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'name'">
@@ -61,14 +57,13 @@
               <template v-else-if="column.key === 'type'">
                 <a-tag :color="record.table_type === 'view' ? 'purple' : 'blue'">{{ record.table_type === 'view' ? '视图' : '表' }}</a-tag>
               </template>
-              <template v-else-if="column.key === 'engine'">
-                <span v-if="record.engine">{{ record.engine }}</span>
-                <span v-else class="text-muted">-</span>
-              </template>
               <template v-else-if="column.key === 'action'">
-                <a-popconfirm title="确定删除本地表？" ok-text="确定" cancel-text="取消" @confirm="handleDeleteLocal(record)">
-                  <a-button type="link" size="small" danger>删除</a-button>
-                </a-popconfirm>
+                <a-space>
+                  <a-button type="link" size="small" @click="handlePushToRemote(record)" :loading="pushingName === record.name">同步到远程</a-button>
+                  <a-popconfirm title="确定删除本地表？" ok-text="确定" cancel-text="取消" @confirm="handleDeleteLocal(record)">
+                    <a-button type="link" size="small" danger>删除</a-button>
+                  </a-popconfirm>
+                </a-space>
               </template>
             </template>
           </a-table>
@@ -168,6 +163,7 @@ const syncing = ref(false)
 const error = ref('')
 const view = ref('overview')
 const importingName = ref(null)
+const pushingName = ref(null)
 
 // 总览数据
 const newTables = ref([])
@@ -184,10 +180,9 @@ const tableData = ref([])
 
 const overviewColumns = [
   { title: '表名', dataIndex: 'name', key: 'name', ellipsis: true },
-  { title: '类型', dataIndex: 'table_type', key: 'type', width: 70, align: 'center' },
-  { title: '引擎', dataIndex: 'engine', key: 'engine', width: 80 },
+  { title: '类型', dataIndex: 'table_type', key: 'type', width: 60, align: 'center' },
   { title: '说明', dataIndex: 'comment', key: 'comment', ellipsis: true },
-  { title: '操作', key: 'action', width: 80, align: 'center' }
+  { title: '操作', key: 'action', width: 150, align: 'center' }
 ]
 
 const syncedColumns = [
@@ -197,10 +192,10 @@ const syncedColumns = [
 ]
 
 const diffColumns = [
-  { title: '列名', dataIndex: 'name', key: 'name', width: 120, ellipsis: true },
-  { title: '本地类型', key: 'localType', width: 130 },
-  { title: '远程类型', key: 'remoteType', width: 130 },
-  { title: '状态', key: 'status', width: 70, align: 'center' },
+  { title: '列名', dataIndex: 'name', key: 'name', width: 100, ellipsis: true },
+  { title: '本地类型', key: 'localType', width: 110 },
+  { title: '远程类型', key: 'remoteType', width: 110 },
+  { title: '状态', key: 'status', width: 60, align: 'center' },
   { title: '差异', key: 'detail', ellipsis: true }
 ]
 
@@ -418,6 +413,42 @@ const handleImportSingle = async (table) => {
   }
 }
 
+const generateCreateTableDdl = async (table) => {
+  const cols = await projectsApi.getTableColumns(table.id)
+  let sql = 'CREATE TABLE `' + table.name + '` (\n'
+  const defs = cols.map(col => {
+    let d = '  `' + col.name + '` ' + col.data_type
+    if (col.length) d += '(' + col.length + ')'
+    if (!col.is_nullable) d += ' NOT NULL'
+    if (col.default_value) d += ' DEFAULT ' + col.default_value
+    if (col.comment) d += " COMMENT '" + col.comment.replace(/'/g, "\\'") + "'"
+    return d
+  })
+  const pks = cols.filter(c => c.is_primary_key).map(c => '`' + c.name + '`')
+  if (pks.length > 0) defs.push('  PRIMARY KEY (' + pks.join(', ') + ')')
+  sql += defs.join(',\n') + '\n)'
+  if (table.engine) sql += ' ENGINE=' + table.engine
+  if (table.comment) sql += " COMMENT='" + table.comment.replace(/'/g, "\\'") + "'"
+  sql += ';'
+  return sql
+}
+
+const handlePushToRemote = async (table) => {
+  pushingName.value = table.name
+  try {
+    const ddl = await generateCreateTableDdl(table)
+    const params = getConnParams()
+    await invoke('cmd_execute_sql_on_remote', { params, sql: ddl })
+    message.success(`表 "${table.name}" 已同步到远程数据库`)
+    removedTables.value = removedTables.value.filter(t => t.name !== table.name)
+    syncedTables.value.push(table)
+  } catch (e) {
+    message.error('同步到远程失败: ' + e)
+  } finally {
+    pushingName.value = null
+  }
+}
+
 const handleDeleteLocal = async (table) => {
   try {
     await projectsApi.deleteTable(table.id)
@@ -551,6 +582,7 @@ watch(() => props.open, (val) => {
   font-size: 12px;
 }
 .text-muted { color: var(--color-text-muted); }
+:deep(.ant-table-wrapper) { overflow-x: hidden; }
 .text-deleted { text-decoration: line-through; color: var(--color-error); }
 .text-added { color: var(--color-success); font-weight: 500; }
 :deep(.row-added td) { background: rgba(82, 196, 26, 0.06) !important; }
