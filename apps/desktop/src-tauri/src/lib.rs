@@ -851,6 +851,104 @@ async fn test_datasource_connection(params: TestConnectionParams) -> Result<Stri
     Database::test_datasource_connection(params).await
 }
 
+/// 列出数据库中的表
+#[tauri::command]
+async fn cmd_list_database_tables(params: TestConnectionParams) -> Result<String, String> {
+    use sqlx::mysql::MySqlPool;
+    use sqlx::postgres::PgPool;
+    use sqlx::sqlite::SqlitePool;
+    use sqlx::Row;
+
+    let db_type = params.type_.clone();
+
+    match db_type.as_str() {
+        "mysql" => {
+            let host = params.host.unwrap_or_else(|| "localhost".to_string());
+            let port = params.port.unwrap_or(3306);
+            let username = params.username.unwrap_or_default();
+            let password = params.password.unwrap_or_default();
+            let database = params.database.unwrap_or_default();
+
+            // 如果没有指定数据库，先连接到服务器获取数据库列表
+            if database.is_empty() {
+                let url = format!("mysql://{}:{}@{}:{}", username, password, host, port);
+                let pool = MySqlPool::connect(&url).await
+                    .map_err(|e| format!("连接失败: {}", e))?;
+
+                let rows = sqlx::query("SHOW DATABASES")
+                    .fetch_all(&pool)
+                    .await
+                    .map_err(|e| format!("查询失败: {}", e))?;
+
+                let databases: Vec<String> = rows.iter()
+                    .map(|row| row.get::<String, _>(0))
+                    .collect();
+
+                pool.close().await;
+                return serde_json::to_string(&databases).map_err(|e| format!("序列化失败: {}", e));
+            }
+
+            let url = format!("mysql://{}:{}@{}:{}/{}", username, password, host, port, database);
+            let pool = MySqlPool::connect(&url).await
+                .map_err(|e| format!("连接失败: {}", e))?;
+
+            let rows = sqlx::query("SHOW TABLES")
+                .fetch_all(&pool)
+                .await
+                .map_err(|e| format!("查询失败: {}", e))?;
+
+            let tables: Vec<String> = rows.iter()
+                .map(|row| row.get::<String, _>(0))
+                .collect();
+
+            pool.close().await;
+            serde_json::to_string(&tables).map_err(|e| format!("序列化失败: {}", e))
+        }
+        "postgresql" => {
+            let host = params.host.unwrap_or_else(|| "localhost".to_string());
+            let port = params.port.unwrap_or(5432);
+            let username = params.username.unwrap_or_default();
+            let password = params.password.unwrap_or_default();
+            let database = params.database.unwrap_or_else(|| "postgres".to_string());
+
+            let url = format!("postgres://{}:{}@{}:{}/{}", username, password, host, port, database);
+            let pool = PgPool::connect(&url).await
+                .map_err(|e| format!("连接失败: {}", e))?;
+
+            let rows = sqlx::query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+                .fetch_all(&pool)
+                .await
+                .map_err(|e| format!("查询失败: {}", e))?;
+
+            let tables: Vec<String> = rows.iter()
+                .map(|row| row.get::<String, _>(0))
+                .collect();
+
+            pool.close().await;
+            serde_json::to_string(&tables).map_err(|e| format!("序列化失败: {}", e))
+        }
+        "sqlite" => {
+            let sqlite_file = params.sqlite_file.unwrap_or_default();
+            let url = format!("sqlite:{}", sqlite_file);
+            let pool = SqlitePool::connect(&url).await
+                .map_err(|e| format!("连接失败: {}", e))?;
+
+            let rows = sqlx::query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+                .fetch_all(&pool)
+                .await
+                .map_err(|e| format!("查询失败: {}", e))?;
+
+            let tables: Vec<String> = rows.iter()
+                .map(|row| row.get::<String, _>(0))
+                .collect();
+
+            pool.close().await;
+            serde_json::to_string(&tables).map_err(|e| format!("序列化失败: {}", e))
+        }
+        _ => Err(format!("不支持的数据库类型: {}", db_type))
+    }
+}
+
 /// 获取项目的所有表
 #[tauri::command]
 async fn db_get_project_tables(
@@ -2354,6 +2452,7 @@ pub fn run() {
             db_update_datasource,
             db_delete_datasource,
             test_datasource_connection,
+            cmd_list_database_tables,
             db_get_project_tables,
             db_create_table,
             cmd_import_tables_from_datasource,

@@ -170,3 +170,28 @@ export function getDefaultPort(type) {
 export function requiresNetworkConfig(type) {
   return type !== 'sqlite'
 }
+
+/**
+ * 获取数据库中的表列表
+ * @param {Object} datasource - 数据源配置
+ * @returns {Promise<Array>} 表列表
+ */
+export async function getDatabaseTables(datasource) {
+  try {
+    const result = await invoke('cmd_list_database_tables', {
+      params: {
+        type: datasource.type_,
+        host: datasource.host,
+        port: datasource.port,
+        username: datasource.username,
+        password: datasource.password,
+        database: datasource.database,
+        sqliteFile: datasource.sqlite_file
+      }
+    })
+    return JSON.parse(result)
+  } catch (error) {
+    console.error('获取数据库表失败:', error)
+    throw error
+  }
+}
