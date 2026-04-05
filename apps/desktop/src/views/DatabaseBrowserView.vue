@@ -120,22 +120,6 @@
                 <a-empty v-else-if="!dataLoading" description="表中暂无数据" />
               </div>
             </a-spin>
-            <!-- 分页 -->
-            <div class="data-footer" v-if="tableData && tableData.total > 0">
-              <span class="footer-info">
-                {{ dataOffset + 1 }}-{{ Math.min(dataOffset + dataPageSize, tableData.total) }} / {{ tableData.total }} 行
-              </span>
-              <a-pagination
-                v-model:current="dataPage"
-                :page-size="dataPageSize"
-                :total="tableData.total"
-                size="small"
-                show-size-changer
-                :page-size-options="['50', '100', '200', '500']"
-                @change="handlePageChange"
-                @showSizeChange="handlePageSizeChange"
-              />
-            </div>
           </div>
 
           <!-- 列信息视图 -->
@@ -186,11 +170,12 @@
         </div>
       </div>
     </div>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import {
@@ -203,9 +188,11 @@ import {
   KeyOutlined
 } from '@ant-design/icons-vue'
 import * as datasourcesApi from '../api/datasources'
+import { useLayoutStore } from '@/stores/layout'
 
 const route = useRoute()
 const router = useRouter()
+const layoutStore = useLayoutStore()
 
 // 数据源信息
 const datasource = ref(null)
@@ -228,9 +215,12 @@ const dataLoading = ref(false)
 const columnsLoading = ref(false)
 const tableData = ref(null) // { columns, rows, total }
 const columns = ref([])
-const dataPage = ref(1)
-const dataPageSize = ref(100)
-const dataOffset = computed(() => (dataPage.value - 1) * dataPageSize.value)
+
+// 分页使用全局 store
+const dataOffset = computed(() => {
+  const { current, pageSize } = layoutStore.footerPagination
+  return (current - 1) * pageSize
+})
 
 // 侧边栏宽度
 const sidebarWidth = ref(240)
@@ -331,6 +321,9 @@ const toggleDatabase = async (dbName) => {
   expandedDbs.value = new Set(expandedDbs.value)
   selectedDb.value = dbName
   selectedTable.value = ''
+  tableData.value = null
+  columns.value = []
+  layoutStore.hideFooter()
 
   // 如果还没有加载表，加载
   const db = databases.value.find(d => d.name === dbName)
@@ -357,7 +350,7 @@ const loadTables = async (dbName) => {
 const selectTable = async (dbName, tableName) => {
   selectedDb.value = dbName
   selectedTable.value = tableName
-  dataPage.value = 1
+  layoutStore.updateFooterPagination({ current: 1, pageSize: 100 })
   await Promise.all([loadColumns(), loadData()])
 }
 
@@ -368,6 +361,10 @@ const loadColumns = async () => {
   try {
     const ds = { ...datasource.value, database: selectedDb.value }
     columns.value = await datasourcesApi.getTableColumns(ds, selectedTable.value)
+    // 如果当前是列信息视图，更新概览 footer
+    if (viewMode.value === 'columns') {
+      updateFooterOverview()
+    }
   } catch (error) {
     message.error('获取列信息失败: ' + error)
   } finally {
@@ -381,8 +378,16 @@ const loadData = async () => {
   dataLoading.value = true
   try {
     const ds = { ...datasource.value, database: selectedDb.value }
+    const { pageSize } = layoutStore.footerPagination
     tableData.value = await datasourcesApi.queryTableData(
-      ds, selectedTable.value, dataPageSize.value, dataOffset.value
+      ds, selectedTable.value, pageSize, dataOffset.value
+    )
+    // 更新全局 footer 分页
+    layoutStore.showFooterPagination(
+      tableData.value.total,
+      layoutStore.footerPagination.current,
+      pageSize,
+      ['50', '100', '200', '500']
     )
   } catch (error) {
     message.error('查询表数据失败: ' + error)
@@ -391,16 +396,18 @@ const loadData = async () => {
   }
 }
 
-// 分页变化
-const handlePageChange = (page) => {
-  dataPage.value = page
-  loadData()
-}
-
-const handlePageSizeChange = (current, size) => {
-  dataPageSize.value = size
-  dataPage.value = 1
-  loadData()
+// 更新列信息概览 footer
+const updateFooterOverview = () => {
+  if (!columns.value.length) return
+  const pkCols = columns.value.filter(c => c.key === 'PRI').map(c => c.name).join(', ') || '无'
+  const nullableCount = columns.value.filter(c => c.nullable).length
+  layoutStore.showFooterOverview([
+    { label: '数据库', value: selectedDb.value },
+    { label: '表', value: selectedTable.value },
+    { label: '列数', value: columns.value.length },
+    { label: '主键', value: pkCols },
+    { label: '可空列', value: `${nullableCount} / ${columns.value.length}` }
+  ])
 }
 
 // 刷新树
@@ -408,6 +415,7 @@ const refreshTree = async () => {
   selectedTable.value = ''
   tableData.value = null
   columns.value = []
+  layoutStore.hideFooter()
   await loadDatabases()
 }
 
@@ -439,15 +447,45 @@ const stopResize = () => {
 
 // 监听 viewMode 切换
 watch(viewMode, (mode) => {
-  if (mode === 'data' && !tableData.value && selectedTable.value) {
-    loadData()
-  } else if (mode === 'columns' && columns.value.length === 0 && selectedTable.value) {
-    loadColumns()
+  if (!selectedTable.value) return
+  if (mode === 'data') {
+    if (!tableData.value) {
+      loadData()
+    } else {
+      // 恢复分页 footer
+      layoutStore.showFooterPagination(
+        tableData.value.total,
+        layoutStore.footerPagination.current,
+        layoutStore.footerPagination.pageSize,
+        ['50', '100', '200', '500']
+      )
+    }
+  } else if (mode === 'columns') {
+    if (columns.value.length === 0) {
+      loadColumns()
+    } else {
+      updateFooterOverview()
+    }
   }
 })
 
+// 监听全局分页变化，重新加载数据
+watch(
+  () => [layoutStore.footerPagination.current, layoutStore.footerPagination.pageSize],
+  ([newPage, newPageSize], [oldPage, oldPageSize]) => {
+    if (!selectedTable.value || viewMode.value !== 'data') return
+    if (newPage !== oldPage || newPageSize !== oldPageSize) {
+      loadData()
+    }
+  }
+)
+
 onMounted(() => {
   loadDatasource()
+})
+
+onUnmounted(() => {
+  layoutStore.hideFooter()
 })
 </script>
 
@@ -712,14 +750,17 @@ onMounted(() => {
   border-collapse: collapse;
   font-size: 13px;
   table-layout: auto;
+  color: var(--color-text);
 }
 
 .data-table th,
 .data-table td {
   padding: 6px 12px;
   border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border-light);
   text-align: left;
   white-space: nowrap;
+  color: var(--color-text);
 }
 
 .data-table thead {
@@ -756,6 +797,7 @@ onMounted(() => {
   max-width: 300px;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--color-text);
 }
 
 .null-value {
@@ -764,21 +806,6 @@ onMounted(() => {
   font-size: 12px;
 }
 
-/* 数据底部分页 */
-.data-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  border-top: 1px solid var(--color-border);
-  background: var(--color-surface);
-  flex-shrink: 0;
-}
-
-.footer-info {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-}
 
 /* 列信息表格 */
 .columns-table-wrapper {
@@ -791,6 +818,7 @@ onMounted(() => {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  color: var(--color-text);
 }
 
 .columns-table th {
@@ -808,6 +836,7 @@ onMounted(() => {
 .columns-table td {
   padding: 8px 16px;
   border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
 }
 
 .col-name {

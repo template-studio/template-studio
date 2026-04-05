@@ -20,7 +20,7 @@
         :show-size-changer="true"
         :show-quick-jumper="true"
         :show-total="(total, range) => `共 ${total} 条，当前 ${range[0]}-${range[1]}`"
-        :page-size-options="['10', '15', '20', '25', '30']"
+        :page-size-options="layoutStore.footerPageSizeOptions"
         @change="handlePageChange"
         @showSizeChange="handleSizeChange"
       />

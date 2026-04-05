@@ -22,6 +22,8 @@ export const useLayoutStore = defineStore('layout', () => {
     items: [] // [{ label, value, icon? }]
   })
 
+  const footerPageSizeOptions = ref(['10', '15', '20', '25', '30'])
+
   // Computed
   const isMobile = computed(() => windowSize.value.width < 768)
   const isTablet = computed(() => windowSize.value.width >= 768 && windowSize.value.width < 1024)
@@ -49,13 +51,17 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   // 需要 footer 的路由
-  const footerRoutes = ['/projects', '/datasource', '/languages', '/templates', '/mappings']
-  const noFooterRoutes = ['/datasource/', '/project/'] // 子页面不显示 footer
+  const footerRoutes = ['/projects', '/datasource', '/languages', '/templates', '/mappings', '/datasource/']
+  const noFooterRoutes = ['/project/'] // 子页面不显示 footer
+
+  // 默认分页大小选项
+  const defaultPageSizeOptions = ['10', '15', '20', '25', '30']
 
   // 分页 footer
-  const showFooterPagination = (total, current = 1, pageSize = 12) => {
+  const showFooterPagination = (total, current = 1, pageSize = 12, pageSizeOptions = null) => {
     footerType.value = 'pagination'
     footerPagination.value = { current, pageSize, total }
+    footerPageSizeOptions.value = pageSizeOptions || defaultPageSizeOptions
   }
 
   const updateFooterPagination = (data) => {
@@ -92,6 +98,7 @@ export const useLayoutStore = defineStore('layout', () => {
     footerType,
     footerPagination,
     footerOverview,
+    footerPageSizeOptions,
 
     // Computed
     isMobile,

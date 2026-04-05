@@ -1076,7 +1076,6 @@ async fn cmd_query_table_data(
     limit: i64,
     offset: i64,
 ) -> Result<String, String> {
-    use sqlx::Column;
     use sqlx::mysql::MySqlPool;
     use sqlx::postgres::PgPool;
     use sqlx::sqlite::SqlitePool;
@@ -1103,36 +1102,48 @@ async fn cmd_query_table_data(
                 .await
                 .map_err(|e| format!("查询总数失败: {}", e))?;
 
-            // 查询数据
-            let data_sql = format!("SELECT * FROM `{}` LIMIT {} OFFSET {}", table_name.replace('`', "``"), limit, offset);
+            // 获取列名
+            let col_rows = sqlx::query(
+                "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS \
+                 WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION"
+            )
+            .bind(&database)
+            .bind(&table_name)
+            .fetch_all(&pool)
+            .await
+            .map_err(|e| format!("获取列信息失败: {}", e))?;
+
+            let columns: Vec<String> = col_rows.iter()
+                .map(|row| row.get::<String, _>(0))
+                .collect();
+
+            if columns.is_empty() {
+                pool.close().await;
+                return serde_json::to_string(&serde_json::json!({
+                    "columns": [], "rows": [], "total": total
+                })).map_err(|e| format!("序列化失败: {}", e));
+            }
+
+            // 用 CAST 将所有列转为字符串，避免类型转换问题
+            let cast_cols: Vec<String> = columns.iter().map(|c| {
+                format!("CAST(`{}` AS CHAR) AS `{}`", c.replace('`', "``"), c.replace('`', "``"))
+            }).collect();
+            let data_sql = format!(
+                "SELECT {} FROM `{}` LIMIT {} OFFSET {}",
+                cast_cols.join(", "),
+                table_name.replace('`', "``"),
+                limit, offset
+            );
             let rows = sqlx::query(&data_sql)
                 .fetch_all(&pool)
                 .await
                 .map_err(|e| format!("查询失败: {}", e))?;
 
-            let columns: Vec<String> = if let Some(first) = rows.first() {
-                (0..first.columns().len()).map(|i| first.columns()[i].name().to_string()).collect()
-            } else {
-                vec![]
-            };
-
             let data: Vec<Vec<serde_json::Value>> = rows.iter().map(|row| {
-                (0..row.columns().len()).map(|i| {
-                    // 尝试获取不同类型的值
-                    if let Ok(v) = row.try_get::<String, _>(i) {
-                        serde_json::Value::String(v)
-                    } else if let Ok(v) = row.try_get::<i64, _>(i) {
-                        serde_json::json!(v)
-                    } else if let Ok(v) = row.try_get::<f64, _>(i) {
-                        serde_json::json!(v)
-                    } else if let Ok(v) = row.try_get::<bool, _>(i) {
-                        serde_json::json!(v)
-                    } else {
-                        // 尝试获取为 Option<String>
-                        match row.try_get::<Option<String>, _>(i) {
-                            Ok(Some(v)) => serde_json::Value::String(v),
-                            _ => serde_json::Value::Null
-                        }
+                (0..columns.len()).map(|i| {
+                    match row.try_get::<Option<String>, _>(i) {
+                        Ok(Some(v)) => serde_json::Value::String(v),
+                        _ => serde_json::Value::Null
                     }
                 }).collect()
             }).collect();
@@ -1161,33 +1172,47 @@ async fn cmd_query_table_data(
                 .await
                 .map_err(|e| format!("查询总数失败: {}", e))?;
 
-            let data_sql = format!("SELECT * FROM \"{}\" LIMIT {} OFFSET {}", table_name.replace('"', "\"\""), limit, offset);
+            // 获取列名
+            let col_rows = sqlx::query(
+                "SELECT column_name FROM information_schema.columns \
+                 WHERE table_schema = 'public' AND table_name = $1 ORDER BY ordinal_position"
+            )
+            .bind(&table_name)
+            .fetch_all(&pool)
+            .await
+            .map_err(|e| format!("获取列信息失败: {}", e))?;
+
+            let columns: Vec<String> = col_rows.iter()
+                .map(|row| row.get::<String, _>(0))
+                .collect();
+
+            if columns.is_empty() {
+                pool.close().await;
+                return serde_json::to_string(&serde_json::json!({
+                    "columns": [], "rows": [], "total": total
+                })).map_err(|e| format!("序列化失败: {}", e));
+            }
+
+            // 用 CAST 将所有列转为 TEXT
+            let cast_cols: Vec<String> = columns.iter().map(|c| {
+                format!("\"{}\"::TEXT AS \"{}\"", c.replace('"', "\"\""), c.replace('"', "\"\""))
+            }).collect();
+            let data_sql = format!(
+                "SELECT {} FROM \"{}\" LIMIT {} OFFSET {}",
+                cast_cols.join(", "),
+                table_name.replace('"', "\"\""),
+                limit, offset
+            );
             let rows = sqlx::query(&data_sql)
                 .fetch_all(&pool)
                 .await
                 .map_err(|e| format!("查询失败: {}", e))?;
 
-            let columns: Vec<String> = if let Some(first) = rows.first() {
-                (0..first.columns().len()).map(|i| first.columns()[i].name().to_string()).collect()
-            } else {
-                vec![]
-            };
-
             let data: Vec<Vec<serde_json::Value>> = rows.iter().map(|row| {
-                (0..row.columns().len()).map(|i| {
-                    if let Ok(v) = row.try_get::<String, _>(i) {
-                        serde_json::Value::String(v)
-                    } else if let Ok(v) = row.try_get::<i64, _>(i) {
-                        serde_json::json!(v)
-                    } else if let Ok(v) = row.try_get::<f64, _>(i) {
-                        serde_json::json!(v)
-                    } else if let Ok(v) = row.try_get::<bool, _>(i) {
-                        serde_json::json!(v)
-                    } else {
-                        match row.try_get::<Option<String>, _>(i) {
-                            Ok(Some(v)) => serde_json::Value::String(v),
-                            _ => serde_json::Value::Null
-                        }
+                (0..columns.len()).map(|i| {
+                    match row.try_get::<Option<String>, _>(i) {
+                        Ok(Some(v)) => serde_json::Value::String(v),
+                        _ => serde_json::Value::Null
                     }
                 }).collect()
             }).collect();
@@ -1211,33 +1236,43 @@ async fn cmd_query_table_data(
                 .await
                 .map_err(|e| format!("查询总数失败: {}", e))?;
 
-            let data_sql = format!("SELECT * FROM \"{}\" LIMIT {} OFFSET {}", table_name.replace('"', "\"\""), limit, offset);
+            // 获取列名
+            let col_rows = sqlx::query(&format!("PRAGMA table_info('{}')", table_name.replace('\'', "''")))
+                .fetch_all(&pool)
+                .await
+                .map_err(|e| format!("获取列信息失败: {}", e))?;
+
+            let columns: Vec<String> = col_rows.iter()
+                .map(|row| row.get::<String, _>(1))
+                .collect();
+
+            if columns.is_empty() {
+                pool.close().await;
+                return serde_json::to_string(&serde_json::json!({
+                    "columns": [], "rows": [], "total": total
+                })).map_err(|e| format!("序列化失败: {}", e));
+            }
+
+            // 用 CAST 将所有列转为 TEXT
+            let cast_cols: Vec<String> = columns.iter().map(|c| {
+                format!("CAST(\"{}\" AS TEXT) AS \"{}\"", c.replace('"', "\"\""), c.replace('"', "\"\""))
+            }).collect();
+            let data_sql = format!(
+                "SELECT {} FROM \"{}\" LIMIT {} OFFSET {}",
+                cast_cols.join(", "),
+                table_name.replace('"', "\"\""),
+                limit, offset
+            );
             let rows = sqlx::query(&data_sql)
                 .fetch_all(&pool)
                 .await
                 .map_err(|e| format!("查询失败: {}", e))?;
 
-            let columns: Vec<String> = if let Some(first) = rows.first() {
-                (0..first.columns().len()).map(|i| first.columns()[i].name().to_string()).collect()
-            } else {
-                vec![]
-            };
-
             let data: Vec<Vec<serde_json::Value>> = rows.iter().map(|row| {
-                (0..row.columns().len()).map(|i| {
-                    if let Ok(v) = row.try_get::<String, _>(i) {
-                        serde_json::Value::String(v)
-                    } else if let Ok(v) = row.try_get::<i64, _>(i) {
-                        serde_json::json!(v)
-                    } else if let Ok(v) = row.try_get::<f64, _>(i) {
-                        serde_json::json!(v)
-                    } else if let Ok(v) = row.try_get::<bool, _>(i) {
-                        serde_json::json!(v)
-                    } else {
-                        match row.try_get::<Option<String>, _>(i) {
-                            Ok(Some(v)) => serde_json::Value::String(v),
-                            _ => serde_json::Value::Null
-                        }
+                (0..columns.len()).map(|i| {
+                    match row.try_get::<Option<String>, _>(i) {
+                        Ok(Some(v)) => serde_json::Value::String(v),
+                        _ => serde_json::Value::Null
                     }
                 }).collect()
             }).collect();
