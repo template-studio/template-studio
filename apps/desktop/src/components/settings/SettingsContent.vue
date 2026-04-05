@@ -5,8 +5,17 @@
       <div v-if="currentMainTab === 'general' && currentSubTab === 'basic'" key="general-basic">
         <GeneralBasicSettings />
       </div>
+      <div v-else-if="currentMainTab === 'general' && currentSubTab === 'display'" key="general-display">
+        <DisplaySettings />
+      </div>
       <div v-else-if="currentMainTab === 'general' && currentSubTab === 'behavior'" key="general-behavior">
         <GeneralBehaviorSettings />
+      </div>
+      <div v-else-if="currentMainTab === 'general' && currentSubTab === 'shortcuts'" key="general-shortcuts">
+        <KeyboardShortcutsSettings />
+      </div>
+      <div v-else-if="currentMainTab === 'general' && currentSubTab === 'backup'" key="general-backup">
+        <BackupSettings />
       </div>
 
       <!-- 高级设置页面 -->
@@ -80,6 +89,9 @@ import { message } from 'ant-design-vue'
 // 导入所有设置组件
 import GeneralBasicSettings from '@/views/settings/GeneralBasicSettings.vue'
 import GeneralBehaviorSettings from '@/views/settings/GeneralBehaviorSettings.vue'
+import DisplaySettings from '@/views/settings/DisplaySettings.vue'
+import KeyboardShortcutsSettings from '@/views/settings/KeyboardShortcutsSettings.vue'
+import BackupSettings from '@/views/settings/BackupSettings.vue'
 import WebServerSettings from '@/views/settings/WebServerSettings.vue'
 import AdvancedSecuritySettings from '@/views/settings/AdvancedSecuritySettings.vue'
 import AdvancedNetworkSettings from '@/views/settings/AdvancedNetworkSettings.vue'
@@ -188,7 +200,35 @@ const handleProviderToggle = async (providerName, enabled) => {
 
 // 处理连接测试
 const handleConnectionTest = async (providerName) => {
-  message.info('连接测试功能开发中')
+  const provider = aiConfigStore.getProviderByName(providerName)
+  if (!provider) {
+    message.error('未找到提供商配置')
+    return
+  }
+
+  if (!provider.apiKey && provider.providerType !== 'ollama') {
+    message.warning('请先配置 API 密钥')
+    return
+  }
+
+  try {
+    message.loading({ content: '正在测试连接...', key: 'connectionTest', duration: 0 })
+
+    // 调用后端测试连接命令
+    const { invoke } = await import('@tauri-apps/api/core')
+    const result = await invoke('ai_test_connection', {
+      providerName: provider.providerName,
+      providerType: provider.providerType,
+      apiKey: provider.apiKey || '',
+      apiEndpoint: provider.apiEndpoint || ''
+    })
+
+    message.destroy('connectionTest')
+    message.success(`连接成功: ${result}`)
+  } catch (error) {
+    message.destroy('connectionTest')
+    message.error(`连接失败: ${error}`)
+  }
 }
 </script>
 

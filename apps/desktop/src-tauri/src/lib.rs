@@ -2570,6 +2570,70 @@ async fn ai_batch_add_models(
     Ok(count)
 }
 
+// ===== AI 连接测试命令 =====
+
+/// 测试 AI 提供商连接
+#[tauri::command]
+async fn ai_test_connection(
+    provider_name: String,
+    provider_type: String,
+    api_key: String,
+    api_endpoint: String,
+) -> Result<String, String> {
+    use reqwest::Client;
+
+    let client = Client::new();
+
+    // 根据提供商类型构建测试请求
+    let (url, body) = match provider_type.as_str() {
+        "ollama" => {
+            let base = if api_endpoint.is_empty() { "http://localhost:11434" } else { &api_endpoint };
+            (
+                format!("{}/api/tags", base),
+                serde_json::json!({})
+            )
+        }
+        _ => {
+            let base = if api_endpoint.is_empty() {
+                get_default_endpoint(&provider_name)
+            } else {
+                api_endpoint.clone()
+            };
+            let url = if base.ends_with("/chat/completions") {
+                base
+            } else {
+                format!("{}/chat/completions", base.trim_end_matches('/'))
+            };
+            (
+                url,
+                serde_json::json!({
+                    "model": "gpt-3.5-turbo",
+                    "messages": [{"role": "user", "content": "Hi"}],
+                    "max_tokens": 5
+                })
+            )
+        }
+    };
+
+    let mut request = client.post(&url)
+        .header("Content-Type", "application/json");
+
+    if !api_key.is_empty() {
+        request = request.header("Authorization", format!("Bearer {}", api_key));
+    }
+
+    let response = request.json(&body).send().await
+        .map_err(|e| format!("请求失败: {}", e))?;
+
+    let status = response.status();
+    if status.is_success() {
+        Ok(format!("连接成功 (HTTP {})", status.as_u16()))
+    } else {
+        let text = response.text().await.unwrap_or_default();
+        Err(format!("连接失败 (HTTP {}): {}", status.as_u16(), text))
+    }
+}
+
 // ===== AI SQL 生成和修复命令 =====
 
 /// AI 生成 SQL（支持多轮对话）
@@ -3151,6 +3215,7 @@ pub fn run() {
             ai_batch_add_models,
             ai_generate_sql,
             ai_fix_sql,
+            ai_test_connection,
             parse_ai_sql,
             execute_ai_sql,
             // 项目规范命令

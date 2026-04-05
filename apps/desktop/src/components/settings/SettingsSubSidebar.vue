@@ -15,10 +15,37 @@
         <li>
           <a
             class="sub-menu-item"
+            :class="{ active: currentSubTab === 'display' }"
+            @click="switchSubTab('display')"
+          >
+            <span>显示设置</span>
+          </a>
+        </li>
+        <li>
+          <a
+            class="sub-menu-item"
             :class="{ active: currentSubTab === 'behavior' }"
             @click="switchSubTab('behavior')"
           >
             <span>行为设置</span>
+          </a>
+        </li>
+        <li>
+          <a
+            class="sub-menu-item"
+            :class="{ active: currentSubTab === 'shortcuts' }"
+            @click="switchSubTab('shortcuts')"
+          >
+            <span>快捷键</span>
+          </a>
+        </li>
+        <li>
+          <a
+            class="sub-menu-item"
+            :class="{ active: currentSubTab === 'backup' }"
+            @click="switchSubTab('backup')"
+          >
+            <span>备份与路径</span>
           </a>
         </li>
       </template>
@@ -39,7 +66,7 @@
           </a>
         </li>
 
-        <li v-if="currentSubTab === 'default-service'" class="menu-divider"></li>
+        <li class="menu-divider"></li>
 
         <!-- 各个提供商 -->
         <li v-for="provider in aiProviders" :key="provider.providerName">
