@@ -11,35 +11,35 @@
       </div>
       <div class="header-right">
         <a-button type="primary" @click="showAICreateTableDialog">
-          <template #icon>
-            <RobotOutlined />
-          </template>
+          <template #icon><RobotOutlined /></template>
           AI 建表
         </a-button>
         <a-button type="primary" @click="showAddTableDialog">
-          <template #icon>
-            <PlusOutlined />
-          </template>
+          <template #icon><PlusOutlined /></template>
           新增表
         </a-button>
-        <a-button @click="showSqlImportDialog">
-          <template #icon>
-            <FileTextOutlined />
+        <a-dropdown>
+          <a-button>
+            <template #icon><MoreOutlined /></template>
+          </a-button>
+          <template #overlay>
+            <a-menu @click="handleHeaderMenu">
+              <a-menu-item key="sql-import">
+                <FileTextOutlined /> 从SQL导入
+              </a-menu-item>
+              <a-menu-item key="import-structure">
+                <ImportOutlined /> 导入表结构
+              </a-menu-item>
+              <a-menu-item key="export">
+                <ExportOutlined /> 导出SQL
+              </a-menu-item>
+              <a-menu-divider />
+              <a-menu-item key="refresh">
+                <ReloadOutlined /> 刷新
+              </a-menu-item>
+            </a-menu>
           </template>
-          从SQL导入
-        </a-button>
-        <a-button @click="importTables" :loading="importing">
-          <template #icon>
-            <ImportOutlined />
-          </template>
-          导入表结构
-        </a-button>
-        <a-button @click="loadTables">
-          <template #icon>
-            <ReloadOutlined />
-          </template>
-          刷新
-        </a-button>
+        </a-dropdown>
         <a-button v-if="selectedRowKeys.length > 0" danger @click="batchDeleteTables">
           批量删除 ({{ selectedRowKeys.length }})
         </a-button>
@@ -77,10 +77,6 @@
       </div>
       <div class="toolbar-right">
         <span class="result-count">共 {{ filteredTables.length }} 张表</span>
-        <a-button @click="exportTables" :disabled="filteredTables.length === 0">
-          <template #icon><ExportOutlined /></template>
-          导出SQL
-        </a-button>
       </div>
     </div>
 
@@ -88,11 +84,12 @@
     <a-card :bordered="false" class="table-card">
       <a-table
         :columns="columns"
-        :data-source="filteredTables"
+        :data-source="paginatedTables"
         :row-key="record => record.id"
         :row-selection="rowSelection"
-        :pagination="{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `共 ${total} 张表` }"
+        :pagination="false"
         :loading="loading"
+        size="small"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
@@ -106,7 +103,10 @@
           </template>
 
           <template v-else-if="column.key === 'comment'">
-            <span style="color: var(--color-text-secondary)">{{ record.comment || '-' }}</span>
+            <a-tooltip v-if="record.comment" :title="record.comment">
+              <span class="comment-text">{{ record.comment }}</span>
+            </a-tooltip>
+            <span v-else class="comment-empty">-</span>
           </template>
 
           <template v-else-if="column.key === 'engine'">
@@ -240,7 +240,10 @@
               </template>
 
               <template v-else-if="column.key === 'comment'">
-                <span style="color: var(--color-text-secondary)">{{ record.comment || '-' }}</span>
+                <a-tooltip v-if="record.comment" :title="record.comment">
+                  <span class="comment-text">{{ record.comment }}</span>
+                </a-tooltip>
+                <span v-else class="comment-empty">-</span>
               </template>
 
               <template v-else-if="column.key === 'table_type'">
@@ -500,7 +503,10 @@ CREATE TABLE users (<br>
           </template>
 
           <template v-else-if="column.key === 'comment'">
-            <span style="color: var(--color-text-secondary)">{{ record.comment || '-' }}</span>
+            <a-tooltip v-if="record.comment" :title="record.comment">
+              <span class="comment-text">{{ record.comment }}</span>
+            </a-tooltip>
+            <span v-else class="comment-empty">-</span>
           </template>
 
           <template v-else-if="column.key === 'column_action'">
@@ -866,12 +872,14 @@ CREATE TABLE users (<br>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SQLEditor from '@/components/SQLEditor.vue'
+import { useLayoutStore } from '@/stores/layout'
 import SQLDiffEditor from '@/components/SQLDiffEditor.vue'
 import {
   ImportOutlined,
+  MoreOutlined,
   ReloadOutlined,
   TableOutlined,
   KeyOutlined,
@@ -897,6 +905,7 @@ import * as projectsApi from '../../api/projects'
 
 const route = useRoute()
 const router = useRouter()
+const layoutStore = useLayoutStore()
 
 // 状态
 const loading = ref(false)
@@ -971,6 +980,14 @@ const filteredTables = computed(() => {
   }
 
   return result
+})
+
+// 分页后的表列表
+const paginatedTables = computed(() => {
+  const { current, pageSize } = layoutStore.footerPagination
+  const start = (current - 1) * pageSize
+  const end = start + pageSize
+  return filteredTables.value.slice(start, end)
 })
 
 // 表格行选择
@@ -1140,24 +1157,22 @@ const columnRowSelection = {
 
 // 表格列定义
 const columns = [
-  { title: '表名', dataIndex: 'name', key: 'name', width: 150, ellipsis: true },
-  { title: '引擎', dataIndex: 'engine', key: 'engine', width: 100 },
-  { title: '类型', dataIndex: 'table_type', key: 'table_type', width: 80 },
-  { title: '列数', dataIndex: 'column_count', key: 'column_count', width: 80 },
-  { title: '更新时间', dataIndex: 'updated_at', key: 'updated_at', width: 150 },
-  { title: '说明', dataIndex: 'comment', key: 'comment', width: 60, ellipsis: true },
-  { title: '操作', key: 'action', width: 100, fixed: 'right' }
+  { title: '表名', dataIndex: 'name', key: 'name', width: 140, ellipsis: true },
+  { title: '说明', dataIndex: 'comment', key: 'comment', width: 100, ellipsis: true },
+  { title: '引擎', dataIndex: 'engine', key: 'engine', width: 80 },
+  { title: '列数', dataIndex: 'column_count', key: 'column_count', width: 60, align: 'center' },
+  { title: '更新时间', dataIndex: 'updated_at', key: 'updated_at', width: 120 },
+  { title: '操作', key: 'action', width: 160, fixed: 'right', align: 'center' }
 ]
 
 const columnColumns = [
   { title: '列名', dataIndex: 'name', key: 'name', width: 120, ellipsis: true },
-  { title: '类型', dataIndex: 'data_type', key: 'data_type', width: 150 },
-  { title: '允许空值', dataIndex: 'is_nullable', key: 'is_nullable', width: 100 },
-  { title: '主键', dataIndex: 'is_primary_key', key: 'is_primary_key', width: 100 },
-  { title: '默认值', dataIndex: 'default_value', key: 'default_value', width: 120 },
-  { title: '说明', dataIndex: 'comment', key: 'comment', width: 60, ellipsis: true },
-  { title: '位置', dataIndex: 'ordinal_position', key: 'ordinal_position', width: 60 },
-  { title: '操作', key: 'column_action', width: 120, fixed: 'right' }
+  { title: '类型', dataIndex: 'data_type', key: 'data_type', width: 100 },
+  { title: '可空', dataIndex: 'is_nullable', key: 'is_nullable', width: 50, align: 'center' },
+  { title: '主键', dataIndex: 'is_primary_key', key: 'is_primary_key', width: 50, align: 'center' },
+  { title: '默认值', dataIndex: 'default_value', key: 'default_value', width: 80, ellipsis: true },
+  { title: '说明', dataIndex: 'comment', key: 'comment', width: 80, ellipsis: true },
+  { title: '操作', key: 'column_action', width: 120, fixed: 'right', align: 'center' }
 ]
 
 // 加载项目信息
@@ -2220,17 +2235,46 @@ const getDatabaseLabel = (type) => {
   return labels[type] || type
 }
 
+// 头部下拉菜单处理
+const handleHeaderMenu = ({ key }) => {
+  switch (key) {
+    case 'sql-import':
+      showSqlImportDialog()
+      break
+    case 'import-structure':
+      importTables()
+      break
+    case 'export':
+      exportTables()
+      break
+    case 'refresh':
+      loadTables()
+      break
+  }
+}
+
 // 组件挂载时加载数据
 onMounted(async () => {
   await loadProject()
   await loadTables()
+  // 显示全局 footer 分页
+  layoutStore.showFooterPagination(filteredTables.value.length, 1, 20, ['10', '20', '50', '100'])
+})
+
+// 监听过滤结果变化，更新 footer 分页
+watch(filteredTables, (newVal) => {
+  layoutStore.showFooterPagination(newVal.length, 1, layoutStore.footerPagination.pageSize, ['10', '20', '50', '100'])
+})
+
+// 组件卸载时隐藏 footer
+onUnmounted(() => {
+  layoutStore.hideFooter()
 })
 </script>
 
 <style scoped>
 .tables-view {
   padding: var(--spacing-lg);
-  min-height: calc(100vh - var(--navbar-height));
 }
 
 .page-header {
@@ -2317,5 +2361,20 @@ onMounted(async () => {
   margin-top: 4px;
   font-size: 12px;
   color: var(--color-text-secondary);
+}
+
+/* 说明列样式 */
+.comment-text {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+  cursor: default;
+}
+
+.comment-empty {
+  color: var(--color-text-muted);
 }
 </style>

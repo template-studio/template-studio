@@ -136,9 +136,9 @@
     </div>
 
     <!-- 主内容区 -->
-    <a-layout :style="{ marginLeft: layoutStore.sidebarCollapsed ? '60px' : '240px', minHeight: '100vh' }">
+    <div class="main-area" :style="{ marginLeft: layoutStore.sidebarCollapsed ? '60px' : '240px' }">
       <!-- 顶部标题栏 -->
-      <a-layout-header class="header titlebar-drag-region">
+      <div class="header titlebar-drag-region">
         <div class="header-left">
           <!-- 侧边栏收缩按钮 -->
           <a-button
@@ -218,13 +218,41 @@
             </a-button>
           </div>
         </div>
-      </a-layout-header>
+      </div>
 
       <!-- 内容区 -->
-      <a-layout-content class="content">
+      <div class="content">
         <router-view />
-      </a-layout-content>
-    </a-layout>
+      </div>
+
+      <!-- 全局 Footer -->
+      <div v-if="layoutStore.footerType" class="content-footer">
+        <!-- 分页 footer -->
+        <a-pagination
+          v-if="layoutStore.footerType === 'pagination'"
+          v-model:current="layoutStore.footerPagination.current"
+          v-model:pageSize="layoutStore.footerPagination.pageSize"
+          :total="layoutStore.footerPagination.total"
+          :show-size-changer="true"
+          :show-quick-jumper="true"
+          :show-total="(total, range) => `共 ${total} 条，当前 ${range[0]}-${range[1]}`"
+          :page-size-options="layoutStore.footerPageSizeOptions"
+          @change="handlePageChange"
+          @showSizeChange="handleSizeChange"
+        />
+        <!-- 概览 footer -->
+        <div v-else-if="layoutStore.footerType === 'overview'" class="footer-overview">
+          <div
+            v-for="(item, index) in layoutStore.footerOverview.items"
+            :key="index"
+            class="overview-item"
+          >
+            <span class="overview-label">{{ item.label }}</span>
+            <span class="overview-value">{{ item.value }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -372,6 +400,15 @@ const goToHelp = () => {
   router.push('/help')
 }
 
+// Footer 分页事件处理
+const handlePageChange = (page, size) => {
+  layoutStore.updateFooterPagination({ current: page, pageSize: size })
+}
+
+const handleSizeChange = (current, size) => {
+  layoutStore.updateFooterPagination({ current: 1, pageSize: size })
+}
+
 // 窗口控制
 const minimizeWindow = async () => {
   try {
@@ -403,6 +440,12 @@ const closeWindow = async () => {
 <style scoped>
 .project-workspace-layout {
   width: 100%;
+  min-height: 100vh;
+}
+
+.main-area {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
 }
 
@@ -692,21 +735,21 @@ const closeWindow = async () => {
 
 /* 底部区域 */
 .sidebar-bottom {
-  padding: var(--spacing-md);
+  height: 56px;
+  padding: 0 var(--spacing-md);
   border-top: 1px solid var(--color-border);
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
+  align-items: center;
+  justify-content: center;
 }
 
 /* Settings Section */
 .settings-section {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: var(--spacing-sm);
-  flex-wrap: wrap;
 }
 
 .action-item {
@@ -731,12 +774,11 @@ const closeWindow = async () => {
 
 /* 收缩状态下的底部区域 */
 .sidebar[data-collapsed="true"] .sidebar-bottom {
-  padding: var(--spacing-md) 0;
+  padding: 0;
 }
 
 .sidebar[data-collapsed="true"] .settings-section {
   flex-direction: column;
-  align-items: center;
   gap: var(--spacing-xs);
 }
 
@@ -894,7 +936,44 @@ const closeWindow = async () => {
 .content {
   background: var(--color-background);
   padding: var(--spacing-lg);
-  min-height: calc(100vh - var(--navbar-height));
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* 全局 Footer */
+.content-footer {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  flex-shrink: 0;
+  padding: 0 var(--spacing-lg);
+}
+
+.footer-overview {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xl);
+  width: 100%;
+}
+
+.overview-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.overview-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.overview-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
 }
 
 /* Transitions */
