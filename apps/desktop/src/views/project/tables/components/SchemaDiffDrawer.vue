@@ -236,6 +236,15 @@ const normalizeRemoteColumn = (col) => {
   }
 }
 
+const normalizeLocalColumn = (col) => {
+  const { dataType, length } = parseColumnType(col.data_type)
+  return {
+    ...col,
+    data_type: dataType,
+    length: length != null ? length : (typeof col.length === 'number' ? col.length : null)
+  }
+}
+
 const getConnParams = () => {
   const ds = props.project.datasource
   const dbName = props.project.database_name
@@ -344,7 +353,7 @@ const fetchRemoteColumns = async () => {
 }
 
 const computeDiff = () => {
-  const local = localColumns.value
+  const local = localColumns.value.map(normalizeLocalColumn)
   const remote = remoteColumns.value.map(normalizeRemoteColumn)
   const localMap = new Map(local.map(c => [c.name, c]))
   const remoteMap = new Map(remote.map(c => [c.name, c]))
