@@ -350,7 +350,8 @@ const loadTables = async (dbName) => {
 const selectTable = async (dbName, tableName) => {
   selectedDb.value = dbName
   selectedTable.value = tableName
-  layoutStore.updateFooterPagination({ current: 1, pageSize: 100 })
+  // 先显示 footer（数据加载完成前就展示分页区域）
+  layoutStore.showFooterPagination(0, 1, 100, ['50', '100', '200', '500'])
   await Promise.all([loadColumns(), loadData()])
 }
 
@@ -738,11 +739,20 @@ onUnmounted(() => {
   min-height: 0;
 }
 
+.content-body :deep(.ant-spin-nested-loading),
+.content-body :deep(.ant-spin-container) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 /* 数据表格 */
 .data-table-wrapper {
   flex: 1;
   overflow: auto;
   min-height: 0;
+  height: 100%;
 }
 
 .data-table {
@@ -812,6 +822,7 @@ onUnmounted(() => {
   flex: 1;
   overflow: auto;
   padding: 0;
+  height: 100%;
 }
 
 .columns-table {

@@ -13,7 +13,7 @@
     <div v-if="layoutStore.footerType" class="content-footer">
       <!-- 分页 footer -->
       <a-pagination
-        v-if="layoutStore.footerType === 'pagination' && layoutStore.footerPagination.total > 0"
+        v-if="layoutStore.footerType === 'pagination'"
         v-model:current="layoutStore.footerPagination.current"
         v-model:pageSize="layoutStore.footerPagination.pageSize"
         :total="layoutStore.footerPagination.total"

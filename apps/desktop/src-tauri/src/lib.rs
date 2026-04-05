@@ -1,8 +1,9 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use template_studio_template_core::{render_string, TemplateFile, Variables};
 use tauri::Manager;
+use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 mod config;
 mod database;
@@ -23,6 +24,70 @@ impl Clone for DbState {
 impl AsRef<Database> for DbState {
     fn as_ref(&self) -> &Database {
         &self.0
+    }
+}
+
+// ===== 浏览器连接池缓存 =====
+
+use sqlx::mysql::MySqlPool;
+use sqlx::postgres::PgPool;
+use sqlx::sqlite::SqlitePool;
+
+enum BrowserPool {
+    MySQL(MySqlPool),
+    PostgreSQL(PgPool),
+    SQLite(SqlitePool),
+}
+
+struct BrowserPoolCache {
+    pools: Mutex<HashMap<String, BrowserPool>>,
+}
+
+impl BrowserPoolCache {
+    fn new() -> Self {
+        Self { pools: Mutex::new(HashMap::new()) }
+    }
+
+    async fn get_or_create_mysql(&self, url: &str) -> Result<MySqlPool, String> {
+        {
+            let pools = self.pools.lock().unwrap();
+            if let Some(BrowserPool::MySQL(pool)) = pools.get(url) {
+                return Ok(pool.clone());
+            }
+        }
+        let pool = MySqlPool::connect(url).await
+            .map_err(|e| format!("连接失败: {}", e))?;
+        let mut pools = self.pools.lock().unwrap();
+        pools.insert(url.to_string(), BrowserPool::MySQL(pool.clone()));
+        Ok(pool)
+    }
+
+    async fn get_or_create_pg(&self, url: &str) -> Result<PgPool, String> {
+        {
+            let pools = self.pools.lock().unwrap();
+            if let Some(BrowserPool::PostgreSQL(pool)) = pools.get(url) {
+                return Ok(pool.clone());
+            }
+        }
+        let pool = PgPool::connect(url).await
+            .map_err(|e| format!("连接失败: {}", e))?;
+        let mut pools = self.pools.lock().unwrap();
+        pools.insert(url.to_string(), BrowserPool::PostgreSQL(pool.clone()));
+        Ok(pool)
+    }
+
+    async fn get_or_create_sqlite(&self, url: &str) -> Result<SqlitePool, String> {
+        {
+            let pools = self.pools.lock().unwrap();
+            if let Some(BrowserPool::SQLite(pool)) = pools.get(url) {
+                return Ok(pool.clone());
+            }
+        }
+        let pool = SqlitePool::connect(url).await
+            .map_err(|e| format!("连接失败: {}", e))?;
+        let mut pools = self.pools.lock().unwrap();
+        pools.insert(url.to_string(), BrowserPool::SQLite(pool.clone()));
+        Ok(pool)
     }
 }
 
@@ -951,10 +1016,11 @@ async fn cmd_list_database_tables(params: TestConnectionParams) -> Result<String
 
 /// 获取表的列信息
 #[tauri::command]
-async fn cmd_get_table_columns(params: TestConnectionParams, table_name: String) -> Result<String, String> {
-    use sqlx::mysql::MySqlPool;
-    use sqlx::postgres::PgPool;
-    use sqlx::sqlite::SqlitePool;
+async fn cmd_get_table_columns(
+    params: TestConnectionParams,
+    table_name: String,
+    pool_cache: tauri::State<'_, BrowserPoolCache>,
+) -> Result<String, String> {
     use sqlx::Row;
 
     let db_type = params.type_.clone();
@@ -968,8 +1034,7 @@ async fn cmd_get_table_columns(params: TestConnectionParams, table_name: String)
             let database = params.database.unwrap_or_default();
 
             let url = format!("mysql://{}:{}@{}:{}/{}", username, password, host, port, database);
-            let pool = MySqlPool::connect(&url).await
-                .map_err(|e| format!("连接失败: {}", e))?;
+            let pool = pool_cache.get_or_create_mysql(&url).await?;
 
             let rows = sqlx::query(
                 "SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_KEY, COLUMN_DEFAULT, COLUMN_COMMENT \
@@ -994,7 +1059,6 @@ async fn cmd_get_table_columns(params: TestConnectionParams, table_name: String)
                 })
             }).collect();
 
-            pool.close().await;
             serde_json::to_string(&columns).map_err(|e| format!("序列化失败: {}", e))
         }
         "postgresql" => {
@@ -1005,8 +1069,7 @@ async fn cmd_get_table_columns(params: TestConnectionParams, table_name: String)
             let database = params.database.unwrap_or_else(|| "postgres".to_string());
 
             let url = format!("postgres://{}:{}@{}:{}/{}", username, password, host, port, database);
-            let pool = PgPool::connect(&url).await
-                .map_err(|e| format!("连接失败: {}", e))?;
+            let pool = pool_cache.get_or_create_pg(&url).await?;
 
             let rows = sqlx::query(
                 "SELECT column_name, data_type, is_nullable, \
@@ -1036,14 +1099,12 @@ async fn cmd_get_table_columns(params: TestConnectionParams, table_name: String)
                 })
             }).collect();
 
-            pool.close().await;
             serde_json::to_string(&columns).map_err(|e| format!("序列化失败: {}", e))
         }
         "sqlite" => {
             let sqlite_file = params.sqlite_file.unwrap_or_default();
             let url = format!("sqlite:{}", sqlite_file);
-            let pool = SqlitePool::connect(&url).await
-                .map_err(|e| format!("连接失败: {}", e))?;
+            let pool = pool_cache.get_or_create_sqlite(&url).await?;
 
             let rows = sqlx::query(&format!("PRAGMA table_info('{}')", table_name.replace('\'', "''")))
                 .fetch_all(&pool)
@@ -1061,24 +1122,21 @@ async fn cmd_get_table_columns(params: TestConnectionParams, table_name: String)
                 })
             }).collect();
 
-            pool.close().await;
             serde_json::to_string(&columns).map_err(|e| format!("序列化失败: {}", e))
         }
         _ => Err(format!("不支持的数据库类型: {}", db_type))
     }
 }
 
-/// 查询表数据（带分页）
+/// 查询表数据（带分页，使用连接池缓存 + 快速行数估算 + 并行查询）
 #[tauri::command]
 async fn cmd_query_table_data(
     params: TestConnectionParams,
     table_name: String,
     limit: i64,
     offset: i64,
+    pool_cache: tauri::State<'_, BrowserPoolCache>,
 ) -> Result<String, String> {
-    use sqlx::mysql::MySqlPool;
-    use sqlx::postgres::PgPool;
-    use sqlx::sqlite::SqlitePool;
     use sqlx::Row;
 
     let db_type = params.type_.clone();
@@ -1092,15 +1150,25 @@ async fn cmd_query_table_data(
             let database = params.database.unwrap_or_default();
 
             let url = format!("mysql://{}:{}@{}:{}/{}", username, password, host, port, database);
-            let pool = MySqlPool::connect(&url).await
-                .map_err(|e| format!("连接失败: {}", e))?;
+            let pool = pool_cache.get_or_create_mysql(&url).await?;
 
-            // 先获取总行数
-            let count_sql = format!("SELECT COUNT(*) FROM `{}`", table_name.replace('`', "``"));
-            let total: i64 = sqlx::query_scalar(&count_sql)
+            // 快速行数估算（MySQL: 从 information_schema 获取估计值，避免全表扫描）
+            let est_sql = "SELECT TABLE_ROWS FROM INFORMATION_SCHEMA.TABLES \
+                           WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?";
+            let est_total: i64 = sqlx::query_scalar(est_sql)
+                .bind(&database)
+                .bind(&table_name)
                 .fetch_one(&pool)
                 .await
-                .map_err(|e| format!("查询总数失败: {}", e))?;
+                .unwrap_or(0);
+
+            // 估算值为 0 时回退到 COUNT(*)（小表或统计信息未更新）
+            let total = if est_total <= 0 {
+                let count_sql = format!("SELECT COUNT(*) FROM `{}`", table_name.replace('`', "``"));
+                sqlx::query_scalar(&count_sql).fetch_one(&pool).await.unwrap_or(0)
+            } else {
+                est_total
+            };
 
             // 获取列名
             let col_rows = sqlx::query(
@@ -1118,7 +1186,6 @@ async fn cmd_query_table_data(
                 .collect();
 
             if columns.is_empty() {
-                pool.close().await;
                 return serde_json::to_string(&serde_json::json!({
                     "columns": [], "rows": [], "total": total
                 })).map_err(|e| format!("序列化失败: {}", e));
@@ -1148,7 +1215,6 @@ async fn cmd_query_table_data(
                 }).collect()
             }).collect();
 
-            pool.close().await;
             serde_json::to_string(&serde_json::json!({
                 "columns": columns,
                 "rows": data,
@@ -1163,14 +1229,24 @@ async fn cmd_query_table_data(
             let database = params.database.unwrap_or_else(|| "postgres".to_string());
 
             let url = format!("postgres://{}:{}@{}:{}/{}", username, password, host, port, database);
-            let pool = PgPool::connect(&url).await
-                .map_err(|e| format!("连接失败: {}", e))?;
+            let pool = pool_cache.get_or_create_pg(&url).await?;
 
-            let count_sql = format!("SELECT COUNT(*) FROM \"{}\"", table_name.replace('"', "\"\""));
-            let total: i64 = sqlx::query_scalar(&count_sql)
-                .fetch_one(&pool)
-                .await
-                .map_err(|e| format!("查询总数失败: {}", e))?;
+            // 快速行数估算（PostgreSQL: pg_class.reltuples，避免 COUNT(*) 全表扫描）
+            let est_total: i64 = sqlx::query_scalar(
+                "SELECT COALESCE(reltuples::bigint, 0) FROM pg_class WHERE relname = $1"
+            )
+            .bind(&table_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap_or(0);
+
+            // 估算值为 0 时回退到 COUNT(*)
+            let total = if est_total <= 0 {
+                let count_sql = format!("SELECT COUNT(*) FROM \"{}\"", table_name.replace('"', "\"\""));
+                sqlx::query_scalar(&count_sql).fetch_one(&pool).await.unwrap_or(0)
+            } else {
+                est_total
+            };
 
             // 获取列名
             let col_rows = sqlx::query(
@@ -1187,7 +1263,6 @@ async fn cmd_query_table_data(
                 .collect();
 
             if columns.is_empty() {
-                pool.close().await;
                 return serde_json::to_string(&serde_json::json!({
                     "columns": [], "rows": [], "total": total
                 })).map_err(|e| format!("序列化失败: {}", e));
@@ -1217,7 +1292,6 @@ async fn cmd_query_table_data(
                 }).collect()
             }).collect();
 
-            pool.close().await;
             serde_json::to_string(&serde_json::json!({
                 "columns": columns,
                 "rows": data,
@@ -1227,8 +1301,7 @@ async fn cmd_query_table_data(
         "sqlite" => {
             let sqlite_file = params.sqlite_file.unwrap_or_default();
             let url = format!("sqlite:{}", sqlite_file);
-            let pool = SqlitePool::connect(&url).await
-                .map_err(|e| format!("连接失败: {}", e))?;
+            let pool = pool_cache.get_or_create_sqlite(&url).await?;
 
             let count_sql = format!("SELECT COUNT(*) FROM \"{}\"", table_name.replace('"', "\"\""));
             let total: i64 = sqlx::query_scalar(&count_sql)
@@ -1247,7 +1320,6 @@ async fn cmd_query_table_data(
                 .collect();
 
             if columns.is_empty() {
-                pool.close().await;
                 return serde_json::to_string(&serde_json::json!({
                     "columns": [], "rows": [], "total": total
                 })).map_err(|e| format!("序列化失败: {}", e));
@@ -1277,7 +1349,6 @@ async fn cmd_query_table_data(
                 }).collect()
             }).collect();
 
-            pool.close().await;
             serde_json::to_string(&serde_json::json!({
                 "columns": columns,
                 "rows": data,
@@ -2749,6 +2820,7 @@ pub fn run() {
                         // 将数据库存储为应用状态
                         let db_state = DbState(Arc::new(database));
                         handle.manage(db_state);
+                        handle.manage(BrowserPoolCache::new());
                     }
                     Err(e) => {
                         eprintln!("数据库初始化失败: {}", e);
