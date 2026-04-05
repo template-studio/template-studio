@@ -1,6 +1,7 @@
 <template>
-  <a-drawer :open="open" title="AI 智能建表" placement="right" :width="aiDrawerWidth" :closable="true" :maskClosable="false"
-    @update:open="$emit('update:open', $event)">
+  <a-drawer :open="open" title="AI 智能建表" placement="right" :width="drawerWidth" :closable="true" :maskClosable="false"
+    @update:open="$emit('update:open', $event)" :body-style="{ position: 'relative' }">
+    <div class="drawer-resize-handle" @mousedown="startResize"></div>
     <a-steps :current="aiCreateStep - 1" size="small" style="margin-bottom: 24px">
       <a-step title="输入描述" /><a-step title="生成 SQL" /><a-step title="预览字段" /><a-step title="完成" />
     </a-steps>
@@ -73,7 +74,7 @@
       <div style="display: flex; justify-content: space-between; margin-top: 16px;">
         <a-button @click="aiCreateStep = 1" :disabled="aiExecuting">上一步</a-button>
         <div style="display: flex; gap: 8px;">
-          <a-button v-if="!aiShowConversation" @click="aiShowConversation = true"><template #icon><MessageOutlined /></template>继续优化</a-button>
+          <a-button v-if="!aiShowConversation" @click="aiShowConversation = true; drawerWidth = Math.max(drawerWidth, 1400)"><template #icon><MessageOutlined /></template>继续优化</a-button>
           <a-button type="primary" @click="parseAISQL" :loading="aiParsing">下一步</a-button>
         </div>
       </div>
@@ -164,7 +165,35 @@ const aiUserMessage = ref('')
 const aiParsedTables = ref([])
 
 const aiCreateForm = reactive({ sqlType: 'mysql', description: '', generatedSQL: '', followPreferences: true })
-const aiDrawerWidth = computed(() => aiShowConversation.value ? 1400 : 1000)
+// 抽屉宽度（支持拖拽调整）
+const drawerWidth = ref(1000)
+let resizing = false
+let resizeStartX = 0
+let resizeStartWidth = 0
+
+const startResize = (e) => {
+  resizing = true
+  resizeStartX = e.clientX
+  resizeStartWidth = drawerWidth.value
+  document.addEventListener('mousemove', onResize)
+  document.addEventListener('mouseup', stopResize)
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+}
+
+const onResize = (e) => {
+  if (!resizing) return
+  const diff = resizeStartX - e.clientX
+  drawerWidth.value = Math.min(Math.max(resizeStartWidth + diff, 600), 1800)
+}
+
+const stopResize = () => {
+  resizing = false
+  document.removeEventListener('mousemove', onResize)
+  document.removeEventListener('mouseup', stopResize)
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+}
 
 const aiColumnColumns = [
   { title: '字段名', dataIndex: 'name', key: 'name', width: 150 },
@@ -310,4 +339,17 @@ const fixAISQL = async () => {
 
 <style scoped>
 .preference-hint { margin-top: 4px; font-size: 12px; color: var(--color-text-secondary); }
+.drawer-resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+}
+.drawer-resize-handle:hover,
+.drawer-resize-handle:active {
+  background: rgba(0, 0, 0, 0.15);
+}
 </style>

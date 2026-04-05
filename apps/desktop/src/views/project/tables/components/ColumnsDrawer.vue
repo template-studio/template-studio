@@ -1,5 +1,7 @@
 <template>
-  <a-drawer :open="open" title="表结构" width="900" placement="right" @update:open="$emit('update:open', $event)">
+  <a-drawer :open="open" title="表结构" :width="drawerWidth" placement="right" @update:open="$emit('update:open', $event)"
+    :body-style="{ position: 'relative' }">
+    <div class="drawer-resize-handle" @mousedown="startResize"></div>
     <template #title>
       <div style="display: flex; align-items: center; gap: 8px">
         <TableOutlined />
@@ -94,6 +96,36 @@ const columnDialogVisible = ref(false)
 const columnDialogMode = ref('add')
 const selectedColumnKeys = ref([])
 let dragColumnIndex = null
+
+// 抽屉宽度拖拽调整
+const drawerWidth = ref(900)
+let resizing = false
+let resizeStartX = 0
+let resizeStartWidth = 0
+
+const startResize = (e) => {
+  resizing = true
+  resizeStartX = e.clientX
+  resizeStartWidth = drawerWidth.value
+  document.addEventListener('mousemove', onResize)
+  document.addEventListener('mouseup', stopResize)
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+}
+
+const onResize = (e) => {
+  if (!resizing) return
+  const diff = resizeStartX - e.clientX
+  drawerWidth.value = Math.min(Math.max(resizeStartWidth + diff, 500), 1400)
+}
+
+const stopResize = () => {
+  resizing = false
+  document.removeEventListener('mousemove', onResize)
+  document.removeEventListener('mouseup', stopResize)
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+}
 
 const dataTypes = ['varchar', 'char', 'text', 'int', 'bigint', 'float', 'double', 'decimal', 'datetime', 'date', 'timestamp', 'boolean', 'json']
 
@@ -205,4 +237,17 @@ const handleColumnDragEnd = (e) => { dragColumnIndex = null; e.target.closest('t
 <style scoped>
 .comment-text { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); cursor: default; }
 .comment-empty { color: var(--color-text-muted); }
+.drawer-resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+}
+.drawer-resize-handle:hover,
+.drawer-resize-handle:active {
+  background: rgba(0, 0, 0, 0.15);
+}
 </style>
