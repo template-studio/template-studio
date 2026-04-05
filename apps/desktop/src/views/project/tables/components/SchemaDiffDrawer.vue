@@ -268,7 +268,7 @@ const fetchOverview = async () => {
 
     for (const [name, rTable] of remoteMap) {
       if (!localMap.has(name)) newTables.value.push(rTable)
-      else syncedTables.value.push(rTable)
+      else syncedTables.value.push(localMap.get(name))
     }
     for (const [name, lTable] of localMap) {
       if (!remoteMap.has(name)) removedTables.value.push(lTable)
@@ -314,8 +314,9 @@ const fetchAndDiff = async () => {
   tableData.value = []
 
   try {
+    const cleanName = stripBackticks(currentTable.value.name)
     const remoteTableNames = (await fetchRemoteTables()).map(t => t.name)
-    if (!remoteTableNames.includes(currentTable.value.name)) {
+    if (!remoteTableNames.includes(cleanName)) {
       // 远程表不存在，切回总览视图（展示远程新增表等完整信息）
       loading.value = false
       await fetchOverview()
@@ -338,7 +339,7 @@ const fetchAndDiff = async () => {
 
 const fetchRemoteColumns = async () => {
   const params = getConnParams()
-  const result = await invoke('cmd_get_table_columns', { params, tableName: currentTable.value.name })
+  const result = await invoke('cmd_get_table_columns', { params, tableName: stripBackticks(currentTable.value.name) })
   return JSON.parse(result)
 }
 
