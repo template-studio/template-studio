@@ -9,9 +9,15 @@
     </template>
 
     <a-spin :spinning="loading" tip="正在对比表结构...">
-      <a-empty v-if="!loading && !error && diffResult.total === 0 && !diffResult.hasChanges" description="暂无数据" />
+      <a-empty v-if="!loading && !error && diffResult.total === 0 && !diffResult.hasChanges && remoteChecked" description="暂无数据" />
 
       <a-alert v-if="error" :message="error" type="error" show-icon style="margin-bottom: 16px" />
+
+      <a-alert v-if="!loading && !error && remoteChecked && !remoteExists" message="远程表不存在" :description="`数据库中未找到表 \`${table?.name}\`，可能已被删除`" type="warning" show-icon style="margin-bottom: 16px">
+        <template #action>
+          <a-button size="small" type="primary" danger @click="handleDeleteLocal">删除本地表</a-button>
+        </template>
+      </a-alert>
 
       <template v-if="!loading && !error && diffResult.total > 0">
         <!-- 差异统计 -->
@@ -52,12 +58,13 @@
     <template #footer>
       <div style="display: flex; justify-content: space-between; align-items: center">
         <span v-if="syncing" style="color: var(--color-text-secondary)">同步中...</span>
+        <span v-else-if="!remoteExists" style="color: var(--color-warning)">远程表不存在，可删除本地表</span>
         <span v-else-if="diffResult.hasChanges" style="color: var(--color-text-secondary)">将同步 {{ diffResult.added.length + diffResult.modified.length + diffResult.removed.length }} 项变更</span>
         <span v-else-if="!loading && diffResult.total > 0" style="color: var(--color-success)">表结构一致，无需同步</span>
         <span v-else></span>
         <a-space>
           <a-button @click="$emit('update:open', false)">关闭</a-button>
-          <a-button type="primary" :disabled="!diffResult.hasChanges || syncing" :loading="syncing" @click="handleSync">同步到本地</a-button>
+          <a-button v-if="remoteExists" type="primary" :disabled="!diffResult.hasChanges || syncing" :loading="syncing" @click="handleSync">同步到本地</a-button>
         </a-space>
       </div>
     </template>
@@ -81,6 +88,8 @@ const emit = defineEmits(['update:open', 'synced'])
 const loading = ref(false)
 const syncing = ref(false)
 const error = ref('')
+const remoteChecked = ref(false)
+const remoteExists = ref(true)
 const localColumns = ref([])
 const remoteColumns = ref([])
 const diffResult = ref({ added: [], removed: [], modified: [], unchanged: [], total: 0, hasChanges: false })
@@ -182,7 +191,24 @@ const fetchAndDiff = async () => {
   if (!props.table || !props.project) return
   loading.value = true
   error.value = ''
+  remoteChecked.value = false
+  remoteExists.value = true
+  diffResult.value = { added: [], removed: [], modified: [], unchanged: [], total: 0, hasChanges: false }
+  tableData.value = []
+
   try {
+    // 第一步：检查远程表是否存在
+    const exists = await checkRemoteTableExists()
+    remoteChecked.value = true
+    if (!exists) {
+      remoteExists.value = false
+      // 仍加载本地列信息以供展示
+      localColumns.value = await projectsApi.getTableColumns(props.table.id)
+      loading.value = false
+      return
+    }
+
+    // 第二步：并行列出本地列和远程列
     const [local, remote] = await Promise.all([
       projectsApi.getTableColumns(props.table.id),
       fetchRemoteColumns()
@@ -197,11 +223,11 @@ const fetchAndDiff = async () => {
   }
 }
 
-const fetchRemoteColumns = async () => {
+const getConnParams = () => {
   const ds = props.project.datasource
   const dbName = props.project.database_name
-  const params = {
-    type_: ds.type_,
+  return {
+    type: ds.type_,
     host: ds.host || null,
     port: ds.port || null,
     username: ds.username || null,
@@ -209,6 +235,18 @@ const fetchRemoteColumns = async () => {
     database: dbName || ds.database || null,
     sqlite_file: ds.sqlite_file || null
   }
+}
+
+const checkRemoteTableExists = async () => {
+  const params = getConnParams()
+  const result = await invoke('cmd_list_database_tables', { params })
+  const tables = JSON.parse(result)
+  const tableName = props.table.name
+  return tables.some(t => (typeof t === 'string' ? t : t.name) === tableName)
+}
+
+const fetchRemoteColumns = async () => {
+  const params = getConnParams()
   const result = await invoke('cmd_get_table_columns', { params, tableName: props.table.name })
   return JSON.parse(result)
 }
@@ -265,6 +303,17 @@ const handleSync = async () => {
     message.error('同步失败: ' + e)
   } finally {
     syncing.value = false
+  }
+}
+
+const handleDeleteLocal = async () => {
+  try {
+    await projectsApi.deleteTable(props.table.id)
+    message.success(`本地表 "${props.table.name}" 已删除`)
+    emit('synced')
+    emit('update:open', false)
+  } catch (e) {
+    message.error('删除失败: ' + e)
   }
 }
 
