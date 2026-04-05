@@ -68,6 +68,7 @@
             <a-space>
               <a-button type="link" size="small" @click="openTableConfig(record)"><SettingOutlined /> 配置</a-button>
               <a-button type="link" size="small" @click="viewColumns(record)">查看字段</a-button>
+              <a-button type="link" size="small" @click="compareTable(record)"><DiffOutlined /> 对比</a-button>
               <a-button type="link" size="small" @click="editTable(record)">编辑</a-button>
               <a-popconfirm title="确定要删除这张表吗？" ok-text="确定" cancel-text="取消" @confirm="deleteTable(record)">
                 <a-button type="link" size="small" danger>删除</a-button>
@@ -86,6 +87,7 @@
     <ColumnsDrawer v-model:open="columnsDrawerVisible" :table="currentTable" @columns-updated="onColumnsUpdated" />
     <AiCreateTableDrawer v-model:open="aiCreateTableVisible" :project="project" @tables-created="loadTables" />
     <TableConfigDrawer v-model:open="tableConfigVisible" :table="currentConfigTable" @saved="onTableConfigSaved" />
+    <SchemaDiffDrawer v-model:open="schemaDiffVisible" :table="currentCompareTable" :project="project" @synced="loadTables" />
   </div>
 </template>
 
@@ -96,7 +98,7 @@ import { useLayoutStore } from '@/stores/layout'
 import {
   ImportOutlined, MoreOutlined, ReloadOutlined, TableOutlined,
   SearchOutlined, PlusOutlined, FileTextOutlined, RobotOutlined,
-  SettingOutlined, ExportOutlined
+  SettingOutlined, ExportOutlined, DiffOutlined
 } from '@ant-design/icons-vue'
 import { TableConfigDrawer } from '@/components/tableConfig'
 import { message, Modal } from 'ant-design-vue'
@@ -108,6 +110,7 @@ import SqlImportModal from './components/SqlImportModal.vue'
 import TableDialog from './components/TableDialog.vue'
 import ColumnsDrawer from './components/ColumnsDrawer.vue'
 import AiCreateTableDrawer from './components/AiCreateTableDrawer.vue'
+import SchemaDiffDrawer from './components/SchemaDiffDrawer.vue'
 
 const route = useRoute()
 const layoutStore = useLayoutStore()
@@ -181,7 +184,7 @@ const columns = [
   { title: '引擎', dataIndex: 'engine', key: 'engine', width: 80 },
   { title: '列数', dataIndex: 'column_count', key: 'column_count', width: 60, align: 'center' },
   { title: '更新时间', dataIndex: 'updated_at', key: 'updated_at', width: 120 },
-  { title: '操作', key: 'action', width: 160, fixed: 'right', align: 'center' }
+  { title: '操作', key: 'action', width: 200, fixed: 'right', align: 'center' }
 ]
 
 // 子组件对话框状态
@@ -192,9 +195,11 @@ const editTableDialogVisible = ref(false)
 const columnsDrawerVisible = ref(false)
 const aiCreateTableVisible = ref(false)
 const tableConfigVisible = ref(false)
+const schemaDiffVisible = ref(false)
 const currentEditTable = ref(null)
 const currentTable = ref(null)
 const currentConfigTable = ref(null)
+const currentCompareTable = ref(null)
 const importProgressRef = ref(null)
 
 // 加载项目信息
@@ -300,6 +305,12 @@ const openTableConfig = (table) => {
   tableConfigVisible.value = true
 }
 const onTableConfigSaved = () => {}
+
+// 表结构对比
+const compareTable = (table) => {
+  currentCompareTable.value = table
+  schemaDiffVisible.value = true
+}
 
 // 导入表结构
 const importTables = () => {
