@@ -152,42 +152,25 @@ async fn list_templates() -> Result<Vec<Template>, String> {
     ])
 }
 
-/// 获取模板变量定义
+/// 获取模板变量定义（从本地 variables.json 读取）
 #[tauri::command]
-async fn get_template_variables(template_id: &str) -> Result<Vec<Variable>, String> {
-    // TODO: 从 API 或本地加载变量定义
-    // 这里先返回模拟数据
-    Ok(match template_id {
-        "1" => vec![
-            Variable {
-                name: "project_name".to_string(),
-                title: "项目名称".to_string(),
-                description: "请输入项目名称".to_string(),
-                type_: "string".to_string(),
-                default_value: Some("my-project".to_string()),
-                required: true,
-            },
-            Variable {
-                name: "author".to_string(),
-                title: "作者".to_string(),
-                description: "作者名称".to_string(),
-                type_: "string".to_string(),
-                default_value: Some("Your Name".to_string()),
-                required: true,
-            },
-        ],
-        "2" => vec![
-            Variable {
-                name: "cli_name".to_string(),
-                title: "CLI 名称".to_string(),
-                description: "命令行工具名称".to_string(),
-                type_: "string".to_string(),
-                default_value: Some("my-cli".to_string()),
-                required: true,
-            },
-        ],
-        _ => vec![],
-    })
+async fn get_template_variables(template_id: &str, version: Option<String>) -> Result<String, String> {
+    let config = Config::load().map_err(|e| format!("加载配置失败: {}", e))?;
+    let version_str = version.unwrap_or_else(|| "latest".to_string());
+    let template_path = config.get_template_path(template_id, &version_str);
+
+    if !template_path.exists() {
+        return Ok(r#"{"fields": []}"#.to_string());
+    }
+
+    let variables_file = template_path.join(".meta/variables/variables.json");
+    if variables_file.exists() {
+        let content = std::fs::read_to_string(&variables_file)
+            .map_err(|e| format!("读取变量文件失败: {}", e))?;
+        Ok(content)
+    } else {
+        Ok(r#"{"fields": []}"#.to_string())
+    }
 }
 
 /// 渲染模板预览
@@ -293,6 +276,88 @@ async fn render_template_preview(
         .map_err(|e| format!("序列化结果失败: {}", e))?;
 
     Ok(result_json)
+}
+
+/// 渲染并导出模板到指定目录
+#[tauri::command]
+async fn cmd_render_and_export(
+    template_id: String,
+    version: Option<String>,
+    variables_json: serde_json::Value,
+    output_dir: String,
+) -> Result<String, String> {
+    use template_studio_template_core::{render_tree, Variables};
+    use std::fs;
+    use std::path::Path;
+
+    let config = Config::load().map_err(|e| format!("加载配置失败: {}", e))?;
+    let version_str = version.unwrap_or_else(|| "latest".to_string());
+    let template_path = config.get_template_path(&template_id, &version_str);
+
+    if !template_path.exists() {
+        return Err(format!("模板未下载，路径: {:?}", template_path));
+    }
+
+    // 扫描并渲染
+    let template_files = scan_template_files(&template_path)
+        .map_err(|e| format!("扫描模板文件失败: {}", e))?;
+
+    let vars_str = serde_json::to_string(&variables_json)
+        .map_err(|e| format!("序列化变量失败: {}", e))?;
+    let render_vars = Variables::from_json(&vars_str)
+        .map_err(|e| format!("解析变量失败: {}", e))?;
+
+    let rendered_tree = render_tree(template_files, &render_vars)
+        .map_err(|e| format!("渲染模板失败: {}", e))?;
+
+    // 写入文件
+    let output = Path::new(&output_dir);
+    let mut exported = 0u32;
+    let mut errors: Vec<String> = Vec::new();
+
+    for file_node in rendered_tree {
+        if file_node.error.is_some() {
+            errors.push(format!("{}: {}", file_node.file_path, file_node.error.as_ref().unwrap().message));
+            continue;
+        }
+        if file_node.is_directory == 1 {
+            let dir_path = output.join(&file_node.file_path);
+            if let Err(e) = fs::create_dir_all(&dir_path) {
+                errors.push(format!("创建目录失败 {}: {}", file_node.file_path, e));
+            }
+            continue;
+        }
+
+        let file_path = output.join(&file_node.file_path);
+        if let Some(parent) = file_path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+
+        match file_node.file_content {
+            Some(content) => {
+                if let Err(e) = fs::write(&file_path, &content) {
+                    errors.push(format!("写入失败 {}: {}", file_node.file_path, e));
+                } else {
+                    exported += 1;
+                }
+            }
+            None => {
+                // 二进制文件，从模板目录复制
+                let source = template_path.join(&file_node.file_path);
+                if let Err(e) = fs::copy(&source, &file_path) {
+                    errors.push(format!("复制失败 {}: {}", file_node.file_path, e));
+                } else {
+                    exported += 1;
+                }
+            }
+        }
+    }
+
+    let result = serde_json::json!({
+        "exported": exported,
+        "errors": errors,
+    });
+    serde_json::to_string(&result).map_err(|e| format!("序列化结果失败: {}", e))
 }
 
 /// 生成项目
@@ -3274,6 +3339,7 @@ pub fn run() {
             get_template_variables,
             render_template,
             render_template_preview,
+            cmd_render_and_export,
             generate_project,
             check_template_downloaded,
             download_template,

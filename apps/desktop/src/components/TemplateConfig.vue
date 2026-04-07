@@ -194,21 +194,27 @@ const selectTemplate = async (template) => {
 
   // 加载模板变量
   try {
-    const vars = await invoke('get_template_variables', {
+    const varsJson = await invoke('get_template_variables', {
       templateId: template.id
     });
 
-    // 设置默认值
+    // 解析 schema 并设置默认值
     const defaults = {};
-    vars.forEach(v => {
-      if (v.default_value !== undefined) {
-        defaults[v.name] = v.default_value;
-      } else if (v.type_ === 'boolean') {
-        defaults[v.name] = false;
-      } else {
-        defaults[v.name] = '';
-      }
-    });
+    try {
+      const schema = JSON.parse(varsJson);
+      const fields = schema.fields || [];
+      fields.forEach(v => {
+        if (v.default !== undefined) {
+          defaults[v.name] = v.default;
+        } else if (v.type === 'boolean') {
+          defaults[v.name] = false;
+        } else {
+          defaults[v.name] = '';
+        }
+      });
+    } catch (e) {
+      // 无 schema 或解析失败，跳过
+    }
 
     emit('update:template', template);
     emit('update:variables', defaults);

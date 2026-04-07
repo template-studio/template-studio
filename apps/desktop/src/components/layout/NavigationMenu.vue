@@ -51,6 +51,13 @@
       </a-menu-item>
     </a-sub-menu>
 
+    <a-menu-item key="/template-render">
+      <template #icon>
+        <AppstoreOutlined />
+      </template>
+      <span>模板渲染</span>
+    </a-menu-item>
+
     <a-menu-item key="/settings">
       <template #icon>
         <SettingOutlined />
@@ -71,7 +78,8 @@ import {
   FolderOutlined,
   CodeOutlined,
   SettingOutlined,
-  SwapOutlined
+  SwapOutlined,
+  AppstoreOutlined
 } from '@ant-design/icons-vue'
 
 const router = useRouter()

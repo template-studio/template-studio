@@ -40,6 +40,8 @@ pnpm run type-check       # TypeScript type checking
 ```bash
 cd apps/desktop
 pnpm run tauri:dev        # Start desktop app in dev mode
+pnpm run build            # Production build (frontend only)
+cargo test -p desktop --lib  # Run Rust unit tests
 ```
 
 ## Architecture
@@ -53,7 +55,7 @@ apps/desktop/src-tauri/src/ → Tauri commands, SQLite database layer
 
 crates/shared/             → Types, models, constants, utils
 crates/infrastructure/     → DB pool, config, git, logging, file_tree
-crates/repositories/       → Data access layer (12 modules)
+crates/repositories/       → Data access layer (10 modules)
 crates/services/           → Business logic layer (20 modules)
 crates/template_core/      → Template engine (MiniJinja), conditions, filters, tree rendering
 crates/template_core_wasm/ → WASM bindings for browser-side template rendering
@@ -71,15 +73,88 @@ Key patterns:
 - **Dynamic routing** with permission-based filtering (FIXED or BACK mode)
 - **Path aliases**: `@/` → `src/`, `/#/` → `types/`
 
+### Desktop App (`apps/desktop/`)
+
+Tauri 2.x desktop app with Vue 3 + Ant Design Vue frontend.
+
+**17 routes** with dual layout system: `AppLayout` for global pages, `ProjectWorkspaceLayout` for `/project/*` routes.
+
+Key pages:
+| Route | Purpose |
+|---|---|
+| `/home` | Dashboard |
+| `/templates` | Template management with wizard drawer |
+| `/datasource` | Datasource CRUD + connection status |
+| `/datasource/:id/browse` | Live database browser with data query |
+| `/projects` | Project list |
+| `/project/:id/tables` | Table management (core feature) |
+| `/project/:id/preferences` | Table naming conventions |
+| `/project/:id/mappings` | Per-project type mappings |
+| `/mappings` | Global type mappings |
+| `/languages` | Programming language management |
+| `/settings` | Multi-level settings (general, display, keyboard, backup, AI, etc.) |
+
+**Tables management** (`apps/desktop/src/views/project/tables/`):
+- `index.vue` — Table list with search/filter/sort, batch delete, pagination
+- `TableDialog.vue` — Add/edit table modal
+- `ColumnsDrawer.vue` — Column CRUD with drag-to-reorder
+- `SqlImportModal.vue` — Import tables from SQL DDL
+- `ImportProgressModal.vue` — Import table structure from datasource
+- `AiCreateTableDrawer.vue` — AI-assisted table creation (NL → SQL → preview → execute)
+- `SchemaDiffDrawer.vue` — Schema diff/sync: overview (remote-new/local-new/synced) + column-level diff with bidirectional sync
+
+**Backend** (`apps/desktop/src-tauri/src/`):
+- `lib.rs` — 98 Tauri commands, DDL generation, unit tests
+- `database.rs` — SQLite database layer (4400+ lines), 12 migrations, 60+ methods
+- `config.rs` — App configuration
+
+**98 Tauri commands** covering: template engine, project/datasource CRUD, remote database operations (MySQL/PostgreSQL/SQLite), table/column management, schema sync, language/type mapping CRUD, AI services, table preferences.
+
 ### Database
 
-- MySQL (primary), SQLite, PostgreSQL — all supported via SQLx feature flags
-- Migrations in `migrations/` (SQL files)
-- Config: `config/config.toml` (gitignored, copy from `config/config.toml.example`)
+- **Web/CLI**: MySQL (primary), SQLite, PostgreSQL — all supported via SQLx feature flags. Migrations in `migrations/` (SQL files). Config: `config/config.toml` (gitignored, copy from `config/config.toml.example`).
+- **Desktop**: Local SQLite database at `~/.cicbyte/template_studio/db/desktop.db` with 12 inline migrations in `database.rs`. Uses `sqlx` with WAL mode, 64MB cache, foreign keys enabled.
 
 ### Template Engine
 
 `template_core` provides MiniJinja-based template rendering with conditional file generation, custom filters, built-in functions, dependency analysis, and parallel rendering. Also compiled to WASM for browser use.
+
+## Key Patterns
+
+### Tauri Command Pattern
+
+```rust
+// Rust side: serialize to JSON string, errors in Chinese
+#[tauri::command]
+async fn db_xxx(database: tauri::State<'_, DbState>, ...) -> Result<String, String> {
+    let db = database.as_ref();
+    let result = db.some_method(...).await.map_err(|e| format!("错误描述: {}", e))?;
+    serde_json::to_string(&result).map_err(|e| format!("序列化失败: {}", e))
+}
+
+// Frontend side: invoke + JSON.parse
+import { invoke } from '@tauri-apps/api/core'
+const data = JSON.parse(await invoke('db_xxx', { id }))
+```
+
+### Vue 3 Composition API
+
+All desktop components use `<script setup>`:
+- `ref()`, `reactive()`, `computed()`, `watch()` for state
+- `defineProps()` / `defineEmits()` for component contracts
+- `useLayoutStore()` for global pagination/footer
+- `v-model:open` pattern for drawers/modals
+
+### Database Layer
+
+- `Database` struct wraps `SqlitePool`, shared via `DbState(Arc<Database>)`
+- Raw SQL via `sqlx::query()` / `sqlx::query_scalar()` / `sqlx::query_as()` (no ORM)
+- Remote DB connection pooling via `BrowserPoolCache` (keyed by URL)
+- DDL generation in `generate_create_table_ddl()` (lib.rs)
+
+### UI Framework
+
+Ant Design Vue 4.x with Chinese locale (`zhCN`), CSS custom properties for theming, CodeMirror 6 for SQL editing with diff view (`@codemirror/merge`).
 
 ## Conventions
 

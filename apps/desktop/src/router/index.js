@@ -63,6 +63,11 @@ const routes = [
     component: () => import('@/views/project/mappings/index.vue')
   },
   {
+    path: '/template-render',
+    name: 'TemplateRender',
+    component: () => import('@/views/template-render/TemplateRenderDrawer.vue')
+  },
+  {
     path: '/settings',
     name: 'Settings',
     component: () => import('@/views/settings/index.vue')
