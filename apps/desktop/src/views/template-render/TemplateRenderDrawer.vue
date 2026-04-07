@@ -8,21 +8,22 @@
       </div>
       <div class="header-right">
         <div class="steps-compact">
-          <div
-            v-for="(step, idx) in steps"
-            :key="step.title"
-            class="step-item"
-            :class="{ active: currentStep === idx + 1, completed: currentStep > idx + 1 }"
-          >
-            <div class="step-dot">{{ idx + 1 }}</div>
-            <div class="step-text">{{ step.title }}</div>
-          </div>
+          <template v-for="(step, idx) in steps" :key="step.title">
+            <div
+              class="step-item"
+              :class="{ active: currentStep === idx + 1, completed: currentStep > idx + 1 }"
+            >
+              <div class="step-dot">{{ idx + 1 }}</div>
+              <div class="step-text">{{ step.title }}</div>
+            </div>
+            <div v-if="idx < steps.length - 1" class="step-arrow">›</div>
+          </template>
         </div>
       </div>
     </div>
 
     <!-- 内容区 -->
-    <div class="wizard-content" :class="{ 'wizard-content-preview': currentStep === 3 }">
+    <div class="wizard-content" :class="{ 'wizard-content-preview': currentStep === 4 }">
       <!-- Step 1: 选择模板 -->
       <div v-if="currentStep === 1" class="step-panel">
         <div class="template-grid-wrapper">
@@ -60,7 +61,7 @@
           <!-- 模板卡片网格 -->
           <div class="template-grid">
             <div
-              v-for="tpl in filteredTemplates"
+              v-for="tpl in paginatedTemplates"
               :key="tpl.id"
               class="template-card"
               :class="{ selected: selectedTemplate?.id === tpl.id }"
@@ -106,8 +107,79 @@
         </div>
       </div>
 
-      <!-- Step 2: 配置变量 -->
+      <!-- Step 2: 模板详情 -->
       <div v-if="currentStep === 2" class="step-panel">
+        <div class="template-detail">
+          <div class="detail-header">
+            <div class="detail-title-row">
+              <h2 class="detail-name">{{ selectedTemplate?.name }}</h2>
+              <a-tag v-if="selectedTemplate?.categoryId" color="purple" size="large">
+                {{ getCategoryName(selectedTemplate.categoryId) }}
+              </a-tag>
+              <a-tag v-if="selectedTemplate?.isFeatured === 1" color="gold" size="large">
+                <template #icon><StarOutlined /></template>
+                推荐
+              </a-tag>
+            </div>
+            <a-divider />
+            <p class="detail-desc">{{ selectedTemplate?.description || '暂无描述' }}</p>
+          </div>
+
+          <!-- 版本选择 -->
+          <div v-if="versionList.length > 0" class="detail-section">
+            <h3 class="detail-section-title"><TagsOutlined /> 选择版本</h3>
+            <a-select
+              v-model:value="selectedVersion"
+              :options="versionOptions"
+              size="large"
+              style="width: 100%"
+              placeholder="选择版本"
+            >
+              <template #suffixIcon><DownloadOutlined /></template>
+            </a-select>
+            <div class="form-hint">当前选择：{{ selectedVersion || '未选择' }}</div>
+          </div>
+          <a-alert
+            v-else-if="!loadingVersions"
+            message="该模板暂未开放使用"
+            description="此模板正在准备中，请稍后再来"
+            type="info"
+            show-icon
+            style="margin-bottom: 24px"
+          >
+            <template #icon><InfoCircleOutlined /></template>
+          </a-alert>
+          <div v-if="loadingVersions" class="loading-ct">
+            <a-spin size="small"><template #description>加载版本列表...</template></a-spin>
+          </div>
+
+          <!-- 支持的语言 -->
+          <div class="detail-section">
+            <h3 class="detail-section-title"><CodeOutlined /> 支持的语言</h3>
+            <div class="languages-list">
+              <a-tag
+                v-for="lang in selectedTemplate?.languages || []"
+                :key="lang.id"
+                :color="lang.isPrimary === 1 ? 'blue' : 'default'"
+                size="large"
+              >
+                {{ getLanguageName(lang.languageId) }}
+                <span v-if="lang.isPrimary === 1">(主语言)</span>
+              </a-tag>
+              <span v-if="!selectedTemplate?.languages?.length" class="no-lang">暂无语言信息</span>
+            </div>
+          </div>
+
+          <!-- 详细介绍 -->
+          <div v-if="selectedTemplate?.introduction" class="detail-section">
+            <h3 class="detail-section-title"><FileTextOutlined /> 详细介绍</h3>
+            <div class="intro-markdown">{{ selectedTemplate.introduction }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: 配置变量 -->
+      <div v-if="currentStep === 3" class="step-panel">
         <div class="variables-layout">
           <!-- 左侧模式切换 -->
           <div class="variables-sidebar">
@@ -201,8 +273,8 @@
         </div>
       </div>
 
-      <!-- Step 3: 预览导出 -->
-      <div v-if="currentStep === 3" class="step-panel step-panel-preview">
+      <!-- Step 4: 预览导出 -->
+      <div v-if="currentStep === 4" class="step-panel step-panel-preview">
         <div v-if="rendering" class="loading-ct">
           <a-spin size="large"><template #description>正在渲染文件预览...</template></a-spin>
         </div>
@@ -260,30 +332,45 @@
       </div>
     </div>
 
-    <!-- 底部按钮 -->
+    <!-- 底部 -->
     <div class="wizard-footer">
-      <a-button v-if="currentStep > 1" @click="prevStep" class="footer-btn">
-        上一步
-      </a-button>
-      <div class="footer-spacer" />
-      <a-button
-        v-if="currentStep === 3"
-        type="primary"
-        @click="exportDialogVisible = true"
-        class="footer-btn"
-      >
-        <template #icon><ExportOutlined /></template>
-        导出文件
-      </a-button>
-      <a-button
-        v-if="currentStep < 3"
-        type="primary"
-        :disabled="currentStep === 1 && !selectedTemplate"
-        @click="nextStep"
-        class="footer-btn"
-      >
-        下一步
-      </a-button>
+      <!-- Step 1: 分页 -->
+      <template v-if="currentStep === 1">
+        <a-pagination
+          v-model:current="currentPage"
+          v-model:page-size="pageSizeRef"
+          :total="filteredTemplates.length"
+          :show-size-changer="true"
+          :show-quick-jumper="true"
+          :show-total="(total, range) => `共 ${total} 条，当前 ${range[0]}-${range[1]}`"
+          :page-size-options="['10', '15', '20', '25', '30']"
+        />
+      </template>
+      <!-- Step 2-4: 上一步/下一步/导出 -->
+      <template v-else>
+        <a-button @click="prevStep" class="footer-btn">
+          上一步
+        </a-button>
+        <div class="footer-spacer" />
+        <a-button
+          v-if="currentStep === 4"
+          type="primary"
+          @click="exportDialogVisible = true"
+          class="footer-btn"
+        >
+          <template #icon><ExportOutlined /></template>
+          导出文件
+        </a-button>
+        <a-button
+          v-if="currentStep < 4"
+          type="primary"
+          :disabled="currentStep === 2 && versionList.length > 0 && !selectedVersion"
+          @click="nextStep"
+          class="footer-btn"
+        >
+          下一步
+        </a-button>
+      </template>
     </div>
 
     <!-- 导出弹窗 -->
@@ -318,14 +405,16 @@ import { message } from 'ant-design-vue'
 import {
   SearchOutlined, CodeOutlined, EditOutlined, CheckCircleFilled,
   FileTextOutlined, CopyOutlined, ExportOutlined,
-  FileOutlined, FolderOutlined, UserOutlined
+  FileOutlined, FolderOutlined, UserOutlined,
+  StarOutlined, TagsOutlined, InfoCircleOutlined, DownloadOutlined
 } from '@ant-design/icons-vue'
 import { getTemplates, getCategories, getLanguages } from '@/api/templates'
+import { listReleases } from '@/api/releases'
 import VariableForm from './VariableForm.vue'
 
 // 步骤
 const currentStep = ref(1)
-const steps = [{ title: '选择模板' }, { title: '配置变量' }, { title: '预览导出' }]
+const steps = [{ title: '选择模板' }, { title: '模板详情' }, { title: '配置变量' }, { title: '预览导出' }]
 
 // 模板
 const templates = ref([])
@@ -334,6 +423,22 @@ const selectedType = ref('all')
 const selectedLang = ref('all')
 const loading = ref(false)
 const selectedTemplate = ref(null)
+
+// 分页
+const currentPage = ref(1)
+const pageSizeRef = ref(12)
+
+// 版本
+const versionList = ref([])
+const selectedVersion = ref('')
+const loadingVersions = ref(false)
+
+const versionOptions = computed(() =>
+  versionList.value.map(v => ({
+    label: v.version + (v.isLatest ? ' (最新)' : '') + (v.isDeprecated ? ' (已弃用)' : ''),
+    value: v.version,
+  }))
+)
 
 // 分类和语言（从 API 加载）
 const categories = ref([{ id: 'all', name: '全部' }])
@@ -403,6 +508,17 @@ const filteredTemplates = computed(() => {
     result = result.filter(t => t.languages?.some(l => l.languageId === Number(selectedLang.value)))
   }
   return result
+})
+
+// 分页后的模板列表
+const paginatedTemplates = computed(() => {
+  const start = (currentPage.value - 1) * pageSizeRef.value
+  return filteredTemplates.value.slice(start, start + pageSizeRef.value)
+})
+
+// 筛选条件变化时重置页码
+watch([searchText, selectedType, selectedLang], () => {
+  currentPage.value = 1
 })
 
 onMounted(async () => {
@@ -475,23 +591,43 @@ const onProjectChange = async (projectId) => {
   } catch {}
 }
 
-const selectTemplate = (tpl) => {
+const selectTemplate = async (tpl) => {
   selectedTemplate.value = tpl
+  currentStep.value = 2
+  await loadVersions(tpl.id)
+}
+
+const loadVersions = async (templateId) => {
+  loadingVersions.value = true
+  versionList.value = []
+  selectedVersion.value = ''
+  try {
+    const res = await listReleases(templateId)
+    if (res?.data?.versions) {
+      versionList.value = res.data.versions
+      const latest = versionList.value.find(v => v.isLatest)
+      selectedVersion.value = latest?.version || versionList.value[0]?.version || ''
+    }
+  } catch (e) {
+    console.error('加载版本列表失败:', e)
+  } finally {
+    loadingVersions.value = false
+  }
 }
 
 // 步骤导航
 const nextStep = async () => {
-  if (currentStep.value === 1) {
-    if (!selectedTemplate.value) {
-      message.warning('请先选择一个模板')
+  if (currentStep.value === 2) {
+    if (versionList.value.length > 0 && !selectedVersion.value) {
+      message.warning('请选择一个版本')
       return
     }
     await loadSchema()
-    currentStep.value = 2
-  } else if (currentStep.value === 2) {
+    currentStep.value = 3
+  } else if (currentStep.value === 3) {
     await doRender()
     if (renderResult.value.length > 0 || renderError.value) {
-      currentStep.value = 3
+      currentStep.value = 4
     }
   }
 }
@@ -510,6 +646,7 @@ const loadSchema = async () => {
   try {
     const schemaStr = await invoke('get_template_variables', {
       templateId: String(selectedTemplate.value.id),
+      version: selectedVersion.value || null,
     })
     if (schemaStr) {
       const parsed = JSON.parse(schemaStr)
@@ -658,7 +795,7 @@ const doRender = async () => {
     const resultJson = await invoke('render_template_preview', {
       templateId: String(selectedTemplate.value.id),
       variables: vars,
-      version: null,
+      version: selectedVersion.value || null,
     })
     const parsed = JSON.parse(resultJson)
     renderResult.value = Array.isArray(parsed) ? parsed : []
@@ -812,7 +949,7 @@ const doExport = async () => {
     const vars = buildVariablesJson()
     const resultJson = await invoke('cmd_render_and_export', {
       templateId: String(selectedTemplate.value.id),
-      version: null,
+      version: selectedVersion.value || null,
       variablesJson: vars,
       outputDir: exportDir.value.trim(),
     })
@@ -1218,7 +1355,93 @@ onBeforeUnmount(() => {
   font-weight: 500;
 }
 
-/* Step 2: Variables */
+/* Step 2: Template Detail */
+.template-detail {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 48px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.detail-header {
+  margin-bottom: 24px;
+}
+
+.detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.detail-name {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.detail-desc {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  line-height: 1.8;
+  margin: 0;
+}
+
+.detail-section {
+  margin-bottom: 28px;
+}
+
+.detail-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.languages-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.no-lang {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.intro-markdown {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 20px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.step-arrow {
+  color: var(--color-text-muted);
+  font-size: 18px;
+  user-select: none;
+  margin: 0 -8px;
+}
+
+/* Step 3: Variables */
 .variables-layout {
   display: flex;
   flex: 1;
@@ -1390,7 +1613,7 @@ onBeforeUnmount(() => {
   color: var(--color-error);
 }
 
-/* Step 3: Preview */
+/* Step 4: Preview */
 .preview-layout {
   flex: 1;
   display: flex;
@@ -1499,10 +1722,13 @@ onBeforeUnmount(() => {
 
 /* Footer */
 .wizard-footer {
+  height: 56px;
   display: flex;
   align-items: center;
-  padding: 12px 24px;
+  justify-content: center;
+  padding: 0 24px;
   border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
   flex-shrink: 0;
   gap: 8px;
 }
