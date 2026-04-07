@@ -3,95 +3,19 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use template_studio_template_core::{render_string, TemplateFile, Variables};
 use tauri::Manager;
-use std::collections::HashMap;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
 
 mod config;
 mod database;
+mod state;
+mod ddl;
 
 use config::Config;
-use database::{Database, TestConnectionParams, DatasourceParams, import_tables_from_datasource,
+use database::{Database, TestConnectionParams, DatasourceParams};
+use database::import::{import_tables_from_datasource,
                 fetch_mysql_tables, fetch_postgresql_tables, fetch_sqlite_tables, import_single_table};
-
-/// 数据库状态包装器，用于线程安全的异步访问
-pub struct DbState(Arc<Database>);
-
-impl Clone for DbState {
-    fn clone(&self) -> Self {
-        DbState(Arc::clone(&self.0))
-    }
-}
-
-impl AsRef<Database> for DbState {
-    fn as_ref(&self) -> &Database {
-        &self.0
-    }
-}
-
-// ===== 浏览器连接池缓存 =====
-
-use sqlx::mysql::MySqlPool;
-use sqlx::postgres::PgPool;
-use sqlx::sqlite::SqlitePool;
-
-enum BrowserPool {
-    MySQL(MySqlPool),
-    PostgreSQL(PgPool),
-    SQLite(SqlitePool),
-}
-
-struct BrowserPoolCache {
-    pools: Mutex<HashMap<String, BrowserPool>>,
-}
-
-impl BrowserPoolCache {
-    fn new() -> Self {
-        Self { pools: Mutex::new(HashMap::new()) }
-    }
-
-    async fn get_or_create_mysql(&self, url: &str) -> Result<MySqlPool, String> {
-        {
-            let pools = self.pools.lock().unwrap();
-            if let Some(BrowserPool::MySQL(pool)) = pools.get(url) {
-                return Ok(pool.clone());
-            }
-        }
-        let pool = MySqlPool::connect(url).await
-            .map_err(|e| format!("连接失败: {}", e))?;
-        let mut pools = self.pools.lock().unwrap();
-        pools.insert(url.to_string(), BrowserPool::MySQL(pool.clone()));
-        Ok(pool)
-    }
-
-    async fn get_or_create_pg(&self, url: &str) -> Result<PgPool, String> {
-        {
-            let pools = self.pools.lock().unwrap();
-            if let Some(BrowserPool::PostgreSQL(pool)) = pools.get(url) {
-                return Ok(pool.clone());
-            }
-        }
-        let pool = PgPool::connect(url).await
-            .map_err(|e| format!("连接失败: {}", e))?;
-        let mut pools = self.pools.lock().unwrap();
-        pools.insert(url.to_string(), BrowserPool::PostgreSQL(pool.clone()));
-        Ok(pool)
-    }
-
-    async fn get_or_create_sqlite(&self, url: &str) -> Result<SqlitePool, String> {
-        {
-            let pools = self.pools.lock().unwrap();
-            if let Some(BrowserPool::SQLite(pool)) = pools.get(url) {
-                return Ok(pool.clone());
-            }
-        }
-        let pool = SqlitePool::connect(url).await
-            .map_err(|e| format!("连接失败: {}", e))?;
-        let mut pools = self.pools.lock().unwrap();
-        pools.insert(url.to_string(), BrowserPool::SQLite(pool.clone()));
-        Ok(pool)
-    }
-}
+use state::{DbState, BrowserPoolCache};
+use ddl::{PushColumnDef, generate_create_table_ddl};
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -1243,76 +1167,6 @@ async fn cmd_execute_sql_on_remote(
     Ok("ok".to_string())
 }
 
-/// 将本地表同步到远程数据库（在 Rust 端生成 DDL 并执行）
-#[derive(serde::Deserialize)]
-struct PushColumnDef {
-    name: String,
-    data_type: String,
-    length: Option<i64>,
-    is_nullable: bool,
-    is_primary_key: bool,
-    default_value: Option<String>,
-    comment: Option<String>,
-}
-
-fn generate_create_table_ddl(
-    table_name: &str,
-    table_engine: Option<&str>,
-    table_comment: Option<&str>,
-    columns: &[PushColumnDef],
-) -> String {
-    let name = table_name.trim_matches('`');
-    let mut col_defs: Vec<String> = Vec::new();
-
-    for col in columns {
-        let col_name = col.name.trim_matches('`');
-        let mut def = format!("`{}` {}", col_name, col.data_type);
-        if let Some(len) = col.length {
-            if len > 0 {
-                def += &format!("({})", len);
-            }
-        }
-        if !col.is_nullable {
-            def += " NOT NULL";
-        }
-        if let Some(ref dv) = col.default_value {
-            if !dv.is_empty() {
-                def += &format!(" DEFAULT {}", dv);
-            }
-        }
-        if let Some(ref c) = col.comment {
-            if !c.is_empty() {
-                let escaped = c.replace('\'', "''");
-                def += &format!(" COMMENT '{}'", escaped);
-            }
-        }
-        col_defs.push(def);
-    }
-
-    let pks: Vec<String> = columns.iter()
-        .filter(|c| c.is_primary_key)
-        .map(|c| format!("`{}`", c.name.trim_matches('`')))
-        .collect();
-    if !pks.is_empty() {
-        col_defs.push(format!("PRIMARY KEY ({})", pks.join(", ")));
-    }
-
-    let mut sql = format!("CREATE TABLE `{}` (\n  {}\n)", name, col_defs.join(",\n  "));
-    if let Some(engine) = table_engine {
-        if !engine.is_empty() {
-            sql += &format!(" ENGINE={}", engine);
-        }
-    }
-    if let Some(comment) = table_comment {
-        if !comment.is_empty() {
-            let escaped = comment.replace('\'', "''");
-            sql += &format!(" COMMENT='{}'", escaped);
-        }
-    }
-    sql += ";";
-    sql
-}
-
 #[tauri::command]
 async fn cmd_push_table_to_remote(
     params: TestConnectionParams,
@@ -2025,7 +1879,7 @@ async fn cmd_parse_sql_and_create(
 ) -> Result<String, String> {
     let db = database.as_ref();
 
-    database::parse_and_create_from_sql(
+    database::import::parse_and_create_from_sql(
         db.pool(),
         project_id,
         &sql_content,
@@ -3007,7 +2861,7 @@ async fn parse_ai_sql(
 ) -> Result<String, String> {
     let db = database.as_ref();
 
-    database::parse_sql_only(db.pool(), project_id, &sql, &dialect).await
+    database::import::parse_sql_only(db.pool(), project_id, &sql, &dialect).await
 }
 
 /// 执行 AI 生成的 SQL（在数据库中创建表）
@@ -3020,7 +2874,7 @@ async fn execute_ai_sql(
 ) -> Result<String, String> {
     let db = database.as_ref();
 
-    database::parse_and_create_from_sql(db.pool(), project_id, &sql, &dialect).await
+    database::import::parse_and_create_from_sql(db.pool(), project_id, &sql, &dialect).await
 }
 
 /// 获取默认 API 端点
@@ -3319,7 +3173,7 @@ pub fn run() {
                     Ok(database) => {
                         println!("数据库初始化完成");
                         // 将数据库存储为应用状态
-                        let db_state = DbState(Arc::new(database));
+                        let db_state = DbState::new(database);
                         handle.manage(db_state);
                         handle.manage(BrowserPoolCache::new());
                     }
@@ -3442,103 +3296,4 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn make_col(name: &str, data_type: &str, length: Option<i64>, nullable: bool, pk: bool) -> PushColumnDef {
-        PushColumnDef {
-            name: name.to_string(),
-            data_type: data_type.to_string(),
-            length,
-            is_nullable: nullable,
-            is_primary_key: pk,
-            default_value: None,
-            comment: None,
-        }
-    }
-
-    #[test]
-    fn test_basic_table() {
-        let cols = vec![
-            make_col("id", "bigint", None, false, true),
-            make_col("name", "varchar", Some(50), false, false),
-        ];
-        let ddl = generate_create_table_ddl("user", None, None, &cols);
-        println!("DDL:\n{}", ddl);
-        assert!(ddl.contains("`id` bigint NOT NULL"));
-        assert!(ddl.contains("`name` varchar(50) NOT NULL"));
-        assert!(ddl.contains("PRIMARY KEY (`id`)"));
-        assert!(ddl.starts_with("CREATE TABLE `user`"));
-    }
-
-    #[test]
-    fn test_nullable_and_length_none() {
-        let cols = vec![
-            make_col("id", "bigint", None, false, true),
-            make_col("gender", "tinyint", None, true, false),
-            make_col("is_active", "tinyint", None, true, false),
-            make_col("score", "decimal", Some(10), true, false),
-        ];
-        let ddl = generate_create_table_ddl("test_table", Some("InnoDB"), Some("测试表"), &cols);
-        println!("DDL:\n{}", ddl);
-        assert!(ddl.contains("`gender` tinyint"), "expected tinyint without length, got: {}", ddl);
-        assert!(!ddl.contains("tinyint("), "should not have tinyint(length), got: {}", ddl);
-        assert!(ddl.contains("`score` decimal(10)"));
-        assert!(ddl.contains("ENGINE=InnoDB"));
-        assert!(ddl.contains("COMMENT='测试表'"));
-    }
-
-    #[test]
-    fn test_backtick_stripping() {
-        let cols = vec![
-            PushColumnDef {
-                name: "`id`".to_string(),
-                data_type: "bigint".to_string(),
-                length: None,
-                is_nullable: false,
-                is_primary_key: true,
-                default_value: None,
-                comment: None,
-            },
-        ];
-        let ddl = generate_create_table_ddl("`user`", None, None, &cols);
-        println!("DDL:\n{}", ddl);
-        assert!(ddl.contains("CREATE TABLE `user`"));
-        assert!(!ddl.contains("``"));
-        assert!(ddl.contains("`id` bigint NOT NULL"));
-    }
-
-    #[test]
-    fn test_length_some_1() {
-        let cols = vec![
-            make_col("id", "bigint", None, false, true),
-            make_col("status", "tinyint", Some(1), false, false),
-        ];
-        let ddl = generate_create_table_ddl("item", None, None, &cols);
-        println!("DDL:\n{}", ddl);
-        assert!(ddl.contains("`status` tinyint(1) NOT NULL"));
-    }
-
-    #[test]
-    fn test_default_value_and_comment() {
-        let cols = vec![
-            make_col("id", "bigint", None, false, true),
-            PushColumnDef {
-                name: "status".to_string(),
-                data_type: "int".to_string(),
-                length: None,
-                is_nullable: true,
-                is_primary_key: false,
-                default_value: Some("0".to_string()),
-                comment: Some("状态".to_string()),
-            },
-        ];
-        let ddl = generate_create_table_ddl("task", None, None, &cols);
-        println!("DDL:\n{}", ddl);
-        assert!(ddl.contains("DEFAULT 0"));
-        assert!(ddl.contains("COMMENT '状态'"));
-    }
 }
