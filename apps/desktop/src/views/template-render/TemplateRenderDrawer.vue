@@ -309,6 +309,7 @@ import {
 import { getCategories, getLanguages } from '@/api/templates'
 import { listReleases } from '@/api/releases'
 import { getAllProjects, getProjectTables } from '@/api/projects'
+import { getTemplateVariables } from '@/api/templateVariables'
 import VariableForm from './VariableForm.vue'
 
 const props = defineProps({
@@ -484,31 +485,36 @@ const loadSchema = async () => {
   renderError.value = ''
 
   try {
-    const schemaStr = await invoke('get_template_variables', {
-      templateId: String(props.template.id),
-      version: selectedVersion.value || null,
-    })
-    if (schemaStr) {
-      const parsed = JSON.parse(schemaStr)
-      schema.value = parsed
+    const res = await getTemplateVariables(props.template.id, selectedVersion.value)
+    if (res?.data?.fieldSchemaJson) {
+      const raw = JSON.parse(res.data.fieldSchemaJson)
+      const defMap = { string: '', number: 0, boolean: false, text: '', select: undefined, 'multi-select': [], object: '{}', array: '[]' }
+      const fields = Object.entries(raw).map(([name, cfg]) => ({
+        name,
+        title: cfg.title || name,
+        description: cfg.description || '',
+        type: cfg.type || 'string',
+        required: !!cfg.required,
+        default: cfg.default !== undefined ? cfg.default : (defMap[cfg.type] ?? ''),
+        min: cfg.min,
+        max: cfg.max,
+        maxLength: cfg.maxLength,
+        trueText: cfg.trueText,
+        falseText: cfg.falseText,
+        options: cfg.options?.map(o => ({ label: o.label || o, value: o.value !== undefined ? o.value : o })),
+      }))
+      schema.value = { fields }
       const defaults = {}
-      for (const field of parsed.fields || []) {
-        if (field.default !== undefined) {
-          defaults[field.name] = field.default
-        } else if (field.type === 'boolean') {
-          defaults[field.name] = false
-        } else if (field.type === 'multi-select') {
-          defaults[field.name] = []
-        } else if (field.type === 'number') {
-          defaults[field.name] = 0
-        } else {
-          defaults[field.name] = ''
-        }
+      for (const field of fields) {
+        defaults[field.name] = field.default
       }
       variables.value = defaults
+    } else {
+      schema.value = { fields: [] }
     }
   } catch (e) {
     console.error('加载变量定义失败:', e)
+    schema.value = { fields: [] }
   }
   syncToJson()
 }
