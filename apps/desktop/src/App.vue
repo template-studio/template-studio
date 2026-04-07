@@ -1,15 +1,17 @@
 <script setup>
-import { onMounted, onBeforeUnmount, computed } from 'vue'
+import { onMounted, onBeforeUnmount, computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { theme } from 'ant-design-vue'
 import { useThemeStore } from '@/stores/theme'
 import { useConfigStore } from '@/stores/config'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ProjectWorkspaceLayout from '@/components/layout/ProjectWorkspaceLayout.vue'
+import GlobalSearch from '@/components/common/GlobalSearch.vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 
 const route = useRoute()
 const themeStore = useThemeStore()
+const globalSearchRef = ref(null)
 const configStore = useConfigStore()
 
 // Ant Design 主题配置
@@ -51,6 +53,14 @@ const handleGlobalContextMenu = (event) => {
   event.preventDefault()
 }
 
+// 全局搜索快捷键处理
+const handleGlobalKeydown = (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault()
+    globalSearchRef.value?.open()
+  }
+}
+
 onMounted(async () => {
   // 先加载配置（包含 API URL）
   await configStore.loadConfig()
@@ -60,11 +70,15 @@ onMounted(async () => {
 
   // 全局禁用右键菜单
   document.addEventListener('contextmenu', handleGlobalContextMenu)
+
+  // 全局搜索快捷键 Ctrl+K / Cmd+K
+  document.addEventListener('keydown', handleGlobalKeydown)
 })
 
 onBeforeUnmount(() => {
   // 清理事件监听
   document.removeEventListener('contextmenu', handleGlobalContextMenu)
+  document.removeEventListener('keydown', handleGlobalKeydown)
 })
 </script>
 
@@ -76,6 +90,9 @@ onBeforeUnmount(() => {
 
       <!-- 项目工作区布局 -->
       <ProjectWorkspaceLayout v-else />
+
+      <!-- 全局搜索 -->
+      <GlobalSearch ref="globalSearchRef" />
     </div>
   </a-config-provider>
 </template>
