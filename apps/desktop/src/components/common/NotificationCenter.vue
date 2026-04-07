@@ -1,4 +1,5 @@
 <template>
+  <div class="notification-wrapper titlebar-no-drag">
   <a-popover
     v-model:open="popoverVisible"
     trigger="click"
@@ -56,12 +57,13 @@
     <!-- 铃铛图标 -->
     <a-button type="text" class="notification-trigger titlebar-no-drag">
       <template #icon>
-        <a-badge :count="store.unreadCount" :offset="[-4, 4]" :overflow-count="99">
+        <a-badge :count="store.unreadCount" :offset="[-4, 4]" :overflow-count="99" class="bell-badge">
           <BellOutlined class="bell-icon" />
         </a-badge>
       </template>
     </a-button>
   </a-popover>
+  </div>
 </template>
 
 <script setup>
@@ -101,6 +103,12 @@ function formatTime(time) {
 </script>
 
 <style scoped>
+.notification-wrapper {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+}
+
 .notification-trigger {
   width: 32px;
   height: 32px;
@@ -109,6 +117,8 @@ function formatTime(time) {
   justify-content: center;
   color: var(--color-text-secondary);
   transition: all var(--transition-fast);
+  cursor: pointer;
+  -webkit-app-region: no-drag;
 }
 
 .notification-trigger:hover {
@@ -118,6 +128,15 @@ function formatTime(time) {
 
 .bell-icon {
   font-size: 16px;
+  cursor: pointer;
+}
+
+.bell-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
 }
 
 /* 面板 */
