@@ -45,7 +45,7 @@
           </div>
           <div v-if="wizardData.template?.introduction" class="intro-section">
             <h3><FileTextOutlined /> 详细介绍</h3>
-            <div class="intro-markdown">{{ wizardData.template.introduction }}</div>
+            <div class="intro-markdown" v-html="renderedIntro"></div>
           </div>
           <a-alert v-if="versionList.length === 0 && !isDownloading" message="该模板暂未开放使用" description="此模板正在准备中，请稍后再来" type="info" show-icon style="margin-bottom:24px;"><template #icon><InfoCircleOutlined /></template></a-alert>
           <div v-if="isDownloading" class="intro-section">
@@ -158,6 +158,7 @@
 import { ref, computed, watch, h, nextTick, onBeforeUnmount } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
+import { marked } from 'marked'
 import { debounce } from 'lodash-es'
 import { UserOutlined, FolderOpenOutlined, WarningOutlined, SettingOutlined, StarOutlined, EditOutlined, CodeOutlined, FileTextOutlined, CheckCircleOutlined, TagsOutlined, DownloadOutlined, LoadingOutlined, InfoCircleOutlined, FileOutlined, FolderOutlined, CopyOutlined } from '@ant-design/icons-vue'
 import { getCategories, getLanguages } from '@/api/templates'
@@ -197,6 +198,11 @@ const categories = ref([{ id: 'all', name: '全部' }]); const languages = ref([
 const versionOptions = computed(() => versionList.value.map(v => ({
   label: `${v.version}${v.isLatest ? ' (当前)' : ''}${v.isDeprecated ? ' [已弃用]' : ''}`, value: v.version
 })))
+const renderedIntro = computed(() => {
+  const text = wizardData.value.template?.introduction
+  if (!text) return ''
+  return marked(text)
+})
 const finalOutputPath = computed(() => {
   if (!wizardData.value.outputDir || !wizardData.value.projectName) return ''
   return `${wizardData.value.outputDir.replace(/[\\/]+$/, '')}\\${wizardData.value.projectName}`
@@ -443,7 +449,21 @@ onBeforeUnmount(() => { if (editorView) editorView.destroy(); if (jsonEditor) js
 .intro-section { margin-bottom: 32px; }
 .intro-section h3 { font-size: 18px; font-weight: 600; color: var(--color-text); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 .languages-list { display: flex; flex-wrap: wrap; gap: 12px; }
-.intro-markdown { background: var(--color-surface); padding: 20px; border-radius: var(--border-radius-md); border: 1px solid var(--color-border); line-height: 1.8; color: var(--color-text-secondary); font-size: 14px; }
+.intro-markdown { line-height: 1.8; color: var(--color-text-secondary); font-size: 14px; max-height: 400px; overflow-y: auto; }
+.intro-markdown :deep(h1), .intro-markdown :deep(h2), .intro-markdown :deep(h3), .intro-markdown :deep(h4) { color: var(--color-text); margin: 16px 0 8px; font-weight: 600; }
+.intro-markdown :deep(h1) { font-size: 20px; } .intro-markdown :deep(h2) { font-size: 18px; } .intro-markdown :deep(h3) { font-size: 16px; }
+.intro-markdown :deep(p) { margin: 8px 0; }
+.intro-markdown :deep(code) { background: var(--color-bg-elevated); padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'Consolas', 'Monaco', monospace; }
+.intro-markdown :deep(pre) { background: var(--color-bg-elevated); border: 1px solid var(--color-border); border-radius: 6px; padding: 12px 16px; overflow-x: auto; margin: 12px 0; }
+.intro-markdown :deep(pre code) { background: none; padding: 0; }
+.intro-markdown :deep(ul), .intro-markdown :deep(ol) { padding-left: 20px; margin: 8px 0; }
+.intro-markdown :deep(li) { margin: 4px 0; }
+.intro-markdown :deep(blockquote) { border-left: 3px solid var(--color-primary); padding-left: 12px; margin: 12px 0; color: var(--color-text-muted); }
+.intro-markdown :deep(a) { color: var(--color-primary); text-decoration: none; }
+.intro-markdown :deep(table) { border-collapse: collapse; width: 100%; margin: 12px 0; }
+.intro-markdown :deep(th), .intro-markdown :deep(td) { border: 1px solid var(--color-border); padding: 8px 12px; text-align: left; }
+.intro-markdown :deep(th) { background: var(--color-bg-elevated); font-weight: 600; }
+.intro-markdown :deep(hr) { border: none; border-top: 1px solid var(--color-border); margin: 16px 0; }
 .wizard-footer { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
 .wizard-footer .footer-btn { height: 32px !important; font-size: 13px !important; margin: 0 !important; }
 .wizard-content .ant-form-item { margin-bottom: 24px; }

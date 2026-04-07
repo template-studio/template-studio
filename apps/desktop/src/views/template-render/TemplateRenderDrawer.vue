@@ -89,7 +89,7 @@
           <!-- 详细介绍 -->
           <div v-if="template?.introduction" class="detail-section">
             <h3 class="detail-section-title"><FileTextOutlined /> 详细介绍</h3>
-            <div class="intro-markdown">{{ template.introduction }}</div>
+            <div class="intro-markdown" v-html="renderedIntro"></div>
           </div>
         </div>
       </div>
@@ -305,6 +305,7 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount, h } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { message } from 'ant-design-vue'
+import { marked } from 'marked'
 import {
   CodeOutlined, EditOutlined,
   FileTextOutlined, CopyOutlined, ExportOutlined,
@@ -336,6 +337,12 @@ const versionOptions = computed(() =>
     value: v.version,
   }))
 )
+
+const renderedIntro = computed(() => {
+  const text = props.template?.introduction
+  if (!text) return ''
+  return marked(text)
+})
 
 // 分类和语言
 const categories = ref([])
@@ -993,16 +1000,100 @@ onBeforeUnmount(() => {
 }
 
 .intro-markdown {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 20px;
   font-size: 14px;
   line-height: 1.8;
   color: var(--color-text-secondary);
-  white-space: pre-wrap;
   max-height: 400px;
   overflow-y: auto;
+}
+
+.intro-markdown :deep(h1),
+.intro-markdown :deep(h2),
+.intro-markdown :deep(h3),
+.intro-markdown :deep(h4) {
+  color: var(--color-text);
+  margin: 16px 0 8px;
+  font-weight: 600;
+}
+
+.intro-markdown :deep(h1) { font-size: 20px; }
+.intro-markdown :deep(h2) { font-size: 18px; }
+.intro-markdown :deep(h3) { font-size: 16px; }
+
+.intro-markdown :deep(p) {
+  margin: 8px 0;
+}
+
+.intro-markdown :deep(code) {
+  background: var(--color-bg-elevated);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.intro-markdown :deep(pre) {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.intro-markdown :deep(pre code) {
+  background: none;
+  padding: 0;
+}
+
+.intro-markdown :deep(ul),
+.intro-markdown :deep(ol) {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.intro-markdown :deep(li) {
+  margin: 4px 0;
+}
+
+.intro-markdown :deep(blockquote) {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 12px;
+  margin: 12px 0;
+  color: var(--color-text-muted);
+}
+
+.intro-markdown :deep(a) {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.intro-markdown :deep(a:hover) {
+  text-decoration: underline;
+}
+
+.intro-markdown :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+}
+
+.intro-markdown :deep(th),
+.intro-markdown :deep(td) {
+  border: 1px solid var(--color-border);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.intro-markdown :deep(th) {
+  background: var(--color-bg-elevated);
+  font-weight: 600;
+}
+
+.intro-markdown :deep(hr) {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 16px 0;
 }
 
 /* Step 2: Variables */
