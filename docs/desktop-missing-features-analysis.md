@@ -1,7 +1,7 @@
 # Template Studio Desktop 应用功能分析与进展报告
 
 > 初始分析日期：2026-06-08
-> 最后更新：2026-06-16
+> 最后更新：2026-06-17
 > 分析范围：`apps/desktop/` 目录下的完整代码
 
 ---
@@ -206,6 +206,48 @@
 - ✅ 后端新增 `cmd_push_table_to_remote` 命令和 `cmd_execute_sql_on_remote` 命令
 - ✅ 后端新增 `PushColumnDef` 结构体和 `generate_create_table_ddl` 函数
 
+### 2026-06-17 完成
+
+#### 18. 模板渲染功能 ✅
+
+**文件：** `src/views/template-render/index.vue`、`src/views/template-render/TemplateRenderDrawer.vue`、`src/views/template-render/VariableForm.vue`
+
+**后端：** `src-tauri/src/lib.rs`（改造 `get_template_variables`、新增 `cmd_render_and_export`）
+
+- ✅ 独立全局页面（路由 `/template-render`，侧边栏菜单"模板渲染"）
+- ✅ 模板网格页面（与脚手架页面风格一致）
+  - 顶部工具栏（标题 + 搜索 + 排序）
+  - 分类/语言筛选栏（radio 按钮组）
+  - 模板卡片（代码预览头、推荐徽章、语言标签、头像、创建时间）
+  - 全局 Footer 分页（`footerRoutes` 已注册）
+- ✅ 全屏抽屉向导（`a-drawer width='100vw'`，与脚手架 TemplateWizardDrawer 一致）
+  - 3 步流程：模板详情 → 配置变量 → 预览导出
+  - 步骤指示器（圆点 + 箭头连接）
+- ✅ 模板详情步骤
+  - 模板名称 + 分类标签 + 推荐徽章
+  - 模板描述
+  - 版本选择（`listReleases` API，默认选中最新版）
+  - 支持的语言标签
+  - 详细介绍（`marked` markdown 渲染，完整样式支持）
+- ✅ 配置变量步骤
+  - Schema 驱动表单（`VariableForm` 组件，按 `variables.json` 生成）
+  - 普通模式 / 高级模式（CodeMirror JSON 编辑器）切换
+  - 上下文注入（项目信息 + 表信息，独立 ref 绑定）
+  - 变量通过 HTTP API `getTemplateVariables` 加载（与脚手架一致）
+- ✅ 预览导出步骤
+  - 文件树（`a-tree`）+ CodeMirror 代码预览（语法高亮 + 只读）
+  - 文件复制
+  - 导出到指定目录（`cmd_render_and_export` 命令）
+- ✅ 脚手架页面同步优化
+  - 移除模板卡片"使用"按钮（点击卡片直接打开向导）
+  - 详细介绍 markdown 渲染（`marked` 库）
+
+**关键技术决策：**
+- 模板数据通过 HTTP API 获取（`getTemplates`、`getCategories`、`getLanguages`、`listReleases`、`getTemplateVariables`）
+- 项目/表数据通过 Tauri 命令获取（`db_get_all_projects`、`db_get_project_tables`）
+- 变量 schema 格式转换：API 返回 `{ fieldName: { title, type, ... } }` → 组件需要 `{ fields: [...] }`
+- Checkbox 使用独立 `ref` 而非 `ref({})` 嵌套对象属性（避免 drawer 内响应式问题）
+
 ---
 
 ### 4. ProjectWorkspaceView (项目工作区)
@@ -321,9 +363,15 @@
 ### 11. HelpView (帮助页面)
 
 **文件：** `src/views/HelpView.vue`
-**状态：** ❌ 完全未实现
+**状态：** ✅ 功能完整（2026-06-17 实现）
 
-仅有占位内容，无任何实际帮助文档或功能。
+**已实现：**
+- ✅ 快速开始 3 步骤卡片（创建数据源 → 管理项目表 → 生成代码）
+- ✅ 功能指南（6 个折叠面板：模板管理、数据源、项目、映射、渲染、设置）
+- ✅ 常见问题（5 个 FAQ 折叠面板）
+- ✅ 快捷键参考（双列网格，10 个快捷键）
+- ✅ 底部跳转链接（设置、关于）
+- ✅ Navbar 标题已添加 `/help: '帮助'`
 
 ---
 
@@ -614,8 +662,7 @@
 
 ### P2 - 体验优化
 
-3. **HelpView 空壳**
-   - 仅有占位文本 `<h1>Help22</h1>`
+3. ~~**HelpView 空壳**~~ ✅ 已完成 - 快速开始、功能指南、FAQ、快捷键参考
 
 4. **模板详情页**
    - 缺少独立的模板详细介绍页面
@@ -654,7 +701,7 @@
 
 ### 第三阶段：体验优化（进行中）
 
-11. **HelpView** - 添加基础帮助文档
+11. ~~**HelpView**~~ ✅ 已完成 - 快速开始、功能指南、FAQ、快捷键参考
 16. **模板详情页** - 添加独立的模板详细介绍页面
 17. **项目导出** - 实现项目配置导出功能
 
@@ -696,7 +743,7 @@
 
 Template Studio Desktop 应用的核心功能框架已基本搭建完成，第一阶段和第二阶段的核心功能已基本完成。
 
-**当前完成度：约 96%**
+**当前完成度：约 97%**
 
 **已完成：**
 - ✅ 首页动态化（统计卡片 + 最近项目）
@@ -720,6 +767,8 @@ Template Studio Desktop 应用的核心功能框架已基本搭建完成，第�
 - ✅ 404 路由和页面
 - ✅ 模板排序（最新/最早创建、名称排序、推荐优先）
 - ✅ 表结构对比与同步（双视图模式、列级 diff、双向同步、DDL 生成在 Rust 后端含单元测试）
+- ✅ 模板渲染功能（模板网格 + 全屏向导 + 变量表单 + 预览导出）
+- ✅ HelpView 帮助页面（快速开始、功能指南、FAQ、快捷键参考）
 
 **主要优势：**
 - 模板配置向导功能完整
@@ -736,8 +785,8 @@ Template Studio Desktop 应用的核心功能框架已基本搭建完成，第�
 - Schema 对比逻辑健壮（反引号处理、类型标准化、整数显示宽度智能忽略、默认值标准化）
 
 **下一步重点：**
-1. 代码生成独立入口（P0）— 在项目工作区添加独立的代码生成/预览页面
-2. HelpView（P2）— 添加基础帮助文档
+1. ~~代码生成独立入口（P0）~~ ✅ 已由模板渲染页面覆盖
+2. ~~HelpView（P2）~~ ✅ 已完成
 3. 模板详情页（P2）— 添加独立的模板详细介绍页面
 4. 全局搜索（P2）— 实现 Cmd+K 风格的全局搜索
 

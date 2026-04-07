@@ -105,7 +105,8 @@ const showSearch = ref(false)
 const currentPageTitle = computed(() => {
   const titleMap = {
     '/': '首页',
-    '/settings': '设置'
+    '/settings': '设置',
+    '/help': '帮助'
   }
   return titleMap[route.path] || '模板'
 })

@@ -373,6 +373,7 @@ const selectedFileKey = ref('')
 const expandedKeys = ref([])
 const currentFileName = ref('')
 const currentFileContent = ref('')
+const fileContentMap = new Map() // key -> { fileName, fileContent, isDirectory }
 
 // 导出
 const exportDialogVisible = ref(false)
@@ -387,7 +388,6 @@ let codeEditorView = null
 
 // 打开抽屉时加载版本
 watch(() => props.open, async (val) => {
-  console.log('drawer open:', val, 'template:', props.template?.id)
   if (val && props.template) {
     currentStep.value = 1
     await Promise.all([loadCategories(), loadLanguages(), loadProjects()])
@@ -659,14 +659,19 @@ const buildFileTree = () => {
   const flat = renderResult.value
   if (!Array.isArray(flat) || flat.length === 0) { fileTreeData.value = []; return }
 
-  const map = new Map()
-  flat.forEach(n => map.set(n.id, { ...n, children: [] }))
+  fileContentMap.clear()
+  const nodeMap = new Map()
+  flat.forEach(n => {
+    const key = n.key || n.id
+    nodeMap.set(n.id, { ...n, key, children: [] })
+    fileContentMap.set(key, { fileName: n.file_name, fileContent: n.file_content, isDirectory: n.is_directory === 1 })
+  })
   const roots = []
   flat.forEach(n => {
-    const cur = map.get(n.id)
+    const cur = nodeMap.get(n.id)
     if (n.parent_id === 0) roots.push(cur)
     else {
-      const p = map.get(n.parent_id)
+      const p = nodeMap.get(n.parent_id)
       if (p) p.children.push(cur)
     }
   })
@@ -678,12 +683,8 @@ const buildFileTree = () => {
         return d !== 0 ? d : (a.file_name || '').localeCompare(b.file_name || '')
       })
       .map(n => ({
-        key: n.key || n.id,
+        key: n.key,
         title: n.file_name || n.key,
-        fileName: n.file_name,
-        isDirectory: n.is_directory === 1,
-        filePath: n.file_path,
-        fileContent: n.file_content,
         icon: n.is_directory === 1 ? h(FolderOutlined) : h(FileOutlined),
         children: n.children?.length ? toAntTree(n.children) : [],
       }))
@@ -693,40 +694,35 @@ const buildFileTree = () => {
   expandedKeys.value = flat.filter(n => n.is_directory === 1).map(n => n.key || n.id).filter(Boolean)
 }
 
-const findFirstFile = (nodes) => {
+const findFirstFileKey = (nodes) => {
   for (const n of nodes) {
-    if (!n.isDirectory) return n
-    if (n.children?.length) { const f = findFirstFile(n.children); if (f) return f }
+    const info = fileContentMap.get(n.key)
+    if (info && !info.isDirectory) return n.key
+    if (n.children?.length) { const k = findFirstFileKey(n.children); if (k) return k }
   }
   return null
 }
 
 const selectFirstFile = () => {
-  const ff = findFirstFile(fileTreeData.value)
-  if (ff) {
-    selectedFileKey.value = ff.key
-    currentFileName.value = ff.fileName || ''
-    currentFileContent.value = ff.fileContent || ''
+  const key = findFirstFileKey(fileTreeData.value)
+  if (key) {
+    selectedFileKey.value = key
+    const info = fileContentMap.get(key)
+    currentFileName.value = info?.fileName || ''
+    currentFileContent.value = info?.fileContent || ''
     nextTick(() => createCodeEditor())
   }
 }
 
 const onFileSelect = (keys) => {
   if (!keys?.length) return
-  selectedFileKey.value = keys[0]
-
-  const find = (nodes, key) => {
-    for (const n of nodes) {
-      if (n.key === key) return n
-      if (n.children?.length) { const f = find(n.children, key); if (f) return f }
-    }
-    return null
-  }
-  const node = find(fileTreeData.value, keys[0])
-  if (!node) return
-  if (node.isDirectory) { currentFileName.value = ''; currentFileContent.value = ''; return }
-  currentFileName.value = node.fileName || ''
-  currentFileContent.value = node.fileContent || ''
+  const key = keys[0]
+  selectedFileKey.value = key
+  const info = fileContentMap.get(key)
+  if (!info) return
+  if (info.isDirectory) { currentFileName.value = ''; currentFileContent.value = ''; return }
+  currentFileName.value = info.fileName || ''
+  currentFileContent.value = info.fileContent || ''
   nextTick(() => createCodeEditor())
 }
 
