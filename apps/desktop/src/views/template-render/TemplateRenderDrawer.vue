@@ -299,6 +299,7 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount, h } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { message } from 'ant-design-vue'
+import { notify } from '@/utils/notify'
 import { marked } from 'marked'
 import {
   CodeOutlined, EditOutlined,
@@ -797,14 +798,14 @@ const doExport = async () => {
     })
     const result = JSON.parse(resultJson)
     if (result.errors?.length > 0) {
-      message.warning(`导出完成，${result.exported} 个文件成功，${result.errors.length} 个失败`)
+      notify({ type: 'warning', title: '导出完成（部分失败）', content: `${result.exported} 个文件成功，${result.errors.length} 个失败` })
     } else {
-      message.success(`导出成功，共 ${result.exported} 个文件`)
+      notify({ type: 'success', title: '导出成功', content: `共 ${result.exported} 个文件已导出到 ${exportDir.value}` })
     }
     exportDialogVisible.value = false
     emit('exported')
   } catch (e) {
-    message.error('导出失败: ' + e)
+    notify({ type: 'error', title: '导出失败', content: String(e) })
   } finally {
     exporting.value = false
   }

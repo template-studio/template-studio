@@ -102,6 +102,7 @@ import {
 } from '@ant-design/icons-vue'
 import { TableConfigDrawer } from '@/components/tableConfig'
 import { message, Modal } from 'ant-design-vue'
+import { notify } from '@/utils/notify'
 import { invoke } from '@tauri-apps/api/core'
 import { save } from '@tauri-apps/plugin-dialog'
 import * as projectsApi from '@/api/projects'
@@ -252,8 +253,8 @@ const exportTables = async () => {
       sql += ';\n\n'
     }
     const filePath = await save({ defaultPath: (project.value?.name || 'tables') + '.sql', filters: [{ name: 'SQL', extensions: ['sql'] }] })
-    if (filePath) { await invoke('write_file', { path: filePath, content: sql }); message.success('SQL 文件导出成功') }
-  } catch (error) { message.error('导出失败: ' + error) }
+    if (filePath) { await invoke('write_file', { path: filePath, content: sql }); notify({ type: 'success', title: 'SQL 文件导出成功', content: `已导出到 ${filePath}` }) }
+  } catch (error) { notify({ type: 'error', title: '导出失败', content: String(error) }) }
 }
 
 // 查看列详情
@@ -269,9 +270,9 @@ const onColumnsUpdated = async () => { await loadTables() }
 const deleteTable = async (table) => {
   try {
     await projectsApi.deleteTable(table.id)
-    message.success(`表 "${table.name}" 删除成功`)
+    notify({ type: 'success', title: '表删除成功', content: `表 "${table.name}" 已删除` })
     await loadTables()
-  } catch (error) { message.error('删除表失败: ' + error) }
+  } catch (error) { notify({ type: 'error', title: '删除表失败', content: String(error) }) }
 }
 
 // 批量删除表
@@ -282,10 +283,10 @@ const batchDeleteTables = async () => {
     onOk: async () => {
       try {
         await Promise.all(selectedRowKeys.value.map(id => projectsApi.deleteTable(id)))
-        message.success(`成功删除 ${selectedRowKeys.value.length} 张表`)
+        notify({ type: 'success', title: '批量删除成功', content: `成功删除 ${selectedRowKeys.value.length} 张表` })
         selectedRowKeys.value = []
         await loadTables()
-      } catch (error) { message.error('批量删除失败: ' + error) }
+      } catch (error) { notify({ type: 'error', title: '批量删除失败', content: String(error) }) }
     }
   })
 }

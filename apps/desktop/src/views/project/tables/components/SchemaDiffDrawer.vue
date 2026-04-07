@@ -148,6 +148,7 @@
 import { ref, watch } from 'vue'
 import { DiffOutlined, ArrowLeftOutlined, PlusCircleOutlined, MinusCircleOutlined, SyncOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
+import { notify } from '@/utils/notify'
 import { invoke } from '@tauri-apps/api/core'
 import * as projectsApi from '@/api/projects'
 
@@ -415,12 +416,12 @@ const handleImportSingle = async (table) => {
       engine: table.engine || null,
       rowCount: table.row_count || 0
     })
-    message.success(`表 "${table.name}" 导入成功`)
+    notify({ type: 'success', title: '表导入成功', content: `表 "${table.name}" 已导入到本地` })
     newTables.value = newTables.value.filter(t => t.name !== table.name)
     syncedTables.value.push(table)
     emit('synced')
   } catch (e) {
-    message.error('导入失败: ' + e)
+    notify({ type: 'error', title: '导入失败', content: String(e) })
   } finally {
     importingName.value = null
   }
@@ -473,11 +474,11 @@ const handlePushToRemote = async (table) => {
       tableComment: table.comment || null,
       columns
     })
-    message.success(`表 "${tableName}" 已同步到远程数据库`)
+    notify({ type: 'success', title: '同步到远程成功', content: `表 "${tableName}" 已同步到远程数据库` })
     removedTables.value = removedTables.value.filter(t => t.name !== table.name)
     syncedTables.value.push(table)
   } catch (e) {
-    message.error('同步到远程失败: ' + e)
+    notify({ type: 'error', title: '同步到远程失败', content: String(e) })
   } finally {
     pushingName.value = null
   }
@@ -486,11 +487,11 @@ const handlePushToRemote = async (table) => {
 const handleDeleteLocal = async (table) => {
   try {
     await projectsApi.deleteTable(table.id)
-    message.success(`本地表 "${table.name}" 已删除`)
+    notify({ type: 'success', title: '本地表已删除', content: `本地表 "${table.name}" 已删除` })
     removedTables.value = removedTables.value.filter(t => t.name !== table.name)
     emit('synced')
   } catch (e) {
-    message.error('删除失败: ' + e)
+    notify({ type: 'error', title: '删除失败', content: String(e) })
   }
 }
 
@@ -538,13 +539,13 @@ const handleSyncColumns = async () => {
     if (diff.added.length > 0) parts.push(`${diff.added.length} 新增`)
     if (diff.modified.length > 0) parts.push(`${diff.modified.length} 修改`)
     if (diff.removed.length > 0) parts.push(`${diff.removed.length} 删除`)
-    message.success('同步完成: ' + parts.join(', '))
+    notify({ type: 'success', title: '列同步完成', content: parts.join(', ') })
 
     view.value = 'overview'
     await fetchOverview()
     emit('synced')
   } catch (e) {
-    message.error('同步失败: ' + e)
+    notify({ type: 'error', title: '列同步失败', content: String(e) })
   } finally {
     syncing.value = false
   }

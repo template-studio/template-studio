@@ -134,6 +134,7 @@ import {
   SettingOutlined
 } from '@ant-design/icons-vue'
 import { Empty, message, Modal } from 'ant-design-vue'
+import { notify } from '@/utils/notify'
 import * as languagesApi from '@/api/languages'
 import { SearchBar } from '@/components/common'
 import { useLayoutStore } from '@/stores/layout'
@@ -304,10 +305,10 @@ const confirmDelete = (language) => {
     onOk: async () => {
       try {
         await languagesApi.deleteLanguage(language.id)
-        message.success('语言删除成功')
+        notify({ type: 'success', title: '语言删除成功', content: `语言 "${language.name}" 已删除` })
         await loadLanguages()
       } catch (error) {
-        message.error('删除失败: ' + error)
+        notify({ type: 'error', title: '删除失败', content: String(error) })
       }
     }
   })

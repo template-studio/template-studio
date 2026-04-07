@@ -44,6 +44,9 @@
     </div>
 
     <div class="navbar-right">
+      <!-- Notification Center -->
+      <NotificationCenter />
+
       <!-- Window Controls -->
       <div class="window-controls">
         <a-button
@@ -86,6 +89,7 @@ import { computed, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLayoutStore } from '@/stores/layout'
 import { tauriApi } from '@/utils/tauriApi'
+import NotificationCenter from '@/components/common/NotificationCenter.vue'
 import {
   MenuOutlined,
   MenuFoldOutlined,

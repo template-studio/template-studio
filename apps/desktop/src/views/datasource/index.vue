@@ -114,6 +114,7 @@ import {
   EyeOutlined, DashboardOutlined
 } from '@ant-design/icons-vue'
 import { Empty, message, Modal } from 'ant-design-vue'
+import { notify } from '@/utils/notify'
 import * as datasourcesApi from '@/api/datasources'
 import { SearchBar } from '@/components/common'
 import { useLayoutStore } from '@/stores/layout'
@@ -253,9 +254,9 @@ const testConnection = async (datasource) => {
     if (datasource.type_ === 'postgresql') params.database = datasource.database || 'postgres'
     if (datasource.type_ === 'sqlite') params.sqliteFile = datasource.sqlite_file
     const result = await datasourcesApi.testConnection(params)
-    message.success(result)
+    notify({ type: 'success', title: '连接测试成功', content: `${datasource.name}: ${result}` })
   } catch (error) {
-    message.error('连接测试失败: ' + error)
+    notify({ type: 'error', title: '连接测试失败', content: `${datasource.name}: ${error}` })
   }
 }
 
@@ -269,10 +270,10 @@ const confirmDelete = (datasource) => {
     onOk: async () => {
       try {
         await datasourcesApi.deleteDatasource(datasource.id)
-        message.success('数据源删除成功')
+        notify({ type: 'success', title: '数据源删除成功', content: `数据源 "${datasource.name}" 已删除` })
         await loadDatasources()
       } catch (error) {
-        message.error('删除失败: ' + error)
+        notify({ type: 'error', title: '删除失败', content: String(error) })
       }
     }
   })

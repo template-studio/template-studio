@@ -118,6 +118,7 @@ import {
   DeleteOutlined, EditOutlined, CodeOutlined
 } from '@ant-design/icons-vue'
 import { Empty, message, Modal } from 'ant-design-vue'
+import { notify } from '@/utils/notify'
 import { invoke } from '@tauri-apps/api/core'
 import * as projectsApi from '@/api/projects'
 import * as languagesApi from '@/api/languages'
@@ -280,9 +281,9 @@ const confirmDelete = (project) => {
     onOk: async () => {
       try {
         await projectsApi.deleteProject(project.id)
-        message.success('项目删除成功')
+        notify({ type: 'success', title: '项目删除成功', content: `项目 "${project.name}" 已删除` })
         await loadProjects()
-      } catch (error) { message.error('删除失败: ' + error) }
+      } catch (error) { notify({ type: 'error', title: '删除失败', content: String(error) }) }
     }
   })
 }
