@@ -240,6 +240,7 @@ const normalizeLocalColumn = (col) => {
   const { dataType, length } = parseColumnType(col.data_type)
   return {
     ...col,
+    name: stripBackticks(col.name),
     data_type: dataType,
     length: length != null ? length : (typeof col.length === 'number' ? col.length : null)
   }
@@ -370,12 +371,14 @@ const computeDiff = () => {
     } else {
       const details = []
       if (lCol.data_type !== rCol.data_type) details.push(`类型: ${lCol.data_type} → ${rCol.data_type}`)
-      if (lCol.length !== rCol.length && !(lCol.length == null && rCol.length == null)) details.push(`长度: ${lCol.length ?? '-'} → ${rCol.length ?? '-'}`)
+      // MySQL 整数类型 CHARACTER_MAXIMUM_LENGTH 为 NULL，但 COLUMN_TYPE 含显示宽度如 bigint(20)，忽略单侧为空的长度差异
+      if (lCol.length != null && rCol.length != null && lCol.length !== rCol.length) details.push(`长度: ${lCol.length} → ${rCol.length}`)
       if (lCol.is_nullable !== rCol.is_nullable) details.push(`可空: ${lCol.is_nullable ? '是' : '否'} → ${rCol.is_nullable ? '是' : '否'}`)
       if (lCol.is_primary_key !== rCol.is_primary_key) details.push(`主键: ${lCol.is_primary_key ? '是' : '否'} → ${rCol.is_primary_key ? '是' : '否'}`)
-      const lDef = lCol.default_value || ''
-      const rDef = rCol.default_value || ''
-      if (lDef !== rDef) details.push(`默认值: ${lDef || '-'} → ${rDef || '-'}`)
+      const normalizeDefault = (v) => { const s = (v ?? '').trim().toUpperCase(); return (s === '' || s === 'NULL' || s === '-') ? '' : v }
+      const lDef = normalizeDefault(lCol.default_value)
+      const rDef = normalizeDefault(rCol.default_value)
+      if (lDef !== rDef) details.push(`默认值: ${lCol.default_value || '-'} → ${rCol.default_value || '-'}`)
 
       if (details.length > 0) {
         modified.push({ name, remote: rCol, local: lCol, status: 'modified', detail: details.join('; ') })
