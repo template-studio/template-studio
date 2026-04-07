@@ -65,7 +65,7 @@ const routes = [
   {
     path: '/template-render',
     name: 'TemplateRender',
-    component: () => import('@/views/template-render/TemplateRenderDrawer.vue')
+    component: () => import('@/views/template-render/index.vue')
   },
   {
     path: '/settings',

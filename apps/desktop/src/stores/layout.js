@@ -51,7 +51,7 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   // 需要 footer 的路由
-  const footerRoutes = ['/projects', '/datasource', '/languages', '/templates', '/mappings', '/datasource/', '/project/']
+  const footerRoutes = ['/projects', '/datasource', '/languages', '/templates', '/mappings', '/datasource/', '/project/', '/template-render']
   const noFooterRoutes = [] // 不需要 footer 的路由
 
   // 默认分页大小选项
