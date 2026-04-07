@@ -55,7 +55,6 @@
                 </div>
                 <div class="card-footer-right">
                   <span class="creation-time">{{ formatCreationTime(template.createdAt) }}</span>
-                  <a-button type="primary" size="small" @click.stop="useTemplate(template)">使用</a-button>
                 </div>
               </div>
             </div>

@@ -79,20 +79,23 @@
               <div class="card-content">
                 <h3 class="template-name">{{ tpl.name }}</h3>
                 <p class="template-desc">{{ tpl.description || '通用模板' }}</p>
-                <div class="template-tags">
+                <div class="template-languages">
                   <span
                     v-for="lang in (tpl.languages || [])"
                     :key="lang.languageId"
-                    class="template-tag lang-tag"
+                    class="template-tag"
                   >{{ getLanguageName(lang.languageId) }}</span>
-                  <span v-if="tpl.categoryId" class="template-tag type-tag">{{ getCategoryName(tpl.categoryId) }}</span>
                 </div>
                 <div class="card-footer">
                   <div class="card-author">
                     <div class="author-avatar">
                       <UserOutlined class="author-avatar-fallback" />
+                      <img v-if="getOwnerAvatarUrl(tpl)" :src="getOwnerAvatarUrl(tpl)" alt="" class="author-avatar-img" @error="$event.target.style.display='none'" />
                     </div>
                     <span class="author-name">{{ tpl.ownerName || 'Template Studio' }}</span>
+                  </div>
+                  <div class="card-footer-right">
+                    <span class="creation-time">{{ formatCreationTime(tpl.createdAt) }}</span>
                   </div>
                 </div>
               </div>
@@ -540,6 +543,36 @@ const getCodeSnippet = (tpl) => {
 
 const getLanguageName = (languageId) => languages.value.find(l => l.id === languageId)?.name || languageId
 const getCategoryName = (categoryId) => categories.value.find(c => c.id === categoryId)?.name || categoryId
+
+const getOwnerAvatarUrl = (template) => {
+  const avatar = template.ownerAvatar
+  if (!avatar) return ''
+  if (avatar.startsWith('http')) return avatar
+  const base = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080').replace(/\/+$/, '')
+  return `${base}${avatar.startsWith('/') ? '' : '/'}${avatar}`
+}
+
+const formatCreationTime = (createdAt) => {
+  if (!createdAt) return ''
+  try {
+    const date = new Date(createdAt)
+    const now = new Date()
+    const diffTime = Math.abs(now - date)
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    if (diffDays === 0) {
+      const h = Math.floor(diffTime / (1000 * 60 * 60))
+      if (h === 0) {
+        const m = Math.floor(diffTime / (1000 * 60))
+        return m <= 0 ? '刚刚' : `${m}分钟前`
+      }
+      return `${h}小时前`
+    }
+    if (diffDays === 1) return '昨天'
+    if (diffDays < 7) return `${diffDays}天前`
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}周前`
+    return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+  } catch { return '' }
+}
 
 const loadCategories = async () => {
   try {
@@ -1291,29 +1324,27 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.template-tags {
+.template-languages {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin-bottom: 14px;
 }
 
 .template-tag {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 4px;
   transition: all 0.2s ease;
 }
 
-.lang-tag {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-}
-
-.type-tag {
-  background: rgba(114, 46, 209, 0.08);
-  border: 1px solid rgba(114, 46, 209, 0.2);
-  color: #722ed1;
+.template-card:hover .template-tag {
+  background: rgba(24, 144, 255, 0.08);
+  border-color: rgba(24, 144, 255, 0.2);
+  color: var(--color-primary);
 }
 
 .card-footer {
@@ -1334,7 +1365,7 @@ onBeforeUnmount(() => {
 .author-avatar {
   width: 22px;
   height: 22px;
-  border-radius: 4px;
+  border-radius: 6px;
   background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
   display: flex;
   align-items: center;
@@ -1342,6 +1373,17 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   color: #fff;
   font-size: 11px;
+  position: relative;
+  overflow: hidden;
+}
+
+.author-avatar-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
 }
 
 .author-avatar-fallback {
@@ -1353,6 +1395,20 @@ onBeforeUnmount(() => {
   font-size: 12px;
   color: var(--color-text-secondary);
   font-weight: 500;
+}
+
+.card-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.creation-time {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 
 /* Step 2: Template Detail */
