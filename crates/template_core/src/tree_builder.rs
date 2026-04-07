@@ -263,7 +263,7 @@ impl TreeBuilder {
             if file.parent_id != 0 {
                 parent_to_children
                     .entry(file.parent_id)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(file.id);
             }
         }

@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments, clippy::type_complexity)]
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use template_studio_template_core::{render_string, TemplateFile, Variables};
 use tauri::Manager;
@@ -316,8 +318,8 @@ async fn cmd_render_and_export(
     let mut errors: Vec<String> = Vec::new();
 
     for file_node in rendered_tree {
-        if file_node.error.is_some() {
-            errors.push(format!("{}: {}", file_node.file_path, file_node.error.as_ref().unwrap().message));
+        if let Some(err) = &file_node.error {
+            errors.push(format!("{}: {}", file_node.file_path, err.message));
             continue;
         }
         if file_node.is_directory == 1 {
@@ -1186,7 +1188,7 @@ async fn cmd_get_table_columns(
                 serde_json::json!({
                     "name": row.get::<String, _>(1),
                     "type": row.get::<String, _>(2),
-                    "nullable": row.get::<bool, _>(3) == false,
+                    "nullable": !row.get::<bool, _>(3),
                     "key": if row.get::<bool, _>(5) { "PRI" } else { "" },
                     "default": row.get::<Option<String>, _>(4),
                     "comment": ""
@@ -3173,9 +3175,9 @@ fn get_username() -> Result<String, String> {
     use std::env;
 
     // 尝试获取 USER 环境变量
-    if let Some(username) = env::var("USER").ok() {
+    if let Ok(username) = env::var("USER") {
         Ok(username)
-    } else if let Some(username) = env::var("USERNAME").ok() {
+    } else if let Ok(username) = env::var("USERNAME") {
         Ok(username)
     } else {
         // 如果环境变量都获取不到，尝试使用 dirs 库

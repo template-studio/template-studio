@@ -290,7 +290,7 @@ fn convert_minijinja_to_json(value: &Value) -> Result<serde_json::Value, MiniErr
     }
 
     // 尝试通过序列化转换其他类型
-    match serde_json::to_value(&value.to_string()) {
+    match serde_json::to_value(value.to_string()) {
         Ok(v) => Ok(v),
         Err(_) => Err(MiniError::new(ErrorKind::BadSerialization, "Cannot convert value")),
     }

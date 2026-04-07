@@ -76,6 +76,7 @@ pub fn initialize_engine() {
 /// # 返回
 ///
 /// 返回 `RenderResult`，包含渲染后的内容和状态
+#[allow(clippy::result_large_err)]
 pub fn render_string(
     template_content: &str,
     variables: &Variables,
@@ -92,6 +93,7 @@ pub fn render_string(
 }
 
 /// 简单渲染（不支持模板继承）
+#[allow(clippy::result_large_err)]
 fn render_simple(
     _env: &Environment<'_>,
     template_content: &str,
@@ -118,6 +120,7 @@ fn render_simple(
 }
 
 /// 支持模板继承的渲染
+#[allow(clippy::result_large_err)]
 fn render_with_templates(
     _env: &Environment<'_>,
     template_content: &str,
@@ -130,7 +133,7 @@ fn render_with_templates(
     // 检查缓存
     {
         let cache = TEMPLATE_CACHE.read().unwrap();
-        if let Some(_) = cache.get(&cache_key) {
+        if cache.get(&cache_key).is_some() {
             #[cfg(feature = "logging")]
             tracing::debug!("Template cache hit (hash: {})", cache_key);
         }

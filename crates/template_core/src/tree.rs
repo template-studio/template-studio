@@ -205,6 +205,7 @@ pub struct RenderedFile {
 /// // 4. 渲染
 /// let rendered = render_tree(filtered, &variables).unwrap();
 /// ```
+#[allow(clippy::result_large_err)]
 pub fn render_tree(
     tree: Vec<TemplateFile>,
     variables: &Variables,
@@ -231,6 +232,7 @@ pub fn render_tree(
 /// * `file` - 单个模板文件节点
 /// * `variables` - 模板变量
 /// * `all_templates` - 所有模板文件的映射（用于模板继承）
+#[allow(clippy::result_large_err)]
 pub(crate) fn render_single_file(
     file: &TemplateFile,
     variables: &Variables,

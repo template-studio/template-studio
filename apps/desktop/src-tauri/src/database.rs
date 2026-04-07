@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments, clippy::type_complexity)]
+
 use sqlx::{SqlitePool, Row};
 use std::path::PathBuf;
 use std::fs;
@@ -28,7 +30,7 @@ impl Database {
     /// 初始化数据库连接池（如果不存在则创建）
     pub async fn init() -> Result<Self, sqlx::Error> {
         let db_path = get_database_path()
-            .map_err(|e| sqlx::Error::Io(e.into()))?;
+            .map_err(sqlx::Error::Io)?;
 
         println!("初始化数据库: {:?}", db_path);
         println!("数据库文件存在: {}", db_path.exists());
@@ -1222,7 +1224,6 @@ impl Database {
 /// 数据库操作 API
 impl Database {
     /// ===== 项目操作 =====
-
     /// 创建项目
     pub async fn create_project(
         &self,
@@ -1404,7 +1405,6 @@ impl Database {
     }
 
     /// ===== 系统级类型映射操作 =====
-
     /// 获取系统级类型映射
     pub async fn get_system_type_mappings(&self) -> Result<Vec<serde_json::Value>, sqlx::Error> {
         let rows = sqlx::query(
@@ -1559,7 +1559,6 @@ impl Database {
     }
 
     /// ===== 项目级类型映射操作 =====
-
     /// 获取项目级类型映射
     pub async fn get_project_type_mappings(&self, project_id: i64) -> Result<Vec<serde_json::Value>, sqlx::Error> {
         let rows = sqlx::query(
@@ -1744,7 +1743,6 @@ impl Database {
     }
 
     /// ===== 数据源操作 =====
-
     /// 创建数据源
     pub async fn create_datasource(
         &self,
@@ -1952,7 +1950,6 @@ impl Database {
     }
 
     /// ===== 表操作 =====
-
     /// 为项目创建表
     pub async fn create_table(
         &self,
@@ -2185,7 +2182,6 @@ impl Database {
     }
 
     /// ===== 语言操作 =====
-
     /// 创建语言
     pub async fn create_language(
         &self,
@@ -2297,7 +2293,6 @@ impl Database {
     }
 
     /// ===== 项目语言关联操作 =====
-
     /// 设置项目的主语言
     pub async fn set_project_primary_language(
         &self,
@@ -2381,7 +2376,6 @@ impl Database {
     }
 
     /// ===== 语言类型字段操作 =====
-
     /// 获取语言的所有类型字段
     pub async fn get_language_field_types(
         &self,
@@ -2516,7 +2510,6 @@ impl Database {
     }
 
     /// ===== AI 服务相关操作 =====
-
     /// 获取所有 AI 提供商
     pub async fn get_all_ai_providers(&self) -> Result<Vec<serde_json::Value>, sqlx::Error> {
         let rows = sqlx::query(
@@ -3212,7 +3205,7 @@ async fn import_mysql_tables(
             .bind(table_id)
             .bind(&col.name)
             .bind(&col.data_type)
-            .bind(col.length.map(|l| l as i64))
+            .bind(col.length)
             .bind(is_nullable as i32)
             .bind(is_primary_key as i32)
             .bind(is_unique as i32)
@@ -3358,13 +3351,13 @@ async fn import_postgresql_tables(
             .bind(table_id)
             .bind(&col.name)
             .bind(&col.data_type)
-            .bind(col.length.map(|l| l as i64))
+            .bind(col.length)
             .bind(is_nullable as i32)
             .bind(is_primary_key as i32)
             .bind(0) // PostgreSQL unique 需要额外查询，这里简化处理
             .bind(&col.default_value)
             .bind(&col.comment)
-            .bind(col.ordinal_position.map(|p| p as i32).unwrap_or(0))
+            .bind(col.ordinal_position.unwrap_or(0))
             .execute(pool)
             .await
             .map_err(|e| format!("创建列记录失败: {}", e))?;
@@ -3858,7 +3851,7 @@ async fn import_mysql_single_table(
         .bind(table_id)
         .bind(&col.name)
         .bind(&col.data_type)
-        .bind(col.length.map(|l| l as i64))
+        .bind(col.length)
         .bind(is_nullable as i32)
         .bind(is_primary_key as i32)
         .bind(is_unique as i32)
@@ -3974,13 +3967,13 @@ async fn import_postgresql_single_table(
         .bind(table_id)
         .bind(&col.name)
         .bind(&col.data_type)
-        .bind(col.length.map(|l| l as i64))
+        .bind(col.length)
         .bind(is_nullable as i32)
         .bind(false as i32) // PostgreSQL 主键需要更复杂的判断
         .bind(false as i32)
         .bind(&col.default_value)
         .bind(&col.comment)
-        .bind(col.ordinal_position.map(|p| p as i32).unwrap_or(0))
+        .bind(col.ordinal_position.unwrap_or(0))
         .execute(pool)
         .await
         .map_err(|e| format!("插入列记录失败 [{}]: {}", col.name, e))?;
@@ -4124,7 +4117,6 @@ async fn import_sqlite_single_table(
 }
 
 /// ===== SQL解析功能 =====
-
 /// 只解析SQL，返回表结构信息（不写入数据库）
 pub async fn parse_sql_only(
     _pool: &SqlitePool,
@@ -4183,10 +4175,7 @@ pub async fn parse_sql_only(
                 let has_null = column_def.options.iter().any(|opt| {
                     matches!(&opt.option, sqlparser::ast::ColumnOption::Null)
                 });
-                let is_nullable = if has_null { true }
-                                  else if has_not_null { false }
-                                  else if is_primary_key { false }
-                                  else { true };
+                let is_nullable = has_null || (!has_not_null && !is_primary_key);
 
                 let default_value = column_def.options.iter()
                     .find_map(|opt| {
@@ -4309,10 +4298,7 @@ pub async fn parse_and_create_from_sql(
                     matches!(&opt.option, sqlparser::ast::ColumnOption::Null)
                 });
 
-                let is_nullable = if has_null { true }
-                                  else if has_not_null { false }
-                                  else if is_primary_key { false }
-                                  else { true };
+                let is_nullable = has_null || (!has_not_null && !is_primary_key);
 
                 // 提取默认值
                 let default_value = column_def.options.iter()
