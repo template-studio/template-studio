@@ -125,20 +125,14 @@
             <div class="sidebar-section">
               <h3 class="sidebar-title">上下文注入</h3>
               <div class="context-options">
-                <a-checkbox
-                  :checked="contextOptions.project"
-                  @change="contextOptions.project = $event.target.checked"
-                >
+                <a-checkbox v-model:checked="injectProject">
                   项目信息
                 </a-checkbox>
-                <a-checkbox
-                  :checked="contextOptions.tables"
-                  @change="contextOptions.tables = $event.target.checked"
-                >
+                <a-checkbox v-model:checked="injectTables">
                   表信息
                 </a-checkbox>
               </div>
-              <div v-if="contextOptions.project || contextOptions.tables" class="project-selector">
+              <div v-if="injectProject || injectTables" class="project-selector">
                 <a-select
                   v-model:value="selectedProjectId"
                   placeholder="选择项目"
@@ -149,9 +143,9 @@
                   @change="onProjectChange"
                 />
               </div>
-              <div v-if="contextOptions.tables && projectTables.length > 0" class="table-selector">
+              <div v-if="injectTables && projectTables.length > 0" class="table-selector">
                 <a-checkbox-group
-                  v-model:value="contextOptions.selectedTables"
+                  v-model:value="contextSelectedTables"
                   :options="projectTables.map(t => ({ label: t.name, value: t.id }))"
                 />
               </div>
@@ -314,6 +308,7 @@ import {
 } from '@ant-design/icons-vue'
 import { getCategories, getLanguages } from '@/api/templates'
 import { listReleases } from '@/api/releases'
+import { getAllProjects, getProjectTables } from '@/api/projects'
 import VariableForm from './VariableForm.vue'
 
 const props = defineProps({
@@ -362,11 +357,9 @@ const projectOptions = ref([])
 const projectTables = ref([])
 
 // 上下文
-const contextOptions = ref({
-  project: true,
-  tables: false,
-  selectedTables: [],
-})
+const injectProject = ref(true)
+const injectTables = ref(false)
+const contextSelectedTables = ref([])
 
 // 渲染
 const rendering = ref(false)
@@ -393,6 +386,7 @@ let codeEditorView = null
 
 // 打开抽屉时加载版本
 watch(() => props.open, async (val) => {
+  console.log('drawer open:', val, 'template:', props.template?.id)
   if (val && props.template) {
     currentStep.value = 1
     await Promise.all([loadCategories(), loadLanguages(), loadProjects()])
@@ -441,20 +435,24 @@ const loadVersions = async (templateId) => {
 
 const loadProjects = async () => {
   try {
-    const result = await invoke('db_get_projects')
-    const projects = Array.isArray(result) ? result : []
-    projectOptions.value = projects.map(p => ({ label: p.name, value: p.id }))
-  } catch {}
+    const projects = await getAllProjects()
+    console.log('projects:', projects)
+    projectOptions.value = (Array.isArray(projects) ? projects : []).map(p => ({ label: p.name, value: p.id }))
+  } catch (e) {
+    console.error('loadProjects error:', e)
+  }
 }
 
 const onProjectChange = async (projectId) => {
   projectTables.value = []
-  contextOptions.value.selectedTables = []
+  contextSelectedTables.value = []
   if (!projectId) return
   try {
-    const result = await invoke('db_get_project_tables', { projectId: Number(projectId) })
-    projectTables.value = Array.isArray(result) ? result : []
-  } catch {}
+    const tables = await getProjectTables(projectId)
+    projectTables.value = Array.isArray(tables) ? tables : []
+  } catch (e) {
+    console.error('onProjectChange error:', e)
+  }
 }
 
 // 步骤导航
@@ -523,13 +521,13 @@ const onVariablesUpdate = (val) => {
 const buildVariablesJson = () => {
   const result = { ...variables.value }
   const ctx = {}
-  if (contextOptions.value.project && selectedProjectId.value) {
+  if (injectProject.value && selectedProjectId.value) {
     const proj = projectOptions.value.find(p => p.value === selectedProjectId.value)
     ctx.project = { id: selectedProjectId.value, name: proj?.label || '' }
   }
-  if (contextOptions.value.tables && contextOptions.value.selectedTables.length > 0) {
+  if (injectTables.value && contextSelectedTables.value.length > 0) {
     ctx.tables = projectTables.value
-      .filter(t => contextOptions.value.selectedTables.includes(t.id))
+      .filter(t => contextSelectedTables.value.includes(t.id))
       .map(t => ({ name: t.name, comment: t.comment || '', engine: t.engine || '' }))
   }
   if (Object.keys(ctx).length > 0) result.__context = ctx
@@ -618,9 +616,9 @@ watch(mode, async (newMode) => {
   }
 })
 
-watch(contextOptions, () => {
+watch([injectProject, injectTables, contextSelectedTables], () => {
   if (mode.value === 'advanced') syncToJson()
-}, { deep: true })
+})
 
 // 渲染
 const doRender = async () => {
@@ -1175,6 +1173,14 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.context-options :deep(.ant-checkbox-wrapper) {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  cursor: pointer;
+  user-select: none;
 }
 
 .project-selector {
