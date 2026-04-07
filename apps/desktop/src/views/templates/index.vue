@@ -118,7 +118,7 @@ const paginatedTemplates = computed(() => {
   return filteredTemplates.value.slice((current - 1) * size, current * size)
 })
 
-const selectTemplate = (template) => { selectedTemplate.value = template }
+const selectTemplate = (template) => { useTemplate(template) }
 
 const useTemplate = (template) => {
   selectedTemplate.value = template
