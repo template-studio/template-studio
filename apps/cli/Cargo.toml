@@ -14,6 +14,7 @@ path = "src/main.rs"
 template-studio-shared = { path = "../../crates/shared" }
 template-studio-infrastructure = { path = "../../crates/infrastructure" }
 template_studio_template_core = { path = "../../crates/template_core" }
+template-studio-ai-agent = { path = "../../crates/ai_agent" }
 
 # CLI 框架
 clap = { version = "4.4", features = ["derive", "env"] }

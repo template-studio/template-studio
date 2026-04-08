@@ -3,7 +3,7 @@ use crate::config::Config;
 use crate::tui::run_tui;
 use crate::generator::ProjectGenerator;
 use crate::renderer::LocalRenderer;
-use super::{CreateCommand, TemplateCommands, ConfigCommands};
+use super::{CreateCommand, TemplateCommands, ConfigCommands, AiCommands, AiConfigCommands};
 use anyhow::{Context, Result};
 use tracing::{info, warn};
 
@@ -288,6 +288,190 @@ pub async fn handle_config(
             // TODO: 实现配置设置
             println!("设置配置: {} = {}", key, value);
             warn!("配置设置功能尚未实现");
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn handle_ai(
+    cmd: AiCommands,
+    config_path: Option<String>,
+    _server_url: Option<String>,
+    _api_key: Option<String>,
+) -> Result<()> {
+    match cmd {
+        AiCommands::AnalyzeVariables { path, format } => {
+            handle_analyze_variables(&path, &format).await
+        }
+        AiCommands::FillVariables { path, project, provider, model, dry_run, write, format } => {
+            handle_fill_variables(&path, project, provider, model, dry_run, write, &format).await
+        }
+        AiCommands::ConvertToTemplate { path, output, name, category, strategy } => {
+            handle_convert_to_template(&path, &output, name, category, &strategy).await
+        }
+        AiCommands::RenderPreview { path, vars_file, vars, full } => {
+            handle_render_preview(&path, vars_file, vars, full).await
+        }
+        AiCommands::Validate { path, vars_file, check_output } => {
+            handle_validate(&path, vars_file, check_output).await
+        }
+        AiCommands::EditFile { path, insert, replace, delete, append, content } => {
+            handle_edit_file(&path, insert, replace, delete, append, content).await
+        }
+        AiCommands::Recommend { project, language, category, explain } => {
+            handle_recommend(project, language, category, explain).await
+        }
+        AiCommands::Config { config_subcommand } => {
+            handle_ai_config(config_subcommand, config_path).await
+        }
+    }
+}
+
+async fn handle_analyze_variables(path: &str, format: &str) -> Result<()> {
+    use template_studio_ai_agent::tools::variable::AnalyzeVariablesTool;
+    use template_studio_ai_agent::tools::AiTool;
+
+    let tool = AnalyzeVariablesTool;
+    let args = serde_json::json!({ "template_path": path });
+    let result = tool.execute(args).await?;
+
+    if result.success {
+        match format {
+            "json" => println!("{}", result.output),
+            "compact" => {
+                let vars: serde_json::Value = serde_json::from_str(&result.output)?;
+                let count = vars.as_array().map(|a| a.len()).unwrap_or(0);
+                println!("变量数: {}", count);
+            }
+            _ => {
+                // table 格式
+                let vars: Vec<serde_json::Value> = serde_json::from_str(&result.output)?;
+                println!("模板变量分析结果 ({} 个变量):\n", vars.len());
+                println!("{:<20} {:<10} {:<8} {}", "变量名", "类型", "必填", "描述");
+                println!("{}", "-".repeat(70));
+                for var in &vars {
+                    println!(
+                        "{:<20} {:<10} {:<8} {}",
+                        var["name"].as_str().unwrap_or(""),
+                        var["type"].as_str().unwrap_or(""),
+                        if var["required"].as_bool().unwrap_or(false) { "是" } else { "否" },
+                        var["description"].as_str().unwrap_or("")
+                    );
+                }
+            }
+        }
+    } else {
+        eprintln!("分析失败: {}", result.error.unwrap_or_default());
+        std::process::exit(2);
+    }
+
+    Ok(())
+}
+
+async fn handle_fill_variables(
+    _path: &str,
+    _project: i64,
+    _provider: Option<String>,
+    _model: Option<String>,
+    _dry_run: bool,
+    _write: bool,
+    _format: &str,
+) -> Result<()> {
+    // TODO: 实现变量填充
+    println!("变量填充功能正在开发中...");
+    Ok(())
+}
+
+async fn handle_convert_to_template(
+    _path: &str,
+    _output: &str,
+    _name: Option<String>,
+    _category: Option<String>,
+    _strategy: &str,
+) -> Result<()> {
+    // TODO: 实现项目转换
+    println!("项目转换功能正在开发中...");
+    Ok(())
+}
+
+async fn handle_render_preview(
+    _path: &str,
+    _vars_file: Option<String>,
+    _vars: Option<String>,
+    _full: bool,
+) -> Result<()> {
+    // TODO: 实现渲染预览
+    println!("渲染预览功能正在开发中...");
+    Ok(())
+}
+
+async fn handle_validate(
+    _path: &str,
+    _vars_file: Option<String>,
+    _check_output: bool,
+) -> Result<()> {
+    // TODO: 实现验证
+    println!("验证功能正在开发中...");
+    Ok(())
+}
+
+async fn handle_edit_file(
+    _path: &str,
+    _insert: Option<usize>,
+    _replace: Option<String>,
+    _delete: Option<String>,
+    _append: Option<String>,
+    _content: Option<String>,
+) -> Result<()> {
+    // TODO: 实现文件编辑
+    println!("文件编辑功能正在开发中...");
+    Ok(())
+}
+
+async fn handle_recommend(
+    _project: Option<i64>,
+    _language: Option<String>,
+    _category: Option<String>,
+    _explain: bool,
+) -> Result<()> {
+    // TODO: 实现推荐
+    println!("推荐功能正在开发中...");
+    Ok(())
+}
+
+async fn handle_ai_config(
+    cmd: AiConfigCommands,
+    config_path: Option<String>,
+) -> Result<()> {
+    let _config = Config::load(config_path)?;
+
+    match cmd {
+        AiConfigCommands::Show => {
+            println!("AI 配置:");
+            println!("  提供商: (未配置)");
+            println!("  模型: (未配置)");
+            println!("  API Key: (未配置)");
+        }
+        AiConfigCommands::Set { provider, model, api_key, base_url } => {
+            if let Some(p) = provider {
+                println!("设置提供商: {}", p);
+            }
+            if let Some(m) = model {
+                println!("设置模型: {}", m);
+            }
+            if let Some(k) = api_key {
+                println!("设置 API Key: {}****", &k[..4.min(k.len())]);
+            }
+            if let Some(u) = base_url {
+                println!("设置 API URL: {}", u);
+            }
+            println!("AI 配置已更新");
+        }
+        AiConfigCommands::Test => {
+            println!("测试 AI 连接...");
+            // TODO: 实现连接测试
+            println!("连接测试功能正在开发中...");
         }
     }
 

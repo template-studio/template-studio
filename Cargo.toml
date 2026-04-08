@@ -9,6 +9,7 @@ members = [
     "crates/services",
     "crates/template_core",
     "crates/template_core_wasm",
+    "crates/ai_agent",
 ]
 resolver = "2"
 
