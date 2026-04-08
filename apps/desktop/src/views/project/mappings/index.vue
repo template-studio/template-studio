@@ -55,76 +55,27 @@
         <a-alert v-if="activeScope === 'frontend' && !frontendLanguageId" message="请先设置前端语言" type="warning" show-icon style="margin-bottom: 16px" />
         <a-alert v-if="activeScope === 'backend' && !backendLanguageId" message="请先选择后端语言" type="warning" show-icon style="margin-bottom: 16px" />
 
-        <a-table
-          :columns="columns"
-          :data-source="activeScope === 'frontend' ? frontendMappings : backendMappings"
-          :pagination="false"
-          :scroll="{ x: 600 }"
-          row-key="id"
-          class="mapping-table"
+        <MappingsTable
+          :mappings="activeScope === 'frontend' ? frontendMappings : backendMappings"
           :loading="loading"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'sourceType'">
-              <code class="type-code">{{ record.source_type }}</code>
-            </template>
-            <template v-else-if="column.key === 'targetType'">
-              <div v-if="editingKey === record.id" class="editing-cell">
-                <a-input
-                  v-model:value="record.target_type"
-                  @blur="saveMapping(record)"
-                  @keyup.enter="saveMapping(record)"
-                  @keyup.esc="cancelEdit(record)"
-                  ref="editingInput"
-                  size="small"
-                  autofocus
-                />
-              </div>
-              <div v-else class="target-type-cell" @dblclick="editMapping(record)">
-                <code class="type-code target">{{ record.target_type }}</code>
-                <EditOutlined class="edit-hint" />
-              </div>
-            </template>
-            <template v-else-if="column.key === 'action'">
-              <a-space>
-                <a-button type="link" size="small" @click="editMapping(record)">
-                  <template #icon><EditOutlined /></template>
-                  编辑
-                </a-button>
-                <a-popconfirm
-                  title="确定要删除这个映射吗？"
-                  ok-text="确定"
-                  cancel-text="取消"
-                  @confirm="deleteMapping(record)"
-                >
-                  <a-button type="link" size="small" danger>
-                    <template #icon><DeleteOutlined /></template>
-                    删除
-                  </a-button>
-                </a-popconfirm>
-              </a-space>
-            </template>
-          </template>
-        </a-table>
+          :editing-key="editingKey"
+          :editing-value="originalTargetType"
+          @start-edit="startEdit"
+          @save-edit="saveMapping"
+          @cancel-edit="cancelEdit"
+          @edit="startEdit"
+          @delete="deleteMapping"
+        />
       </div>
     </div>
 
-    <a-modal
+    <AddMappingDialog
       v-model:open="addDialogVisible"
-      title="添加类型映射"
-      ok-text="添加"
-      cancel-text="取消"
-      @ok="addMapping"
-    >
-      <a-form layout="vertical">
-        <a-form-item label="数据库字段类型">
-          <a-input v-model:value="addForm.sourceType" placeholder="请输入数据库字段类型（如：varchar）" />
-        </a-form-item>
-        <a-form-item label="语言字段类型">
-          <a-input v-model:value="addForm.targetType" placeholder="请输入语言字段类型" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+      :form="addForm"
+      :language-options="[]"
+      @submit="addMapping"
+      @cancel="addDialogVisible = false"
+    />
     <SwitchLanguageModal
       v-model:open="switchLanguageDialogVisible"
       :languages="languages"
@@ -141,11 +92,13 @@ import { useRoute } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import {
   SwapOutlined, ReloadOutlined, PlusOutlined,
-  CodeOutlined, ApiOutlined, EditOutlined, DeleteOutlined
+  CodeOutlined, ApiOutlined
 } from '@ant-design/icons-vue'
 import { message, Modal } from 'ant-design-vue'
 import * as projectsApi from '@/api/projects'
 import SwitchLanguageModal from './components/SwitchLanguageModal.vue'
+import MappingsTable from './components/MappingsTable.vue'
+import AddMappingDialog from './components/AddMappingDialog.vue'
 
 const route = useRoute()
 const projectId = computed(() => parseInt(route.params.id))
@@ -173,12 +126,6 @@ const backendLanguageName = computed(() => {
   const lang = languages.value.find(l => l.id === backendLanguageId.value)
   return lang ? lang.name : ''
 })
-
-const columns = [
-  { title: '数据库字段类型', dataIndex: 'source_type', key: 'sourceType', width: 200 },
-  { title: '语言字段类型', dataIndex: 'target_type', key: 'targetType', width: 200 },
-  { title: '操作', key: 'action', width: 120, fixed: 'right' }
-]
 
 const loadProject = async () => {
   try {
@@ -253,7 +200,7 @@ const loadMappings = async () => {
   }
 }
 
-const editMapping = (record) => {
+const startEdit = (record) => {
   editingKey.value = record.id
   originalTargetType.value = record.target_type
   nextTick(() => {
@@ -447,52 +394,5 @@ onMounted(async () => {
   border-radius: var(--border-radius-md);
   border: 1px solid var(--color-border);
   padding: var(--spacing-md);
-}
-.mapping-table {
-  background: transparent;
-}
-.mapping-table :deep(.ant-table-thead > tr > th) {
-  background: var(--color-background);
-  border-bottom: 2px solid var(--color-border);
-  font-weight: 600;
-  color: var(--color-text);
-}
-.mapping-table :deep(.ant-table-tbody > tr:hover > td) {
-  background: var(--color-hover);
-}
-.mapping-table :deep(.ant-table-tbody > tr > td) {
-  border-bottom: 1px solid var(--color-border-light);
-}
-.type-code {
-  font-family: 'Fira Code', 'Consolas', monospace;
-  font-size: 13px;
-  padding: 2px 8px;
-  background: var(--color-primary-bg);
-  color: var(--color-primary);
-  border-radius: 4px;
-}
-.type-code.target {
-  background: var(--color-success-bg, #f6ffed);
-  color: var(--color-success);
-}
-.editing-cell {
-  display: flex;
-  align-items: center;
-}
-.target-type-cell {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  cursor: pointer;
-  padding: 4px 0;
-}
-.target-type-cell:hover .edit-hint {
-  opacity: 1;
-}
-.edit-hint {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  opacity: 0;
-  transition: opacity 0.2s;
 }
 </style>

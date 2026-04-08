@@ -1,6 +1,5 @@
 <template>
   <div class="setting-container">
-    <!-- 提供商信息卡片 -->
     <div class="setting-group">
       <div class="provider-header">
         <div class="provider-info">
@@ -24,11 +23,9 @@
       </div>
     </div>
 
-    <!-- API 配置卡片 -->
     <div class="setting-group">
       <div class="setting-title">API 配置</div>
 
-      <!-- API 密钥 -->
       <div class="setting-row">
         <div class="setting-row-title">
           <div>API 密钥</div>
@@ -52,7 +49,6 @@
 
       <div class="setting-divider"></div>
 
-      <!-- API 地址 -->
       <div class="setting-row">
         <div class="setting-row-title">
           <div>API 地址</div>
@@ -69,11 +65,9 @@
       </div>
     </div>
 
-    <!-- 高级设置卡片 -->
     <div class="setting-group">
       <div class="setting-title">高级设置</div>
 
-      <!-- Temperature -->
       <div class="setting-row">
         <div class="setting-row-title">
           <div>Temperature</div>
@@ -92,7 +86,6 @@
 
       <div class="setting-divider"></div>
 
-      <!-- Max Tokens -->
       <div class="setting-row">
         <div class="setting-row-title">
           <div>Max Tokens</div>
@@ -109,78 +102,25 @@
       </div>
     </div>
 
-    <!-- 模型管理卡片 -->
     <div class="setting-group">
       <div class="setting-title">
         <span>模型管理</span>
         <a-tag class="model-count">{{ totalModelCount }} 个</a-tag>
       </div>
 
-      <div class="model-toolbar">
-        <a-tooltip title="获取模型列表">
-          <a-button type="primary" size="small" @click="openManagePopup">
-            <SettingOutlined />
-          </a-button>
-        </a-tooltip>
-        <a-tooltip title="手动添加模型">
-          <a-button size="small" @click="showAddModelDialog">
-            <PlusOutlined />
-          </a-button>
-        </a-tooltip>
-      </div>
-
-      <div class="models-content">
-        <a-spin :spinning="loadingModels">
-          <div v-if="modelGroups.length === 0" class="empty-models">
-            <a-empty description="暂无模型">
-              <a-button type="primary" @click="openManagePopup">
-                <SettingOutlined /> 获取模型列表
-              </a-button>
-            </a-empty>
-          </div>
-          <div v-else class="model-groups">
-            <div
-              v-for="group in modelGroups"
-              :key="group.groupId"
-              class="model-group"
-            >
-              <div class="group-header" @click="toggleGroup(group.groupId)">
-                <CaretRightOutlined
-                  :class="['group-icon', { rotated: expandedGroups.has(group.groupId) }]"
-                />
-                <span class="group-name">{{ group.groupName }}</span>
-                <a-tag class="group-count">{{ group.count }}</a-tag>
-              </div>
-              <div v-show="expandedGroups.has(group.groupId)" class="group-content">
-                <div
-                  v-for="item in group.models"
-                  :key="item.id"
-                  class="model-item"
-                >
-                  <div class="model-main">
-                    <div class="model-id">{{ item.modelId }}</div>
-                    <div class="model-name">{{ item.modelName }}</div>
-                    <div v-if="item.description" class="model-description">
-                      {{ item.description }}
-                    </div>
-                  </div>
-                  <div class="model-actions">
-                    <a-button type="text" size="small" @click="editModel(item)">
-                      <EditOutlined />
-                    </a-button>
-                    <a-button type="text" size="small" danger @click="deleteModel(item.id)">
-                      <DeleteOutlined />
-                    </a-button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </a-spin>
-      </div>
+      <ModelGroupList
+        :provider="providerName"
+        :model-groups="modelGroups"
+        :expanded-groups="expandedGroups"
+        :loading-models="loadingModels"
+        @toggle-group="toggleGroup"
+        @edit-model="editModel"
+        @delete-model="deleteModel"
+        @add-model="showAddModelDialog"
+        @refresh-models="openManagePopup"
+      />
     </div>
 
-    <!-- 模型管理弹窗 -->
     <ManageModelsPopup
       v-model:visible="managePopupVisible"
       :provider-name="providerName"
@@ -188,54 +128,13 @@
       @refresh="loadModels"
     />
 
-    <!-- 添加/编辑模型对话框 -->
-    <a-modal
+    <ModelEditDialog
       v-model:open="modelDialogVisible"
-      :title="editingModel ? '编辑模型' : '添加模型'"
-      width="500px"
-      ok-text="确定"
-      cancel-text="取消"
-      @ok="saveModel"
-    >
-      <a-form :label-col="{ span: 6 }" :wrapper-col="{ span: 16 }">
-        <a-form-item label="模型 ID" required>
-          <a-input
-            v-model:value="modelForm.modelId"
-            placeholder="如: gpt-4"
-          />
-        </a-form-item>
-        <a-form-item label="模型名称" required>
-          <a-input
-            v-model:value="modelForm.modelName"
-            placeholder="如: GPT-4"
-          />
-        </a-form-item>
-        <a-form-item label="分组">
-          <a-select v-model:value="modelForm.groupId">
-            <a-select-option value="chat">对话模型</a-select-option>
-            <a-select-option value="code">代码模型</a-select-option>
-            <a-select-option value="image">图像模型</a-select-option>
-            <a-select-option value="embedding">嵌入模型</a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item label="描述">
-          <a-textarea
-            v-model:value="modelForm.description"
-            :rows="3"
-            placeholder="模型描述（可选）"
-          />
-        </a-form-item>
-        <a-form-item label="最大 Tokens">
-          <a-input-number
-            v-model:value="modelForm.maxTokens"
-            :min="1"
-            :max="128000"
-            :step="1000"
-            style="width: 100%"
-          />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+      :model-form="modelForm"
+      :editing-model="editingModel"
+      @submit="saveModel"
+      @cancel="() => {}"
+    />
   </div>
 </template>
 
@@ -245,15 +144,12 @@ import { message } from 'ant-design-vue'
 import {
   CheckCircleOutlined,
   ApiOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-  CaretRightOutlined,
-  EditOutlined,
-  GlobalOutlined,
-  SettingOutlined
+  GlobalOutlined
 } from '@ant-design/icons-vue'
 import { useAIConfigStore } from '@/stores/ai-config'
 import ManageModelsPopup from './ManageModelsPopup.vue'
+import ModelGroupList from './model/ModelGroupList.vue'
+import ModelEditDialog from './model/ModelEditDialog.vue'
 
 const props = defineProps({
   providerType: {
@@ -282,7 +178,6 @@ const emit = defineEmits(['configChange', 'providerToggle', 'connectionTest'])
 
 const aiConfigStore = useAIConfigStore()
 
-// 本地配置
 const localConfig = reactive({
   apiKey: '',
   apiEndpoint: '',
@@ -292,7 +187,6 @@ const localConfig = reactive({
   ...props.initialConfig
 })
 
-// 监听 initialConfig 变化，同步到 localConfig
 watch(
   () => props.initialConfig,
   (newConfig) => {
@@ -309,15 +203,12 @@ watch(
   { deep: true, immediate: false }
 )
 
-// 模型数据
 const modelGroups = ref([])
 const loadingModels = ref(false)
 const expandedGroups = ref(new Set(['chat', 'code']))
 
-// 模型管理弹窗
 const managePopupVisible = ref(false)
 
-// 模型对话框
 const modelDialogVisible = ref(false)
 const editingModel = ref(null)
 const modelForm = reactive({
@@ -328,7 +219,6 @@ const modelForm = reactive({
   maxTokens: 4096
 })
 
-// 计算属性
 const displayName = computed(() => {
   const provider = aiConfigStore.getProviderByName(props.providerName)
   return provider?.displayName || props.providerName
@@ -349,7 +239,6 @@ const totalModelCount = computed(() => {
   return modelGroups.value.reduce((sum, group) => sum + group.count, 0)
 })
 
-// 监听 provider 状态变化
 watch(
   () => {
     const provider = aiConfigStore.getProviderByName(props.providerName)
@@ -363,21 +252,17 @@ watch(
   { immediate: false }
 )
 
-// 方法
 const handleToggle = async (enabled) => {
   localConfig.enabled = enabled
   emit('providerToggle', props.providerName, enabled)
 }
 
-// 统一配置变更处理（即时保存）
 const handleConfigChange = async () => {
-  // 只在有实际配置时保存
   if (localConfig.apiKey || localConfig.apiEndpoint) {
     emit('configChange', props.providerName, { ...localConfig })
   }
 }
 
-// 高级设置变更（即时保存）
 const handleAdvancedChange = async () => {
   emit('configChange', props.providerName, { ...localConfig })
 }
@@ -482,7 +367,6 @@ onMounted(async () => {
 <style scoped>
 @import '@/assets/styles/settings.css';
 
-/* 提供商头部样式 */
 .provider-header {
   display: flex;
   justify-content: space-between;
@@ -515,7 +399,6 @@ onMounted(async () => {
   text-decoration: underline;
 }
 
-/* 设置操作区域 */
 .setting-actions {
   display: flex;
   align-items: center;
@@ -527,141 +410,8 @@ onMounted(async () => {
   color: #52c41a;
 }
 
-/* 模型数量标签 */
 .model-count {
   font-size: 12px;
   margin-left: auto;
-}
-
-/* 模型工具栏 */
-.model-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-/* 模型内容区域 */
-.models-content {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.empty-models {
-  padding: 40px 20px;
-  text-align: center;
-}
-
-.model-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.model-group {
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.group-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--color-surface);
-  cursor: pointer;
-  transition: background-color 0.2s;
-  user-select: none;
-}
-
-.group-header:hover {
-  background: var(--color-background);
-}
-
-.group-icon {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  transition: transform 0.25s ease;
-}
-
-.group-icon.rotated {
-  transform: rotate(90deg);
-}
-
-.group-name {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text);
-}
-
-.group-count {
-  font-size: 11px;
-  padding: 0 6px;
-}
-
-.group-content {
-  border-top: 1px solid var(--color-border);
-}
-
-.model-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  transition: background-color 0.15s;
-}
-
-.model-item:hover {
-  background: var(--color-surface);
-}
-
-.model-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.model-id {
-  font-weight: 500;
-  font-size: 13px;
-  color: var(--color-text);
-  margin-bottom: 2px;
-}
-
-.model-name {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  margin-bottom: 2px;
-}
-
-.model-description {
-  font-size: 11px;
-  color: var(--color-text-tertiary);
-}
-
-.model-actions {
-  display: flex;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
-/* 滚动条样式 */
-.models-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.models-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.models-content::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
-}
-
-.models-content::-webkit-scrollbar-thumb:hover {
-  background: var(--color-hover);
 }
 </style>

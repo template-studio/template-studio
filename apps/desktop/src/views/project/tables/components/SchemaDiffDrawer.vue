@@ -20,112 +20,27 @@
     <a-spin :spinning="loading" tip="正在检测表结构差异...">
       <a-alert v-if="error" :message="error" type="error" show-icon style="margin-bottom: 16px" />
 
-      <!-- 总览视图 -->
-      <template v-if="view === 'overview' && !loading && !error">
-        <div class="overview-summary">
-          <a-tag v-if="newTables.length > 0" color="success">远程新增 {{ newTables.length }}</a-tag>
-          <a-tag v-if="removedTables.length > 0" color="warning">本地新增 {{ removedTables.length }}</a-tag>
-          <a-tag v-if="syncedTables.length > 0" color="blue">已同步 {{ syncedTables.length }}</a-tag>
-        </div>
+      <DiffOverviewView
+        v-if="view === 'overview' && !loading && !error"
+        :new-tables="newTables"
+        :removed-tables="removedTables"
+        :synced-tables="syncedTables"
+        :importing-name="importingName"
+        :pushing-name="pushingName"
+        @import-single="handleImportSingle"
+        @push-to-remote="handlePushToRemote"
+        @compare-table="openDetail"
+        @delete-local="handleDeleteLocal"
+      />
 
-        <!-- 远程新增表 -->
-        <template v-if="newTables.length > 0">
-          <h4 class="section-title"><PlusCircleOutlined style="color: var(--color-success)" /> 远程新增（可导入）</h4>
-          <a-table :columns="overviewColumns" :data-source="newTables" :row-key="r => r.name" :pagination="false" size="small">
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'name'">
-                <span style="font-weight: 500">{{ record.name }}</span>
-              </template>
-              <template v-else-if="column.key === 'type'">
-                <a-tag :color="record.table_type === 'view' ? 'purple' : 'blue'">{{ record.table_type === 'view' ? '视图' : '表' }}</a-tag>
-              </template>
-              <template v-else-if="column.key === 'action'">
-                <a-button type="link" size="small" @click="handleImportSingle(record)" :loading="importingName === record.name">导入</a-button>
-              </template>
-            </template>
-          </a-table>
-        </template>
-
-        <!-- 本地多余表 -->
-        <template v-if="removedTables.length > 0">
-          <h4 class="section-title"><MinusCircleOutlined style="color: var(--color-warning)" /> 本地新增（未同步到远程）</h4>
-          <a-table :columns="overviewColumns" :data-source="removedTables" :row-key="r => r.name" :pagination="false" size="small">
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'name'">
-                <span style="font-weight: 500">{{ record.name }}</span>
-              </template>
-              <template v-else-if="column.key === 'type'">
-                <a-tag :color="record.table_type === 'view' ? 'purple' : 'blue'">{{ record.table_type === 'view' ? '视图' : '表' }}</a-tag>
-              </template>
-              <template v-else-if="column.key === 'action'">
-                <a-space>
-                  <a-button type="link" size="small" @click="handlePushToRemote(record)" :loading="pushingName === record.name">同步到远程</a-button>
-                  <a-popconfirm title="确定删除本地表？" ok-text="确定" cancel-text="取消" @confirm="handleDeleteLocal(record)">
-                    <a-button type="link" size="small" danger>删除</a-button>
-                  </a-popconfirm>
-                </a-space>
-              </template>
-            </template>
-          </a-table>
-        </template>
-
-        <!-- 已同步表 -->
-        <template v-if="syncedTables.length > 0">
-          <h4 class="section-title"><SyncOutlined style="color: var(--color-primary)" /> 已同步（可对比列）</h4>
-          <a-table :columns="syncedColumns" :data-source="syncedTables" :row-key="r => r.name" :pagination="false" size="small">
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'name'">
-                <span style="font-weight: 500">{{ record.name }}</span>
-              </template>
-              <template v-else-if="column.key === 'action'">
-                <a-button type="link" size="small" @click="openDetail(record)">对比列</a-button>
-              </template>
-            </template>
-          </a-table>
-        </template>
-      </template>
-
-      <!-- 列对比视图 -->
-      <template v-if="view === 'detail' && !loading && !error">
-        <a-alert v-if="!remoteExists" message="远程表不存在" :description="`数据库中未找到表 \`${currentTable?.name}\`，可能已被删除`" type="warning" show-icon style="margin-bottom: 16px">
-          <template #action>
-            <a-button size="small" type="primary" danger @click="handleDeleteLocal(currentTable)">删除本地表</a-button>
-          </template>
-        </a-alert>
-
-        <template v-if="diffResult.total > 0">
-          <div class="diff-summary">
-            <a-tag v-if="diffResult.added.length > 0" color="success">+{{ diffResult.added.length }} 新增</a-tag>
-            <a-tag v-if="diffResult.removed.length > 0" color="error">-{{ diffResult.removed.length }} 删除</a-tag>
-            <a-tag v-if="diffResult.modified.length > 0" color="warning">~{{ diffResult.modified.length }} 修改</a-tag>
-            <a-tag v-if="diffResult.unchanged.length > 0">{{ diffResult.unchanged.length }} 未变</a-tag>
-            <a-tag v-if="!diffResult.hasChanges" color="success">一致</a-tag>
-          </div>
-
-          <a-table :columns="diffColumns" :data-source="tableData" :row-key="record => record.name" :pagination="false" size="small" :row-class-name="rowClassName">
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'localType'">
-                <span v-if="record.local" :class="{ 'text-deleted': record.status === 'removed' }">{{ formatType(record.local) }}</span>
-                <span v-else class="text-muted">-</span>
-              </template>
-              <template v-else-if="column.key === 'remoteType'">
-                <span v-if="record.remote" :class="{ 'text-added': record.status === 'added' }">{{ formatType(record.remote) }}</span>
-                <span v-else class="text-muted">-</span>
-              </template>
-              <template v-else-if="column.key === 'status'">
-                <a-tag v-if="record.status === 'added'" color="success">新增</a-tag>
-                <a-tag v-else-if="record.status === 'removed'" color="error">删除</a-tag>
-                <a-tag v-else-if="record.status === 'modified'" color="warning">修改</a-tag>
-                <a-tag v-else>未变</a-tag>
-              </template>
-              <template v-else-if="column.key === 'detail'">
-                <span v-if="record.status === 'modified'" class="diff-detail">{{ record.detail }}</span>
-                <span v-else class="text-muted">-</span>
-              </template>
-            </template>
-          </a-table>
-        </template>
-      </template>
+      <DiffDetailView
+        v-if="view === 'detail' && !loading && !error"
+        :current-table="currentTable"
+        :remote-exists="remoteExists"
+        :diff-result="diffResult"
+        :table-data="tableData"
+        @delete-local="handleDeleteLocal"
+      />
     </a-spin>
 
     <template #footer>
@@ -146,11 +61,13 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { DiffOutlined, ArrowLeftOutlined, PlusCircleOutlined, MinusCircleOutlined, SyncOutlined } from '@ant-design/icons-vue'
+import { DiffOutlined, ArrowLeftOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { notify } from '@/utils/notify'
 import { invoke } from '@tauri-apps/api/core'
 import * as projectsApi from '@/api/projects'
+import DiffOverviewView from './diff/DiffOverviewView.vue'
+import DiffDetailView from './diff/DiffDetailView.vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -166,52 +83,16 @@ const view = ref('overview')
 const importingName = ref(null)
 const pushingName = ref(null)
 
-// 总览数据
 const newTables = ref([])
 const removedTables = ref([])
 const syncedTables = ref([])
 
-// 列对比数据
 const currentTable = ref(null)
 const remoteExists = ref(true)
 const localColumns = ref([])
 const remoteColumns = ref([])
 const diffResult = ref({ added: [], removed: [], modified: [], unchanged: [], total: 0, hasChanges: false })
 const tableData = ref([])
-
-const overviewColumns = [
-  { title: '表名', dataIndex: 'name', key: 'name', ellipsis: true },
-  { title: '类型', dataIndex: 'table_type', key: 'type', width: 60, align: 'center' },
-  { title: '说明', dataIndex: 'comment', key: 'comment', ellipsis: true },
-  { title: '操作', key: 'action', width: 150, align: 'center' }
-]
-
-const syncedColumns = [
-  { title: '表名', dataIndex: 'name', key: 'name', ellipsis: true },
-  { title: '说明', dataIndex: 'comment', key: 'comment', ellipsis: true },
-  { title: '操作', key: 'action', width: 80, align: 'center' }
-]
-
-const diffColumns = [
-  { title: '列名', dataIndex: 'name', key: 'name', width: 100, ellipsis: true },
-  { title: '本地类型', key: 'localType', width: 110 },
-  { title: '远程类型', key: 'remoteType', width: 110 },
-  { title: '状态', key: 'status', width: 60, align: 'center' },
-  { title: '差异', key: 'detail', ellipsis: true }
-]
-
-const rowClassName = (record) => {
-  if (record.status === 'added') return 'row-added'
-  if (record.status === 'removed') return 'row-removed'
-  if (record.status === 'modified') return 'row-modified'
-  return ''
-}
-
-const formatType = (col) => {
-  let type = col.data_type.toUpperCase()
-  if (col.length) type += `(${col.length})`
-  return type
-}
 
 const parseColumnType = (typeStr) => {
   if (!typeStr) return { dataType: typeStr, length: null }
@@ -261,8 +142,6 @@ const getConnParams = () => {
   }
 }
 
-// ===== 总览逻辑 =====
-
 const fetchOverview = async () => {
   if (!props.project) return
   loading.value = true
@@ -308,8 +187,6 @@ const fetchLocalTables = async () => {
   return await projectsApi.getProjectTables(props.project.id)
 }
 
-// ===== 列对比逻辑 =====
-
 const openDetail = async (table) => {
   currentTable.value = table
   view.value = 'detail'
@@ -328,7 +205,6 @@ const fetchAndDiff = async () => {
     const cleanName = stripBackticks(currentTable.value.name)
     const remoteTableNames = (await fetchRemoteTables()).map(t => t.name)
     if (!remoteTableNames.includes(cleanName)) {
-      // 远程表不存在，切回总览视图（展示远程新增表等完整信息）
       loading.value = false
       await fetchOverview()
       return
@@ -372,7 +248,6 @@ const computeDiff = () => {
     } else {
       const details = []
       if (lCol.data_type !== rCol.data_type) details.push(`类型: ${lCol.data_type} → ${rCol.data_type}`)
-      // MySQL 整数类型 CHARACTER_MAXIMUM_LENGTH 为 NULL，但 COLUMN_TYPE 含显示宽度如 bigint(20)，忽略单侧为空的长度差异
       if (lCol.length != null && rCol.length != null && lCol.length !== rCol.length) details.push(`长度: ${lCol.length} → ${rCol.length}`)
       if (lCol.is_nullable !== rCol.is_nullable) details.push(`可空: ${lCol.is_nullable ? '是' : '否'} → ${rCol.is_nullable ? '是' : '否'}`)
       if (lCol.is_primary_key !== rCol.is_primary_key) details.push(`主键: ${lCol.is_primary_key ? '是' : '否'} → ${rCol.is_primary_key ? '是' : '否'}`)
@@ -399,8 +274,6 @@ const computeDiff = () => {
   diffResult.value = result
   tableData.value = [...added, ...modified, ...removed, ...unchanged]
 }
-
-// ===== 操作 =====
 
 const handleImportSingle = async (table) => {
   importingName.value = table.name
@@ -440,7 +313,6 @@ const handlePushToRemote = async (table) => {
     const columns = cols.map(c => {
       let dataType = c.data_type || ''
       let length = typeof c.length === 'number' ? c.length : null
-      // data_type 可能包含长度信息，如 "tinyint(none)" 或 "varchar(50)" 或 "tinyint(some(1))"
       const parenMatch = dataType.match(/^(.+?)\((.+)\)$/)
       if (parenMatch) {
         dataType = parenMatch[1]
@@ -551,7 +423,6 @@ const handleSyncColumns = async () => {
   }
 }
 
-// ===== 抽屉宽度拖拽 =====
 const drawerWidth = ref(780)
 let resizing = false
 let resizeStartX = 0
@@ -593,36 +464,6 @@ watch(() => props.open, (val) => {
 </script>
 
 <style scoped>
-.overview-summary {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-.section-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 16px 0 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.diff-summary {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-.diff-detail {
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-.text-muted { color: var(--color-text-muted); }
-:deep(.ant-table-wrapper) { overflow-x: hidden; }
-.text-deleted { text-decoration: line-through; color: var(--color-error); }
-.text-added { color: var(--color-success); font-weight: 500; }
-:deep(.row-added td) { background: rgba(82, 196, 26, 0.06) !important; }
-:deep(.row-removed td) { background: rgba(255, 77, 79, 0.06) !important; }
-:deep(.row-modified td) { background: rgba(250, 173, 20, 0.06) !important; }
 .drawer-resize-handle {
   position: absolute;
   top: 0;

@@ -29,67 +29,14 @@
     <div class="languages-content">
       <a-spin :spinning="loading">
         <div v-if="paginatedLanguages.length > 0" class="languages-grid">
-          <div
+          <LanguageCard
             v-for="language in paginatedLanguages"
             :key="language.id"
-            class="language-card"
-            @click="openEditDialog(language)"
-          >
-            <!-- 内容区域 -->
-            <div class="card-content">
-              <!-- 图标 -->
-              <div class="language-icon" :style="{ color: getLanguageColor(language.color) }">
-                {{ language.icon || '💻' }}
-              </div>
-
-              <!-- 语言名称 -->
-              <h3 class="language-name">{{ language.name }}</h3>
-
-              <!-- 描述 -->
-              <p class="language-description">
-                {{ language.description || '暂无描述' }}
-              </p>
-
-              <!-- 标签 -->
-              <div class="language-tags">
-                <a-tag v-if="language.is_builtin" color="blue">内置</a-tag>
-                <a-tag v-else color="green">自定义</a-tag>
-              </div>
-            </div>
-
-            <!-- 操作按钮 -->
-            <div class="card-actions">
-              <a-button
-                type="text"
-                size="small"
-                @click.stop="openFieldTypesDialog(language)"
-                class="action-btn"
-                title="管理类型字段"
-              >
-                <SettingOutlined />
-              </a-button>
-              <a-button
-                type="text"
-                size="small"
-                @click.stop="openEditDialog(language)"
-                class="action-btn"
-                title="编辑"
-              >
-                <EditOutlined />
-              </a-button>
-              <a-button
-                type="text"
-                size="small"
-                danger
-                @click.stop="confirmDelete(language)"
-                class="action-btn"
-                title="删除"
-                :disabled="language.is_builtin"
-              >
-                <DeleteOutlined />
-              </a-button>
-            </div>
-          </div>
+            :language="language"
+            @settings="openFieldTypesDialog"
+            @edit="openEditDialog"
+            @delete="confirmDelete"
+          />
         </div>
 
         <!-- 空状态 -->
@@ -127,12 +74,7 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  SettingOutlined
-} from '@ant-design/icons-vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
 import { Empty, message, Modal } from 'ant-design-vue'
 import { notify } from '@/utils/notify'
 import * as languagesApi from '@/api/languages'
@@ -140,6 +82,7 @@ import { SearchBar } from '@/components/common'
 import { useLayoutStore } from '@/stores/layout'
 import LanguageDialog from './components/LanguageDialog.vue'
 import FieldTypesModal from './components/FieldTypesModal.vue'
+import LanguageCard from './components/LanguageCard.vue'
 
 const layoutStore = useLayoutStore()
 
@@ -246,22 +189,6 @@ const loadLanguages = async () => {
   } finally {
     loading.value = false
   }
-}
-
-// 获取语言颜色
-const getLanguageColor = (color) => {
-  if (!color) return '#d9d9d9'
-  const colorMap = {
-    red: '#f5222d',
-    orange: '#fa8c16',
-    gold: '#faad14',
-    green: '#52c41a',
-    cyan: '#13c2c2',
-    blue: '#1890ff',
-    purple: '#722ed1',
-    pink: '#eb2f96'
-  }
-  return colorMap[color] || color
 }
 
 // 打开创建对话框
@@ -419,82 +346,4 @@ onMounted(async () => {
   gap: var(--spacing-sm);
 }
 
-/* 语言卡片 */
-.language-card {
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-lg);
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-}
-
-.language-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-}
-
-/* 内容区域 */
-.card-content {
-  padding: var(--spacing-md);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.language-icon {
-  font-size: 42px;
-  line-height: 1;
-  margin-bottom: 4px;
-}
-
-.language-name {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.language-description {
-  margin: 0;
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  text-align: center;
-  min-height: 32px;
-  display: flex;
-  align-items: center;
-}
-
-.language-tags {
-  display: flex;
-  gap: var(--spacing-xs);
-}
-
-/* 操作按钮 */
-.card-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 4px;
-  padding: 8px var(--spacing-sm);
-  border-top: 1px solid var(--color-border);
-  background: var(--color-surface);
-}
-
-.card-actions .ant-btn {
-  font-size: 14px;
-  padding: 4px 6px;
-  height: auto;
-  min-width: auto;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.card-actions .ant-btn:hover:not(:disabled) {
-  transform: scale(1.1);
-  background: var(--color-hover);
-}
 </style>

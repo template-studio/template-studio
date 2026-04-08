@@ -22,49 +22,14 @@
     <div class="setting-group">
       <div class="setting-title">技术栈</div>
 
-      <div class="tech-grid">
-        <div class="tech-item" v-for="tech in techStack" :key="tech.name">
-          <div class="tech-icon" :style="{ color: tech.color }">
-            <component :is="tech.icon" />
-          </div>
-          <div class="tech-info">
-            <div class="tech-name">{{ tech.name }}</div>
-            <div class="tech-version">{{ tech.version }}</div>
-          </div>
-        </div>
-      </div>
+      <TechStackGrid :tech-stack="techStack" />
     </div>
 
     <!-- 系统信息 -->
     <div class="setting-group">
       <div class="setting-title">系统信息</div>
 
-      <div class="system-grid">
-        <div class="system-row">
-          <div class="system-label">平台</div>
-          <div class="system-value">{{ systemInfo.platform }}</div>
-        </div>
-        <div class="system-row">
-          <div class="system-label">架构</div>
-          <div class="system-value">{{ systemInfo.arch }}</div>
-        </div>
-        <div class="system-row">
-          <div class="system-label">Node.js</div>
-          <div class="system-value">{{ systemInfo.nodeVersion }}</div>
-        </div>
-        <div class="system-row">
-          <div class="system-label">Tauri</div>
-          <div class="system-value">{{ systemInfo.tauriVersion }}</div>
-        </div>
-        <div class="system-row">
-          <div class="system-label">Chrome</div>
-          <div class="system-value">{{ systemInfo.chromeVersion }}</div>
-        </div>
-        <div class="system-row">
-          <div class="system-label">Vue.js</div>
-          <div class="system-value">{{ systemInfo.vueVersion }}</div>
-        </div>
-      </div>
+      <SystemInfoGrid :system-info="systemInfo" />
     </div>
 
     <!-- 开发者信息 -->
@@ -164,6 +129,8 @@ import {
   DesktopOutlined,
   ApiOutlined
 } from '@ant-design/icons-vue'
+import TechStackGrid from './about/TechStackGrid.vue'
+import SystemInfoGrid from './about/SystemInfoGrid.vue'
 
 // 系统信息
 const systemInfo = reactive({
@@ -420,65 +387,6 @@ onMounted(() => {
 .app-description {
   color: var(--color-text-secondary);
   line-height: 1.4;
-  font-size: 13px;
-}
-
-.tech-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.tech-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-  background: var(--color-background);
-  border-radius: 6px;
-  border: 1px solid var(--color-border);
-}
-
-.tech-icon {
-  font-size: 1.2rem;
-  flex-shrink: 0;
-}
-
-.tech-name {
-  color: var(--color-text);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.tech-version {
-  color: var(--color-text-secondary);
-  font-size: 11px;
-}
-
-.system-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 8px;
-}
-
-.system-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 8px;
-  background: var(--color-background);
-  border-radius: 4px;
-  border: 1px solid var(--color-border);
-}
-
-.system-label {
-  color: var(--color-text-secondary);
-  font-size: 13px;
-}
-
-.system-value {
-  color: var(--color-text);
-  font-weight: 500;
   font-size: 13px;
 }
 

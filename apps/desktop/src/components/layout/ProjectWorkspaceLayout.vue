@@ -1,11 +1,9 @@
 <template>
   <div class="project-workspace-layout">
-    <!-- 左侧菜单栏 -->
     <div
       class="sidebar"
       :data-collapsed="layoutStore.sidebarCollapsed"
     >
-      <!-- Logo Section -->
       <div class="sidebar-logo">
         <div class="logo-content">
           <div class="logo-icon" :class="{ collapsed: layoutStore.sidebarCollapsed }">
@@ -50,7 +48,6 @@
         </div>
       </div>
 
-      <!-- 工作区导航菜单 -->
       <div class="sidebar-nav">
         <a-menu
           v-model:selectedKeys="selectedKeys"
@@ -85,11 +82,8 @@
         </a-menu>
       </div>
 
-      <!-- Bottom Section -->
       <div class="sidebar-bottom">
-        <!-- Settings Section -->
         <div class="settings-section">
-          <!-- Help -->
           <div class="action-item">
             <a-button
               type="text"
@@ -103,7 +97,6 @@
             </a-button>
           </div>
 
-          <!-- Settings -->
           <div class="action-item">
             <a-button
               type="text"
@@ -117,7 +110,6 @@
             </a-button>
           </div>
 
-          <!-- Theme Toggle -->
           <div class="action-item">
             <a-button
               type="text"
@@ -135,123 +127,25 @@
       </div>
     </div>
 
-    <!-- 主内容区 -->
     <div class="main-area" :style="{ marginLeft: layoutStore.sidebarCollapsed ? '60px' : '240px' }">
-      <!-- 顶部标题栏 -->
-      <div class="header titlebar-drag-region">
-        <div class="header-left">
-          <!-- 侧边栏收缩按钮 -->
-          <a-button
-            type="text"
-            class="sidebar-toggle titlebar-no-drag"
-            @click="layoutStore.toggleSidebar()"
-          >
-            <template #icon>
-              <MenuFoldOutlined v-if="!layoutStore.sidebarCollapsed" />
-              <MenuUnfoldOutlined v-else />
-            </template>
-          </a-button>
-          <a-breadcrumb>
-            <a-breadcrumb-item>
-              <a @click.prevent="goBack" class="titlebar-no-drag">项目列表</a>
-            </a-breadcrumb-item>
-            <a-breadcrumb-item>{{ projectName }}</a-breadcrumb-item>
-            <a-breadcrumb-item>{{ currentPageTitle }}</a-breadcrumb-item>
-          </a-breadcrumb>
-        </div>
-        <div class="header-right">
-          <!-- 项目信息展示 -->
-          <div class="project-info-display">
-            <FolderOutlined class="info-icon project-icon" />
-            <span class="project-name-text">{{ projectName }}</span>
-            <a-divider type="vertical" />
-            <DatabaseOutlined class="info-icon" />
-            <span class="info-text">{{ databaseType }}</span>
-            <a-divider type="vertical" />
-            <TableOutlined class="info-icon" />
-            <span class="info-text">{{ tableCount }} 张表</span>
-          </div>
+      <WorkspaceHeader
+        :sidebar-collapsed="layoutStore.sidebarCollapsed"
+        :project-name="projectName"
+        :database-type="databaseType"
+        :table-count="tableCount"
+        :current-page-title="currentPageTitle"
+        @toggle-sidebar="layoutStore.toggleSidebar()"
+        @go-back="goBack"
+        @minimize="minimizeWindow"
+        @maximize="maximizeWindow"
+        @close="closeWindow"
+      />
 
-          <!-- 返回按钮 -->
-          <a-button
-            type="text"
-            size="small"
-            class="window-control back-btn"
-            @click="goBack"
-          >
-            <template #icon>
-              <ArrowLeftOutlined />
-            </template>
-          </a-button>
-
-          <!-- 窗口控制按钮 -->
-          <div class="window-controls titlebar-no-drag">
-            <a-button
-              type="text"
-              size="small"
-              class="window-control"
-              @click="minimizeWindow"
-            >
-              <template #icon>
-                <MinusOutlined />
-              </template>
-            </a-button>
-            <a-button
-              type="text"
-              size="small"
-              class="window-control"
-              @click="maximizeWindow"
-            >
-              <template #icon>
-                <BorderOutlined />
-              </template>
-            </a-button>
-            <a-button
-              type="text"
-              size="small"
-              class="window-control close"
-              @click="closeWindow"
-            >
-              <template #icon>
-                <CloseOutlined />
-              </template>
-            </a-button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 内容区 -->
       <div class="content">
         <router-view />
       </div>
 
-      <!-- 全局 Footer -->
-      <div v-if="layoutStore.footerType" class="content-footer">
-        <!-- 分页 footer -->
-        <a-pagination
-          v-if="layoutStore.footerType === 'pagination'"
-          v-model:current="layoutStore.footerPagination.current"
-          v-model:pageSize="layoutStore.footerPagination.pageSize"
-          :total="layoutStore.footerPagination.total"
-          :show-size-changer="true"
-          :show-quick-jumper="true"
-          :show-total="(total, range) => `共 ${total} 条，当前 ${range[0]}-${range[1]}`"
-          :page-size-options="layoutStore.footerPageSizeOptions"
-          @change="handlePageChange"
-          @showSizeChange="handleSizeChange"
-        />
-        <!-- 概览 footer -->
-        <div v-else-if="layoutStore.footerType === 'overview'" class="footer-overview">
-          <div
-            v-for="(item, index) in layoutStore.footerOverview.items"
-            :key="index"
-            class="overview-item"
-          >
-            <span class="overview-label">{{ item.label }}</span>
-            <span class="overview-value">{{ item.value }}</span>
-          </div>
-        </div>
-      </div>
+      <WorkspaceFooter />
     </div>
   </div>
 </template>
@@ -266,15 +160,6 @@ import { tauriApi } from '@/utils/tauriApi'
 import * as projectsApi from '@/api/projects'
 import {
   TableOutlined,
-  DatabaseOutlined,
-  FolderOutlined,
-  ArrowLeftOutlined,
-  PlaySquareOutlined,
-  MinusOutlined,
-  BorderOutlined,
-  CloseOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
   QuestionCircleOutlined,
   SettingOutlined,
   StarOutlined,
@@ -283,42 +168,37 @@ import {
   DashboardOutlined
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
+import WorkspaceHeader from './workspace/WorkspaceHeader.vue'
+import WorkspaceFooter from './workspace/WorkspaceFooter.vue'
 
 const router = useRouter()
 const route = useRoute()
 const layoutStore = useLayoutStore()
 const themeStore = useThemeStore()
 
-// 从路由参数获取项目ID
 const projectId = computed(() => route.params.id || '')
 
-// 项目信息
 const projectName = ref('加载中...')
 const databaseType = ref('-')
 const tableCount = ref(0)
 
-// 加载项目信息
 const loadProjectInfo = async () => {
   if (!projectId.value) return
 
   try {
     const project = await projectsApi.getProject(projectId.value)
 
-    // 设置项目名称
     projectName.value = project.name
 
-    // 加载数据源信息
     if (project.datasource_id) {
       const datasourceData = await invoke('db_get_datasource', { id: project.datasource_id })
       const datasource = JSON.parse(datasourceData)
 
-      // 设置数据库类型
       databaseType.value = datasource.type_ === 'postgresql' ? 'PostgreSQL' :
                          datasource.type_ === 'mysql' ? 'MySQL' :
                          datasource.type_ === 'sqlite' ? 'SQLite' : datasource.type_
     }
 
-    // 设置表数量
     tableCount.value = project.table_count || 0
   } catch (error) {
     console.error('加载项目信息失败:', error)
@@ -327,18 +207,14 @@ const loadProjectInfo = async () => {
   }
 }
 
-// 组件挂载时加载项目信息
 onMounted(() => {
   loadProjectInfo()
 })
 
-// 主题状态
 const isDark = computed(() => themeStore.isDark)
 
-// 当前选中的菜单
 const selectedKeys = ref(['tables'])
 
-// 当前页面标题
 const currentPageTitle = computed(() => {
   const titleMap = {
     overview: '工作台',
@@ -349,11 +225,9 @@ const currentPageTitle = computed(() => {
   return titleMap[selectedKeys.value[0]] || ''
 })
 
-// 监听路由变化，更新菜单选中状态
 watch(
   () => route.path,
   (newPath) => {
-    // 提取当前的工作区子路由
     const match = newPath.match(/\/project\/[^/]+\/(.+)/)
     if (match) {
       const subRoute = match[1]
@@ -364,14 +238,12 @@ watch(
       }
       selectedKeys.value = [pathToKey[subRoute] || 'tables']
     } else if (newPath.match(/\/project\/[^/]+$/)) {
-      // 工作台页面（没有子路由）
       selectedKeys.value = ['overview']
     }
   },
   { immediate: true }
 )
 
-// 菜单点击处理
 const handleMenuClick = ({ key }) => {
   if (key === 'overview') {
     router.push(`/project/${projectId.value}`)
@@ -380,36 +252,22 @@ const handleMenuClick = ({ key }) => {
   }
 }
 
-// 返回项目列表
 const goBack = () => {
   router.push('/projects')
 }
 
-// 主题切换
 const toggleTheme = () => {
   themeStore.toggleTheme()
 }
 
-// 跳转到设置
 const goToSettings = () => {
   router.push('/settings')
 }
 
-// 跳转到帮助
 const goToHelp = () => {
   router.push('/help')
 }
 
-// Footer 分页事件处理
-const handlePageChange = (page, size) => {
-  layoutStore.updateFooterPagination({ current: page, pageSize: size })
-}
-
-const handleSizeChange = (current, size) => {
-  layoutStore.updateFooterPagination({ current: 1, pageSize: size })
-}
-
-// 窗口控制
 const minimizeWindow = async () => {
   try {
     await tauriApi.window.minimize()
@@ -449,7 +307,6 @@ const closeWindow = async () => {
   min-height: 100vh;
 }
 
-/* 侧边栏 */
 .sidebar {
   height: 100vh;
   width: 240px;
@@ -470,7 +327,6 @@ const closeWindow = async () => {
   width: 60px;
 }
 
-/* Logo 区域 */
 .sidebar-logo {
   padding: var(--spacing-md);
   flex-shrink: 0;
@@ -574,14 +430,12 @@ const closeWindow = async () => {
   }
 }
 
-/* 导航菜单区域 */
 .sidebar-nav {
   flex: 1;
   overflow-y: auto;
   padding: var(--spacing-sm) 12px;
 }
 
-/* 导航菜单样式 */
 .navigation-menu {
   border: none !important;
   border-right: none !important;
@@ -625,7 +479,6 @@ const closeWindow = async () => {
   transition: none !important;
 }
 
-/* 悬浮状态 */
 .navigation-menu :deep(.ant-menu-item:hover),
 .navigation-menu :deep(.ant-menu-item.ant-menu-item:hover),
 .navigation-menu :deep(.ant-menu-inline .ant-menu-item:hover) {
@@ -634,7 +487,6 @@ const closeWindow = async () => {
   border-color: transparent !important;
 }
 
-/* 选中状态 */
 .navigation-menu :deep(.ant-menu-item-selected),
 .navigation-menu :deep(.ant-menu-item.ant-menu-item-selected),
 .navigation-menu :deep(.ant-menu-inline .ant-menu-item-selected) {
@@ -643,7 +495,6 @@ const closeWindow = async () => {
   border-color: var(--color-border) !important;
 }
 
-/* 选中状态再悬浮 */
 .navigation-menu :deep(.ant-menu-item-selected:hover),
 .navigation-menu :deep(.ant-menu-item.ant-menu-item-selected:hover),
 .navigation-menu :deep(.ant-menu-inline .ant-menu-item-selected:hover) {
@@ -652,21 +503,18 @@ const closeWindow = async () => {
   border-color: var(--color-border) !important;
 }
 
-/* 强制覆盖Ant Design的悬浮文字颜色样式 */
 .navigation-menu :deep(.ant-menu-item:hover .ant-menu-title-content),
 .navigation-menu :deep(.ant-menu-item:hover .anticon),
 .navigation-menu :deep(.ant-menu-item:hover span) {
   color: var(--color-primary) !important;
 }
 
-/* 选中状态下的文字颜色也要强制覆盖 */
 .navigation-menu :deep(.ant-menu-item-selected .ant-menu-title-content),
 .navigation-menu :deep(.ant-menu-item-selected .anticon),
 .navigation-menu :deep(.ant-menu-item-selected span) {
   color: var(--color-primary) !important;
 }
 
-/* 选中指示器样式 */
 .navigation-menu :deep(.ant-menu-item-selected::after) {
   display: none !important;
 }
@@ -675,7 +523,6 @@ const closeWindow = async () => {
   font-size: 16px;
 }
 
-/* Collapsed state adjustments - 完全复制 a-button type="text" 的样式 */
 .navigation-menu :deep(.ant-menu-inline-collapsed) {
   .ant-menu-item {
     padding: 0 !important;
@@ -698,13 +545,11 @@ const closeWindow = async () => {
     cursor: pointer !important;
   }
 
-  /* 悬浮状态 */
   .ant-menu-item:hover {
     background: var(--color-hover) !important;
     color: var(--color-primary) !important;
   }
 
-  /* 选中状态 */
   .ant-menu-item-selected,
   .ant-menu-item-selected:hover {
     background: var(--color-hover) !important;
@@ -712,7 +557,6 @@ const closeWindow = async () => {
     box-shadow: 0 0 0 1px var(--color-border) inset !important;
   }
 
-  /* 图标样式 */
   .ant-menu-item-icon {
     font-size: 16px !important;
     margin: 0 !important;
@@ -725,7 +569,6 @@ const closeWindow = async () => {
     display: none !important;
   }
 
-  /* 隐藏所有指示器 */
   .ant-menu-item-selected::after,
   .ant-menu-item::before,
   .ant-menu-item::after {
@@ -733,7 +576,6 @@ const closeWindow = async () => {
   }
 }
 
-/* 底部区域 */
 .sidebar-bottom {
   height: 56px;
   padding: 0 var(--spacing-md);
@@ -744,7 +586,6 @@ const closeWindow = async () => {
   justify-content: center;
 }
 
-/* Settings Section */
 .settings-section {
   display: flex;
   align-items: center;
@@ -772,7 +613,6 @@ const closeWindow = async () => {
   background: var(--color-hover);
 }
 
-/* 收缩状态下的底部区域 */
 .sidebar[data-collapsed="true"] .sidebar-bottom {
   padding: 0;
 }
@@ -782,7 +622,6 @@ const closeWindow = async () => {
   gap: var(--spacing-xs);
 }
 
-/* 滚动条样式 */
 .sidebar-nav::-webkit-scrollbar {
   width: 4px;
 }
@@ -800,139 +639,10 @@ const closeWindow = async () => {
   background: var(--color-hover);
 }
 
-/* Collapsed state adjustments */
 .sidebar[data-collapsed="true"] .sidebar-nav {
   padding: var(--spacing-sm) 0;
 }
 
-.header {
-  background: var(--color-navbar);
-  border-bottom: 1px solid var(--color-border);
-  padding: 0 var(--spacing-lg);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  height: var(--navbar-height);
-  line-height: var(--navbar-height);
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.sidebar-toggle {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-secondary);
-  transition: all var(--transition-fast);
-}
-
-.sidebar-toggle:hover {
-  color: var(--color-primary);
-  background: var(--color-hover);
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-/* 项目信息展示 */
-.project-info-display {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 16px;
-  background: transparent;
-  height: 32px;
-  line-height: 20px;
-}
-
-/* 返回按钮 */
-.header-right :deep(.ant-btn) {
-  margin: 0;
-  cursor: pointer !important;
-}
-
-.header-right :deep(.ant-btn:hover) {
-  cursor: pointer !important;
-}
-
-.header-right :deep(.ant-btn .anticon) {
-  cursor: pointer !important;
-}
-
-.project-icon {
-  font-size: 16px;
-  color: var(--color-primary);
-}
-
-.project-name-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text);
-  line-height: 20px;
-}
-
-.info-icon {
-  font-size: 14px;
-  color: var(--color-text-secondary);
-}
-
-.info-text {
-  font-size: 13px;
-  color: var(--color-text);
-  font-weight: 500;
-  line-height: 20px;
-}
-
-/* 窗口拖动区域 */
-.titlebar-drag-region {
-  -webkit-app-region: drag;
-  user-select: none;
-}
-
-/* 排除拖动的交互元素 */
-.titlebar-no-drag {
-  -webkit-app-region: no-drag;
-}
-
-/* 窗口控制按钮 */
-.window-controls {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 12px;
-}
-
-.window-control {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-secondary);
-  transition: all 0.2s;
-}
-
-.window-control:hover {
-  color: var(--color-primary);
-  background: var(--color-hover);
-}
-
-.window-control.close:hover {
-  background: #ff4757;
-  color: white;
-}
-
-/* 内容区 */
 .content {
   background: var(--color-background);
   padding: var(--spacing-lg);
@@ -940,43 +650,6 @@ const closeWindow = async () => {
   overflow-y: auto;
 }
 
-/* 全局 Footer */
-.content-footer {
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-top: 1px solid var(--color-border);
-  background: var(--color-surface);
-  flex-shrink: 0;
-  padding: 0 var(--spacing-lg);
-}
-
-.footer-overview {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xl);
-  width: 100%;
-}
-
-.overview-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.overview-label {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-}
-
-.overview-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-/* Transitions */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity var(--transition-fast);
