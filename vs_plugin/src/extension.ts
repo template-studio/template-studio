@@ -3,6 +3,7 @@ import { CliExecutor } from './executor';
 import { VariableDecorationProvider } from './decorator';
 import { VariableTreeProvider } from './variableTree';
 import { PreviewTreeProvider } from './previewTree';
+import { ValidationTreeProvider } from './validateTree';
 
 export function activate(context: vscode.ExtensionContext) {
     const executor = new CliExecutor();
@@ -23,6 +24,12 @@ export function activate(context: vscode.ExtensionContext) {
         }),
         vscode.commands.registerCommand('templateStudio.fillVariables', async () => {
             await fillVariables(executor);
+        }),
+        vscode.commands.registerCommand('templateStudio.uploadTemplate', async () => {
+            await uploadTemplate(executor);
+        }),
+        vscode.commands.registerCommand('templateStudio.validateResults.refresh', () => {
+            validationTreeProvider.refresh(vscode.window.activeTextEditor?.document.uri);
         })
     );
 
@@ -33,9 +40,11 @@ export function activate(context: vscode.ExtensionContext) {
     // 注册 TreeView
     const variableTreeProvider = new VariableTreeProvider(executor);
     const previewTreeProvider = new PreviewTreeProvider(executor);
+    const validationTreeProvider = new ValidationTreeProvider(executor);
 
     vscode.window.registerTreeDataProvider('templateStudio.variables', variableTreeProvider);
     vscode.window.registerTreeDataProvider('templateStudio.preview', previewTreeProvider);
+    vscode.window.registerTreeDataProvider('templateStudio.validation', validationTreeProvider);
 
     // 监听编辑器变化
     context.subscriptions.push(
@@ -43,6 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
             if (editor) {
                 decorator.updateDecorations(editor);
                 variableTreeProvider.refresh(editor.document.uri);
+                validationTreeProvider.refresh(editor.document.uri);
             }
         })
     );
@@ -253,6 +263,69 @@ async function fillVariables(executor: CliExecutor) {
             );
         } catch (err: any) {
             vscode.window.showErrorMessage(`填充失败: ${err.message}`);
+        }
+    });
+}
+
+async function uploadTemplate(executor: CliExecutor) {
+    const templatePath = await vscode.window.showInputBox({
+        prompt: '输入模板目录路径',
+        placeHolder: '/path/to/template',
+        value: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+    });
+    if (!templatePath) return;
+
+    const serverUrl = await vscode.window.showInputBox({
+        prompt: '输入服务器 URL（可选，使用默认配置）',
+        placeHolder: 'http://localhost:8080'
+    });
+
+    const apiKey = await vscode.window.showInputBox({
+        prompt: '输入 API Key（可选，使用默认配置）',
+        password: true
+    });
+
+    await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: '正在上传模板...',
+        cancellable: false
+    }, async (progress) => {
+        try {
+            // 先验证模板
+            progress.report({ message: '验证模板语法...' });
+            const validationResult = await executor.validateSyntax(templatePath);
+            if (!validationResult.valid) {
+                const choice = await vscode.window.showWarningMessage(
+                    `模板有 ${validationResult.errors.length} 个错误，是否继续上传？`,
+                    '继续上传',
+                    '取消'
+                );
+                if (choice !== '继续上传') return;
+            }
+
+            // 构建上传命令参数
+            const args = ['template', 'upload', templatePath];
+            if (serverUrl) args.push('--server', serverUrl);
+            if (apiKey) args.push('--api-key', apiKey);
+
+            progress.report({ message: '上传中...' });
+
+            // 执行上传（通过 CLI）
+            const { stdout, stderr } = await require('util').promisify(require('child_process').exec)(
+                `${executor['cliPath']} ${args.join(' ')}`,
+                { timeout: 120000 }
+            );
+
+            if (stderr) {
+                console.warn('Upload stderr:', stderr);
+            }
+
+            vscode.window.showInformationMessage('模板上传成功！');
+
+            // 刷新验证面板
+            vscode.commands.executeCommand('templateStudio.validateResults.refresh');
+        } catch (err: any) {
+            vscode.window.showErrorMessage(`上传失败: ${err.message}`);
         }
     });
 }

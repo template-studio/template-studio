@@ -33,6 +33,14 @@
       {
         "command": "templateStudio.fillVariables",
         "title": "Template Studio: AI 填充变量"
+      },
+      {
+        "command": "templateStudio.uploadTemplate",
+        "title": "Template Studio: 上传模板"
+      },
+      {
+        "command": "templateStudio.validateResults.refresh",
+        "title": "刷新验证结果"
       }
     ],
     "viewsContainers": {
@@ -53,6 +61,10 @@
         {
           "id": "templateStudio.preview",
           "name": "预览"
+        },
+        {
+          "id": "templateStudio.validation",
+          "name": "验证结果"
         }
       ]
     },
