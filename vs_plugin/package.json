@@ -1,0 +1,81 @@
+{
+  "name": "template-studio",
+  "displayName": "Template Studio",
+  "description": "模板管理和代码生成工具 - 项目转模板、变量高亮、渲染预览",
+  "version": "0.1.0",
+  "publisher": "cicbyte",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "templateStudio.convertToTemplate",
+        "title": "Template Studio: 转换为模板"
+      },
+      {
+        "command": "templateStudio.analyzeVariables",
+        "title": "Template Studio: 分析变量"
+      },
+      {
+        "command": "templateStudio.renderPreview",
+        "title": "Template Studio: 渲染预览"
+      },
+      {
+        "command": "templateStudio.validate",
+        "title": "Template Studio: 验证模板"
+      },
+      {
+        "command": "templateStudio.fillVariables",
+        "title": "Template Studio: AI 填充变量"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "template-studio",
+          "title": "Template Studio",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "template-studio": [
+        {
+          "id": "templateStudio.variables",
+          "name": "变量"
+        },
+        {
+          "id": "templateStudio.preview",
+          "name": "预览"
+        }
+      ]
+    },
+    "languages": [
+      {
+        "id": "template-studio-template",
+        "aliases": ["Template Studio Template", "tst"],
+        "extensions": [".tst", ".template"]
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.3.0"
+  }
+}
