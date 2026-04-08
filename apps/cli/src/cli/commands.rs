@@ -329,57 +329,74 @@ pub async fn handle_ai(
 }
 
 async fn handle_analyze_variables(path: &str, format: &str) -> Result<()> {
-    use template_studio_ai_agent::tools::variable::AnalyzeVariablesTool;
-    use template_studio_ai_agent::tools::AiTool;
+    use crate::ai::{OutputFormat, OutputFormatter};
 
-    let tool = AnalyzeVariablesTool;
-    let args = serde_json::json!({ "template_path": path });
-    let result = tool.execute(args).await?;
+    let result = template_studio_ai_agent::analyze_variables(path).await
+        .map_err(|e| anyhow::anyhow!("变量分析失败: {}", e))?;
 
-    if result.success {
-        match format {
-            "json" => println!("{}", result.output),
-            "compact" => {
-                let vars: serde_json::Value = serde_json::from_str(&result.output)?;
-                let count = vars.as_array().map(|a| a.len()).unwrap_or(0);
-                println!("变量数: {}", count);
-            }
-            _ => {
-                // table 格式
-                let vars: Vec<serde_json::Value> = serde_json::from_str(&result.output)?;
-                println!("模板变量分析结果 ({} 个变量):\n", vars.len());
-                println!("{:<20} {:<10} {:<8} {}", "变量名", "类型", "必填", "描述");
-                println!("{}", "-".repeat(70));
-                for var in &vars {
-                    println!(
-                        "{:<20} {:<10} {:<8} {}",
-                        var["name"].as_str().unwrap_or(""),
-                        var["type"].as_str().unwrap_or(""),
-                        if var["required"].as_bool().unwrap_or(false) { "是" } else { "否" },
-                        var["description"].as_str().unwrap_or("")
-                    );
-                }
-            }
-        }
-    } else {
-        eprintln!("分析失败: {}", result.error.unwrap_or_default());
-        std::process::exit(2);
-    }
+    let formatter = OutputFormatter::new(OutputFormat::from_str(format));
+    formatter.print(&result)?;
 
     Ok(())
 }
 
 async fn handle_fill_variables(
-    _path: &str,
-    _project: i64,
-    _provider: Option<String>,
-    _model: Option<String>,
-    _dry_run: bool,
-    _write: bool,
-    _format: &str,
+    path: &str,
+    project: i64,
+    provider: Option<String>,
+    model: Option<String>,
+    dry_run: bool,
+    write: bool,
+    format: &str,
 ) -> Result<()> {
-    // TODO: 实现变量填充
-    println!("变量填充功能正在开发中...");
+    use crate::ai::{OutputFormat, OutputFormatter};
+    use template_studio_ai_agent::client::OpenAiClient;
+    use template_studio_ai_agent::config::AiConfig;
+    use template_studio_ai_agent::context::ProjectContext;
+
+    // 加载 AI 配置
+    let config = AiConfig {
+        provider: provider.unwrap_or_else(|| "deepseek".to_string()),
+        model: model.unwrap_or_else(|| "deepseek-chat".to_string()),
+        api_key: std::env::var("AI_API_KEY").unwrap_or_default(),
+        base_url: std::env::var("AI_BASE_URL").ok(),
+    };
+
+    if config.api_key.is_empty() {
+        eprintln!("错误: 未设置 AI_API_KEY 环境变量");
+        std::process::exit(3);
+    }
+
+    let client = OpenAiClient::new(config);
+
+    // 构建项目上下文（简化版，实际应从数据库读取）
+    let context = ProjectContext {
+        project_id: project,
+        project_name: format!("Project {}", project),
+        tables: vec![],
+        type_mappings: vec![],
+        naming_convention: None,
+    };
+
+    let result = template_studio_ai_agent::fill_variables(&client, path, &context).await
+        .map_err(|e| anyhow::anyhow!("变量填充失败: {}", e))?;
+
+    let formatter = OutputFormatter::new(OutputFormat::from_str(format));
+    formatter.print(&result)?;
+
+    if write && !dry_run {
+        // 写入 variables.json
+        let vars_path = std::path::Path::new(path)
+            .join(".meta")
+            .join("variables")
+            .join("variables.json");
+        if let Some(parent) = vars_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&vars_path, serde_json::to_string_pretty(&result.filled)?)?;
+        formatter.print_message(&format!("已写入: {}", vars_path.display()));
+    }
+
     Ok(())
 }
 

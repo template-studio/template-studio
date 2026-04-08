@@ -78,7 +78,7 @@ pub struct ToolResult {
 }
 
 /// 变量 Schema
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct VariableSchema {
     pub name: String,
     #[serde(rename = "type")]

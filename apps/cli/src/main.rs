@@ -6,6 +6,7 @@ mod storage;
 mod tui;
 mod variables;
 mod renderer;
+mod ai;
 
 use anyhow::Result;
 use clap::Parser;
