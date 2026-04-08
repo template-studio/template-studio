@@ -577,13 +577,37 @@ async fn handle_edit_file(
 }
 
 async fn handle_recommend(
-    _project: Option<i64>,
-    _language: Option<String>,
-    _category: Option<String>,
-    _explain: bool,
+    project: Option<i64>,
+    language: Option<String>,
+    category: Option<String>,
+    explain: bool,
 ) -> Result<()> {
-    // TODO: 实现推荐
-    println!("推荐功能正在开发中...");
+    use crate::ai::{OutputFormat, OutputFormatter};
+
+    // 如果指定了项目，需要获取项目路径
+    let project_path = if let Some(_pid) = project {
+        // TODO: 从数据库获取项目路径
+        anyhow::bail!("项目 ID 推荐暂未实现，请直接指定项目路径");
+    } else {
+        // 使用当前目录
+        std::env::current_dir()
+            .map_err(|e| anyhow::anyhow!("获取当前目录失败: {}", e))?
+            .to_string_lossy()
+            .to_string()
+    };
+
+    let result = template_studio_ai_agent::recommend_template(
+        &project_path,
+        language.as_deref(),
+        category.as_deref(),
+        explain,
+    )
+    .await
+    .map_err(|e| anyhow::anyhow!("推荐失败: {}", e))?;
+
+    let formatter = OutputFormatter::new(OutputFormat::Json);
+    formatter.print(&result)?;
+
     Ok(())
 }
 

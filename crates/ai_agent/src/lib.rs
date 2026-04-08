@@ -1,3 +1,4 @@
+pub mod agent;
 pub mod client;
 pub mod config;
 pub mod context;
@@ -16,3 +17,8 @@ pub use tools::render::{render_preview, render_export};
 pub use tools::validate::{validate_syntax, validate_variables};
 pub use tools::file::edit_file;
 pub use tools::convert::convert_to_template;
+pub use tools::recommend::recommend_template;
+pub use tools::diff::render_diff;
+
+// Re-export agent
+pub use agent::{Agent, AgentResult, create_default_agent};

@@ -3,6 +3,8 @@ pub mod render;
 pub mod validate;
 pub mod file;
 pub mod convert;
+pub mod recommend;
+pub mod diff;
 
 use async_trait::async_trait;
 use crate::types::{ToolDefinition, ToolResult};

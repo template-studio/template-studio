@@ -222,7 +222,7 @@ impl AiTool for RenderExportTool {
 }
 
 /// 扫描模板文件
-fn scan_template_files(
+pub fn scan_template_files(
     base: &std::path::Path,
     dir: &std::path::Path,
     files: &mut Vec<(String, String)>,
