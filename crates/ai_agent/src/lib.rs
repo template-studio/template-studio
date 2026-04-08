@@ -12,3 +12,7 @@ pub use types::*;
 
 // Re-export convenience functions
 pub use tools::variable::{analyze_variables, fill_variables, extract_variables_regex};
+pub use tools::render::{render_preview, render_export};
+pub use tools::validate::{validate_syntax, validate_variables};
+pub use tools::file::edit_file;
+pub use tools::convert::convert_to_template;

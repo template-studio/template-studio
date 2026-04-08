@@ -328,6 +328,40 @@ pub async fn handle_ai(
     }
 }
 
+/// 加载变量（从文件或命令行参数）
+fn load_variables(
+    template_path: &str,
+    vars_file: Option<&str>,
+    vars_json: Option<&str>,
+) -> Result<serde_json::Value> {
+    if let Some(file) = vars_file {
+        let content = std::fs::read_to_string(file)
+            .map_err(|e| anyhow::anyhow!("读取变量文件失败: {}", e))?;
+        return serde_json::from_str(&content)
+            .map_err(|e| anyhow::anyhow!("解析变量文件失败: {}", e));
+    }
+
+    if let Some(json) = vars_json {
+        return serde_json::from_str(json)
+            .map_err(|e| anyhow::anyhow!("解析变量 JSON 失败: {}", e));
+    }
+
+    // 尝试从模板目录的 .meta/variables/variables.json 加载
+    let vars_path = std::path::Path::new(template_path)
+        .join(".meta")
+        .join("variables")
+        .join("variables.json");
+    if vars_path.exists() {
+        let content = std::fs::read_to_string(&vars_path)
+            .map_err(|e| anyhow::anyhow!("读取变量文件失败: {}", e))?;
+        return serde_json::from_str(&content)
+            .map_err(|e| anyhow::anyhow!("解析变量文件失败: {}", e));
+    }
+
+    // 返回空对象
+    Ok(serde_json::json!({}))
+}
+
 async fn handle_analyze_variables(path: &str, format: &str) -> Result<()> {
     use crate::ai::{OutputFormat, OutputFormatter};
 
@@ -401,48 +435,144 @@ async fn handle_fill_variables(
 }
 
 async fn handle_convert_to_template(
-    _path: &str,
-    _output: &str,
-    _name: Option<String>,
-    _category: Option<String>,
-    _strategy: &str,
+    path: &str,
+    output: &str,
+    name: Option<String>,
+    category: Option<String>,
+    strategy: &str,
 ) -> Result<()> {
-    // TODO: 实现项目转换
-    println!("项目转换功能正在开发中...");
+    use crate::ai::{OutputFormat, OutputFormatter};
+
+    let result = template_studio_ai_agent::convert_to_template(
+        path,
+        output,
+        name.as_deref(),
+        category.as_deref(),
+        strategy,
+    )
+    .await
+    .map_err(|e| anyhow::anyhow!("项目转换失败: {}", e))?;
+
+    let formatter = OutputFormatter::new(OutputFormat::Json);
+    formatter.print(&result)?;
+
     Ok(())
 }
 
 async fn handle_render_preview(
-    _path: &str,
-    _vars_file: Option<String>,
-    _vars: Option<String>,
-    _full: bool,
+    path: &str,
+    vars_file: Option<String>,
+    vars: Option<String>,
+    full: bool,
 ) -> Result<()> {
-    // TODO: 实现渲染预览
-    println!("渲染预览功能正在开发中...");
+    use crate::ai::{OutputFormat, OutputFormatter};
+
+    // 加载变量
+    let variables = load_variables(path, vars_file.as_deref(), vars.as_deref())?;
+
+    let result = template_studio_ai_agent::render_preview(path, &variables, full)
+        .await
+        .map_err(|e| anyhow::anyhow!("渲染预览失败: {}", e))?;
+
+    let formatter = OutputFormatter::new(OutputFormat::Json);
+    formatter.print(&result)?;
+
     Ok(())
 }
 
 async fn handle_validate(
-    _path: &str,
-    _vars_file: Option<String>,
-    _check_output: bool,
+    path: &str,
+    vars_file: Option<String>,
+    check_output: bool,
 ) -> Result<()> {
-    // TODO: 实现验证
-    println!("验证功能正在开发中...");
+    use crate::ai::{OutputFormat, OutputFormatter};
+
+    let formatter = OutputFormatter::new(OutputFormat::Json);
+
+    // 语法验证
+    let syntax_result = template_studio_ai_agent::validate_syntax(path)
+        .await
+        .map_err(|e| anyhow::anyhow!("语法验证失败: {}", e))?;
+
+    println!("=== 语法验证 ===");
+    formatter.print(&syntax_result)?;
+
+    // 变量验证（如果有变量文件）
+    if let Some(vars_file) = &vars_file {
+        let vars_content = std::fs::read_to_string(vars_file)
+            .map_err(|e| anyhow::anyhow!("读取变量文件失败: {}", e))?;
+        let variables: serde_json::Value = serde_json::from_str(&vars_content)
+            .map_err(|e| anyhow::anyhow!("解析变量文件失败: {}", e))?;
+
+        let vars_result = template_studio_ai_agent::validate_variables(path, &variables)
+            .await
+            .map_err(|e| anyhow::anyhow!("变量验证失败: {}", e))?;
+
+        println!("\n=== 变量验证 ===");
+        formatter.print(&vars_result)?;
+    }
+
+    if check_output {
+        println!("\n=== 输出验证 ===");
+        println!("输出验证需要渲染后的结果，请先运行 render-preview");
+    }
+
     Ok(())
 }
 
 async fn handle_edit_file(
-    _path: &str,
-    _insert: Option<usize>,
-    _replace: Option<String>,
-    _delete: Option<String>,
-    _append: Option<String>,
-    _content: Option<String>,
+    path: &str,
+    insert: Option<usize>,
+    replace: Option<String>,
+    delete: Option<String>,
+    append: Option<String>,
+    content: Option<String>,
 ) -> Result<()> {
-    // TODO: 实现文件编辑
-    println!("文件编辑功能正在开发中...");
+    use crate::ai::{OutputFormat, OutputFormatter};
+
+    let (operation, line, end_line) = if let Some(line_num) = insert {
+        ("insert", Some(line_num), None)
+    } else if let Some(range) = &replace {
+        let parts: Vec<&str> = range.split('-').collect();
+        let start = parts[0].parse::<usize>()
+            .map_err(|_| anyhow::anyhow!("无效的行号: {}", parts[0]))?;
+        let end = if parts.len() > 1 {
+            Some(parts[1].parse::<usize>()
+                .map_err(|_| anyhow::anyhow!("无效的行号: {}", parts[1]))?)
+        } else {
+            None
+        };
+        ("replace", Some(start), end)
+    } else if let Some(range) = &delete {
+        let parts: Vec<&str> = range.split('-').collect();
+        let start = parts[0].parse::<usize>()
+            .map_err(|_| anyhow::anyhow!("无效的行号: {}", parts[0]))?;
+        let end = if parts.len() > 1 {
+            Some(parts[1].parse::<usize>()
+                .map_err(|_| anyhow::anyhow!("无效的行号: {}", parts[1]))?)
+        } else {
+            None
+        };
+        ("delete", Some(start), end)
+    } else if append.is_some() {
+        ("append", None, None)
+    } else {
+        anyhow::bail!("请指定操作: --insert, --replace, --delete, 或 --append");
+    };
+
+    let result = template_studio_ai_agent::edit_file(
+        path,
+        operation,
+        line,
+        end_line,
+        content.as_deref(),
+    )
+    .await
+    .map_err(|e| anyhow::anyhow!("文件编辑失败: {}", e))?;
+
+    let formatter = OutputFormatter::new(OutputFormat::Json);
+    formatter.print(&result)?;
+
     Ok(())
 }
 
