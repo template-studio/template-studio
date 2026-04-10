@@ -26,3 +26,7 @@ pnpm-debug.log*
 *.sw?
 /components.d.ts
 /components.d.ts
+
+# WASM build output
+/src/wasm/*.js
+/src/wasm/*.wasm
