@@ -5,6 +5,7 @@ use jsonwebtoken::{encode, decode, Header, Validation, EncodingKey, DecodingKey}
 use template_studio_shared::models::auth::{Claims, JwtConfig};
 use template_studio_shared::models::user::{LoginRequest, LoginResponse, UserInfoResponse, RegisterRequest};
 use template_studio_repositories::UserRepository;
+use tracing::{info, warn};
 
 pub struct AuthService {
     user_repo: Arc<UserRepository>,
@@ -17,20 +18,29 @@ impl AuthService {
     }
 
     pub async fn login(&self, req: &LoginRequest) -> Result<LoginResponse> {
+        info!("登录请求: username={}", req.username);
+
         let user = self.user_repo
             .find_by_username(&req.username)
             .await?
-            .ok_or_else(|| anyhow!("用户名或密码错误"))?;
+            .ok_or_else(|| {
+                warn!("登录失败: 用户 '{}' 不存在", req.username);
+                anyhow!("用户名或密码错误")
+            })?;
 
         if user.status != 1 {
-            return Err(anyhow!("该账号已被禁用"));
+                warn!("登录失败: 用户 '{}' 已被禁用", req.username);
+                return Err(anyhow!("该账号已被禁用"));
         }
 
         let valid = verify(&req.password, &user.password_hash)
             .map_err(|_| anyhow!("密码验证失败"))?;
         if !valid {
+            warn!("登录失败: 用户 '{}' 密码错误", req.username);
             return Err(anyhow!("用户名或密码错误"));
         }
+
+        info!("登录成功: user_id={}, username={}", user.id, user.username);
 
         let now = chrono::Utc::now().timestamp();
         let claims = Claims {

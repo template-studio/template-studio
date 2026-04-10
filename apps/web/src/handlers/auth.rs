@@ -8,6 +8,7 @@ use serde_json::{json, Value};
 use template_studio_shared::models::user::{LoginRequest, ChangePasswordRequest, RegisterRequest, UpdateProfileRequest};
 use template_studio_shared::models::auth::{AuthUser, AuthType};
 use template_studio_shared::models::pat::CreatePatRequest;
+use tracing::warn;
 use validator::Validate;
 
 pub type AppState = super::super::AppState;
@@ -18,6 +19,7 @@ pub async fn login(
     Json(request): Json<LoginRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     if let Err(e) = request.validate() {
+        warn!("登录参数验证失败: {}", e);
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
     }
 
@@ -27,7 +29,10 @@ pub async fn login(
             "message": "登录成功",
             "result": resp
         }))),
-        Err(e) => error_response(StatusCode::UNAUTHORIZED, &e.to_string()),
+        Err(e) => {
+            warn!("登录失败: {}", e);
+            error_response(StatusCode::UNAUTHORIZED, &e.to_string())
+        },
     }
 }
 
