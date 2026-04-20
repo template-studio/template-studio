@@ -1,0 +1,33 @@
+import {
+  SettingOutlined,
+  SearchOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  FullscreenOutlined,
+  FullscreenExitOutlined,
+  PoweroffOutlined,
+  GithubOutlined,
+  LockOutlined,
+  ReloadOutlined,
+  LogoutOutlined,
+  UserOutlined,
+  CheckOutlined,
+  HomeOutlined,
+} from '@ant-design/icons-vue';
+
+export default {
+  SettingOutlined,
+  LockOutlined,
+  GithubOutlined,
+  SearchOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  FullscreenOutlined,
+  FullscreenExitOutlined,
+  PoweroffOutlined,
+  ReloadOutlined,
+  LogoutOutlined,
+  UserOutlined,
+  CheckOutlined,
+  HomeOutlined,
+};
