@@ -36,6 +36,7 @@
         :field-names="{ key: 'key', title: 'label', children: 'children' }"
         @select="onSelectFile"
         @expand="updatePrefixWithExpanded"
+        @right-click="onNodeRightClick"
         draggable
         @dragstart="onDragStart"
         @dragenter="onDragEnter"
@@ -500,6 +501,101 @@
         dropdownY.value = e.clientY;
       },
     };
+  }
+
+  // Ant Design Vue Tree 右键点击事件处理
+  function onNodeRightClick(info) {
+    const { event, node } = info;
+    event.preventDefault();
+    event.stopPropagation();
+
+    // 从 localTreeData 中查找原始节点数据
+    const originalNode = findNodeByKey(localTreeData.value, node.key);
+    dropdownNode.value = originalNode || node;
+
+    // 检查是否在子目录中（有父路径）
+    const nodeData = originalNode || node;
+    const isInSubdirectory = nodeData.filePath && (nodeData.filePath.includes('/') || nodeData.filePath.includes('\\'));
+
+    const isLeaf = nodeData.isLeaf || nodeData.isDirectory === 0;
+
+    if (isLeaf) {
+      dropdownOptions.value = [
+        {
+          label: '重命名',
+          key: 'renameNode',
+          icon: Edit,
+        },
+        isInSubdirectory ? { type: 'divider', key: 'divider0' } : null,
+        isInSubdirectory
+          ? {
+              label: '移动到根目录',
+              key: 'moveToRoot',
+              icon: Folder,
+            }
+          : null,
+        { type: 'divider', key: 'divider1' },
+        {
+          label: '设置生成条件',
+          key: 'setCondition',
+          icon: Edit,
+        },
+        { type: 'divider', key: 'divider2' },
+        {
+          label: '删除节点',
+          key: 'deleteNode',
+          icon: Trash,
+        },
+      ].filter(Boolean);
+    } else {
+      dropdownOptions.value = [
+        {
+          label: '新增文件',
+          key: 'addFile',
+          icon: FileTrayFullOutline,
+        },
+        {
+          label: '新增文件夹',
+          key: 'addFolder',
+          icon: Folder,
+        },
+        { type: 'divider', key: 'divider1' },
+        {
+          label: '上传文件',
+          key: 'uploadCodeFile',
+          icon: FileTrayFullOutline,
+        },
+        {
+          label: '重命名',
+          key: 'renameNode',
+          icon: Edit,
+        },
+        isInSubdirectory ? { type: 'divider', key: 'divider2' } : null,
+        isInSubdirectory
+          ? {
+              label: '移动到根目录',
+              key: 'moveToRoot',
+              icon: Folder,
+            }
+          : null,
+        { type: 'divider', key: 'divider3' },
+        {
+          label: '设置生成条件',
+          key: 'setCondition',
+          icon: Edit,
+        },
+        { type: 'divider', key: 'divider4' },
+        {
+          label: '删除节点',
+          key: 'deleteNode',
+          icon: Trash,
+        },
+      ].filter(Boolean);
+    }
+
+    showDropdown.value = true;
+    dropdownX.value = event.clientX;
+    dropdownY.value = event.clientY;
   }
 
   // 设置全局拖拽监听
