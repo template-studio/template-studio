@@ -920,13 +920,31 @@
   .drawer-content {
     display: flex;
     min-height: 400px;
+    height: 100%;
+    width: 100%;
   }
 
   /* Tab 样式优化 */
+  .advanced-drawer .ant-tabs {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+  }
+
   .advanced-drawer :deep(.ant-tabs-nav) {
     background: #fff;
     border-right: 1px solid #e2e8f0;
     padding: 12px 0;
+    flex-shrink: 0;
+  }
+
+  .advanced-drawer :deep(.ant-tabs-content-holder) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .advanced-drawer :deep(.ant-tabs-tabpane) {
+    width: 100%;
   }
 
   .advanced-drawer :deep(.ant-tabs-tab) {
@@ -961,7 +979,8 @@
 
   .tab-content {
     padding: 24px;
-    max-width: 900px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   /* 设置卡片 - 现代风格 */
