@@ -142,12 +142,6 @@
                   </div>
                 </div>
               </a-card>
-
-              <!-- 操作按钮 -->
-              <div class="settings-actions">
-                <a-button @click="resetToDefaults"> 恢复默认 </a-button>
-                <a-button type="primary" @click="handleSave"> 保存设置 </a-button>
-              </div>
             </div>
           </div>
         </a-tab-pane>
@@ -296,23 +290,6 @@
                   <a-empty v-else description="暂无引擎信息" />
                 </a-spin>
               </a-card>
-
-              <!-- 操作按钮 -->
-              <div class="settings-actions">
-                <a-button @click="refreshEngineStatus" :loading="engineState.isLoading">
-                  刷新状态
-                </a-button>
-                <a-button @click="handleClearCache" :disabled="!engineState.isUsingWasm">
-                  清除缓存
-                </a-button>
-                <a-button
-                  type="primary"
-                  @click="refreshEngineInfo"
-                  :loading="engineState.isLoadingInfo"
-                >
-                  获取引擎信息
-                </a-button>
-              </div>
             </div>
           </div>
         </a-tab-pane>
@@ -518,6 +495,27 @@
         </a-tab-pane>
       </a-tabs>
     </div>
+
+    <!-- 底部按钮区域 -->
+    <template #footer>
+      <div class="drawer-footer">
+        <template v-if="activeTab === 'editor-settings'">
+          <a-button @click="resetToDefaults">恢复默认</a-button>
+          <a-button type="primary" @click="handleSave">保存设置</a-button>
+        </template>
+        <template v-else-if="activeTab === 'engine'">
+          <a-button @click="refreshEngineStatus" :loading="engineState.isLoading">
+            刷新状态
+          </a-button>
+          <a-button @click="handleClearCache" :disabled="!engineState.isUsingWasm">
+            清除缓存
+          </a-button>
+          <a-button type="primary" @click="refreshEngineInfo" :loading="engineState.isLoadingInfo">
+            获取引擎信息
+          </a-button>
+        </template>
+      </div>
+    </template>
   </a-drawer>
 </template>
 
@@ -915,6 +913,9 @@
   .advanced-drawer :deep(.ant-drawer-body) {
     padding: 0;
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .drawer-content {
@@ -936,15 +937,26 @@
     border-right: 1px solid #e2e8f0;
     padding: 12px 0;
     flex-shrink: 0;
+    height: 100%;
   }
 
-  .advanced-drawer :deep(.ant-tabs-content-holder) {
-    flex: 1;
+  :deep(.ant-tabs-content-holder) {
+    flex: 1 !important;
     min-width: 0;
+    min-height: 0 !important;
+    overflow: hidden !important;
   }
 
-  .advanced-drawer :deep(.ant-tabs-tabpane) {
+  :deep(.ant-tabs-content) {
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  :deep(.ant-tabs-tabpane) {
     width: 100%;
+    height: 100%;
+    overflow: auto !important;
   }
 
   .advanced-drawer :deep(.ant-tabs-tab) {
@@ -973,8 +985,8 @@
   }
 
   .tab-content-scroll {
-    max-height: calc(100vh - 180px);
-    overflow-y: auto;
+    height: 100%;
+    overflow-y: scroll;
   }
 
   .tab-content {
@@ -1067,17 +1079,14 @@
     gap: 8px;
   }
 
-  /* 操作按钮区域 */
-  .settings-actions {
+  /* 底部按钮区域 */
+  .drawer-footer {
     display: flex;
     justify-content: flex-end;
     gap: 12px;
-    padding: 20px 24px;
+    padding: 12px 24px;
+    border-top: 1px solid #e2e8f0;
     background: #fff;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    margin-top: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
 
   /* 引擎管理样式 */
