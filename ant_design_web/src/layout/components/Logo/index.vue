@@ -1,5 +1,5 @@
 <template>
-  <div class="logo">
+  <div class="logo" :class="{ 'logo-dark': dark }">
     <img :src="websiteConfig.logo" alt="" :class="{ 'mr-2': !collapsed }" />
     <h2 v-show="!collapsed" class="title">{{ websiteConfig.title }}</h2>
   </div>
@@ -12,6 +12,10 @@
     props: {
       collapsed: {
         type: Boolean,
+      },
+      dark: {
+        type: Boolean,
+        default: false,
       },
     },
     data() {
@@ -39,6 +43,13 @@
 
     .title {
       margin: 0;
+      color: #515a6e;
+    }
+
+    &-dark {
+      .title {
+        color: #fff;
+      }
     }
   }
 </style>

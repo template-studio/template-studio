@@ -10,7 +10,7 @@
       :class="{ 'layout-sider-dark': inverted }"
       class="layout-sider"
     >
-      <Logo :collapsed="collapsed" />
+      <Logo :collapsed="collapsed" :dark="inverted" />
       <AsideMenu v-model:collapsed="collapsed" v-model:location="getMenuLocation" />
     </a-layout-sider>
 
@@ -27,7 +27,7 @@
         :class="{ 'layout-sider-dark': inverted }"
         class="layout-sider"
       >
-        <Logo :collapsed="collapsed" />
+        <Logo :collapsed="collapsed" :dark="inverted" />
         <AsideMenu v-model:location="getMenuLocation" />
       </a-layout-sider>
     </a-drawer>

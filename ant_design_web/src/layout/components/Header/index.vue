@@ -1,5 +1,5 @@
 <template>
-  <div class="layout-header">
+  <div class="layout-header" :class="{ 'layout-header-dark': inverted }">
     <!--顶部菜单-->
     <div
       class="layout-header-left"
@@ -474,11 +474,39 @@
     z-index: 11;
   }
 
-  //::v-deep(.menu-router-link) {
-  //  color: #515a6e;
-  //
-  //  &:hover {
-  //    color: #1890ff;
-  //  }
-  //}
+  // 深色主题样式
+  .layout-header-dark {
+    background: #001529;
+    color: #fff;
+
+    .anticon {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .layout-header-trigger {
+      &:hover {
+        background: hsla(0, 0%, 100%, 0.08);
+      }
+    }
+
+    .avatar {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .link-text {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    :deep(.ant-breadcrumb span:last-child .link-text) {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    :deep(.ant-breadcrumb-link) {
+      color: rgba(255, 255, 255, 0.65);
+    }
+
+    :deep(.ant-breadcrumb-separator) {
+      color: rgba(255, 255, 255, 0.45);
+    }
+  }
 </style>
