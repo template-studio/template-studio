@@ -33,7 +33,10 @@
     </a-drawer>
 
     <a-layout>
-      <a-layout-header :class="{ 'layout-header-fixed': fixedHeader === 'absolute' }">
+      <a-layout-header
+        :class="{ 'layout-header-fixed': fixedHeader === 'absolute' }"
+        :style="{ paddingLeft: fixedHeader === 'absolute' ? leftMenuWidth + 'px' : '0' }"
+      >
         <PageHeader v-model:collapsed="collapsed" :inverted="inverted" />
       </a-layout-header>
 
@@ -217,7 +220,7 @@
     }
 
     .ant-layout {
-      overflow: hidden;
+      overflow: visible;
     }
 
     .layout-right-fix {
