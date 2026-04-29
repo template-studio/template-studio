@@ -32,7 +32,7 @@
       </a-layout-sider>
     </a-drawer>
 
-    <a-layout>
+    <a-layout :style="{ marginLeft: leftMenuWidth + 'px' }">
       <a-layout-header
         :class="{ 'layout-header-fixed': fixedHeader === 'absolute' }"
         :style="{ paddingLeft: fixedHeader === 'absolute' ? leftMenuWidth + 'px' : '0' }"
@@ -204,19 +204,15 @@
     .layout-sider {
       min-height: 100vh;
       box-shadow: 2px 0 8px 0 rgb(29 35 41 / 5%);
-      position: relative;
+      position: fixed;
+      top: 0;
+      left: 0;
       z-index: 13;
       transition: all 0.2s ease-in-out;
 
       &-dark {
         background: #001529;
       }
-    }
-
-    .layout-sider-fix {
-      position: fixed;
-      top: 0;
-      left: 0;
     }
 
     .ant-layout {

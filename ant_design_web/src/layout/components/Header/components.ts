@@ -7,7 +7,6 @@ import {
   FullscreenExitOutlined,
   PoweroffOutlined,
   GithubOutlined,
-  LockOutlined,
   ReloadOutlined,
   LogoutOutlined,
   UserOutlined,
@@ -17,7 +16,6 @@ import {
 
 export default {
   SettingOutlined,
-  LockOutlined,
   GithubOutlined,
   SearchOutlined,
   MenuFoldOutlined,
