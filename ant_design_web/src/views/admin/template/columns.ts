@@ -37,7 +37,7 @@ export const columns: BasicColumn<TemplateData>[] = [
     title: 'ID',
     dataIndex: 'id',
     key: 'id',
-    width: 160,
+    width: 120,
     ellipsis: {
       tooltip: true,
     },
@@ -46,7 +46,7 @@ export const columns: BasicColumn<TemplateData>[] = [
     title: '模板名称',
     dataIndex: 'name',
     key: 'name',
-    width: 220,
+    width: 200,
     customRender({ record }) {
       try {
         return h('div', { style: 'display: flex; align-items: center; gap: 8px' }, [
@@ -65,7 +65,7 @@ export const columns: BasicColumn<TemplateData>[] = [
     title: '描述',
     dataIndex: 'description',
     key: 'description',
-    width: 250,
+    width: 220,
     ellipsis: {
       tooltip: true,
     },

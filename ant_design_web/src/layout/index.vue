@@ -228,7 +228,8 @@
 
     .layout-content {
       flex: auto;
-      min-height: 100vh;
+      height: 100vh;
+      overflow: auto;
     }
 
     .layout-header-fixed {

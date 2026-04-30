@@ -62,7 +62,7 @@
           :request="loadDataTable"
           :row-key="(row) => row.id"
           :actionColumn="actionColumn"
-          :scroll-x="1600"
+          :scroll-x="1300"
         >
           <template #tableTitle>
             <a-button type="primary" @click="handleAdd">
@@ -632,7 +632,7 @@
 
   // 操作列
   const actionColumn = reactive({
-    width: 480,
+    width: 360,
     title: '操作',
     key: 'action',
     fixed: 'right',
@@ -1009,6 +1009,9 @@
   .templates-manage {
     padding: 16px;
     background: transparent;
+    height: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
   }
 
   .modal-footer {
