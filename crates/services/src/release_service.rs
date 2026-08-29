@@ -98,14 +98,22 @@ impl ReleaseService {
             .await
             .map_err(|e| anyhow::anyhow!("写入发布信息文件失败: {}", e))?;
 
-        // 6. 更新数据库：将旧版本的 is_latest 设为 false
+        // 6+7. 数据库更新放入同一事务：旧版本置 false 与新版本插入必须同成败，
+        // 否则任一步失败会让模板处于「无 latest 版本」的损坏状态
+        let mut tx = self
+            .db
+            .begin()
+            .await
+            .map_err(|e| anyhow::anyhow!("开启事务失败: {}", e))?;
+
+        // 将旧版本的 is_latest 设为 false
         sqlx::query("UPDATE template_versions SET is_latest = false WHERE template_id = ?")
             .bind(template_id)
-            .execute(&self.db)
+            .execute(&mut *tx)
             .await
             .map_err(|e| anyhow::anyhow!("更新旧版本状态失败: {}", e))?;
 
-        // 7. 插入新版本记录
+        // 插入新版本记录
         let version_id = sqlx::query(
             "INSERT INTO template_versions
             (template_id, version, commit_hash, commit_message, changelog, is_latest, is_deprecated,
@@ -122,10 +130,14 @@ impl ReleaseService {
         .bind(file_count)
         .bind(total_size)
         .bind(format!("releases/{}/{}", template_id, version))
-        .execute(&self.db)
+        .execute(&mut *tx)
         .await
         .map_err(|e| anyhow::anyhow!("插入版本记录失败: {}", e))?
         .last_insert_id() as i64;
+
+        tx.commit()
+            .await
+            .map_err(|e| anyhow::anyhow!("提交发布事务失败: {}", e))?;
 
         info!("发布版本创建成功: id={}, version={}", version_id, version);
 
@@ -212,25 +224,37 @@ impl ReleaseService {
         .ok_or_else(|| anyhow::anyhow!("无法找到当前版本"))?
         .0;
 
-        // 3. 将当前版本的 is_latest 设为 false
+        // 3+4. 两步 UPDATE 放入同一事务：第二步失败会让该模板所有版本
+        // is_latest 均为 false（无可用版本的数据损坏状态）
+        let mut tx = self
+            .db
+            .begin()
+            .await
+            .map_err(|e| anyhow::anyhow!("开启事务失败: {}", e))?;
+
+        // 将当前版本的 is_latest 设为 false
         sqlx::query(
             "UPDATE template_versions SET is_latest = false
              WHERE template_id = ? AND is_latest = true",
         )
         .bind(template_id)
-        .execute(&self.db)
+        .execute(&mut *tx)
         .await
         .map_err(|e| anyhow::anyhow!("更新当前版本状态失败: {}", e))?;
 
-        // 4. 将目标版本的 is_latest 设为 true
+        // 将目标版本的 is_latest 设为 true
         sqlx::query(
             "UPDATE template_versions SET is_latest = true, is_deprecated = false
              WHERE id = ?",
         )
         .bind(target_id)
-        .execute(&self.db)
+        .execute(&mut *tx)
         .await
         .map_err(|e| anyhow::anyhow!("更新目标版本状态失败: {}", e))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| anyhow::anyhow!("提交回滚事务失败: {}", e))?;
 
         info!("回滚成功: {} -> {}", previous_version, target_version);
 
