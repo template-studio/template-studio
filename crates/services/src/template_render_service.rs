@@ -59,10 +59,13 @@ impl TemplateRenderService {
             return Err(AppError::NotFound(format!("文件不存在: {}", file_path)));
         }
 
-        // 读取模板内容
+        // 读取模板内容（IO 错误含完整路径，仅记日志，不回传客户端）
         let template_content = fs::read_to_string(&template_path)
             .await
-            .map_err(|e| AppError::Internal(format!("读取文件失败: {}", e)))?;
+            .map_err(|e| {
+                tracing::warn!("读取模板文件失败 {:?}: {}", template_path, e);
+                AppError::Internal("读取模板文件失败".to_string())
+            })?;
 
         // 获取文件名
         let file_name = template_path
@@ -111,10 +114,13 @@ impl TemplateRenderService {
             return Err(AppError::NotFound(format!("文件不存在: {}", file_path)));
         }
 
-        // 读取模板内容
+        // 读取模板内容（IO 错误含完整路径，仅记日志，不回传客户端）
         let template_content = fs::read_to_string(&template_path)
             .await
-            .map_err(|e| AppError::Internal(format!("读取文件失败: {}", e)))?;
+            .map_err(|e| {
+                tracing::warn!("读取模板文件失败 {:?}: {}", template_path, e);
+                AppError::Internal("读取模板文件失败".to_string())
+            })?;
 
         // 获取文件名
         let file_name = template_path

@@ -124,10 +124,11 @@ impl StorageManager {
         Ok(())
     }
 
-    /// 读取 JSON 文件内容
+    /// 读取 JSON 文件内容（错误不携带完整路径，避免经 handler 透传给客户端）
     pub async fn read_json_file(&self, path: &PathBuf) -> anyhow::Result<String> {
         if !path.exists() {
-            return Err(anyhow::anyhow!("文件不存在: {:?}", path));
+            tracing::warn!("JSON 文件不存在: {:?}", path);
+            return Err(anyhow::anyhow!("JSON 文件不存在"));
         }
         let content = tokio::fs::read_to_string(path).await?;
         Ok(content)

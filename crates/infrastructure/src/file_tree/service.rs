@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use std::path::PathBuf;
 use std::sync::Arc;
 use template_studio_shared::models::file_tree::{FileTreeNode, FileTreeResponse};
-use tracing::{info, debug};
+use tracing::{info, debug, warn};
 
 /// 文件树服务
 pub struct FileTreeService {
@@ -21,9 +21,10 @@ impl FileTreeService {
 
         info!("开始扫描模板文件树: template_id={}, path={:?}", template_id, template_path);
 
-        // 检查模板目录是否存在
+        // 检查模板目录是否存在（内部日志保留完整路径，对外错误不泄漏服务器路径）
         if !template_path.exists() {
-            return Err(anyhow::anyhow!("模板目录不存在: {:?}", template_path));
+            warn!("模板目录不存在: template_id={}, path={:?}", template_id, template_path);
+            return Err(anyhow::anyhow!("模板目录不存在，模板可能尚未初始化"));
         }
 
         // 用于生成唯一ID的计数器
