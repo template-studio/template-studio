@@ -266,3 +266,11 @@
 **涉及文件：** `web/src/enums/httpEnum.ts`、`web/src/utils/http/alova/index.ts`、`web/src/utils/request.ts`、`web/src/store/modules/user.ts`、`web/src/views/login/index.vue`、`web/src/views/client/reset-password/index.vue`、`web/src/components/Upload/src/BasicUpload.vue`、删除 `web/src/api/table/list.ts`
 
 **验收结果：** 全部改动文件 vite 编译 200；全局 `912/===200/?? result` 残留扫描清零；浏览器全新登录周期通过（跳转 dashboard、token 写入）且五类关键路由（我的模板/个人中心/仪表盘/模板广场/编辑器）正常渲染。至此 API 信封全链路（后端 102+18 处、前端双客户端）统一为 `{code:0, message, data}`。
+
+## 2026-08-29 修复 README.md 样式损坏
+
+**变更内容：** 提交 5dfde15 精简头部徽章区时误删 `</div>` 闭合标签（开头 `<div align="center">` 成孤立标签，Markdown 渲染器将后续内容视为 HTML 块导致全文样式崩坏）；且文件尾部在 `<div align="center">` 开标签处截断，居中结尾块（Star 号召/署名/闭合）整体丢失。修复：删除头部孤立 div；从 git 历史（189b8cd）恢复尾部居中块及闭合标签。
+
+**涉及文件：** `README.md`
+
+**验收结果：** div 开闭配对 1:1（python 复核），头部与尾部结构恢复正常。README_EN.md 经检查 div 配对完好无需处理。注：README 内容层面的漂移（仍描述 Naive UI 前端、启动说明未更新）为已登记的待办项，本次仅修结构损坏。

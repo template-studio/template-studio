@@ -2,8 +2,6 @@
 
 > 一个强大的模板管理和代码生成平台，支持模板创建、编辑、渲染和版本管理。
 
-<div align="center">
-
 ---
 
 ## 功能特性
@@ -493,3 +491,9 @@ A: 在桌面应用的设置页面中配置 AI 提供商（支持 DeepSeek、Open
 ---
 
 <div align="center">
+
+**⭐ 如果这个项目对你有帮助，请给一个 Star！**
+
+Made with ❤️ by Template Studio Team
+
+</div>
