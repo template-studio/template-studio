@@ -286,6 +286,12 @@ pub fn create_app(state: AppState) -> Router {
     let template_protected = template_protected_routes()
         .layer(axum::middleware::from_fn_with_state(state.clone(), middleware::auth::auth_middleware));
 
+    // 编辑器（文件增删改/上传/条件管理）与备份（创建/恢复）均为登录后操作，整组认证
+    let editor = editor_routes()
+        .layer(axum::middleware::from_fn_with_state(state.clone(), middleware::auth::auth_middleware));
+    let backup = backup_routes()
+        .layer(axum::middleware::from_fn_with_state(state.clone(), middleware::auth::auth_middleware));
+
     Router::new()
         // 健康检查
         .route("/health", get(health_check))
@@ -295,12 +301,12 @@ pub fn create_app(state: AppState) -> Router {
         .nest("/api/v1/template", template_routes().merge(template_protected))
         // 管理员API（受认证保护）
         .nest("/api/v1/admin", admin)
-        // 编辑器API
-        .nest("/api/v1/editor", editor_routes())
+        // 编辑器API（受认证保护）
+        .nest("/api/v1/editor", editor)
         // Studio API
         .nest("/api/v1/studio", studio_routes())
-        // 备份API
-        .nest("/api/v1/backup", backup_routes())
+        // 备份API（受认证保护）
+        .nest("/api/v1/backup", backup)
         // 公开API
         .nest("/api/v1", routes::public_routes())
         // 头像静态文件
