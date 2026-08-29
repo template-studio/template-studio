@@ -124,7 +124,8 @@ target/
 config/config.toml
 config/config.dev.toml
 nul
-data/
+# 仅忽略仓库根目录的运行时数据目录；不要写成 data/，否则会误伤 src 等任意层级下的 data 目录
+/data/
 *.pdb
 
 # test
