@@ -1,5 +1,5 @@
-use sqlx::Row;
 use super::{Database, DbTable};
+use sqlx::Row;
 
 impl Database {
     /// ===== 表操作 =====
@@ -14,7 +14,7 @@ impl Database {
     ) -> Result<i64, sqlx::Error> {
         let result = sqlx::query(
             "INSERT INTO db_tables (project_id, name, comment, engine, table_type)
-             VALUES (?1, ?2, ?3, ?4, ?5)"
+             VALUES (?1, ?2, ?3, ?4, ?5)",
         )
         .bind(project_id)
         .bind(name)
@@ -28,7 +28,7 @@ impl Database {
         sqlx::query(
             "UPDATE projects SET table_count = (
                 SELECT COUNT(*) FROM db_tables WHERE project_id = ?1
-            ), updated_at = datetime('now') WHERE id = ?1"
+            ), updated_at = datetime('now') WHERE id = ?1",
         )
         .bind(project_id)
         .execute(&self.pool)
@@ -49,8 +49,9 @@ impl Database {
         .fetch_all(&self.pool)
         .await?;
 
-        let tables = rows.into_iter().map(|row| {
-            DbTable {
+        let tables = rows
+            .into_iter()
+            .map(|row| DbTable {
                 id: row.get("id"),
                 project_id: row.get("project_id"),
                 name: row.get("name"),
@@ -61,8 +62,8 @@ impl Database {
                 column_count: row.get("column_count"),
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
-            }
-        }).collect();
+            })
+            .collect();
 
         Ok(tables)
     }
@@ -90,7 +91,7 @@ impl Database {
         sqlx::query(
             "UPDATE db_tables
              SET name = ?1, comment = ?2, engine = ?3, table_type = ?4, updated_at = datetime('now')
-             WHERE id = ?5"
+             WHERE id = ?5",
         )
         .bind(name)
         .bind(comment)

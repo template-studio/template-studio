@@ -5,8 +5,8 @@ pub struct TestConnectionParams {
     pub type_: String,
     pub host: Option<String>,
     pub port: Option<u16>,
-    pub database: Option<String>,  // 测试连接时可指定数据库名
-    pub sqlite_file: Option<String>,  // SQLite 文件路径
+    pub database: Option<String>,    // 测试连接时可指定数据库名
+    pub sqlite_file: Option<String>, // SQLite 文件路径
     pub username: Option<String>,
     pub password: Option<String>,
 }
@@ -21,8 +21,8 @@ pub struct DatasourceParams {
     pub port: Option<u16>,
     pub username: Option<String>,
     pub password: Option<String>,
-    pub database: Option<String>,  // PostgreSQL 初始数据库（可选）
-    pub sqlite_file: Option<String>,  // 仅 SQLite 使用
+    pub database: Option<String>,    // PostgreSQL 初始数据库（可选）
+    pub sqlite_file: Option<String>, // 仅 SQLite 使用
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -60,8 +60,8 @@ pub struct Datasource {
     pub port: Option<i32>,
     pub username: Option<String>,
     pub password: Option<String>,
-    pub database: Option<String>,  // PostgreSQL 初始数据库
-    pub sqlite_file: Option<String>,  // SQLite 文件路径
+    pub database: Option<String>,    // PostgreSQL 初始数据库
+    pub sqlite_file: Option<String>, // SQLite 文件路径
     pub is_active: bool,
     pub created_at: String,
     pub updated_at: String,

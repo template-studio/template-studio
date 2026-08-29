@@ -1,5 +1,5 @@
-use sqlx::{SqlitePool, Row};
 use super::Datasource;
+use sqlx::{Row, SqlitePool};
 
 // ===== 数据库特定的表信息结构 =====
 
@@ -80,9 +80,11 @@ pub async fn import_tables_from_datasource(
     // 2. 根据数据库类型执行导入
     match datasource.type_.as_str() {
         "mysql" => import_mysql_tables(pool, project_id, &datasource, database_name).await,
-        "postgresql" => import_postgresql_tables(pool, project_id, &datasource, database_name).await,
+        "postgresql" => {
+            import_postgresql_tables(pool, project_id, &datasource, database_name).await
+        }
         "sqlite" => import_sqlite_tables(pool, project_id, &datasource).await,
-        _ => Err(format!("不支持的数据库类型: {}", datasource.type_))
+        _ => Err(format!("不支持的数据库类型: {}", datasource.type_)),
     }
 }
 
@@ -117,7 +119,7 @@ async fn import_mysql_tables(
             TABLE_ROWS as row_count
         FROM information_schema.TABLES
         WHERE TABLE_SCHEMA = ? AND TABLE_TYPE IN ('BASE TABLE', 'VIEW')
-        ORDER BY TABLE_NAME"
+        ORDER BY TABLE_NAME",
     )
     .bind(database_name)
     .fetch_all(&mysql_pool)
@@ -136,13 +138,17 @@ async fn import_mysql_tables(
         let table_id: i64 = sqlx::query_scalar(
             "INSERT INTO db_tables (project_id, name, comment, engine, table_type, row_count)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-             RETURNING id"
+             RETURNING id",
         )
         .bind(project_id)
         .bind(&table_info.name)
         .bind(&table_info.comment)
         .bind(&table_info.engine)
-        .bind(if table_info.table_type == "BASE TABLE" { "table" } else { "view" })
+        .bind(if table_info.table_type == "BASE TABLE" {
+            "table"
+        } else {
+            "view"
+        })
         .bind(table_info.row_count.map(|c| c as i32).unwrap_or(0))
         .fetch_one(pool)
         .await
@@ -161,7 +167,7 @@ async fn import_mysql_tables(
                 ORDINAL_POSITION as ordinal_position
             FROM information_schema.COLUMNS
             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
-            ORDER BY ORDINAL_POSITION"
+            ORDER BY ORDINAL_POSITION",
         )
         .bind(database_name)
         .bind(&table_info.name)
@@ -172,7 +178,8 @@ async fn import_mysql_tables(
         // 插入列记录
         for col in columns {
             let is_primary_key = col.column_key.as_deref() == Some("PRI");
-            let is_unique = col.column_key.as_deref() == Some("UNI") || col.column_key.as_deref() == Some("PRI");
+            let is_unique = col.column_key.as_deref() == Some("UNI")
+                || col.column_key.as_deref() == Some("PRI");
             let is_nullable = col.is_nullable.as_deref() == Some("YES");
 
             sqlx::query(
@@ -195,13 +202,12 @@ async fn import_mysql_tables(
         }
 
         // 更新表的列计数
-        let column_count: i32 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM db_columns WHERE table_id = ?1"
-        )
-        .bind(table_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| format!("查询列计数失败: {}", e))?;
+        let column_count: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM db_columns WHERE table_id = ?1")
+                .bind(table_id)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| format!("查询列计数失败: {}", e))?;
 
         sqlx::query("UPDATE db_tables SET column_count = ?1 WHERE id = ?2")
             .bind(column_count)
@@ -233,8 +239,14 @@ async fn import_postgresql_tables(
     // 连接到 PostgreSQL 数据库
     let connection_string = format!(
         "postgresql://{}:{}@{}:{}/{}",
-        datasource.username.as_ref().ok_or("PostgreSQL 用户名未配置")?,
-        datasource.password.as_ref().ok_or("PostgreSQL 密码未配置")?,
+        datasource
+            .username
+            .as_ref()
+            .ok_or("PostgreSQL 用户名未配置")?,
+        datasource
+            .password
+            .as_ref()
+            .ok_or("PostgreSQL 密码未配置")?,
         datasource.host.as_ref().ok_or("PostgreSQL 主机未配置")?,
         datasource.port.unwrap_or(5432),
         database_name
@@ -273,7 +285,7 @@ async fn import_postgresql_tables(
         let table_id: i64 = sqlx::query_scalar(
             "INSERT INTO db_tables (project_id, name, comment, engine, table_type, row_count)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-             RETURNING id"
+             RETURNING id",
         )
         .bind(project_id)
         .bind(&table_info.name)
@@ -309,7 +321,7 @@ async fn import_postgresql_tables(
             "SELECT a.attname
              FROM pg_index i
              JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-             WHERE i.indrelid = $1::regclass AND i.indisprimary"
+             WHERE i.indrelid = $1::regclass AND i.indisprimary",
         )
         .bind(format!("public.{}", table_info.name))
         .fetch_all(&pg_pool)
@@ -341,13 +353,12 @@ async fn import_postgresql_tables(
         }
 
         // 更新表的列计数
-        let column_count: i32 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM db_columns WHERE table_id = ?1"
-        )
-        .bind(table_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| format!("查询列计数失败: {}", e))?;
+        let column_count: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM db_columns WHERE table_id = ?1")
+                .bind(table_id)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| format!("查询列计数失败: {}", e))?;
 
         sqlx::query("UPDATE db_tables SET column_count = ?1 WHERE id = ?2")
             .bind(column_count)
@@ -376,7 +387,10 @@ async fn import_sqlite_tables(
     datasource: &Datasource,
 ) -> Result<String, String> {
     // 连接到 SQLite 数据库
-    let sqlite_file = datasource.sqlite_file.as_ref().ok_or("SQLite 文件路径未配置")?;
+    let sqlite_file = datasource
+        .sqlite_file
+        .as_ref()
+        .ok_or("SQLite 文件路径未配置")?;
 
     if !std::path::Path::new(sqlite_file).exists() {
         return Err(format!("SQLite 文件不存在: {}", sqlite_file));
@@ -391,7 +405,7 @@ async fn import_sqlite_tables(
         "SELECT name, type
          FROM sqlite_master
          WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'
-         ORDER BY name"
+         ORDER BY name",
     )
     .fetch_all(&sqlite_pool)
     .await
@@ -409,13 +423,17 @@ async fn import_sqlite_tables(
         let table_id: i64 = sqlx::query_scalar(
             "INSERT INTO db_tables (project_id, name, comment, engine, table_type, row_count)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-             RETURNING id"
+             RETURNING id",
         )
         .bind(project_id)
         .bind(&table_info.name)
         .bind(None::<&str>)
         .bind(Some("SQLite"))
-        .bind(if table_info.table_type == "table" { "table" } else { "view" })
+        .bind(if table_info.table_type == "table" {
+            "table"
+        } else {
+            "view"
+        })
         .bind(0)
         .fetch_one(pool)
         .await
@@ -452,13 +470,12 @@ async fn import_sqlite_tables(
         }
 
         // 更新表的列计数
-        let column_count: i32 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM db_columns WHERE table_id = ?1"
-        )
-        .bind(table_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| format!("查询列计数失败: {}", e))?;
+        let column_count: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM db_columns WHERE table_id = ?1")
+                .bind(table_id)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| format!("查询列计数失败: {}", e))?;
 
         sqlx::query("UPDATE db_tables SET column_count = ?1 WHERE id = ?2")
             .bind(column_count)
@@ -510,23 +527,23 @@ pub async fn fetch_mysql_tables(
             CAST(TABLE_ROWS AS SIGNED) as row_count
         FROM information_schema.TABLES
         WHERE TABLE_SCHEMA = ? AND TABLE_TYPE IN ('BASE TABLE', 'VIEW')
-        ORDER BY TABLE_NAME"
+        ORDER BY TABLE_NAME",
     )
     .bind(database_name)
     .fetch_all(&mysql_pool)
     .await
-        .map_err(|e| format!("查询表列表失败: {}", e))?
+    .map_err(|e| format!("查询表列表失败: {}", e))?
     .into_iter()
-        .map(|row| {
-            serde_json::json!({
-                "name": row.get::<String, _>("name"),
-                "comment": row.get::<Option<String>, _>("comment"),
-                "table_type": row.get::<String, _>("table_type"),
-                "engine": row.get::<Option<String>, _>("engine"),
-                "row_count": row.get::<Option<i64>, _>("row_count")
-            })
+    .map(|row| {
+        serde_json::json!({
+            "name": row.get::<String, _>("name"),
+            "comment": row.get::<Option<String>, _>("comment"),
+            "table_type": row.get::<String, _>("table_type"),
+            "engine": row.get::<Option<String>, _>("engine"),
+            "row_count": row.get::<Option<i64>, _>("row_count")
         })
-        .collect();
+    })
+    .collect();
 
     let json = serde_json::to_string(&tables).map_err(|e| format!("JSON 序列化失败: {}", e))?;
 
@@ -545,8 +562,14 @@ pub async fn fetch_postgresql_tables(
     // 连接到 PostgreSQL 数据库
     let connection_string = format!(
         "postgresql://{}:{}@{}:{}/{}",
-        datasource.username.as_ref().ok_or("PostgreSQL 用户名未配置")?,
-        datasource.password.as_ref().ok_or("PostgreSQL 密码未配置")?,
+        datasource
+            .username
+            .as_ref()
+            .ok_or("PostgreSQL 用户名未配置")?,
+        datasource
+            .password
+            .as_ref()
+            .ok_or("PostgreSQL 密码未配置")?,
         datasource.host.as_ref().ok_or("PostgreSQL 主机未配置")?,
         datasource.port.unwrap_or(5432),
         database_name
@@ -601,7 +624,9 @@ pub async fn fetch_sqlite_tables(
     _pool: &SqlitePool,
     datasource: &Datasource,
 ) -> Result<String, String> {
-    let sqlite_file = datasource.sqlite_file.as_ref()
+    let sqlite_file = datasource
+        .sqlite_file
+        .as_ref()
         .ok_or_else(|| "SQLite 文件路径未指定".to_string())?;
 
     if !std::path::Path::new(sqlite_file).exists() {
@@ -619,22 +644,22 @@ pub async fn fetch_sqlite_tables(
         "SELECT name, type as table_type
         FROM sqlite_master
         WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'
-        ORDER BY name"
+        ORDER BY name",
     )
     .fetch_all(&sqlite_pool)
     .await
-        .map_err(|e| format!("查询表列表失败: {}", e))?
+    .map_err(|e| format!("查询表列表失败: {}", e))?
     .into_iter()
-        .map(|row| {
-            serde_json::json!({
-                "name": row.get::<String, _>("name"),
-                "comment": None::<String>,
-                "table_type": row.get::<String, _>("table_type"),
-                "engine": None::<String>,
-                "row_count": None::<i64>
-            })
+    .map(|row| {
+        serde_json::json!({
+            "name": row.get::<String, _>("name"),
+            "comment": None::<String>,
+            "table_type": row.get::<String, _>("table_type"),
+            "engine": None::<String>,
+            "row_count": None::<i64>
         })
-        .collect();
+    })
+    .collect();
 
     let json = serde_json::to_string(&tables).map_err(|e| format!("JSON 序列化失败: {}", e))?;
 
@@ -657,10 +682,47 @@ pub async fn import_single_table(
     row_count: i64,
 ) -> Result<(), String> {
     match datasource.type_.as_str() {
-        "mysql" => import_mysql_single_table(pool, project_id, datasource, database_name, table_name, table_comment, table_type, engine, row_count).await,
-        "postgresql" => import_postgresql_single_table(pool, project_id, datasource, database_name, table_name, table_comment, table_type, engine, row_count).await,
-        "sqlite" => import_sqlite_single_table(pool, project_id, datasource, table_name, table_comment, table_type, row_count).await,
-        _ => Err(format!("不支持的数据源类型: {}", datasource.type_))
+        "mysql" => {
+            import_mysql_single_table(
+                pool,
+                project_id,
+                datasource,
+                database_name,
+                table_name,
+                table_comment,
+                table_type,
+                engine,
+                row_count,
+            )
+            .await
+        }
+        "postgresql" => {
+            import_postgresql_single_table(
+                pool,
+                project_id,
+                datasource,
+                database_name,
+                table_name,
+                table_comment,
+                table_type,
+                engine,
+                row_count,
+            )
+            .await
+        }
+        "sqlite" => {
+            import_sqlite_single_table(
+                pool,
+                project_id,
+                datasource,
+                table_name,
+                table_comment,
+                table_type,
+                row_count,
+            )
+            .await
+        }
+        _ => Err(format!("不支持的数据源类型: {}", datasource.type_)),
     }
 }
 
@@ -700,22 +762,32 @@ async fn import_mysql_single_table(
     let table_id: i64 = sqlx::query_scalar(
         "INSERT INTO db_tables (project_id, name, comment, engine, table_type, row_count)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-         RETURNING id"
+         RETURNING id",
     )
     .bind(project_id)
     .bind(table_name)
     .bind(table_comment)
     .bind(_engine)
-    .bind(if table_type == "BASE TABLE" || table_type == "table" { "table" } else { "view" })
+    .bind(if table_type == "BASE TABLE" || table_type == "table" {
+        "table"
+    } else {
+        "view"
+    })
     .bind(0)
     .fetch_one(pool)
     .await
-        .map_err(|e| format!("创建表记录失败: {}", e))?;
+    .map_err(|e| format!("创建表记录失败: {}", e))?;
 
-    println!("表记录创建成功，table_id = {}, 项目ID = {}", table_id, project_id);
+    println!(
+        "表记录创建成功，table_id = {}, 项目ID = {}",
+        table_id, project_id
+    );
 
     // 查询列信息
-    println!("开始查询列信息，数据库: {}, 表: {}", database_name, table_name);
+    println!(
+        "开始查询列信息，数据库: {}, 表: {}",
+        database_name, table_name
+    );
 
     let columns_result: Result<Vec<MySQLColumnInfo>, _> = sqlx::query_as(
         "SELECT
@@ -729,7 +801,7 @@ async fn import_mysql_single_table(
             ORDINAL_POSITION as ordinal_position
         FROM information_schema.COLUMNS
         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
-        ORDER BY ORDINAL_POSITION"
+        ORDER BY ORDINAL_POSITION",
     )
     .bind(database_name)
     .bind(table_name)
@@ -754,11 +826,14 @@ async fn import_mysql_single_table(
     // 插入列记录
     for col in columns {
         let is_primary_key = col.column_key.as_deref() == Some("PRI");
-        let is_unique = col.column_key.as_deref() == Some("UNI") || col.column_key.as_deref() == Some("PRI");
+        let is_unique =
+            col.column_key.as_deref() == Some("UNI") || col.column_key.as_deref() == Some("PRI");
         let is_nullable = col.is_nullable.as_deref() == Some("YES");
 
-        println!("插入列: {} (类型: {}, 可空: {}, 主键: {})",
-                 col.name, col.data_type, is_nullable, is_primary_key);
+        println!(
+            "插入列: {} (类型: {}, 可空: {}, 主键: {})",
+            col.name, col.data_type, is_nullable, is_primary_key
+        );
 
         sqlx::query(
             "INSERT INTO db_columns (table_id, name, data_type, length, is_nullable, is_primary_key, is_unique, default_value, comment, ordinal_position)
@@ -782,13 +857,12 @@ async fn import_mysql_single_table(
     println!("成功插入 {} 列", column_count);
 
     // 更新表的列计数
-    let column_count: i32 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM db_columns WHERE table_id = ?1"
-    )
-    .bind(table_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| format!("查询列计数失败: {}", e))?;
+    let column_count: i32 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM db_columns WHERE table_id = ?1")
+            .bind(table_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("查询列计数失败: {}", e))?;
 
     sqlx::query("UPDATE db_tables SET column_count = ?1 WHERE id = ?2")
         .bind(column_count)
@@ -824,8 +898,14 @@ async fn import_postgresql_single_table(
     // 连接到 PostgreSQL
     let connection_string = format!(
         "postgresql://{}:{}@{}:{}/{}",
-        datasource.username.as_ref().ok_or("PostgreSQL 用户名未配置")?,
-        datasource.password.as_ref().ok_or("PostgreSQL 密码未配置")?,
+        datasource
+            .username
+            .as_ref()
+            .ok_or("PostgreSQL 用户名未配置")?,
+        datasource
+            .password
+            .as_ref()
+            .ok_or("PostgreSQL 密码未配置")?,
         datasource.host.as_ref().ok_or("PostgreSQL 主机未配置")?,
         datasource.port.unwrap_or(5432),
         database_name
@@ -839,17 +919,21 @@ async fn import_postgresql_single_table(
     let table_id: i64 = sqlx::query_scalar(
         "INSERT INTO db_tables (project_id, name, comment, engine, table_type, row_count)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-         RETURNING id"
+         RETURNING id",
     )
     .bind(project_id)
     .bind(table_name)
     .bind(table_comment)
     .bind(None::<String>)
-    .bind(if table_type == "table" { "table" } else { "view" })
+    .bind(if table_type == "table" {
+        "table"
+    } else {
+        "view"
+    })
     .bind(0)
     .fetch_one(pool)
     .await
-        .map_err(|e| format!("创建表记录失败: {}", e))?;
+    .map_err(|e| format!("创建表记录失败: {}", e))?;
 
     // 查询列信息
     let columns: Vec<PgColumnInfo> = sqlx::query_as(
@@ -898,13 +982,12 @@ async fn import_postgresql_single_table(
     println!("成功插入 {} 列", columns.len());
 
     // 更新表的列计数
-    let column_count: i32 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM db_columns WHERE table_id = ?1"
-    )
-    .bind(table_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| format!("查询列计数失败: {}", e))?;
+    let column_count: i32 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM db_columns WHERE table_id = ?1")
+            .bind(table_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("查询列计数失败: {}", e))?;
 
     sqlx::query("UPDATE db_tables SET column_count = ?1 WHERE id = ?2")
         .bind(column_count)
@@ -935,7 +1018,9 @@ async fn import_sqlite_single_table(
     table_type: &str,
     _row_count: i64,
 ) -> Result<(), String> {
-    let sqlite_file = datasource.sqlite_file.as_ref()
+    let sqlite_file = datasource
+        .sqlite_file
+        .as_ref()
         .ok_or_else(|| "SQLite 文件路径未指定".to_string())?;
 
     if !std::path::Path::new(sqlite_file).exists() {
@@ -952,25 +1037,27 @@ async fn import_sqlite_single_table(
     let table_id: i64 = sqlx::query_scalar(
         "INSERT INTO db_tables (project_id, name, comment, engine, table_type, row_count)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-         RETURNING id"
+         RETURNING id",
     )
     .bind(project_id)
     .bind(table_name)
     .bind(table_comment)
     .bind(None::<String>)
-    .bind(if table_type == "table" { "table" } else { "view" })
+    .bind(if table_type == "table" {
+        "table"
+    } else {
+        "view"
+    })
     .bind(0)
     .fetch_one(pool)
     .await
-        .map_err(|e| format!("创建表记录失败: {}", e))?;
+    .map_err(|e| format!("创建表记录失败: {}", e))?;
 
     // 查询列信息
-    let columns: Vec<SQLiteColumnInfo> = sqlx::query_as(
-        "PRAGMA table_info(?)"
-    )
-    .bind(table_name)
-    .fetch_all(&sqlite_pool)
-    .await
+    let columns: Vec<SQLiteColumnInfo> = sqlx::query_as("PRAGMA table_info(?)")
+        .bind(table_name)
+        .fetch_all(&sqlite_pool)
+        .await
         .map_err(|e| format!("查询列信息失败: {}", e))?;
 
     println!("查询到 {} 列", columns.len());
@@ -1005,13 +1092,12 @@ async fn import_sqlite_single_table(
     println!("成功插入 {} 张列", ordinal_position - 1);
 
     // 更新表的列计数
-    let column_count: i32 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM db_columns WHERE table_id = ?1"
-    )
-    .bind(table_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| format!("查询列计数失败: {}", e))?;
+    let column_count: i32 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM db_columns WHERE table_id = ?1")
+            .bind(table_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| format!("查询列计数失败: {}", e))?;
 
     sqlx::query("UPDATE db_tables SET column_count = ?1 WHERE id = ?2")
         .bind(column_count)
@@ -1080,27 +1166,40 @@ pub async fn parse_sql_only(
                 let length = parse_sql_data_type_length(&column_def.data_type);
 
                 let is_primary_key = column_def.options.iter().any(|opt| {
-                    matches!(&opt.option, sqlparser::ast::ColumnOption::Unique { is_primary: true, .. })
+                    matches!(
+                        &opt.option,
+                        sqlparser::ast::ColumnOption::Unique {
+                            is_primary: true,
+                            ..
+                        }
+                    )
                 });
                 let is_unique = column_def.options.iter().any(|opt| {
-                    matches!(&opt.option, sqlparser::ast::ColumnOption::Unique { is_primary: false, .. })
+                    matches!(
+                        &opt.option,
+                        sqlparser::ast::ColumnOption::Unique {
+                            is_primary: false,
+                            ..
+                        }
+                    )
                 });
-                let has_not_null = column_def.options.iter().any(|opt| {
-                    matches!(&opt.option, sqlparser::ast::ColumnOption::NotNull)
-                });
-                let has_null = column_def.options.iter().any(|opt| {
-                    matches!(&opt.option, sqlparser::ast::ColumnOption::Null)
-                });
+                let has_not_null = column_def
+                    .options
+                    .iter()
+                    .any(|opt| matches!(&opt.option, sqlparser::ast::ColumnOption::NotNull));
+                let has_null = column_def
+                    .options
+                    .iter()
+                    .any(|opt| matches!(&opt.option, sqlparser::ast::ColumnOption::Null));
                 let is_nullable = has_null || (!has_not_null && !is_primary_key);
 
-                let default_value = column_def.options.iter()
-                    .find_map(|opt| {
-                        if let sqlparser::ast::ColumnOption::Default(val) = &opt.option {
-                            Some(format!("{}", val))
-                        } else {
-                            None
-                        }
-                    });
+                let default_value = column_def.options.iter().find_map(|opt| {
+                    if let sqlparser::ast::ColumnOption::Default(val) = &opt.option {
+                        Some(format!("{}", val))
+                    } else {
+                        None
+                    }
+                });
 
                 columns.push(serde_json::json!({
                     "name": column_name,
@@ -1172,7 +1271,7 @@ pub async fn parse_and_create_from_sql(
             // 创建表记录
             let table_id = match sqlx::query(
                 "INSERT INTO db_tables (project_id, name, table_type, column_count)
-                 VALUES (?1, ?2, ?3, ?4)"
+                 VALUES (?1, ?2, ?3, ?4)",
             )
             .bind(project_id)
             .bind(&table_name)
@@ -1202,35 +1301,48 @@ pub async fn parse_and_create_from_sql(
 
                 // 判断约束
                 let is_primary_key = column_def.options.iter().any(|opt| {
-                    matches!(&opt.option, sqlparser::ast::ColumnOption::Unique { is_primary: true, .. })
+                    matches!(
+                        &opt.option,
+                        sqlparser::ast::ColumnOption::Unique {
+                            is_primary: true,
+                            ..
+                        }
+                    )
                 });
                 let is_unique = column_def.options.iter().any(|opt| {
-                    matches!(&opt.option, sqlparser::ast::ColumnOption::Unique { is_primary: false, .. })
+                    matches!(
+                        &opt.option,
+                        sqlparser::ast::ColumnOption::Unique {
+                            is_primary: false,
+                            ..
+                        }
+                    )
                 });
-                let has_not_null = column_def.options.iter().any(|opt| {
-                    matches!(&opt.option, sqlparser::ast::ColumnOption::NotNull)
-                });
-                let has_null = column_def.options.iter().any(|opt| {
-                    matches!(&opt.option, sqlparser::ast::ColumnOption::Null)
-                });
+                let has_not_null = column_def
+                    .options
+                    .iter()
+                    .any(|opt| matches!(&opt.option, sqlparser::ast::ColumnOption::NotNull));
+                let has_null = column_def
+                    .options
+                    .iter()
+                    .any(|opt| matches!(&opt.option, sqlparser::ast::ColumnOption::Null));
 
                 let is_nullable = has_null || (!has_not_null && !is_primary_key);
 
                 // 提取默认值
-                let default_value = column_def.options.iter()
-                    .find_map(|opt| {
-                        if let sqlparser::ast::ColumnOption::Default(val) = &opt.option {
-                            Some(format!("{}", val))
-                        } else {
-                            None
-                        }
-                    });
+                let default_value = column_def.options.iter().find_map(|opt| {
+                    if let sqlparser::ast::ColumnOption::Default(val) = &opt.option {
+                        Some(format!("{}", val))
+                    } else {
+                        None
+                    }
+                });
 
                 if let Err(e) = sqlx::query(
                     "INSERT INTO db_columns (
                         table_id, name, data_type, length, is_nullable,
                         is_primary_key, is_unique, default_value, ordinal_position
-                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)"
+                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
                 )
                 .bind(table_id)
                 .bind(&column_name)
@@ -1262,7 +1374,10 @@ pub async fn parse_and_create_from_sql(
     }
 
     // 构建结果消息
-    let mut result = format!("成功创建 {} 张表，{} 个字段", tables_created, columns_created);
+    let mut result = format!(
+        "成功创建 {} 张表，{} 个字段",
+        tables_created, columns_created
+    );
     if !errors.is_empty() {
         result.push_str(&format!("\n错误: {}", errors.join("; ")));
     }
@@ -1295,15 +1410,13 @@ fn parse_sql_data_type(data_type: &sqlparser::ast::DataType) -> String {
 
 /// 从sqlparser的DataType提取长度
 fn parse_sql_data_type_length(data_type: &sqlparser::ast::DataType) -> Option<i64> {
-    use sqlparser::ast::{DataType, CharacterLength};
+    use sqlparser::ast::{CharacterLength, DataType};
 
     match data_type {
-        DataType::Varchar(Some(len)) | DataType::Char(Some(len)) => {
-            match len {
-                CharacterLength::IntegerLength { length, .. } => Some(*length as i64),
-                _ => None,
-            }
-        }
+        DataType::Varchar(Some(len)) | DataType::Char(Some(len)) => match len {
+            CharacterLength::IntegerLength { length, .. } => Some(*length as i64),
+            _ => None,
+        },
         _ => None,
     }
 }

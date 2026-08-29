@@ -1,42 +1,45 @@
-use sqlx::Row;
 use super::Database;
+use sqlx::Row;
 
 impl Database {
     // ===== 项目表规范管理 =====
 
     /// 获取项目的表规范配置
-    pub async fn get_table_preferences(&self, project_id: i64) -> Result<Option<serde_json::Value>, sqlx::Error> {
-        let row = sqlx::query(
-            "SELECT * FROM table_preferences WHERE project_id = ?1"
-        )
-        .bind(project_id)
-        .fetch_optional(&self.pool)
-        .await?;
+    pub async fn get_table_preferences(
+        &self,
+        project_id: i64,
+    ) -> Result<Option<serde_json::Value>, sqlx::Error> {
+        let row = sqlx::query("SELECT * FROM table_preferences WHERE project_id = ?1")
+            .bind(project_id)
+            .fetch_optional(&self.pool)
+            .await?;
 
-        Ok(row.map(|r| serde_json::json!({
-            "id": r.get::<i64, _>("id"),
-            "projectId": r.get::<i64, _>("project_id"),
-            "pkEnabled": r.get::<i32, _>("pk_enabled") == 1,
-            "pkFieldName": r.get::<String, _>("pk_field_name"),
-            "pkFieldType": r.get::<String, _>("pk_field_type"),
-            "pkAutoIncrement": r.get::<i32, _>("pk_auto_increment") == 1,
-            "pkComment": r.get::<Option<String>, _>("pk_comment"),
-            "auditEnabled": r.get::<i32, _>("audit_enabled") == 1,
-            "auditFields": r.get::<Option<String>, _>("audit_fields"),
-            "softDeleteEnabled": r.get::<i32, _>("soft_delete_enabled") == 1,
-            "softDeleteField": r.get::<String, _>("soft_delete_field"),
-            "softDeleteFieldType": r.get::<String, _>("soft_delete_field_type"),
-            "softDeleteNullable": r.get::<i32, _>("soft_delete_nullable") == 1,
-            "softDeleteDefault": r.get::<Option<String>, _>("soft_delete_default"),
-            "softDeleteComment": r.get::<Option<String>, _>("soft_delete_comment"),
-            "booleanPrefix": r.get::<Option<String>, _>("boolean_prefix"),
-            "datetimeSuffix": r.get::<Option<String>, _>("datetime_suffix"),
-            "engineType": r.get::<Option<String>, _>("engine_type"),
-            "charset": r.get::<Option<String>, _>("charset"),
-            "collation": r.get::<Option<String>, _>("collation"),
-            "createdAt": r.get::<String, _>("created_at"),
-            "updatedAt": r.get::<String, _>("updated_at"),
-        })))
+        Ok(row.map(|r| {
+            serde_json::json!({
+                "id": r.get::<i64, _>("id"),
+                "projectId": r.get::<i64, _>("project_id"),
+                "pkEnabled": r.get::<i32, _>("pk_enabled") == 1,
+                "pkFieldName": r.get::<String, _>("pk_field_name"),
+                "pkFieldType": r.get::<String, _>("pk_field_type"),
+                "pkAutoIncrement": r.get::<i32, _>("pk_auto_increment") == 1,
+                "pkComment": r.get::<Option<String>, _>("pk_comment"),
+                "auditEnabled": r.get::<i32, _>("audit_enabled") == 1,
+                "auditFields": r.get::<Option<String>, _>("audit_fields"),
+                "softDeleteEnabled": r.get::<i32, _>("soft_delete_enabled") == 1,
+                "softDeleteField": r.get::<String, _>("soft_delete_field"),
+                "softDeleteFieldType": r.get::<String, _>("soft_delete_field_type"),
+                "softDeleteNullable": r.get::<i32, _>("soft_delete_nullable") == 1,
+                "softDeleteDefault": r.get::<Option<String>, _>("soft_delete_default"),
+                "softDeleteComment": r.get::<Option<String>, _>("soft_delete_comment"),
+                "booleanPrefix": r.get::<Option<String>, _>("boolean_prefix"),
+                "datetimeSuffix": r.get::<Option<String>, _>("datetime_suffix"),
+                "engineType": r.get::<Option<String>, _>("engine_type"),
+                "charset": r.get::<Option<String>, _>("charset"),
+                "collation": r.get::<Option<String>, _>("collation"),
+                "createdAt": r.get::<String, _>("created_at"),
+                "updatedAt": r.get::<String, _>("updated_at"),
+            })
+        }))
     }
 
     /// 保存或更新项目表规范配置
@@ -46,12 +49,10 @@ impl Database {
         prefs: serde_json::Value,
     ) -> Result<i64, sqlx::Error> {
         // 检查是否已存在
-        let existing = sqlx::query(
-            "SELECT id FROM table_preferences WHERE project_id = ?1"
-        )
-        .bind(project_id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let existing = sqlx::query("SELECT id FROM table_preferences WHERE project_id = ?1")
+            .bind(project_id)
+            .fetch_optional(&self.pool)
+            .await?;
 
         let pk_enabled = prefs["pkEnabled"].as_bool().unwrap_or(true);
         let pk_field_name = prefs["pkFieldName"].as_str().unwrap_or("id");
@@ -97,7 +98,7 @@ impl Database {
                     charset = ?17,
                     collation = ?18,
                     updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?19"
+                WHERE id = ?19",
             )
             .bind(pk_enabled as i32)
             .bind(pk_field_name)

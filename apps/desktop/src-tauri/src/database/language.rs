@@ -1,5 +1,5 @@
-use sqlx::Row;
 use super::{Database, Language};
+use sqlx::Row;
 
 impl Database {
     /// ===== 语言操作 =====
@@ -12,7 +12,7 @@ impl Database {
         description: Option<&str>,
     ) -> Result<i64, sqlx::Error> {
         let result = sqlx::query(
-            "INSERT INTO languages (name, icon, color, description) VALUES (?1, ?2, ?3, ?4)"
+            "INSERT INTO languages (name, icon, color, description) VALUES (?1, ?2, ?3, ?4)",
         )
         .bind(name)
         .bind(icon)
@@ -35,8 +35,9 @@ impl Database {
         .fetch_all(&self.pool)
         .await?;
 
-        let languages = rows.into_iter().map(|row| {
-            Language {
+        let languages = rows
+            .into_iter()
+            .map(|row| Language {
                 id: row.get("id"),
                 name: row.get("name"),
                 icon: row.get("icon"),
@@ -46,8 +47,8 @@ impl Database {
                 is_active: row.get::<i32, _>("is_active") == 1,
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
-            }
-        }).collect();
+            })
+            .collect();
 
         Ok(languages)
     }
@@ -63,18 +64,16 @@ impl Database {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| {
-            Language {
-                id: r.get("id"),
-                name: r.get("name"),
-                icon: r.get("icon"),
-                color: r.get("color"),
-                description: r.get("description"),
-                is_builtin: r.get::<i32, _>("is_builtin") == 1,
-                is_active: r.get::<i32, _>("is_active") == 1,
-                created_at: r.get("created_at"),
-                updated_at: r.get("updated_at"),
-            }
+        Ok(row.map(|r| Language {
+            id: r.get("id"),
+            name: r.get("name"),
+            icon: r.get("icon"),
+            color: r.get("color"),
+            description: r.get("description"),
+            is_builtin: r.get::<i32, _>("is_builtin") == 1,
+            is_active: r.get::<i32, _>("is_active") == 1,
+            created_at: r.get("created_at"),
+            updated_at: r.get("updated_at"),
         }))
     }
 
@@ -90,7 +89,7 @@ impl Database {
         sqlx::query(
             "UPDATE languages
              SET name = ?1, icon = ?2, color = ?3, description = ?4, updated_at = datetime('now')
-             WHERE id = ?5"
+             WHERE id = ?5",
         )
         .bind(name)
         .bind(icon)
@@ -181,7 +180,7 @@ impl Database {
         sqlx::query(
             "UPDATE language_field_types
              SET name = ?1, description = ?2, sort_order = ?3, updated_at = datetime('now')
-             WHERE id = ?4 AND is_builtin = 0"
+             WHERE id = ?4 AND is_builtin = 0",
         )
         .bind(name)
         .bind(description)
@@ -195,12 +194,10 @@ impl Database {
 
     /// 删除语言类型字段
     pub async fn delete_language_field_type(&self, id: i64) -> Result<(), sqlx::Error> {
-        sqlx::query(
-            "DELETE FROM language_field_types WHERE id = ?1 AND is_builtin = 0"
-        )
-        .bind(id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("DELETE FROM language_field_types WHERE id = ?1 AND is_builtin = 0")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }
@@ -215,18 +212,22 @@ impl Database {
         let mut tx = self.pool.begin().await?;
 
         // 删除该语言的所有非内置类型字段
-        sqlx::query(
-            "DELETE FROM language_field_types WHERE language_id = ?1 AND is_builtin = 0"
-        )
-        .bind(language_id)
-        .execute(&mut *tx)
-        .await?;
+        sqlx::query("DELETE FROM language_field_types WHERE language_id = ?1 AND is_builtin = 0")
+            .bind(language_id)
+            .execute(&mut *tx)
+            .await?;
 
         // 插入新的类型字段
         for (index, field_type) in field_types.iter().enumerate() {
-            let name = field_type.get("name").and_then(|v| v.as_str()).unwrap_or("");
+            let name = field_type
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             let description = field_type.get("description").and_then(|v| v.as_str());
-            let is_builtin = field_type.get("is_builtin").and_then(|v| v.as_bool()).unwrap_or(false);
+            let is_builtin = field_type
+                .get("is_builtin")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
 
             sqlx::query(
                 "INSERT INTO language_field_types (language_id, name, description, is_builtin, sort_order)

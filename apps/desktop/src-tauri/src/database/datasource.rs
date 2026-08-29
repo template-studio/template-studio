@@ -1,5 +1,5 @@
-use sqlx::Row;
 use super::{Database, Datasource, TestConnectionParams};
+use sqlx::Row;
 
 impl Database {
     /// ===== 数据源操作 =====
@@ -43,8 +43,9 @@ impl Database {
         .fetch_all(&self.pool)
         .await?;
 
-        let datasources = rows.into_iter().map(|row| {
-            Datasource {
+        let datasources = rows
+            .into_iter()
+            .map(|row| Datasource {
                 id: row.get("id"),
                 name: row.get("name"),
                 type_: row.get("type"),
@@ -57,8 +58,8 @@ impl Database {
                 is_active: row.get::<i32, _>("is_active") == 1,
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
-            }
-        }).collect();
+            })
+            .collect();
 
         Ok(datasources)
     }
@@ -137,7 +138,9 @@ impl Database {
     }
 
     /// 测试数据库连接
-    pub async fn test_datasource_connection(params: TestConnectionParams) -> Result<String, String> {
+    pub async fn test_datasource_connection(
+        params: TestConnectionParams,
+    ) -> Result<String, String> {
         match params.type_.as_str() {
             "mysql" => {
                 // MySQL 连接时可以不指定数据库
@@ -166,10 +169,12 @@ impl Database {
 
                 sqlx::mysql::MySqlPool::connect(&connection_string)
                     .await
-                    .map(|_| if database.is_empty() {
-                        "MySQL 服务器连接成功".to_string()
-                    } else {
-                        format!("MySQL 数据库 '{}' 连接成功", database)
+                    .map(|_| {
+                        if database.is_empty() {
+                            "MySQL 服务器连接成功".to_string()
+                        } else {
+                            format!("MySQL 数据库 '{}' 连接成功", database)
+                        }
                     })
                     .map_err(|e| format!("MySQL 连接失败: {}", e))
             }
@@ -193,7 +198,9 @@ impl Database {
             }
             "sqlite" => {
                 // 检查文件是否存在
-                let sqlite_file = params.sqlite_file.as_deref()
+                let sqlite_file = params
+                    .sqlite_file
+                    .as_deref()
                     .ok_or_else(|| "SQLite 文件路径未指定".to_string())?;
 
                 if !std::path::Path::new(sqlite_file).exists() {
@@ -205,7 +212,7 @@ impl Database {
                     .map(|_| "SQLite 连接成功".to_string())
                     .map_err(|e| format!("SQLite 连接失败: {}", e))
             }
-            _ => Err(format!("不支持的数据库类型: {}", params.type_))
+            _ => Err(format!("不支持的数据库类型: {}", params.type_)),
         }
     }
 }

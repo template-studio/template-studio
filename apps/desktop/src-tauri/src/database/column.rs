@@ -1,5 +1,5 @@
-use sqlx::Row;
 use super::{Database, DbColumn};
+use sqlx::Row;
 
 impl Database {
     /// 创建列记录
@@ -37,7 +37,7 @@ impl Database {
         sqlx::query(
             "UPDATE db_tables SET column_count = (
                 SELECT COUNT(*) FROM db_columns WHERE table_id = ?1
-            ), updated_at = datetime('now') WHERE id = ?1"
+            ), updated_at = datetime('now') WHERE id = ?1",
         )
         .bind(table_id)
         .execute(&self.pool)
@@ -58,8 +58,9 @@ impl Database {
         .fetch_all(&self.pool)
         .await?;
 
-        let columns = rows.into_iter().map(|row| {
-            DbColumn {
+        let columns = rows
+            .into_iter()
+            .map(|row| DbColumn {
                 id: row.get("id"),
                 table_id: row.get("table_id"),
                 name: row.get("name"),
@@ -72,8 +73,8 @@ impl Database {
                 comment: row.get("comment"),
                 ordinal_position: row.get("ordinal_position"),
                 created_at: row.get("created_at"),
-            }
-        }).collect();
+            })
+            .collect();
 
         Ok(columns)
     }
@@ -95,7 +96,7 @@ impl Database {
             "UPDATE db_columns
              SET name = ?1, data_type = ?2, length = ?3, is_nullable = ?4,
                  is_primary_key = ?5, is_unique = ?6, default_value = ?7, comment = ?8
-             WHERE id = ?9"
+             WHERE id = ?9",
         )
         .bind(name)
         .bind(data_type)
@@ -123,7 +124,11 @@ impl Database {
     }
 
     /// 更新列位置
-    pub async fn update_column_position(&self, column_id: i64, position: i32) -> Result<(), sqlx::Error> {
+    pub async fn update_column_position(
+        &self,
+        column_id: i64,
+        position: i32,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE db_columns SET ordinal_position = ?1 WHERE id = ?2")
             .bind(position)
             .bind(column_id)

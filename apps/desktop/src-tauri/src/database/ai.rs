@@ -1,5 +1,5 @@
-use sqlx::Row;
 use super::Database;
+use sqlx::Row;
 
 impl Database {
     /// ===== AI 服务相关操作 =====
@@ -10,40 +10,46 @@ impl Database {
                     is_enabled, is_default, temperature, max_tokens, timeout_seconds,
                     created_at, updated_at
              FROM ai_providers
-             ORDER BY id ASC"
+             ORDER BY id ASC",
         )
         .fetch_all(&self.pool)
         .await?;
 
-        let providers = rows.into_iter().map(|row| {
-            serde_json::json!({
-                "id": row.get::<i64, _>("id"),
-                "providerName": row.get::<String, _>("provider_name"),
-                "displayName": row.get::<String, _>("display_name"),
-                "providerType": row.get::<String, _>("provider_type"),
-                "apiKey": row.get::<Option<String>, _>("api_key"),
-                "apiEndpoint": row.get::<Option<String>, _>("api_endpoint"),
-                "isEnabled": row.get::<i32, _>("is_enabled") == 1,
-                "isDefault": row.get::<i32, _>("is_default") == 1,
-                "temperature": row.get::<f64, _>("temperature"),
-                "maxTokens": row.get::<i32, _>("max_tokens"),
-                "timeoutSeconds": row.get::<i32, _>("timeout_seconds"),
-                "createdAt": row.get::<String, _>("created_at"),
-                "updatedAt": row.get::<String, _>("updated_at"),
+        let providers = rows
+            .into_iter()
+            .map(|row| {
+                serde_json::json!({
+                    "id": row.get::<i64, _>("id"),
+                    "providerName": row.get::<String, _>("provider_name"),
+                    "displayName": row.get::<String, _>("display_name"),
+                    "providerType": row.get::<String, _>("provider_type"),
+                    "apiKey": row.get::<Option<String>, _>("api_key"),
+                    "apiEndpoint": row.get::<Option<String>, _>("api_endpoint"),
+                    "isEnabled": row.get::<i32, _>("is_enabled") == 1,
+                    "isDefault": row.get::<i32, _>("is_default") == 1,
+                    "temperature": row.get::<f64, _>("temperature"),
+                    "maxTokens": row.get::<i32, _>("max_tokens"),
+                    "timeoutSeconds": row.get::<i32, _>("timeout_seconds"),
+                    "createdAt": row.get::<String, _>("created_at"),
+                    "updatedAt": row.get::<String, _>("updated_at"),
+                })
             })
-        }).collect();
+            .collect();
 
         Ok(providers)
     }
 
     /// 根据 provider_name 获取 AI 提供商
-    pub async fn get_ai_provider(&self, provider_name: &str) -> Result<Option<serde_json::Value>, sqlx::Error> {
+    pub async fn get_ai_provider(
+        &self,
+        provider_name: &str,
+    ) -> Result<Option<serde_json::Value>, sqlx::Error> {
         let row = sqlx::query(
             "SELECT id, provider_name, display_name, provider_type, api_key, api_endpoint,
                     is_enabled, is_default, temperature, max_tokens, timeout_seconds,
                     created_at, updated_at
              FROM ai_providers
-             WHERE provider_name = ?1"
+             WHERE provider_name = ?1",
         )
         .bind(provider_name)
         .fetch_optional(&self.pool)
@@ -94,7 +100,7 @@ impl Database {
                 temperature = excluded.temperature,
                 max_tokens = excluded.max_tokens,
                 updated_at = datetime('now')
-            RETURNING id"
+            RETURNING id",
         )
         .bind(provider_name)
         .bind(display_name)
@@ -112,11 +118,15 @@ impl Database {
     }
 
     /// 切换 AI 提供商启用状态
-    pub async fn toggle_ai_provider(&self, provider_name: &str, is_enabled: bool) -> Result<(), sqlx::Error> {
+    pub async fn toggle_ai_provider(
+        &self,
+        provider_name: &str,
+        is_enabled: bool,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             "UPDATE ai_providers
              SET is_enabled = ?1, updated_at = datetime('now')
-             WHERE provider_name = ?2"
+             WHERE provider_name = ?2",
         )
         .bind(if is_enabled { 1 } else { 0 })
         .bind(provider_name)
@@ -137,13 +147,16 @@ impl Database {
     }
 
     /// 获取提供商的所有模型（分组）
-    pub async fn get_ai_provider_models_grouped(&self, provider_name: &str) -> Result<Vec<serde_json::Value>, sqlx::Error> {
+    pub async fn get_ai_provider_models_grouped(
+        &self,
+        provider_name: &str,
+    ) -> Result<Vec<serde_json::Value>, sqlx::Error> {
         let rows = sqlx::query(
             "SELECT group_id, COUNT(*) as count
              FROM ai_models
              WHERE provider_name = ?1
              GROUP BY group_id
-             ORDER BY group_id ASC"
+             ORDER BY group_id ASC",
         )
         .bind(provider_name)
         .fetch_all(&self.pool)
@@ -167,17 +180,20 @@ impl Database {
             .fetch_all(&self.pool)
             .await?;
 
-            let models: Vec<serde_json::Value> = model_rows.into_iter().map(|m| {
-                serde_json::json!({
-                    "id": m.get::<i64, _>("id"),
-                    "modelId": m.get::<String, _>("model_id"),
-                    "modelName": m.get::<String, _>("model_name"),
-                    "description": m.get::<Option<String>, _>("description"),
-                    "maxTokens": m.get::<i32, _>("max_tokens"),
-                    "supportsFunctions": m.get::<i32, _>("supports_functions") == 1,
-                    "supportsVision": m.get::<i32, _>("supports_vision") == 1,
+            let models: Vec<serde_json::Value> = model_rows
+                .into_iter()
+                .map(|m| {
+                    serde_json::json!({
+                        "id": m.get::<i64, _>("id"),
+                        "modelId": m.get::<String, _>("model_id"),
+                        "modelName": m.get::<String, _>("model_name"),
+                        "description": m.get::<Option<String>, _>("description"),
+                        "maxTokens": m.get::<i32, _>("max_tokens"),
+                        "supportsFunctions": m.get::<i32, _>("supports_functions") == 1,
+                        "supportsVision": m.get::<i32, _>("supports_vision") == 1,
+                    })
                 })
-            }).collect();
+                .collect();
 
             groups.push(serde_json::json!({
                 "groupId": group_id,
@@ -266,7 +282,7 @@ impl Database {
         sqlx::query(
             "UPDATE ai_models
              SET model_id = ?1, model_name = ?2, group_id = ?3, description = ?4
-             WHERE id = ?5"
+             WHERE id = ?5",
         )
         .bind(new_model_id)
         .bind(model_name)

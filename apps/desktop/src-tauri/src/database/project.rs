@@ -32,12 +32,14 @@ impl Database {
 
         // 如果指定了前端语言，复制系统级映射到项目级
         if let Some(lang_id) = frontend_language_id {
-            self.copy_system_mappings_to_project(project_id, lang_id, "frontend", "mysql").await?;
+            self.copy_system_mappings_to_project(project_id, lang_id, "frontend", "mysql")
+                .await?;
         }
 
         // 如果指定了后端语言，复制系统级映射到项目级
         if let Some(lang_id) = backend_language_id {
-            self.copy_system_mappings_to_project(project_id, lang_id, "backend", "mysql").await?;
+            self.copy_system_mappings_to_project(project_id, lang_id, "backend", "mysql")
+                .await?;
         }
 
         Ok(project_id)
@@ -53,8 +55,9 @@ impl Database {
         .fetch_all(&self.pool)
         .await?;
 
-        let projects = rows.into_iter().map(|row| {
-            Project {
+        let projects = rows
+            .into_iter()
+            .map(|row| Project {
                 id: row.get("id"),
                 name: row.get("name"),
                 description: row.get("description"),
@@ -71,8 +74,8 @@ impl Database {
                 frontend_language: None,
                 backend_language: None,
                 languages: None,
-            }
-        }).collect();
+            })
+            .collect();
 
         Ok(projects)
     }
@@ -88,25 +91,23 @@ impl Database {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| {
-            Project {
-                id: r.get("id"),
-                name: r.get("name"),
-                description: r.get("description"),
-                datasource_id: r.get("datasource_id"),
-                database_name: r.get("database_name"),
-                primary_language_id: r.try_get("primary_language_id").ok(),
-                frontend_language_id: r.try_get("frontend_language_id").ok(),
-                backend_language_id: r.try_get("backend_language_id").ok(),
-                table_count: r.get("table_count"),
-                created_at: r.get("created_at"),
-                updated_at: r.get("updated_at"),
-                datasource: None,
-                primary_language: None,
-                frontend_language: None,
-                backend_language: None,
-                languages: None,
-            }
+        Ok(row.map(|r| Project {
+            id: r.get("id"),
+            name: r.get("name"),
+            description: r.get("description"),
+            datasource_id: r.get("datasource_id"),
+            database_name: r.get("database_name"),
+            primary_language_id: r.try_get("primary_language_id").ok(),
+            frontend_language_id: r.try_get("frontend_language_id").ok(),
+            backend_language_id: r.try_get("backend_language_id").ok(),
+            table_count: r.get("table_count"),
+            created_at: r.get("created_at"),
+            updated_at: r.get("updated_at"),
+            datasource: None,
+            primary_language: None,
+            frontend_language: None,
+            backend_language: None,
+            languages: None,
         }))
     }
 
@@ -122,7 +123,7 @@ impl Database {
     ) -> Result<(), sqlx::Error> {
         if let Some(project_name) = name {
             sqlx::query(
-                "UPDATE projects SET name = ?1, updated_at = datetime('now') WHERE id = ?2"
+                "UPDATE projects SET name = ?1, updated_at = datetime('now') WHERE id = ?2",
             )
             .bind(project_name)
             .bind(id)
@@ -132,7 +133,7 @@ impl Database {
 
         if let Some(desc) = description {
             sqlx::query(
-                "UPDATE projects SET description = ?1, updated_at = datetime('now') WHERE id = ?2"
+                "UPDATE projects SET description = ?1, updated_at = datetime('now') WHERE id = ?2",
             )
             .bind(desc)
             .bind(id)
@@ -157,7 +158,8 @@ impl Database {
                 .await?;
 
             // 复制系统级映射到项目级
-            self.copy_system_mappings_to_project(id, lang_id, "frontend", "mysql").await?;
+            self.copy_system_mappings_to_project(id, lang_id, "frontend", "mysql")
+                .await?;
         }
 
         if let Some(lang_id) = backend_language_id {
@@ -168,7 +170,8 @@ impl Database {
                 .await?;
 
             // 复制系统级映射到项目级
-            self.copy_system_mappings_to_project(id, lang_id, "backend", "mysql").await?;
+            self.copy_system_mappings_to_project(id, lang_id, "backend", "mysql")
+                .await?;
         }
 
         Ok(())
@@ -210,7 +213,7 @@ impl Database {
         let result = sqlx::query(
             "INSERT INTO project_languages (project_id, language_id, is_primary)
              VALUES (?1, ?2, ?3)
-             ON CONFLICT(project_id, language_id) DO UPDATE SET is_primary = ?3"
+             ON CONFLICT(project_id, language_id) DO UPDATE SET is_primary = ?3",
         )
         .bind(project_id)
         .bind(language_id)
@@ -237,21 +240,25 @@ impl Database {
     }
 
     /// 获取项目的所有语言
-    pub async fn get_project_languages(&self, project_id: i64) -> Result<Vec<Language>, sqlx::Error> {
+    pub async fn get_project_languages(
+        &self,
+        project_id: i64,
+    ) -> Result<Vec<Language>, sqlx::Error> {
         let rows = sqlx::query(
             "SELECT l.id, l.name, l.icon, l.color, l.description, l.is_builtin, l.is_active,
                     l.created_at, l.updated_at
              FROM project_languages pl
              JOIN languages l ON pl.language_id = l.id
              WHERE pl.project_id = ?1
-             ORDER BY pl.is_primary DESC, l.name ASC"
+             ORDER BY pl.is_primary DESC, l.name ASC",
         )
         .bind(project_id)
         .fetch_all(&self.pool)
         .await?;
 
-        let languages = rows.into_iter().map(|row| {
-            Language {
+        let languages = rows
+            .into_iter()
+            .map(|row| Language {
                 id: row.get("id"),
                 name: row.get("name"),
                 icon: row.get("icon"),
@@ -261,8 +268,8 @@ impl Database {
                 is_active: row.get::<i32, _>("is_active") == 1,
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
-            }
-        }).collect();
+            })
+            .collect();
 
         Ok(languages)
     }
@@ -303,20 +310,23 @@ impl Database {
             "SELECT id, name, description, database_name, table_count, created_at
              FROM projects
              ORDER BY created_at DESC
-             LIMIT ?"
+             LIMIT ?",
         )
         .bind(limit)
         .fetch_all(pool)
         .await?;
 
-        let projects = rows.iter().map(|row| RecentProject {
-            id: row.get("id"),
-            name: row.get("name"),
-            description: row.get("description"),
-            database_name: row.get("database_name"),
-            table_count: row.get("table_count"),
-            created_at: row.get("created_at"),
-        }).collect();
+        let projects = rows
+            .iter()
+            .map(|row| RecentProject {
+                id: row.get("id"),
+                name: row.get("name"),
+                description: row.get("description"),
+                database_name: row.get("database_name"),
+                table_count: row.get("table_count"),
+                created_at: row.get("created_at"),
+            })
+            .collect();
 
         Ok(projects)
     }

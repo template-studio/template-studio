@@ -10,17 +10,16 @@ impl Database {
             "CREATE TABLE IF NOT EXISTS schema_migrations (
                 version INTEGER PRIMARY KEY,
                 applied_at TEXT NOT NULL DEFAULT (datetime('now'))
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
 
         // 检查当前版本
-        let current_version: i32 = sqlx::query_scalar(
-            "SELECT COALESCE(MAX(version), 0) FROM schema_migrations"
-        )
-        .fetch_one(&self.pool)
-        .await?;
+        let current_version: i32 =
+            sqlx::query_scalar("SELECT COALESCE(MAX(version), 0) FROM schema_migrations")
+                .fetch_one(&self.pool)
+                .await?;
 
         println!("当前数据库版本: {}", current_version);
 
@@ -89,7 +88,7 @@ impl Database {
                 table_count INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
@@ -98,9 +97,11 @@ impl Database {
             .execute(&self.pool)
             .await?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_projects_database_type ON projects(database_type)")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_projects_database_type ON projects(database_type)",
+        )
+        .execute(&self.pool)
+        .await?;
 
         sqlx::query("INSERT INTO schema_migrations (version) VALUES (1)")
             .execute(&self.pool)
@@ -126,7 +127,7 @@ impl Database {
                 is_active INTEGER NOT NULL DEFAULT 1,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
@@ -139,9 +140,11 @@ impl Database {
             .execute(&self.pool)
             .await?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_datasources_is_active ON datasources(is_active)")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_datasources_is_active ON datasources(is_active)",
+        )
+        .execute(&self.pool)
+        .await?;
 
         sqlx::query("INSERT INTO schema_migrations (version) VALUES (2)")
             .execute(&self.pool)
@@ -168,7 +171,7 @@ impl Database {
                 updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 UNIQUE(project_id, name)
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
@@ -212,7 +215,7 @@ impl Database {
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 FOREIGN KEY (table_id) REFERENCES db_tables(id) ON DELETE CASCADE,
                 UNIQUE(table_id, name)
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
@@ -225,9 +228,11 @@ impl Database {
             .execute(&self.pool)
             .await?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_columns_ordinal ON db_columns(ordinal_position)")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_columns_ordinal ON db_columns(ordinal_position)",
+        )
+        .execute(&self.pool)
+        .await?;
 
         sqlx::query("INSERT INTO schema_migrations (version) VALUES (4)")
             .execute(&self.pool)
@@ -252,7 +257,7 @@ impl Database {
                 is_active INTEGER NOT NULL DEFAULT 1,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
@@ -276,7 +281,7 @@ impl Database {
             ('Dart', '🎯', 'cyan', 'Flutter 开发语言', 1),
             ('PHP', '🐘', 'indigo', 'Web 开发语言', 1),
             ('Ruby', '💎', 'red', '优雅的编程语言', 1),
-            ('C#', '🔷', 'purple', 'Microsoft 开发语言', 1)"
+            ('C#', '🔷', 'purple', 'Microsoft 开发语言', 1)",
         )
         .execute(&self.pool)
         .await?;
@@ -300,7 +305,7 @@ impl Database {
                 is_active INTEGER NOT NULL DEFAULT 1,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
@@ -343,7 +348,7 @@ impl Database {
                 updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                 FOREIGN KEY (datasource_id) REFERENCES datasources(id) ON DELETE CASCADE,
                 FOREIGN KEY (primary_language_id) REFERENCES languages(id)
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
@@ -352,9 +357,11 @@ impl Database {
             .execute(&self.pool)
             .await?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_projects_datasource_id ON projects(datasource_id)")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_projects_datasource_id ON projects(datasource_id)",
+        )
+        .execute(&self.pool)
+        .await?;
 
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_projects_primary_language_id ON projects(primary_language_id)")
             .execute(&self.pool)
@@ -371,7 +378,7 @@ impl Database {
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 FOREIGN KEY (language_id) REFERENCES languages(id) ON DELETE CASCADE,
                 UNIQUE(project_id, language_id)
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
@@ -398,7 +405,7 @@ impl Database {
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
@@ -423,7 +430,7 @@ impl Database {
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 FOREIGN KEY (table_id) REFERENCES db_tables(id) ON DELETE CASCADE,
                 UNIQUE(table_id, name)
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
@@ -445,7 +452,7 @@ impl Database {
 
         // 检查列是否存在
         let column_exists: bool = sqlx::query_scalar(
-            "SELECT COUNT(*) = 1 FROM pragma_table_info('datasources') WHERE name = 'database'"
+            "SELECT COUNT(*) = 1 FROM pragma_table_info('datasources') WHERE name = 'database'",
         )
         .fetch_one(&self.pool)
         .await?;
@@ -486,7 +493,7 @@ impl Database {
                 timeout_seconds INTEGER DEFAULT 30,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
@@ -505,23 +512,29 @@ impl Database {
                 supports_vision INTEGER DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT (datetime('now')),
                 FOREIGN KEY (provider_name) REFERENCES ai_providers(provider_name)
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
 
         // 创建索引
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_ai_providers_name ON ai_providers(provider_name)")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_ai_providers_name ON ai_providers(provider_name)",
+        )
+        .execute(&self.pool)
+        .await?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_ai_providers_type ON ai_providers(provider_type)")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_ai_providers_type ON ai_providers(provider_type)",
+        )
+        .execute(&self.pool)
+        .await?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_ai_models_provider ON ai_models(provider_name)")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_ai_models_provider ON ai_models(provider_name)",
+        )
+        .execute(&self.pool)
+        .await?;
 
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_ai_models_group ON ai_models(group_id)")
             .execute(&self.pool)
@@ -535,7 +548,7 @@ impl Database {
                 ('deepseek', 'DeepSeek', 'deepseek', 'https://api.deepseek.com/v1', 0),
                 ('glm', '智谱 GLM', 'glm', 'https://open.bigmodel.cn/api/paas/v4', 0),
                 ('mimo', 'Xiaomi MiMo', 'openai', 'https://api.xiaomimimo.com/v1', 0),
-                ('cherry-studio', 'Cherry Studio', 'openai', 'http://127.0.0.1:23333/v1', 0)"
+                ('cherry-studio', 'Cherry Studio', 'openai', 'http://127.0.0.1:23333/v1', 0)",
         )
         .execute(&self.pool)
         .await?;
@@ -602,7 +615,7 @@ impl Database {
                 updated_at TEXT NOT NULL DEFAULT (datetime('now')),
 
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
@@ -662,7 +675,7 @@ impl Database {
                 updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                 FOREIGN KEY (language_id) REFERENCES languages(id) ON DELETE CASCADE,
                 UNIQUE(language_id, name)
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
@@ -711,7 +724,7 @@ impl Database {
                 updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                 FOREIGN KEY (language_id) REFERENCES languages(id) ON DELETE CASCADE,
                 UNIQUE(language_id, db_type, pattern)
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
@@ -720,9 +733,11 @@ impl Database {
             .execute(&self.pool)
             .await?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_system_mappings_db ON system_type_mappings(db_type)")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_system_mappings_db ON system_type_mappings(db_type)",
+        )
+        .execute(&self.pool)
+        .await?;
 
         // 3. 创建项目级类型映射表
         sqlx::query(
@@ -738,7 +753,7 @@ impl Database {
                 updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 UNIQUE(project_id, scope, db_type, pattern)
-            )"
+            )",
         )
         .execute(&self.pool)
         .await?;
@@ -747,9 +762,11 @@ impl Database {
             .execute(&self.pool)
             .await?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_project_mappings_scope ON project_type_mappings(scope)")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_project_mappings_scope ON project_type_mappings(scope)",
+        )
+        .execute(&self.pool)
+        .await?;
 
         // 4. 初始化系统默认映射数据
         self.init_default_system_mappings().await?;
@@ -769,7 +786,7 @@ impl Database {
             "INSERT OR IGNORE INTO ai_providers (
                 provider_name, display_name, provider_type, api_endpoint, is_enabled
             ) VALUES
-                ('mimo', 'Xiaomi MiMo', 'openai', 'https://api.xiaomimimo.com/v1', 0)"
+                ('mimo', 'Xiaomi MiMo', 'openai', 'https://api.xiaomimimo.com/v1', 0)",
         )
         .execute(&self.pool)
         .await?;
@@ -797,7 +814,7 @@ impl Database {
             "INSERT OR IGNORE INTO ai_providers (
                 provider_name, display_name, provider_type, api_endpoint, is_enabled
             ) VALUES
-                ('cherry-studio', 'Cherry Studio', 'openai', 'http://127.0.0.1:23333/v1', 0)"
+                ('cherry-studio', 'Cherry Studio', 'openai', 'http://127.0.0.1:23333/v1', 0)",
         )
         .execute(&self.pool)
         .await?;
@@ -816,303 +833,344 @@ impl Database {
         // 语言到默认类型映射的配置
         let language_mappings = vec![
             // Rust
-            ("Rust", vec![
-                ("mysql", "VARCHAR(%)", "String"),
-                ("mysql", "CHAR(%)", "String"),
-                ("mysql", "TEXT", "String"),
-                ("mysql", "LONGTEXT", "String"),
-                ("mysql", "INT", "i32"),
-                ("mysql", "BIGINT", "i64"),
-                ("mysql", "SMALLINT", "i16"),
-                ("mysql", "TINYINT(1)", "bool"),
-                ("mysql", "TINYINT(%)", "i8"),
-                ("mysql", "DECIMAL(%,%)", "Decimal"),
-                ("mysql", "FLOAT", "f32"),
-                ("mysql", "DOUBLE", "f64"),
-                ("mysql", "BOOLEAN", "bool"),
-                ("mysql", "DATE", "NaiveDate"),
-                ("mysql", "TIMESTAMP", "NaiveDateTime"),
-                ("mysql", "DATETIME", "NaiveDateTime"),
-                ("mysql", "TIME", "NaiveTime"),
-                ("mysql", "BLOB", "Vec<u8>"),
-                ("mysql", "JSON", "serde_json::Value"),
-            ]),
+            (
+                "Rust",
+                vec![
+                    ("mysql", "VARCHAR(%)", "String"),
+                    ("mysql", "CHAR(%)", "String"),
+                    ("mysql", "TEXT", "String"),
+                    ("mysql", "LONGTEXT", "String"),
+                    ("mysql", "INT", "i32"),
+                    ("mysql", "BIGINT", "i64"),
+                    ("mysql", "SMALLINT", "i16"),
+                    ("mysql", "TINYINT(1)", "bool"),
+                    ("mysql", "TINYINT(%)", "i8"),
+                    ("mysql", "DECIMAL(%,%)", "Decimal"),
+                    ("mysql", "FLOAT", "f32"),
+                    ("mysql", "DOUBLE", "f64"),
+                    ("mysql", "BOOLEAN", "bool"),
+                    ("mysql", "DATE", "NaiveDate"),
+                    ("mysql", "TIMESTAMP", "NaiveDateTime"),
+                    ("mysql", "DATETIME", "NaiveDateTime"),
+                    ("mysql", "TIME", "NaiveTime"),
+                    ("mysql", "BLOB", "Vec<u8>"),
+                    ("mysql", "JSON", "serde_json::Value"),
+                ],
+            ),
             // Go
-            ("Go", vec![
-                ("mysql", "VARCHAR(%)", "string"),
-                ("mysql", "CHAR(%)", "string"),
-                ("mysql", "TEXT", "string"),
-                ("mysql", "LONGTEXT", "string"),
-                ("mysql", "INT", "int32"),
-                ("mysql", "BIGINT", "int64"),
-                ("mysql", "SMALLINT", "int16"),
-                ("mysql", "TINYINT(1)", "bool"),
-                ("mysql", "TINYINT(%)", "int8"),
-                ("mysql", "DECIMAL(%,%)", "float64"),
-                ("mysql", "FLOAT", "float32"),
-                ("mysql", "DOUBLE", "float64"),
-                ("mysql", "BOOLEAN", "bool"),
-                ("mysql", "DATE", "time.Time"),
-                ("mysql", "TIMESTAMP", "time.Time"),
-                ("mysql", "DATETIME", "time.Time"),
-                ("mysql", "TIME", "time.Time"),
-                ("mysql", "BLOB", "[]byte"),
-                ("mysql", "JSON", "interface{}"),
-            ]),
+            (
+                "Go",
+                vec![
+                    ("mysql", "VARCHAR(%)", "string"),
+                    ("mysql", "CHAR(%)", "string"),
+                    ("mysql", "TEXT", "string"),
+                    ("mysql", "LONGTEXT", "string"),
+                    ("mysql", "INT", "int32"),
+                    ("mysql", "BIGINT", "int64"),
+                    ("mysql", "SMALLINT", "int16"),
+                    ("mysql", "TINYINT(1)", "bool"),
+                    ("mysql", "TINYINT(%)", "int8"),
+                    ("mysql", "DECIMAL(%,%)", "float64"),
+                    ("mysql", "FLOAT", "float32"),
+                    ("mysql", "DOUBLE", "float64"),
+                    ("mysql", "BOOLEAN", "bool"),
+                    ("mysql", "DATE", "time.Time"),
+                    ("mysql", "TIMESTAMP", "time.Time"),
+                    ("mysql", "DATETIME", "time.Time"),
+                    ("mysql", "TIME", "time.Time"),
+                    ("mysql", "BLOB", "[]byte"),
+                    ("mysql", "JSON", "interface{}"),
+                ],
+            ),
             // Python
-            ("Python", vec![
-                ("mysql", "VARCHAR(%)", "str"),
-                ("mysql", "CHAR(%)", "str"),
-                ("mysql", "TEXT", "str"),
-                ("mysql", "LONGTEXT", "str"),
-                ("mysql", "INT", "int"),
-                ("mysql", "BIGINT", "int"),
-                ("mysql", "SMALLINT", "int"),
-                ("mysql", "TINYINT(1)", "bool"),
-                ("mysql", "TINYINT(%)", "int"),
-                ("mysql", "DECIMAL(%,%)", "Decimal"),
-                ("mysql", "FLOAT", "float"),
-                ("mysql", "DOUBLE", "float"),
-                ("mysql", "BOOLEAN", "bool"),
-                ("mysql", "DATE", "datetime.date"),
-                ("mysql", "TIMESTAMP", "datetime.datetime"),
-                ("mysql", "DATETIME", "datetime.datetime"),
-                ("mysql", "TIME", "datetime.time"),
-                ("mysql", "BLOB", "bytes"),
-                ("mysql", "JSON", "dict"),
-            ]),
+            (
+                "Python",
+                vec![
+                    ("mysql", "VARCHAR(%)", "str"),
+                    ("mysql", "CHAR(%)", "str"),
+                    ("mysql", "TEXT", "str"),
+                    ("mysql", "LONGTEXT", "str"),
+                    ("mysql", "INT", "int"),
+                    ("mysql", "BIGINT", "int"),
+                    ("mysql", "SMALLINT", "int"),
+                    ("mysql", "TINYINT(1)", "bool"),
+                    ("mysql", "TINYINT(%)", "int"),
+                    ("mysql", "DECIMAL(%,%)", "Decimal"),
+                    ("mysql", "FLOAT", "float"),
+                    ("mysql", "DOUBLE", "float"),
+                    ("mysql", "BOOLEAN", "bool"),
+                    ("mysql", "DATE", "datetime.date"),
+                    ("mysql", "TIMESTAMP", "datetime.datetime"),
+                    ("mysql", "DATETIME", "datetime.datetime"),
+                    ("mysql", "TIME", "datetime.time"),
+                    ("mysql", "BLOB", "bytes"),
+                    ("mysql", "JSON", "dict"),
+                ],
+            ),
             // TypeScript
-            ("TypeScript", vec![
-                ("mysql", "VARCHAR(%)", "string"),
-                ("mysql", "CHAR(%)", "string"),
-                ("mysql", "TEXT", "string"),
-                ("mysql", "LONGTEXT", "string"),
-                ("mysql", "INT", "number"),
-                ("mysql", "BIGINT", "number"),
-                ("mysql", "SMALLINT", "number"),
-                ("mysql", "TINYINT(1)", "boolean"),
-                ("mysql", "TINYINT(%)", "number"),
-                ("mysql", "DECIMAL(%,%)", "number"),
-                ("mysql", "FLOAT", "number"),
-                ("mysql", "DOUBLE", "number"),
-                ("mysql", "BOOLEAN", "boolean"),
-                ("mysql", "DATE", "Date"),
-                ("mysql", "TIMESTAMP", "Date"),
-                ("mysql", "DATETIME", "Date"),
-                ("mysql", "TIME", "Date"),
-                ("mysql", "BLOB", "Buffer"),
-                ("mysql", "JSON", "any"),
-            ]),
+            (
+                "TypeScript",
+                vec![
+                    ("mysql", "VARCHAR(%)", "string"),
+                    ("mysql", "CHAR(%)", "string"),
+                    ("mysql", "TEXT", "string"),
+                    ("mysql", "LONGTEXT", "string"),
+                    ("mysql", "INT", "number"),
+                    ("mysql", "BIGINT", "number"),
+                    ("mysql", "SMALLINT", "number"),
+                    ("mysql", "TINYINT(1)", "boolean"),
+                    ("mysql", "TINYINT(%)", "number"),
+                    ("mysql", "DECIMAL(%,%)", "number"),
+                    ("mysql", "FLOAT", "number"),
+                    ("mysql", "DOUBLE", "number"),
+                    ("mysql", "BOOLEAN", "boolean"),
+                    ("mysql", "DATE", "Date"),
+                    ("mysql", "TIMESTAMP", "Date"),
+                    ("mysql", "DATETIME", "Date"),
+                    ("mysql", "TIME", "Date"),
+                    ("mysql", "BLOB", "Buffer"),
+                    ("mysql", "JSON", "any"),
+                ],
+            ),
             // JavaScript
-            ("JavaScript", vec![
-                ("mysql", "VARCHAR(%)", "string"),
-                ("mysql", "CHAR(%)", "string"),
-                ("mysql", "TEXT", "string"),
-                ("mysql", "LONGTEXT", "string"),
-                ("mysql", "INT", "number"),
-                ("mysql", "BIGINT", "number"),
-                ("mysql", "SMALLINT", "number"),
-                ("mysql", "TINYINT(1)", "boolean"),
-                ("mysql", "TINYINT(%)", "number"),
-                ("mysql", "DECIMAL(%,%)", "number"),
-                ("mysql", "FLOAT", "number"),
-                ("mysql", "DOUBLE", "number"),
-                ("mysql", "BOOLEAN", "boolean"),
-                ("mysql", "DATE", "Date"),
-                ("mysql", "TIMESTAMP", "Date"),
-                ("mysql", "DATETIME", "Date"),
-                ("mysql", "TIME", "Date"),
-                ("mysql", "BLOB", "Buffer"),
-                ("mysql", "JSON", "any"),
-            ]),
+            (
+                "JavaScript",
+                vec![
+                    ("mysql", "VARCHAR(%)", "string"),
+                    ("mysql", "CHAR(%)", "string"),
+                    ("mysql", "TEXT", "string"),
+                    ("mysql", "LONGTEXT", "string"),
+                    ("mysql", "INT", "number"),
+                    ("mysql", "BIGINT", "number"),
+                    ("mysql", "SMALLINT", "number"),
+                    ("mysql", "TINYINT(1)", "boolean"),
+                    ("mysql", "TINYINT(%)", "number"),
+                    ("mysql", "DECIMAL(%,%)", "number"),
+                    ("mysql", "FLOAT", "number"),
+                    ("mysql", "DOUBLE", "number"),
+                    ("mysql", "BOOLEAN", "boolean"),
+                    ("mysql", "DATE", "Date"),
+                    ("mysql", "TIMESTAMP", "Date"),
+                    ("mysql", "DATETIME", "Date"),
+                    ("mysql", "TIME", "Date"),
+                    ("mysql", "BLOB", "Buffer"),
+                    ("mysql", "JSON", "any"),
+                ],
+            ),
             // Java
-            ("Java", vec![
-                ("mysql", "VARCHAR(%)", "String"),
-                ("mysql", "CHAR(%)", "String"),
-                ("mysql", "TEXT", "String"),
-                ("mysql", "LONGTEXT", "String"),
-                ("mysql", "INT", "Integer"),
-                ("mysql", "BIGINT", "Long"),
-                ("mysql", "SMALLINT", "Short"),
-                ("mysql", "TINYINT(1)", "Boolean"),
-                ("mysql", "TINYINT(%)", "Byte"),
-                ("mysql", "DECIMAL(%,%)", "BigDecimal"),
-                ("mysql", "FLOAT", "Float"),
-                ("mysql", "DOUBLE", "Double"),
-                ("mysql", "BOOLEAN", "Boolean"),
-                ("mysql", "DATE", "LocalDate"),
-                ("mysql", "TIMESTAMP", "LocalDateTime"),
-                ("mysql", "DATETIME", "LocalDateTime"),
-                ("mysql", "TIME", "LocalTime"),
-                ("mysql", "BLOB", "byte[]"),
-                ("mysql", "JSON", "String"),
-            ]),
+            (
+                "Java",
+                vec![
+                    ("mysql", "VARCHAR(%)", "String"),
+                    ("mysql", "CHAR(%)", "String"),
+                    ("mysql", "TEXT", "String"),
+                    ("mysql", "LONGTEXT", "String"),
+                    ("mysql", "INT", "Integer"),
+                    ("mysql", "BIGINT", "Long"),
+                    ("mysql", "SMALLINT", "Short"),
+                    ("mysql", "TINYINT(1)", "Boolean"),
+                    ("mysql", "TINYINT(%)", "Byte"),
+                    ("mysql", "DECIMAL(%,%)", "BigDecimal"),
+                    ("mysql", "FLOAT", "Float"),
+                    ("mysql", "DOUBLE", "Double"),
+                    ("mysql", "BOOLEAN", "Boolean"),
+                    ("mysql", "DATE", "LocalDate"),
+                    ("mysql", "TIMESTAMP", "LocalDateTime"),
+                    ("mysql", "DATETIME", "LocalDateTime"),
+                    ("mysql", "TIME", "LocalTime"),
+                    ("mysql", "BLOB", "byte[]"),
+                    ("mysql", "JSON", "String"),
+                ],
+            ),
             // C++
-            ("C++", vec![
-                ("mysql", "VARCHAR(%)", "std::string"),
-                ("mysql", "CHAR(%)", "std::string"),
-                ("mysql", "TEXT", "std::string"),
-                ("mysql", "LONGTEXT", "std::string"),
-                ("mysql", "INT", "int32_t"),
-                ("mysql", "BIGINT", "int64_t"),
-                ("mysql", "SMALLINT", "int16_t"),
-                ("mysql", "TINYINT(1)", "bool"),
-                ("mysql", "TINYINT(%)", "int8_t"),
-                ("mysql", "DECIMAL(%,%)", "double"),
-                ("mysql", "FLOAT", "float"),
-                ("mysql", "DOUBLE", "double"),
-                ("mysql", "BOOLEAN", "bool"),
-                ("mysql", "DATE", "std::string"),
-                ("mysql", "TIMESTAMP", "std::string"),
-                ("mysql", "DATETIME", "std::string"),
-                ("mysql", "TIME", "std::string"),
-                ("mysql", "BLOB", "std::vector<char>"),
-                ("mysql", "JSON", "std::string"),
-            ]),
+            (
+                "C++",
+                vec![
+                    ("mysql", "VARCHAR(%)", "std::string"),
+                    ("mysql", "CHAR(%)", "std::string"),
+                    ("mysql", "TEXT", "std::string"),
+                    ("mysql", "LONGTEXT", "std::string"),
+                    ("mysql", "INT", "int32_t"),
+                    ("mysql", "BIGINT", "int64_t"),
+                    ("mysql", "SMALLINT", "int16_t"),
+                    ("mysql", "TINYINT(1)", "bool"),
+                    ("mysql", "TINYINT(%)", "int8_t"),
+                    ("mysql", "DECIMAL(%,%)", "double"),
+                    ("mysql", "FLOAT", "float"),
+                    ("mysql", "DOUBLE", "double"),
+                    ("mysql", "BOOLEAN", "bool"),
+                    ("mysql", "DATE", "std::string"),
+                    ("mysql", "TIMESTAMP", "std::string"),
+                    ("mysql", "DATETIME", "std::string"),
+                    ("mysql", "TIME", "std::string"),
+                    ("mysql", "BLOB", "std::vector<char>"),
+                    ("mysql", "JSON", "std::string"),
+                ],
+            ),
             // Kotlin
-            ("Kotlin", vec![
-                ("mysql", "VARCHAR(%)", "String"),
-                ("mysql", "CHAR(%)", "String"),
-                ("mysql", "TEXT", "String"),
-                ("mysql", "LONGTEXT", "String"),
-                ("mysql", "INT", "Int"),
-                ("mysql", "BIGINT", "Long"),
-                ("mysql", "SMALLINT", "Short"),
-                ("mysql", "TINYINT(1)", "Boolean"),
-                ("mysql", "TINYINT(%)", "Byte"),
-                ("mysql", "DECIMAL(%,%)", "BigDecimal"),
-                ("mysql", "FLOAT", "Float"),
-                ("mysql", "DOUBLE", "Double"),
-                ("mysql", "BOOLEAN", "Boolean"),
-                ("mysql", "DATE", "LocalDate"),
-                ("mysql", "TIMESTAMP", "LocalDateTime"),
-                ("mysql", "DATETIME", "LocalDateTime"),
-                ("mysql", "TIME", "LocalTime"),
-                ("mysql", "BLOB", "ByteArray"),
-                ("mysql", "JSON", "String"),
-            ]),
+            (
+                "Kotlin",
+                vec![
+                    ("mysql", "VARCHAR(%)", "String"),
+                    ("mysql", "CHAR(%)", "String"),
+                    ("mysql", "TEXT", "String"),
+                    ("mysql", "LONGTEXT", "String"),
+                    ("mysql", "INT", "Int"),
+                    ("mysql", "BIGINT", "Long"),
+                    ("mysql", "SMALLINT", "Short"),
+                    ("mysql", "TINYINT(1)", "Boolean"),
+                    ("mysql", "TINYINT(%)", "Byte"),
+                    ("mysql", "DECIMAL(%,%)", "BigDecimal"),
+                    ("mysql", "FLOAT", "Float"),
+                    ("mysql", "DOUBLE", "Double"),
+                    ("mysql", "BOOLEAN", "Boolean"),
+                    ("mysql", "DATE", "LocalDate"),
+                    ("mysql", "TIMESTAMP", "LocalDateTime"),
+                    ("mysql", "DATETIME", "LocalDateTime"),
+                    ("mysql", "TIME", "LocalTime"),
+                    ("mysql", "BLOB", "ByteArray"),
+                    ("mysql", "JSON", "String"),
+                ],
+            ),
             // Swift
-            ("Swift", vec![
-                ("mysql", "VARCHAR(%)", "String"),
-                ("mysql", "CHAR(%)", "String"),
-                ("mysql", "TEXT", "String"),
-                ("mysql", "LONGTEXT", "String"),
-                ("mysql", "INT", "Int32"),
-                ("mysql", "BIGINT", "Int64"),
-                ("mysql", "SMALLINT", "Int16"),
-                ("mysql", "TINYINT(1)", "Bool"),
-                ("mysql", "TINYINT(%)", "Int8"),
-                ("mysql", "DECIMAL(%,%)", "Double"),
-                ("mysql", "FLOAT", "Float"),
-                ("mysql", "DOUBLE", "Double"),
-                ("mysql", "BOOLEAN", "Bool"),
-                ("mysql", "DATE", "Date"),
-                ("mysql", "TIMESTAMP", "Date"),
-                ("mysql", "DATETIME", "Date"),
-                ("mysql", "TIME", "Date"),
-                ("mysql", "BLOB", "Data"),
-                ("mysql", "JSON", "Any"),
-            ]),
+            (
+                "Swift",
+                vec![
+                    ("mysql", "VARCHAR(%)", "String"),
+                    ("mysql", "CHAR(%)", "String"),
+                    ("mysql", "TEXT", "String"),
+                    ("mysql", "LONGTEXT", "String"),
+                    ("mysql", "INT", "Int32"),
+                    ("mysql", "BIGINT", "Int64"),
+                    ("mysql", "SMALLINT", "Int16"),
+                    ("mysql", "TINYINT(1)", "Bool"),
+                    ("mysql", "TINYINT(%)", "Int8"),
+                    ("mysql", "DECIMAL(%,%)", "Double"),
+                    ("mysql", "FLOAT", "Float"),
+                    ("mysql", "DOUBLE", "Double"),
+                    ("mysql", "BOOLEAN", "Bool"),
+                    ("mysql", "DATE", "Date"),
+                    ("mysql", "TIMESTAMP", "Date"),
+                    ("mysql", "DATETIME", "Date"),
+                    ("mysql", "TIME", "Date"),
+                    ("mysql", "BLOB", "Data"),
+                    ("mysql", "JSON", "Any"),
+                ],
+            ),
             // Dart
-            ("Dart", vec![
-                ("mysql", "VARCHAR(%)", "String"),
-                ("mysql", "CHAR(%)", "String"),
-                ("mysql", "TEXT", "String"),
-                ("mysql", "LONGTEXT", "String"),
-                ("mysql", "INT", "int"),
-                ("mysql", "BIGINT", "int"),
-                ("mysql", "SMALLINT", "int"),
-                ("mysql", "TINYINT(1)", "bool"),
-                ("mysql", "TINYINT(%)", "int"),
-                ("mysql", "DECIMAL(%,%)", "double"),
-                ("mysql", "FLOAT", "double"),
-                ("mysql", "DOUBLE", "double"),
-                ("mysql", "BOOLEAN", "bool"),
-                ("mysql", "DATE", "DateTime"),
-                ("mysql", "TIMESTAMP", "DateTime"),
-                ("mysql", "DATETIME", "DateTime"),
-                ("mysql", "TIME", "DateTime"),
-                ("mysql", "BLOB", "Uint8List"),
-                ("mysql", "JSON", "dynamic"),
-            ]),
+            (
+                "Dart",
+                vec![
+                    ("mysql", "VARCHAR(%)", "String"),
+                    ("mysql", "CHAR(%)", "String"),
+                    ("mysql", "TEXT", "String"),
+                    ("mysql", "LONGTEXT", "String"),
+                    ("mysql", "INT", "int"),
+                    ("mysql", "BIGINT", "int"),
+                    ("mysql", "SMALLINT", "int"),
+                    ("mysql", "TINYINT(1)", "bool"),
+                    ("mysql", "TINYINT(%)", "int"),
+                    ("mysql", "DECIMAL(%,%)", "double"),
+                    ("mysql", "FLOAT", "double"),
+                    ("mysql", "DOUBLE", "double"),
+                    ("mysql", "BOOLEAN", "bool"),
+                    ("mysql", "DATE", "DateTime"),
+                    ("mysql", "TIMESTAMP", "DateTime"),
+                    ("mysql", "DATETIME", "DateTime"),
+                    ("mysql", "TIME", "DateTime"),
+                    ("mysql", "BLOB", "Uint8List"),
+                    ("mysql", "JSON", "dynamic"),
+                ],
+            ),
             // PHP
-            ("PHP", vec![
-                ("mysql", "VARCHAR(%)", "string"),
-                ("mysql", "CHAR(%)", "string"),
-                ("mysql", "TEXT", "string"),
-                ("mysql", "LONGTEXT", "string"),
-                ("mysql", "INT", "int"),
-                ("mysql", "BIGINT", "int"),
-                ("mysql", "SMALLINT", "int"),
-                ("mysql", "TINYINT(1)", "bool"),
-                ("mysql", "TINYINT(%)", "int"),
-                ("mysql", "DECIMAL(%,%)", "float"),
-                ("mysql", "FLOAT", "float"),
-                ("mysql", "DOUBLE", "float"),
-                ("mysql", "BOOLEAN", "bool"),
-                ("mysql", "DATE", "DateTime"),
-                ("mysql", "TIMESTAMP", "DateTime"),
-                ("mysql", "DATETIME", "DateTime"),
-                ("mysql", "TIME", "DateTime"),
-                ("mysql", "BLOB", "string"),
-                ("mysql", "JSON", "array"),
-            ]),
+            (
+                "PHP",
+                vec![
+                    ("mysql", "VARCHAR(%)", "string"),
+                    ("mysql", "CHAR(%)", "string"),
+                    ("mysql", "TEXT", "string"),
+                    ("mysql", "LONGTEXT", "string"),
+                    ("mysql", "INT", "int"),
+                    ("mysql", "BIGINT", "int"),
+                    ("mysql", "SMALLINT", "int"),
+                    ("mysql", "TINYINT(1)", "bool"),
+                    ("mysql", "TINYINT(%)", "int"),
+                    ("mysql", "DECIMAL(%,%)", "float"),
+                    ("mysql", "FLOAT", "float"),
+                    ("mysql", "DOUBLE", "float"),
+                    ("mysql", "BOOLEAN", "bool"),
+                    ("mysql", "DATE", "DateTime"),
+                    ("mysql", "TIMESTAMP", "DateTime"),
+                    ("mysql", "DATETIME", "DateTime"),
+                    ("mysql", "TIME", "DateTime"),
+                    ("mysql", "BLOB", "string"),
+                    ("mysql", "JSON", "array"),
+                ],
+            ),
             // Ruby
-            ("Ruby", vec![
-                ("mysql", "VARCHAR(%)", "String"),
-                ("mysql", "CHAR(%)", "String"),
-                ("mysql", "TEXT", "String"),
-                ("mysql", "LONGTEXT", "String"),
-                ("mysql", "INT", "Integer"),
-                ("mysql", "BIGINT", "Integer"),
-                ("mysql", "SMALLINT", "Integer"),
-                ("mysql", "TINYINT(1)", "Boolean"),
-                ("mysql", "TINYINT(%)", "Integer"),
-                ("mysql", "DECIMAL(%,%)", "Float"),
-                ("mysql", "FLOAT", "Float"),
-                ("mysql", "DOUBLE", "Float"),
-                ("mysql", "BOOLEAN", "Boolean"),
-                ("mysql", "DATE", "Date"),
-                ("mysql", "TIMESTAMP", "Time"),
-                ("mysql", "DATETIME", "Time"),
-                ("mysql", "TIME", "Time"),
-                ("mysql", "BLOB", "String"),
-                ("mysql", "JSON", "Hash"),
-            ]),
+            (
+                "Ruby",
+                vec![
+                    ("mysql", "VARCHAR(%)", "String"),
+                    ("mysql", "CHAR(%)", "String"),
+                    ("mysql", "TEXT", "String"),
+                    ("mysql", "LONGTEXT", "String"),
+                    ("mysql", "INT", "Integer"),
+                    ("mysql", "BIGINT", "Integer"),
+                    ("mysql", "SMALLINT", "Integer"),
+                    ("mysql", "TINYINT(1)", "Boolean"),
+                    ("mysql", "TINYINT(%)", "Integer"),
+                    ("mysql", "DECIMAL(%,%)", "Float"),
+                    ("mysql", "FLOAT", "Float"),
+                    ("mysql", "DOUBLE", "Float"),
+                    ("mysql", "BOOLEAN", "Boolean"),
+                    ("mysql", "DATE", "Date"),
+                    ("mysql", "TIMESTAMP", "Time"),
+                    ("mysql", "DATETIME", "Time"),
+                    ("mysql", "TIME", "Time"),
+                    ("mysql", "BLOB", "String"),
+                    ("mysql", "JSON", "Hash"),
+                ],
+            ),
             // C#
-            ("C#", vec![
-                ("mysql", "VARCHAR(%)", "string"),
-                ("mysql", "CHAR(%)", "string"),
-                ("mysql", "TEXT", "string"),
-                ("mysql", "LONGTEXT", "string"),
-                ("mysql", "INT", "int"),
-                ("mysql", "BIGINT", "long"),
-                ("mysql", "SMALLINT", "short"),
-                ("mysql", "TINYINT(1)", "bool"),
-                ("mysql", "TINYINT(%)", "byte"),
-                ("mysql", "DECIMAL(%,%)", "decimal"),
-                ("mysql", "FLOAT", "float"),
-                ("mysql", "DOUBLE", "double"),
-                ("mysql", "BOOLEAN", "bool"),
-                ("mysql", "DATE", "DateTime"),
-                ("mysql", "TIMESTAMP", "DateTime"),
-                ("mysql", "DATETIME", "DateTime"),
-                ("mysql", "TIME", "TimeSpan"),
-                ("mysql", "BLOB", "byte[]"),
-                ("mysql", "JSON", "string"),
-            ]),
+            (
+                "C#",
+                vec![
+                    ("mysql", "VARCHAR(%)", "string"),
+                    ("mysql", "CHAR(%)", "string"),
+                    ("mysql", "TEXT", "string"),
+                    ("mysql", "LONGTEXT", "string"),
+                    ("mysql", "INT", "int"),
+                    ("mysql", "BIGINT", "long"),
+                    ("mysql", "SMALLINT", "short"),
+                    ("mysql", "TINYINT(1)", "bool"),
+                    ("mysql", "TINYINT(%)", "byte"),
+                    ("mysql", "DECIMAL(%,%)", "decimal"),
+                    ("mysql", "FLOAT", "float"),
+                    ("mysql", "DOUBLE", "double"),
+                    ("mysql", "BOOLEAN", "bool"),
+                    ("mysql", "DATE", "DateTime"),
+                    ("mysql", "TIMESTAMP", "DateTime"),
+                    ("mysql", "DATETIME", "DateTime"),
+                    ("mysql", "TIME", "TimeSpan"),
+                    ("mysql", "BLOB", "byte[]"),
+                    ("mysql", "JSON", "string"),
+                ],
+            ),
         ];
 
         // 为每种语言和数据库类型初始化默认映射
         for (lang_name, mappings) in language_mappings {
             // 获取语言 ID
-            let lang_id = match sqlx::query_scalar::<_, i64>("SELECT id FROM languages WHERE name = ?")
-                .bind(lang_name)
-                .fetch_one(&self.pool)
-                .await {
-                Ok(id) => id,
-                Err(_) => continue, // 语言不存在，跳过
-            };
+            let lang_id =
+                match sqlx::query_scalar::<_, i64>("SELECT id FROM languages WHERE name = ?")
+                    .bind(lang_name)
+                    .fetch_one(&self.pool)
+                    .await
+                {
+                    Ok(id) => id,
+                    Err(_) => continue, // 语言不存在，跳过
+                };
 
             // 插入映射
             for (db_type, pattern, target_type) in mappings {

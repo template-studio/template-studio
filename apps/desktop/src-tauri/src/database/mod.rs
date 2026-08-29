@@ -3,21 +3,21 @@
 pub mod models;
 pub use models::*;
 
-mod project;
-mod datasource;
-mod table;
-mod column;
-mod language;
-mod type_mapping;
-mod preferences;
 mod ai;
+mod column;
+mod datasource;
 pub(crate) mod import;
+mod language;
 mod migrations;
+mod preferences;
+mod project;
+mod table;
+mod type_mapping;
 
-use sqlx::SqlitePool;
-use std::path::PathBuf;
-use std::fs;
 use dirs::home_dir;
+use sqlx::SqlitePool;
+use std::fs;
+use std::path::PathBuf;
 
 /// 数据库路径
 pub fn get_database_path() -> Result<PathBuf, std::io::Error> {
@@ -43,42 +43,28 @@ pub struct Database {
 impl Database {
     /// 初始化数据库连接池（如果不存在则创建）
     pub async fn init() -> Result<Self, sqlx::Error> {
-        let db_path = get_database_path()
-            .map_err(sqlx::Error::Io)?;
+        let db_path = get_database_path().map_err(sqlx::Error::Io)?;
 
         println!("初始化数据库: {:?}", db_path);
         println!("数据库文件存在: {}", db_path.exists());
 
-        // 创建数据库连接字符串
-        // 在 Windows 上，需要使用 sqlite:// 前缀，并确保路径使用正斜杠
-        // mode=rwc 表示 read-write-create，允许创建数据库文件
-        let path_str = db_path.to_string_lossy().replace('\\', "/");
-        let connection_string = format!("sqlite://{}?mode=rwc", path_str);
-
-        println!("连接字符串: {}", connection_string);
+        // PRAGMA 通过连接选项下发：pool.execute 只作用于单个连接，
+        // synchronous/foreign_keys/cache_size 等按连接生效的参数会对其余连接失效。
+        // busy_timeout 避免 WAL 下多连接并发写直接报 database is locked。
+        let options = sqlx::sqlite::SqliteConnectOptions::new()
+            .filename(&db_path)
+            .create_if_missing(true)
+            .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
+            .synchronous(sqlx::sqlite::SqliteSynchronous::Normal)
+            .foreign_keys(true)
+            .busy_timeout(std::time::Duration::from_secs(5))
+            .pragma("cache_size", "-64000") // 64MB 页缓存
+            .pragma("temp_store", "MEMORY"); // 临时表放内存
 
         // 创建连接池
-        let pool = SqlitePool::connect(&connection_string).await?;
-
-        // 设置数据库优化参数（PRAGMA 语句）
-        sqlx::query("PRAGMA journal_mode = WAL")       // Write-Ahead Logging 模式
-            .execute(&pool)
-            .await?;
-
-        sqlx::query("PRAGMA synchronous = NORMAL")      // 正常同步模式
-            .execute(&pool)
-            .await?;
-
-        sqlx::query("PRAGMA cache_size = -64000")       // 64MB 缓存
-            .execute(&pool)
-            .await?;
-
-        sqlx::query("PRAGMA foreign_keys = ON")         // 启用外键约束
-            .execute(&pool)
-            .await?;
-
-        sqlx::query("PRAGMA temp_store = MEMORY")       // 临时表存储在内存中
-            .execute(&pool)
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .max_connections(10)
+            .connect_with(options)
             .await?;
 
         let db = Database { pool };
