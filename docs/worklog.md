@@ -274,3 +274,19 @@
 **涉及文件：** `README.md`
 
 **验收结果：** div 开闭配对 1:1（python 复核），头部与尾部结构恢复正常。README_EN.md 经检查 div 配对完好无需处理。注：README 内容层面的漂移（仍描述 Naive UI 前端、启动说明未更新）为已登记的待办项，本次仅修结构损坏。
+
+## 2026-08-29 README 内容刷新（对齐项目现状）
+
+**变更内容：** 12+1 处内容校准：Web 前端描述与技术栈由 Naive UI 改为 Ant Design Vue（与桌面端统一）；环境要求补 wasm-pack 与 wasm32 编译目标、Node 18+；数据库配置补 URL 格式警示（非 Go DSN）与 JWT 密钥环境变量说明；后端启动补「仓库根目录运行」与默认管理员凭据；前端端口 3000→8001（两处）并说明首次自动构建 WASM；项目结构图更新 web/ 描述并补 scripts/build-wasm.mjs 与 dev-docs/；API 示例改为真实默认凭据与统一信封 `{code:0,data}` 说明、补 token 头用法；配置示例补 cors_origins；前端开发指南移除不存在的 type-check 脚本并注明 vue-tsc 待引入；分层架构图去除 Naive UI。
+
+**涉及文件：** `README.md`
+
+**验收结果：** 全文扫描残留过时描述清零（致谢区 naive-ui-admin 模板来源引用保留属正常）；div 配对保持 1:1；diff 统计 +33/-20。README_EN.md 仍为旧内容，列为后续待办。
+
+## 2026-08-29 README_EN.md 同步更新
+
+**变更内容：** 英文版与中文版刷新内容对齐（13 处）：Ant Design Vue 技术栈描述、环境要求（wasm-pack/wasm32/Node 18）、数据库 URL 格式与 JWT 环境变量说明、后端根目录运行与默认凭据、前端端口 8001 与 WASM 自动构建说明、结构图（web 描述/scripts/dev-docs）、认证 API 示例（真实凭据 + 统一信封 + token 头）、cors_origins 配置示例、开发指南移除 type-check 并注明 vue-tsc 待引入。EN 版保留自身的徽章/语言切换头部结构（中文版此前已由用户精简，两版头部形态有意不同）。
+
+**涉及文件：** `README_EN.md`
+
+**验收结果：** 残留扫描清零（致谢区模板来源引用保留）、div 配对 1:1、代码围栏 32 偶数配对。过程中修正一处脚本拼接引入的代码块围栏错误（缺 ```bash 开头与续行符丢失），已重写该段并复核。

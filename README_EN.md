@@ -39,7 +39,7 @@ Contributions and suggestions are welcome!
 - **🔧 Template Engine** - MiniJinja-based engine with variable substitution, conditional rendering, custom filters and builtin functions
 - **📊 Dependency Analysis** - Automatically analyze template file dependencies and optimize rendering order
 - **🔐 RBAC Permission System** - Role-based access control with JWT authentication and Personal Access Tokens (PAT)
-- **🌐 Web Management Interface** - Modern admin panel built with Naive UI
+- **🌐 Web Management Interface** - Modern admin panel built with Ant Design Vue (unified tech stack with the desktop app)
 - **💻 CLI Tools** - Both CLI and TUI interaction modes supported
 - **🖥️ Desktop Application** - Cross-platform Tauri 2.x desktop app with offline support
 
@@ -54,7 +54,7 @@ Contributions and suggestions are welcome!
 
 **Frontend Stack:**
 - Vue 3 + Composition API
-- Naive UI - Enterprise UI component library
+- Ant Design Vue - Enterprise UI component library (unified with desktop app)
 - Pinia - State management
 - Alova - HTTP client with caching
 - CodeMirror 6 - Code editor
@@ -69,8 +69,9 @@ Contributions and suggestions are welcome!
 
 ### Prerequisites
 
-- Rust 1.70+
-- Node.js 16+
+- Rust 1.70+ (with wasm32 target: `rustup target add wasm32-unknown-unknown`)
+- wasm-pack (required to build the browser-side rendering engine: `cargo install wasm-pack`)
+- Node.js 18+
 - MySQL 5.7+ / SQLite 3.x / PostgreSQL 12+
 - pnpm 7+
 
@@ -92,13 +93,18 @@ cp config/config.toml.example config/config.toml
 # Edit config/config.toml to update database connection
 ```
 
+Notes:
+- The database `url` must be a standard URL like `mysql://user:pass@host:port/db` (Go-style DSN `tcp(host:port)` is NOT supported)
+- For production, set the JWT secret via the `TEMPLATE_STUDIO_JWT_SECRET` environment variable (if unset, release builds generate an ephemeral secret on each start, invalidating sessions on restart)
+
 #### 3. Start Backend Service
 
 ```bash
+# Must run from the repository root (config and ./data storage use relative paths)
 cargo run -p template-studio-web
 ```
 
-Service will start at `http://localhost:8080`
+Service will start at `http://localhost:8080`. Default admin account: `admin / 12345678`
 
 #### 4. Start Frontend Interface
 
@@ -108,7 +114,7 @@ pnpm install
 pnpm run dev
 ```
 
-Frontend will start at `http://localhost:3000`
+The first start automatically checks and builds the WASM rendering engine (~1-2 min on first run, ~1s on cache hit). Frontend will start at `http://localhost:8001`
 
 #### 5. Use CLI Tools
 
@@ -142,7 +148,7 @@ template-studio/
 │   ├── services/              # Business logic layer (20 modules)
 │   ├── template_core/         # Template engine core (MiniJinja)
 │   └── template_core_wasm/    # Template engine WASM bindings (browser-side rendering)
-├── web/                       # Vue 3 web frontend (Naive UI)
+├── web/                       # Vue 3 + Ant Design Vue web frontend
 │   └── src/
 │       ├── api/               # API service layer
 │       ├── components/        # Reusable components
@@ -150,16 +156,19 @@ template-studio/
 │       ├── store/             # Pinia state management
 │       └── router/            # Route configuration
 ├── migrations/                # SQL database migration files
+├── scripts/build-wasm.mjs     # Shared WASM build script (reused by all frontends)
 ├── config/                    # Configuration files
-├── data/                      # Runtime data (templates, versions, avatars)
-└── Cargo.toml                # Rust workspace config (9 member crates)
+├── data/                      # Runtime data (templates, versions, avatars; migrate together with the DB)
+├── docs/                      # Design docs + worklog.md
+├── dev-docs/                  # Status / migration / audit reports
+└── Cargo.toml                 # Rust workspace config (10 member crates)
 ```
 
 ### Layered Architecture
 
 ```
 ┌─────────────────────────────────────────┐
-│     Frontend Layer (Vue 3 + Naive UI)    │
+│     Frontend Layer (Vue 3 + Ant Design Vue) │
 ├─────────────────────────────────────────┤
 │       Application Layer (Axum Handlers)  │
 ├─────────────────────────────────────────┤
@@ -188,7 +197,7 @@ template-studio/
 
 ### Web Interface
 
-Visit `http://localhost:3000` to use the web management interface:
+Visit `http://localhost:8001` to use the web management interface:
 
 1. **Template Management** - Create, edit, and delete templates
 2. **Variable Configuration** - Configure template variables and presets
@@ -231,6 +240,20 @@ curl -X POST http://localhost:8080/api/v1/editor/templateFiles/render \
   }'
 ```
 
+```bash
+# Authentication (default admin: admin / 12345678)
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "12345678"}'
+# Response: {"code": 0, "message": "Login successful", "data": {"token": "...", "roles": [...]}}
+
+# Authenticated endpoints use the custom `token` header
+curl http://localhost:8080/api/v1/admin/auth/info \
+  -H "token: <token from the previous step>"
+```
+
+Unified response envelope: success is `{"code": 0, "message": "...", "data": ...}`; on failure the HTTP status code matches the semantics and the body carries the corresponding code.
+
 ---
 
 ## Configuration
@@ -241,6 +264,8 @@ curl -X POST http://localhost:8080/api/v1/editor/templateFiles/render \
 [server]
 host = "127.0.0.1"
 port = 8080
+# For production, explicitly allow frontend origins (defaults to localhost dev origins only)
+# cors_origins = ["https://your-frontend.example.com"]
 
 [database]
 url = "mysql://user:password@localhost:3306/template_studio"
@@ -293,9 +318,6 @@ pnpm run dev
 # Code linting
 pnpm run lint:eslint
 pnpm run lint:prettier
-
-# Type checking
-pnpm run type-check
 ```
 
 ### Desktop App Development
@@ -392,14 +414,3 @@ This project is licensed under the [Apache License 2.0](LICENSE) License.
 - [Naive UI Admin](https://github.com/jekip/naive-ui-admin) - Excellent frontend admin template
 - [Axum](https://github.com/tokio-rs/axum) - Powerful Rust web framework
 - [Tauri](https://tauri.app/) - Modern desktop app development framework
-- All contributors ❤️
-
----
-
-<div align="center">
-
-**⭐ If this project helps you, please give us a Star!**
-
-Made with ❤️ by Template Studio Team
-
-</div>

@@ -16,7 +16,7 @@
 - **🤖 AI 辅助** - 集成 AI 服务，支持变量分析、智能填充、项目转换、SQL 生成
 - **🗃️ 数据库同步** - 支持远程 MySQL/PostgreSQL/SQLite 数据库浏览、表结构导入和同步
 - **🔀 类型映射** - 系统级和项目级的数据库类型到编程语言类型映射
-- **🌐 Web 管理界面** - 基于 Naive UI 的现代化管理后台 + 面向用户的前台界面
+- **🌐 Web 管理界面** - 基于 Ant Design Vue 的现代化管理后台 + 面向用户的前台界面（与桌面端统一技术栈）
 - **💻 CLI 工具** - 支持命令行和 TUI 两种交互模式，集成 AI 命令
 - **🖥️ 桌面应用** - 基于 Tauri 2.x 的跨平台桌面应用，支持离线使用
 
@@ -33,9 +33,9 @@
 **前端技术栈：**
 
 - Vue 3 + Composition API
-- Naive UI - 企业级 UI 组件库
+- Ant Design Vue - 企业级 UI 组件库（与桌面端统一）
 - Pinia - 状态管理
-- Alova - 带缓存的 HTTP 客户端
+- Alova + Axios - HTTP 客户端
 - CodeMirror 6 - 代码编辑器
 
 **桌面应用：**
@@ -50,8 +50,9 @@
 
 ### 环境要求
 
-- Rust 1.70+
-- Node.js 16+
+- Rust 1.70+（含 wasm32 编译目标：rustup target add wasm32-unknown-unknown）
+- wasm-pack（浏览器端渲染引擎构建需要：cargo install wasm-pack）
+- Node.js 18+
 - MySQL 5.7+ / SQLite 3.x / PostgreSQL 12+
 - pnpm 7+
 
@@ -73,13 +74,18 @@ cp config/config.toml.example config/config.toml
 # 编辑 config/config.toml，修改数据库连接信息
 ```
 
+注意：
+- 数据库 url 必须是标准 URL 格式 `mysql://user:pass@host:port/db`（不支持 Go DSN 的 `tcp(host:port)` 写法）
+- 生产部署应通过环境变量 `TEMPLATE_STUDIO_JWT_SECRET` 配置 JWT 密钥（未配置时 release 构建每次启动生成临时密钥，重启后登录态失效）
+
 #### 3. 启动后端服务
 
 ```bash
+# 必须在仓库根目录运行（配置与 ./data 存储为相对路径）
 cargo run -p template-studio-web
 ```
 
-服务将在 `http://localhost:8080` 启动
+服务将在 `http://localhost:8080` 启动，默认管理员 `admin / 12345678`
 
 #### 4. 启动前端界面
 
@@ -89,7 +95,7 @@ pnpm install
 pnpm run dev
 ```
 
-前端将在 `http://localhost:3000` 启动
+首次启动会自动检查并构建 WASM 渲染引擎（首次约 1-2 分钟，此后命中缓存约 1 秒）。前端将在 `http://localhost:8001` 启动
 
 #### 5. 启动桌面应用
 
@@ -147,7 +153,7 @@ template-studio/
 │   ├── template_core/             # 模板引擎核心（基于 MiniJinja）
 │   ├── template_core_wasm/        # 模板引擎 WASM 绑定（浏览器端渲染）
 │   └── ai_agent/                  # AI Agent 模块（变量分析、填充、转换）
-├── web/                           # Vue 3 Web 前端（Naive UI）
+├── web/                           # Vue 3 + Ant Design Vue Web 前端
 │   └── src/
 │       ├── api/                   # API 服务层（17 个模块）
 │       ├── components/            # 可复用组件
@@ -157,10 +163,12 @@ template-studio/
 │       │   └── editor/            # 模板编辑器
 │       ├── store/                 # Pinia 状态管理
 │       └── router/                # 路由配置（admin/client/editor 模块）
-├── migrations/                    # SQL 数据库迁移文件（19 个迁移）
+├── migrations/                    # SQL 数据库迁移文件
+├── scripts/build-wasm.mjs         # WASM 构建共享脚本（各前端复用）
 ├── config/                        # 配置文件
-├── data/                          # 运行时数据（模板、版本、头像）
-├── docs/                          # 项目文档（7 个文档）
+├── data/                          # 运行时数据（模板、版本、头像；换库/换机需随迁）
+├── docs/                          # 设计文档 + worklog 工作日志
+├── dev-docs/                      # 现状/迁移/审计类报告
 └── Cargo.toml                     # Rust workspace 配置（10 个成员 crate）
 ```
 
@@ -168,7 +176,7 @@ template-studio/
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│          前端层 (Vue 3 + Naive UI / Ant Design Vue)      │
+│          前端层 (Vue 3 + Ant Design Vue)                 │
 │    Web 管理后台 + 前台界面 + Tauri 桌面应用               │
 ├─────────────────────────────────────────────────────────┤
 │          应用层 (Axum HTTP Handlers / Tauri Commands)     │
@@ -204,7 +212,7 @@ template-studio/
 
 ### Web 界面
 
-访问 `http://localhost:3000` 使用 Web 管理界面：
+访问 `http://localhost:8001` 使用 Web 管理界面：
 
 **前台功能：**
 
@@ -282,11 +290,15 @@ curl -X POST http://localhost:8080/api/v1/editor/templateFiles/render \
     "fileTree": [...]
   }'
 
-# 认证相关
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "password"}'
+# 认证相关（默认管理员 admin / 12345678）
+curl -X POST http://localhost:8080/api/v1/auth/login   -H "Content-Type: application/json"   -d '{"username": "admin", "password": "12345678"}'
+# 返回 {"code": 0, "message": "登录成功", "data": {"token": "...", "roles": [...]}}
+
+# 需认证的接口携带自定义 token 头
+curl http://localhost:8080/api/v1/admin/auth/info   -H "token: <上一步返回的 token>"
 ```
+
+统一响应信封：成功 `{"code": 0, "message": "...", "data": ...}`；失败时 HTTP 状态码与语义同步、body 携带对应 code。
 
 ---
 
@@ -298,6 +310,8 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
 [server]
 host = "127.0.0.1"
 port = 8080
+# 生产部署显式配置放行的前端来源（未配置时仅放行 localhost 开发来源）
+# cors_origins = ["https://your-frontend.example.com"]
 
 [database]
 url = "mysql://user:password@localhost:3306/template_studio"
@@ -356,9 +370,6 @@ pnpm run dev
 pnpm run lint:eslint
 pnpm run lint:prettier
 pnpm run lint:stylelint
-
-# 类型检查
-pnpm run type-check
 ```
 
 ### 桌面应用开发
@@ -486,14 +497,3 @@ A: 在桌面应用的设置页面中配置 AI 提供商（支持 DeepSeek、Open
 - [Tauri](https://tauri.app/) - 现代化的桌面应用开发框架
 - [MiniJinja](https://github.com/mitsuhiko/minijinja) - 灵活的模板引擎
 - [Ant Design Vue](https://www.antdv.com/) - 企业级 UI 组件库
-- 所有贡献者 ❤️
-
----
-
-<div align="center">
-
-**⭐ 如果这个项目对你有帮助，请给一个 Star！**
-
-Made with ❤️ by Template Studio Team
-
-</div>
