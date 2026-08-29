@@ -60,12 +60,10 @@ impl TemplateRenderService {
         }
 
         // 读取模板内容（IO 错误含完整路径，仅记日志，不回传客户端）
-        let template_content = fs::read_to_string(&template_path)
-            .await
-            .map_err(|e| {
-                tracing::warn!("读取模板文件失败 {:?}: {}", template_path, e);
-                AppError::Internal("读取模板文件失败".to_string())
-            })?;
+        let template_content = fs::read_to_string(&template_path).await.map_err(|e| {
+            tracing::warn!("读取模板文件失败 {:?}: {}", template_path, e);
+            AppError::Internal("读取模板文件失败".to_string())
+        })?;
 
         // 获取文件名
         let file_name = template_path
@@ -115,12 +113,10 @@ impl TemplateRenderService {
         }
 
         // 读取模板内容（IO 错误含完整路径，仅记日志，不回传客户端）
-        let template_content = fs::read_to_string(&template_path)
-            .await
-            .map_err(|e| {
-                tracing::warn!("读取模板文件失败 {:?}: {}", template_path, e);
-                AppError::Internal("读取模板文件失败".to_string())
-            })?;
+        let template_content = fs::read_to_string(&template_path).await.map_err(|e| {
+            tracing::warn!("读取模板文件失败 {:?}: {}", template_path, e);
+            AppError::Internal("读取模板文件失败".to_string())
+        })?;
 
         // 获取文件名
         let file_name = template_path
@@ -129,39 +125,10 @@ impl TemplateRenderService {
             .unwrap_or("unknown")
             .to_string();
 
-        // 检查是否是 HTML 模板文件，如果是则需要收集所有相关模板
-        let all_templates = if file_name.ends_with(".html") || file_name.ends_with(".htm") {
-            // 收集同一目录下的所有 HTML 模板文件
-            let template_dir = template_path
-                .parent()
-                .ok_or_else(|| AppError::Internal("无法获取模板目录".to_string()))?;
-
-            let mut templates = std::collections::HashMap::new();
-
-            // 读取目录中的所有文件
-            if let Ok(mut entries) = tokio::fs::read_dir(template_dir).await {
-                while let Ok(Some(entry)) = entries.next_entry().await {
-                    let path = entry.path();
-
-                    // 检查是否是 HTML 文件
-                    if path.extension().and_then(|s| s.to_str()) == Some("html")
-                        || path.extension().and_then(|s| s.to_str()) == Some("htm")
-                    {
-                        // 获取文件名
-                        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                            // 读取文件内容
-                            if let Ok(content) = tokio::fs::read_to_string(&path).await {
-                                templates.insert(name.to_string(), content);
-                            }
-                        }
-                    }
-                }
-            }
-
-            Some(templates)
-        } else {
-            None
-        };
+        // 收集整棵模板树构建双键映射（与整树渲染共用同一构建函数），
+        // 保证单文件预览与最终渲染的继承/include 解析结果一致。
+        // 旧实现仅收集同目录 HTML，跨目录 extends 在预览中会失败。
+        let all_templates = Some(self.collect_template_map(base_path).await);
 
         // 使用 template_core 进行渲染
         let render_vars = Variables::from_value(variables.clone());
@@ -183,6 +150,45 @@ impl TemplateRenderService {
                 suggestion: e.suggestion,
             }),
         })
+    }
+
+    /// 递归收集目录下全部文本文件，构建双键模板映射（与整树渲染共用语义）
+    ///
+    /// 跳过 .git/.meta 目录；读取失败（二进制/编码问题）的文件静默跳过。
+    async fn collect_template_map(
+        &self,
+        base: &PathBuf,
+    ) -> std::collections::HashMap<String, String> {
+        let mut entries: Vec<(String, String)> = Vec::new();
+        Self::walk_for_templates(base, base, &mut entries).await;
+        template_studio_template_core::build_template_map(entries)
+    }
+
+    async fn walk_for_templates(
+        base: &PathBuf,
+        dir: &PathBuf,
+        entries: &mut Vec<(String, String)>,
+    ) {
+        let Ok(mut rd) = tokio::fs::read_dir(dir).await else {
+            return;
+        };
+        while let Ok(Some(entry)) = rd.next_entry().await {
+            let path = entry.path();
+            let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+                continue;
+            };
+            if path.is_dir() {
+                if name == ".git" || name == ".meta" {
+                    continue;
+                }
+                Box::pin(Self::walk_for_templates(base, &path, entries)).await;
+            } else if let Ok(rel) = path.strip_prefix(base) {
+                let rel_path = rel.to_string_lossy().replace('\\', "/");
+                if let Ok(content) = tokio::fs::read_to_string(&path).await {
+                    entries.push((rel_path, content));
+                }
+            }
+        }
     }
 
     /// 渲染整个文件树（带 L2 缓存优化）

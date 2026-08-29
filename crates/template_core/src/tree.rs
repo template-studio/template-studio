@@ -209,37 +209,50 @@ pub fn render_tree(
     tree: Vec<TemplateFile>,
     variables: &Variables,
 ) -> Result<Vec<RenderedFile>, RenderError> {
-    // 构建所有模板文件的映射（用于模板继承），采用双键注册：
-    // - file_path 相对路径为主键：`{% extends "layouts/base.html" %}` 按路径引用可解析，
-    //   跨目录同名文件天然消歧
-    // - file_name（basename）为兼容键，仅在全树唯一时注册：保持 `extends "base.html"`
-    //   这种简写可用；同名冲突时跳过（明确报找不到，优于旧的随机覆盖）
-    let content_files: Vec<&TemplateFile> = tree
-        .iter()
-        .filter(|f| f.is_directory == 0 && !f.file_content.is_empty())
-        .collect();
-
-    let mut basename_counts: std::collections::HashMap<&str, usize> =
-        std::collections::HashMap::new();
-    for f in &content_files {
-        *basename_counts.entry(f.file_name.as_str()).or_insert(0) += 1;
-    }
-
-    let mut all_templates: std::collections::HashMap<String, String> =
-        std::collections::HashMap::with_capacity(content_files.len() * 2);
-    for f in &content_files {
-        all_templates.insert(f.file_path.clone(), f.file_content.clone());
-        if basename_counts[f.file_name.as_str()] == 1 {
-            all_templates
-                .entry(f.file_name.clone())
-                .or_insert_with(|| f.file_content.clone());
-        }
-    }
+    // 构建所有模板文件的映射（用于模板继承），双键注册语义见 build_template_map
+    let all_templates = build_template_map(
+        tree.iter()
+            .filter(|f| f.is_directory == 0 && !f.file_content.is_empty())
+            .map(|f| (f.file_path.clone(), f.file_content.clone())),
+    );
 
     // 使用批量渲染（自动选择最优策略：Native 并行 / WASM 串行）
     let results = crate::parallel::render_tree_batch(tree, variables, &all_templates);
 
     Ok(results)
+}
+
+/// 由 (相对路径, 内容) 序列构建双键模板映射：
+/// - 相对路径为主键：`{% extends "layouts/base.html" %}` 按路径引用可解析，
+///   跨目录同名文件天然消歧
+/// - basename 为兼容键，仅在全集合唯一时注册：保持 `extends "base.html"` 简写可用；
+///   同名冲突时跳过（明确报找不到，优于随机覆盖）
+///
+/// 整树渲染（render_tree）与单文件预览（render_file_from_path）共用此函数，
+/// 保证「预览结果 = 最终渲染结果」。
+pub fn build_template_map<I: IntoIterator<Item = (String, String)>>(
+    entries: I,
+) -> std::collections::HashMap<String, String> {
+    let entries: Vec<(String, String)> = entries.into_iter().collect();
+
+    let basename_of = |path: &str| path.rsplit('/').next().unwrap_or(path).to_string();
+
+    let mut basename_counts: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
+    for (path, _) in &entries {
+        *basename_counts.entry(basename_of(path)).or_insert(0) += 1;
+    }
+
+    let mut map: std::collections::HashMap<String, String> =
+        std::collections::HashMap::with_capacity(entries.len() * 2);
+    for (path, content) in entries {
+        let base = basename_of(&path);
+        map.insert(path, content.clone());
+        if basename_counts[&base] == 1 {
+            map.entry(base).or_insert(content);
+        }
+    }
+    map
 }
 
 /// 渲染单个文件（内部实现细节）

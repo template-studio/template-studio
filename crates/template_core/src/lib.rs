@@ -69,7 +69,7 @@ mod types;
 pub use types::{FilterInfo, RenderError, RenderResult, Variables};
 
 // 导出文件树渲染相关类型和函数
-pub use tree::{render_tree, IncludeDependency, RenderedFile, TemplateFile};
+pub use tree::{build_template_map, render_tree, IncludeDependency, RenderedFile, TemplateFile};
 
 // 导出批量渲染
 pub use parallel::render_tree_batch;

@@ -204,3 +204,11 @@
 **涉及文件：** `crates/template_core/src/tree.rs`
 
 **验收结果：** crate 总测试 50+6 全过；WASM 重建后浏览器复验当初失败场景——路径引用 `extends "layouts/base.html"` 现输出 `<html>B</html>`（修复前 template not found）、basename 简写保持可用、`.txt` 文件 include HTML 片段正常；服务端已重启同步生效。
+
+## 2026-08-29 引擎修复（继承分析项 3/4）：依赖分析器补语法与预览一致性
+
+**变更内容：** 落实分析文档 §3.3。① 依赖分析器全部正则（extends/import/include 三类五种）支持单双引号（MiniJinja 支持 `{% extends 'x' %}`，此前只认双引号导致漏识别）；新增 `{% from "macros.html" import a, b %}` 语法识别（from-import 的导入符号记入 namespace，依赖收集只需路径）。② 单文件预览（`render_file_from_path`）从「仅收集同目录 HTML」改为递归收集整棵模板树并经共享的 `build_template_map`（自 template_core 导出，整树渲染与预览共用）构建双键映射——预览与最终渲染的继承/include 解析从此一致；跳过 .git/.meta，读取失败的文件（二进制/编码）静默跳过。
+
+**涉及文件：** `crates/template_core/src/{dependency_analyzer,tree,lib}.rs`、`crates/services/src/template_render_service.rs`
+
+**验收结果：** 新增单测覆盖单引号 extends/include 与 from-import（crate 总测试 51+6 全过）；真实模板端到端实测——写入跨目录继承文件（pages/child extends layouts/base 路径引用）后经公开预览接口正确渲染 `<div class="layout">CHILD</div>`（修复前同目录限制必失败）；测试文件已清理。

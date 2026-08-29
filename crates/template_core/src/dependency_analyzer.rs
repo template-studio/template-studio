@@ -47,18 +47,28 @@ pub struct TeraDependencyAnalyzer {
 
     // Import 语句的正则模式
     import_pattern: Regex,
+
+    // From-import 语句的正则模式
+    from_import_pattern: Regex,
 }
 
 impl TeraDependencyAnalyzer {
     /// 创建新的依赖分析器
     pub fn new() -> Self {
         Self {
-            // Extends 语句模式: {% extends "base.html" %}
-            extends_pattern: Regex::new(r#"\{%\s*extends\s+"(?P<path>[^"]+)"\s*%\}"#).unwrap(),
+            // Extends 语句模式: {% extends "base.html" %} / {% extends 'base.html' %}
+            extends_pattern: Regex::new(r#"\{%\s*extends\s+["'](?P<path>[^"']+)["']\s*%\}"#)
+                .unwrap(),
 
-            // Import 语句模式: {% import "macros.html" as macros %}
+            // Import 语句模式: {% import "macros.html" as macros %}（单双引号均可）
             import_pattern: Regex::new(
-                r#"\{%\s*import\s+"(?P<path>[^"]+)"\s+as\s+(?P<name>\w+)\s*%\}"#,
+                r#"\{%\s*import\s+["'](?P<path>[^"']+)["']\s+as\s+(?P<name>\w+)\s*%\}"#,
+            )
+            .unwrap(),
+
+            // From-import 语句模式: {% from "macros.html" import macro_a, macro_b %}
+            from_import_pattern: Regex::new(
+                r#"\{%\s*from\s+["'](?P<path>[^"']+)["']\s+import\s+(?P<names>[\w\s,]+)\s*%\}"#,
             )
             .unwrap(),
         }
@@ -94,7 +104,7 @@ impl TeraDependencyAnalyzer {
     pub fn analyze(&self, file_content: &str) -> Result<FileDependencies, String> {
         let mut deps = FileDependencies::default();
 
-        // 1. 解析 extends
+        // 1. 解析 extends（单双引号均可）
         for caps in self.extends_pattern.captures_iter(file_content) {
             if let Some(path) = caps.name("path") {
                 if deps.extends.is_some() {
@@ -105,9 +115,10 @@ impl TeraDependencyAnalyzer {
         }
 
         // 2. 解析 include - 使用更精确的正则，避免重复匹配
-        // 先匹配带 ignore missing 的
+        // 先匹配带 ignore missing 的（单双引号均可）
         let include_ignore_missing =
-            Regex::new(r#"\{%\s*include\s+"(?P<path>[^"]+)"\s+ignore\s+missing\s*%\}"#).unwrap();
+            Regex::new(r#"\{%\s*include\s+["'](?P<path>[^"']+)["']\s+ignore\s+missing\s*%\}"#)
+                .unwrap();
 
         // 单个文件（带 ignore missing）
         for caps in include_ignore_missing.captures_iter(file_content) {
@@ -144,8 +155,9 @@ impl TeraDependencyAnalyzer {
             }
         }
 
-        // 单个文件（不带 ignore missing，且不在数组中）
-        let include_single = Regex::new(r#"\{%\s*include\s+"(?P<path>[^"]+)"\s*%\}"#).unwrap();
+        // 单个文件（不带 ignore missing，且不在数组中；单双引号均可）
+        let include_single =
+            Regex::new(r#"\{%\s*include\s+["'](?P<path>[^"']+)["']\s*%\}"#).unwrap();
 
         for caps in include_single.captures_iter(file_content) {
             if let Some(path) = caps.name("path") {
@@ -163,6 +175,17 @@ impl TeraDependencyAnalyzer {
             let path = caps.name("path").unwrap().as_str().to_string();
             let namespace = caps.name("name").unwrap().as_str().to_string();
             deps.imports.push(ImportDependency { path, namespace });
+        }
+
+        // 3.5 解析 from-import：{% from "macros.html" import a, b %}
+        // names 记录导入符号列表（对依赖收集而言只需文件路径）
+        for caps in self.from_import_pattern.captures_iter(file_content) {
+            let path = caps.name("path").unwrap().as_str().to_string();
+            let names = caps.name("names").map(|m| m.as_str().trim()).unwrap_or("");
+            deps.imports.push(ImportDependency {
+                path,
+                namespace: names.to_string(),
+            });
         }
 
         Ok(deps)
@@ -238,6 +261,30 @@ mod tests {
         let deps = analyzer.analyze(content).unwrap();
 
         assert_eq!(deps.extends, Some("base.html".to_string()));
+    }
+
+    #[test]
+    fn test_parse_single_quotes_and_from_import() {
+        let analyzer = TeraDependencyAnalyzer::new();
+
+        // 单引号 extends（MiniJinja 支持，此前漏识别）
+        let deps = analyzer
+            .analyze(r#"{% extends 'layouts/base.html' %}"#)
+            .unwrap();
+        assert_eq!(deps.extends, Some("layouts/base.html".to_string()));
+
+        // 单引号 include
+        let deps = analyzer
+            .analyze(r#"{% include 'partials/head.html' %}"#)
+            .unwrap();
+        assert_eq!(deps.includes.len(), 1);
+
+        // from-import 语法（此前完全不识别）
+        let deps = analyzer
+            .analyze(r#"{% from "macros.html" import render_field, render_label %}"#)
+            .unwrap();
+        assert_eq!(deps.imports.len(), 1);
+        assert_eq!(deps.imports[0].path, "macros.html");
     }
 
     #[test]
