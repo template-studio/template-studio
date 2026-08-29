@@ -399,7 +399,7 @@ fn build_date_functions() -> BuiltinFunctionCategory {
                 usage: "date 函数格式化时间戳为可读的日期字符串。支持 strftime 格式化符号。"
                     .to_string(),
                 insert_text: "{{ value | date(format=\"%Y-%m-%d\") }}".to_string(),
-                note: Some("需要自定义注册".to_string()),
+                note: Some("已实现".to_string()),
                 aliases: None,
             },
             BuiltinFunction {
@@ -413,7 +413,7 @@ fn build_date_functions() -> BuiltinFunctionCategory {
                 usage: "now 函数返回当前时间的 Unix 时间戳（秒）。可与 date 过滤器配合使用。"
                     .to_string(),
                 insert_text: "{{ now() }}".to_string(),
-                note: Some("需要自定义注册".to_string()),
+                note: Some("已实现".to_string()),
                 aliases: None,
             },
         ],
@@ -702,7 +702,7 @@ fn build_type_conversion_functions() -> BuiltinFunctionCategory {
                 usage: "number_format 函数格式化数字显示，添加千位分隔符并指定小数位数。"
                     .to_string(),
                 insert_text: "{{ value | number_format(decimals=2) }}".to_string(),
-                note: Some("需要自定义注册".to_string()),
+                note: Some("已实现".to_string()),
                 aliases: None,
             },
         ],

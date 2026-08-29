@@ -9,6 +9,9 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = "0.9"
 
+# 时间处理（date/now 内置函数）
+chrono = { workspace = true }
+
 # 模板引擎
 # tera = { workspace = true, features = ["builtins"] }  # 暂时保留，迁移完成后删除
 minijinja = { version = "2.0", features = ["loader", "json"] }

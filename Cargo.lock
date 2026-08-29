@@ -6652,6 +6652,7 @@ name = "template_studio_template_core"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "chrono",
  "minijinja",
  "once_cell",
  "percent-encoding",
