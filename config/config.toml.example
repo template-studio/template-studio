@@ -1,3 +1,7 @@
+# JWT 签名密钥通过环境变量配置（不放入本文件，避免随仓库泄漏）：
+#   Windows PowerShell:  $env:TEMPLATE_STUDIO_JWT_SECRET = "<随机长字符串>"
+#   Linux/macOS:         export TEMPLATE_STUDIO_JWT_SECRET="<随机长字符串>"
+# 未配置时：debug 构建使用开发默认值；release 构建每次启动生成临时密钥（重启后登录态失效）
 [server]
 host = "127.0.0.1"
 port = 8080

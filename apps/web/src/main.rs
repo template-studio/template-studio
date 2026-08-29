@@ -183,7 +183,7 @@ async fn main() -> anyhow::Result<()> {
         file_conditions_service.clone(),
     ));
     let system_setting_service = Arc::new(SystemSettingService::new(system_setting_repository.clone()));
-    let jwt_config = JwtConfig::default();
+    let jwt_config = JwtConfig::from_env();
     let auth_service = Arc::new(AuthService::new(user_repository.clone(), jwt_config));
     let user_service = Arc::new(UserService::new(user_repository.clone()));
     let role_service = Arc::new(RoleService::new(role_repository));
