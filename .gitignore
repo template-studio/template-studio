@@ -131,9 +131,8 @@ data/
 .playwright-cli/
 init.sh
 claude-progress.txt
-features.json
-rewrite.json
 
 .trae/
 .reference/
 .scratch/
+.zcode/

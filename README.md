@@ -4,17 +4,6 @@
 
 <div align="center">
 
-**[English](README_EN.md)** | **简体中文**
-
-![Rust](https://img.shields.io/badge/Rust-1.70+-orange?logo=rust)
-![Vue](https://img.shields.io/badge/Vue-3.5+-green?logo=vue.js)
-![License](https://img.shields.io/badge/License-Apache%202.0-blue)
-![Status](https://img.shields.io/badge/Status-Active%20Development-brightgreen)
-
-[功能特性](#功能特性) • [快速开始](#快速开始) • [架构设计](#架构设计) • [开发指南](#开发指南)
-
-</div>
-
 ---
 
 ## 功能特性
@@ -36,6 +25,7 @@
 ### 🏗️ 技术架构
 
 **后端技术栈：**
+
 - Axum - 高性能异步 Web 框架
 - SQLx - 类型安全的数据库操作（支持 MySQL / SQLite / PostgreSQL）
 - Tokio - 异步运行时
@@ -43,6 +33,7 @@
 - Git2 - Git 版本控制集成
 
 **前端技术栈：**
+
 - Vue 3 + Composition API
 - Naive UI - 企业级 UI 组件库
 - Pinia - 状态管理
@@ -50,6 +41,7 @@
 - CodeMirror 6 - 代码编辑器
 
 **桌面应用：**
+
 - Tauri 2.x - 轻量级桌面应用框架
 - Ant Design Vue - UI 组件库
 - CodeMirror 6 - 多语言代码编辑器（SQL/JS/Go/Rust/Python 等）
@@ -217,6 +209,7 @@ template-studio/
 访问 `http://localhost:3000` 使用 Web 管理界面：
 
 **前台功能：**
+
 1. **首页** - 平台概览和快速入口
 2. **模板广场** - 浏览和搜索公开模板
 3. **模板生成器** - 在线选择模板、填写变量、生成项目
@@ -224,6 +217,7 @@ template-studio/
 5. **用户主页** - 查看其他用户的公开模板
 
 **后台管理：**
+
 1. **仪表盘** - 数据统计和分析
 2. **模板管理** - 创建、编辑、删除、审核模板
 3. **分类管理** - 模板分类的增删改查
@@ -323,10 +317,12 @@ default_branch = "main"
 ### 前端配置
 
 **Web 前端 (web/):**
+
 - `web/.env.development` - 开发环境配置
 - `web/.env.production` - 生产环境配置
 
 **桌面应用 (apps/desktop/):**
+
 - 配置存储在本地 SQLite 数据库中
 - 通过应用内设置界面管理
 
@@ -397,6 +393,7 @@ cargo run -p template-studio-cli -- ai analyze-variables ./path/to/template
 ## 路线图
 
 ### 已实现功能
+
 - ✅ 模板管理（创建、编辑、分类、版本管理）
 - ✅ Web 管理后台 + 前台界面
 - ✅ CLI 工具（TUI + 命令行模式）
@@ -412,6 +409,7 @@ cargo run -p template-studio-cli -- ai analyze-variables ./path/to/template
 - ✅ 数据备份与恢复
 
 ### 计划中功能
+
 - 🔲 模板市场和分享
 - 🔲 模板协作编辑
 - 🔲 更多内置模板
@@ -433,6 +431,7 @@ A: 检查 `web/.env.development` 和 `web/.env.production` 中的 API 地址配�
 ### Q: 如何添加自定义模板？
 
 A: 可以通过以下方式：
+
 1. Web 界面：后台管理 → 模板管理 → 创建模板
 2. CLI 工具：`cargo run -p template-studio-cli -- ai convert-to-template <project-path>`
 3. API：上传模板文件到 `data/templates/` 目录
@@ -454,6 +453,7 @@ A: 在桌面应用的设置页面中配置 AI 提供商（支持 DeepSeek、Open
 5. 创建 Pull Request
 
 请确保：
+
 - 代码通过 `cargo clippy` 和 `cargo test` 检查
 - 前端代码通过 `pnpm run lint` 检查
 - 提交信息遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范
@@ -493,9 +493,3 @@ A: 在桌面应用的设置页面中配置 AI 提供商（支持 DeepSeek、Open
 ---
 
 <div align="center">
-
-**⭐ 如果这个项目对你有帮助，请给一个 Star！**
-
-Made with ❤️ by Template Studio Team
-
-</div>

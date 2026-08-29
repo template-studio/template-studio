@@ -2,4 +2,5 @@ allowBuilds:
   canvas: true
   core-js: true
   esbuild: true
+  less: false
   vue-demi: true
