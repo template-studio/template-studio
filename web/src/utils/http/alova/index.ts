@@ -97,7 +97,7 @@ export const Alova = createAlova({
         return res;
       }
       // 请根据自身情况修改数据结构
-      const { message, code, result } = res;
+      const { message, code, result, data } = res;
 
       // 不进行任何处理，直接返回
       // 用于需要直接获取 code、result、 message 这些信息时开启
@@ -111,8 +111,11 @@ export const Alova = createAlova({
       const Modal = window.$dialog;
 
       const LoginPath = PageEnum.BASE_LOGIN;
-      if (ResultEnum.SUCCESS === code) {
-        return result;
+      // 信封过渡期兼容（详见 dev-docs/api-envelope-analysis.md）：
+      // 阵营 B {code:200, result} 与阵营 A {code:0, data} 均视为成功，
+      // 业务负载优先 result、回退 data；后端收敛完成后收紧为仅 code:0
+      if (ResultEnum.SUCCESS === code || code === 0) {
+        return result ?? data;
       }
       // 需要登录
       if (code === 912 || code === 401) {

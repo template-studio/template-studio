@@ -228,3 +228,19 @@
 **涉及文件：** `.github/workflows/ci.yml`（新增）
 
 **验收结果：** YAML 语法经 js-yaml 解析通过；job 内引用的包名（template-studio-template-core-wasm）与前端脚本（lint:eslint）已与实际文件核对（发现并绕开了不存在的 type-check 脚本——CLAUDE.md 中该说明为旧版前端遗留，又一处文档漂移）。首次真实运行待推送到 GitHub 后手动触发验证。
+
+## 2026-08-29 API 信封统一深度调研（文档输出）
+
+**变更内容：** 量化盘点信封现状（后端 code:0+data 102 处 vs code:200+result 18 处、ApiResponse 死代码；前端双客户端——request/axios 绑阵营 A 返回完整 response、Alova 绑阵营 B 返回解包 result，另有 isReturnNativeResponse 第三种用法与 code:912 魔法数遗留）。产出四步迁移方案：前端拦截器双信封兼容兜底 → 后端 18 处收敛并启用 ApiResponse → 全量回归 → 前端收紧清理。
+
+**涉及文件：** `dev-docs/api-envelope-analysis.md`（新增）
+
+**验收结果：** 全部论断经 grep 量化与链路追踪实证（登录链路经 isReturnNativeResponse 绕开解包的机制已澄清；Alova 仅 4 个 api 文件使用且 menu/table 为模板残留）。
+
+## 2026-08-29 API 信封统一第 1/4 步：前端双信封兼容兜底
+
+**变更内容：** 落实 `dev-docs/api-envelope-analysis.md` 第①步。两个前端拦截器放宽成功判定以兼容双信封：Alova 拦截器 `code∈{0,200}` 均视为成功、业务负载取 `result ?? data`；request（axios）拦截器成功判定同步放宽（成功返回值保持完整 response 不变，不影响 89 处调用方）。`code:912` 魔法数与 `isReturnNativeResponse` 用法暂保留，待第④步收紧。
+
+**涉及文件：** `web/src/utils/http/alova/index.ts`、`web/src/utils/request.ts`
+
+**验收结果：** vite 编译通过；浏览器冒烟四类信封场景页面（模板广场 A 信封/我的模板 B 信封/仪表盘 A/个人中心 B）全部正常渲染、控制台零错误。
