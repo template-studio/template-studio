@@ -75,10 +75,9 @@ export const useUserStore = defineStore({
     // 登录
     async login(params: any) {
       const response = await login(params);
-      // 信封统一过渡：后端已收敛为 {code:0, data}，兼容期同时认 data/result
-      const { data, result, code } = response;
-      const payload = data ?? result;
-      if (code === 0 || code === ResultEnum.SUCCESS) {
+      // 统一信封：{code:0, data}
+      const { data: payload, code } = response;
+      if (code === ResultEnum.SUCCESS) {
         const ex = 7 * 24 * 60 * 60;
         storage.set(ACCESS_TOKEN, payload.token, ex);
         this.setToken(payload.token);
@@ -91,8 +90,8 @@ export const useUserStore = defineStore({
     // 获取用户信息
     async getInfo() {
       const data = await getUserInfoApi();
-      // 信封统一过渡：兼容 data/result 两种负载字段
-      const payload = data.data ?? data.result;
+      // 统一信封：{code:0, data}
+      const payload = data.data;
       if (payload.permissions && payload.permissions.length) {
         const permissionsList = payload.permissions;
         this.setPermissions(permissionsList);

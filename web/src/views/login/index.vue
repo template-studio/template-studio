@@ -287,8 +287,7 @@ const handleSubmit = async (e) => {
     loading.value = true;
     try {
       const { code, message: msg } = await register({ username, password, email: email || undefined });
-      // 信封统一过渡：同时认 code:0（收敛后）与 200（旧信封）
-      if (code == ResultEnum.SUCCESS || code == 0) {
+      if (code == ResultEnum.SUCCESS) {
         message.success('注册成功');
         await userStore.login({ username, password });
         router.replace('/');
@@ -303,11 +302,10 @@ const handleSubmit = async (e) => {
 
   loading.value = true;
   try {
-    // 信封统一过渡：后端已收敛为 {code:0, data}，兼容期同时认 data/result
-    const { code, message: msg, data: payloadData, result } = await userStore.login({ username, password });
+    const { code, message: msg, data: payloadData } = await userStore.login({ username, password });
     message.destroy();
-    if (code == ResultEnum.SUCCESS || code == 0) {
-      const roles: string[] = payloadData?.roles || result?.roles || [];
+    if (code == ResultEnum.SUCCESS) {
+      const roles: string[] = payloadData?.roles || [];
       const isAdmin = roles.some((r) => ['super_admin', 'admin'].includes(r));
       const defaultPath = isAdmin ? '/admin/dashboard' : '/';
       const toPath = decodeURIComponent((route.query?.redirect || defaultPath) as string);

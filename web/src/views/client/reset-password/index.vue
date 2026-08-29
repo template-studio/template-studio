@@ -118,7 +118,7 @@ async function handleReset() {
   loading.value = true;
   try {
     const res = await resetPassword(token.value, form.password);
-    if (res.data?.code === 200) {
+    if (res.data?.code === 0) {
       success.value = true;
     } else {
       error.value = res.data?.message || '重置失败';

@@ -252,3 +252,17 @@
 **涉及文件：** `apps/web/src/handlers/{auth,email,template}.rs`、`web/src/store/modules/user.ts`、`web/src/views/login/index.vue`、`web/src/components/Upload/src/BasicUpload.vue`
 
 **验收结果：** curl 复验登录/auth/info/我的模板均返回 code:0+data；浏览器全新登录周期端到端通过（清 storage → 登录 → 跳转 /admin/dashboard → 个人中心显示 admin 与令牌管理 → 我的模板正常）。过程中发现并修复自查引入的回归一处：getInfo 方法尾部两处未替换的 `result` 引用导致 ReferenceError（现象为路由守卫 catch 后静默登出弹回登录页），已补齐并全文件复扫清零。
+
+## 2026-08-29 API 信封统一第 3/4 步：全量回归
+
+**变更内容：** 无代码改动。对信封收敛做三层回归。
+
+**验收结果：** ① API 电池 8/8——登录/用户信息/PAT 列表/我的模板/模板广场/忘记密码（防枚举）/注册新用户/新用户登录全部返回 code:0 且无 result 残留字段（当初踩坑的统一解析方式现已直接正确）；② 浏览器 14 路由全过、控制台零错误；③ 新用户注册→登录→删除全链路通过。测试用户已清理。第②步引入的 getInfo 回归经完整登录周期复验已确认修复。
+
+## 2026-08-29 API 信封统一第 4/4 步：前端收紧为单信封（系列收官）
+
+**变更内容：** 落实分析文档第④步。移除全部过渡兼容：两个拦截器收紧为仅 `code:0` 成功、负载仅取 `data`；`ResultEnum.SUCCESS` 由 200 改为 0；删除 `code:912` 魔法数分支与注释；store/登录页/BasicUpload 的 `?? result`、`|| code===200` 双判定收紧为单信封；全局残留扫描补获并修复重置密码页的 `code === 200` 漏网判定；删除零引用的模板残留假 api `api/table/list.ts`（`api/system/menu.ts` 因被路由生成器引用而保留，属路由机制遗留非信封问题）。
+
+**涉及文件：** `web/src/enums/httpEnum.ts`、`web/src/utils/http/alova/index.ts`、`web/src/utils/request.ts`、`web/src/store/modules/user.ts`、`web/src/views/login/index.vue`、`web/src/views/client/reset-password/index.vue`、`web/src/components/Upload/src/BasicUpload.vue`、删除 `web/src/api/table/list.ts`
+
+**验收结果：** 全部改动文件 vite 编译 200；全局 `912/===200/?? result` 残留扫描清零；浏览器全新登录周期通过（跳转 dashboard、token 写入）且五类关键路由（我的模板/个人中心/仪表盘/模板广场/编辑器）正常渲染。至此 API 信封全链路（后端 102+18 处、前端双客户端）统一为 `{code:0, message, data}`。

@@ -165,8 +165,8 @@
           const { code } = res;
           const msg = res.msg || res.message || '上传失败';
           const result = res[infoField];
-          //成功（信封统一过渡：同时认 code:0 与旧 200）
-          if (code === ResultEnum.SUCCESS || code === 0) {
+          //成功（统一信封 code:0）
+          if (code === ResultEnum.SUCCESS) {
             let imgUrl: string = getImgUrl(result.photo);
             state.imgList.push(imgUrl);
             state.originalImgList.push(result.photo);

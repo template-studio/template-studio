@@ -70,9 +70,8 @@ service.interceptors.response.use(
     }
 
     const res = response.data;
-    // 信封过渡期兼容（详见 dev-docs/api-envelope-analysis.md）：
-    // code:0（阵营 A 主流）与 code:200（阵营 B，待后端收敛）均视为成功
-    if (res.code !== 0 && res.code !== 200) {
+    // 统一信封：仅 code:0 视为成功（过渡兼容已移除）
+    if (res.code !== 0) {
       console.error('API错误:', res.message);
       message.error(res.message || '请求失败');
       return Promise.reject(new Error(res.message || '未知错误'));
