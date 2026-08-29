@@ -189,25 +189,10 @@
 
 **验收结果：** 浏览器加载重建后的 WASM 包实测全部用例：`truncate(length=5)`→"hello..."（修复前不截断）、中文截断字符安全、`default("x",true)`→"x"（修复前返回空串）、中文 length→2、`now/date/number_format/slugify` 全部按预期输出；后端已重启同步生效。
 
+## 2026-08-29 引擎修复（继承分析项 1/4）：渲染环境真缓存
 
+**变更内容：** 落实 `dev-docs/engine-inheritance-analysis.md` §3.5。TEMPLATE_CACHE 由「只写不读的无上限 HashMap（存源码副本）」重构为「模板集哈希 → `Arc<Environment>`」的 LRU 真缓存（容量 32，新增 lru workspace 依赖）：命中直接复用整棵已编译模板环境，消除并行渲染下每文件重建 Environment + 重注册过滤器的 CPU/内存放大；缓存键为模板集内容哈希，内容变化自然换键、天然自失效。因 minijinja `add_template` 借用源字符串无法装入 'static 缓存，改用 `set_loader` 按名加载；主模板经 `render_str` 一次性渲染。`render_simple` 消除重复读锁；`/template-files/clear-cache` 端点接线 `clear_template_cache`（此前服务端无调用点）。
 
+**涉及文件：** `crates/template_core/src/engine.rs`、`crates/template_core/Cargo.toml`、`apps/web/src/handlers/template_files.rs`
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+**验收结果：** 新增专项单测（命中不新增条目、继承跨命中正确、内容变化自失效、清空生效），crate 总测试 47+6 全过；WASM 重建后浏览器实测连续三次整树渲染继承全部正确且 get_cache_size 稳定为 1（缓存真实命中）；服务端重启后正常渲染。

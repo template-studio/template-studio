@@ -620,8 +620,9 @@ pub async fn clear_cache(
         }
     };
 
-    // 清除缓存
+    // 清除缓存：L2 依赖树缓存 + 引擎已编译模板环境缓存
     state.template_render_service.clear_cache(template_id).await;
+    template_studio_template_core::clear_template_cache();
 
     Ok(Json(json!({
         "code": 0,

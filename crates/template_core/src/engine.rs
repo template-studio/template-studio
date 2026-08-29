@@ -4,10 +4,13 @@ use minijinja::{Environment, Error as MiniError, ErrorKind, Value};
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use std::sync::RwLock;
+use std::sync::{Arc, Mutex, RwLock};
 
 use crate::filters;
 use crate::types::{RenderError, RenderResult, Variables};
+
+/// 继承渲染环境缓存容量上限（每个环境包含整棵模板树的已编译模板）
+const ENV_CACHE_CAPACITY: usize = 32;
 
 /// 全局 MiniJinja 环境实例（包含过滤器）
 pub(crate) static GLOBAL_ENV: Lazy<RwLock<Environment<'static>>> = Lazy::new(|| {
@@ -29,30 +32,37 @@ pub(crate) static GLOBAL_ENV: Lazy<RwLock<Environment<'static>>> = Lazy::new(|| 
     RwLock::new(env)
 });
 
-/// 模板缓存：缓存已编译的模板
-/// Key: 模板内容的哈希值
-/// Value: 编译后的模板源码
-static TEMPLATE_CACHE: Lazy<RwLock<HashMap<usize, String>>> =
-    Lazy::new(|| RwLock::new(HashMap::new()));
+/// 继承渲染环境缓存：模板集哈希 → 已编译好的 Environment
+///
+/// - key 是全部模板（名称+内容）的哈希，内容变化自然换 key，**天然自失效**，
+///   无需与文件监听联动
+/// - 命中后直接复用整棵已编译模板树，消除「每次渲染重建 Environment + 重注册过滤器」
+///   的 CPU/内存放大（并行渲染下尤为明显）
+/// - LRU 封顶防止内存无限增长（此前为只写不读的无上限 HashMap）
+static ENV_CACHE: Lazy<Mutex<lru::LruCache<usize, Arc<Environment<'static>>>>> = Lazy::new(|| {
+    Mutex::new(lru::LruCache::new(
+        std::num::NonZeroUsize::new(ENV_CACHE_CAPACITY).unwrap(),
+    ))
+});
 
 /// 清理模板缓存
 ///
-/// 手动清理所有缓存的模板。
+/// 手动清理所有缓存的已编译环境。
 pub fn clear_template_cache() {
-    let mut cache = TEMPLATE_CACHE.write().unwrap();
+    let mut cache = ENV_CACHE.lock().unwrap();
     let size = cache.len();
 
     #[cfg(feature = "logging")]
-    tracing::info!("Clearing template cache ({} entries)", size);
+    tracing::info!("Clearing template env cache ({} entries)", size);
 
     cache.clear();
 }
 
 /// 获取缓存统计信息
 ///
-/// 返回当前缓存中的模板数量
+/// 返回当前缓存中的环境数量
 pub fn get_cache_size() -> usize {
-    TEMPLATE_CACHE.read().unwrap().len()
+    ENV_CACHE.lock().unwrap().len()
 }
 
 /// 初始化引擎（可选，通常在应用启动时调用一次）
@@ -94,12 +104,10 @@ pub fn render_string(
 /// 简单渲染（不支持模板继承）
 #[allow(clippy::result_large_err)]
 fn render_simple(
-    _env: &Environment<'_>,
+    env: &Environment<'_>,
     template_content: &str,
     variables: &Variables,
 ) -> Result<RenderResult, RenderError> {
-    // 直接使用全局环境（已经配置好过滤器和严格模式）
-    let env = GLOBAL_ENV.read().unwrap();
     let context = convert_variables(variables);
 
     match env.render_str(template_content, &context) {
@@ -119,6 +127,10 @@ fn render_simple(
 }
 
 /// 支持模板继承的渲染
+///
+/// 模板集（名称+内容）哈希为缓存键，命中直接复用已编译好的 Environment；
+/// 主模板不注册进环境，经 `render_str` 一次性渲染（extends/include 查找
+/// 照常解析到环境中已注册的模板）。
 #[allow(clippy::result_large_err)]
 fn render_with_templates(
     _env: &Environment<'_>,
@@ -126,87 +138,46 @@ fn render_with_templates(
     variables: &Variables,
     templates: &HashMap<String, String>,
 ) -> Result<RenderResult, RenderError> {
-    // 生成缓存键
     let cache_key = generate_cache_key(templates);
 
-    // 检查缓存
-    {
-        let cache = TEMPLATE_CACHE.read().unwrap();
-        if cache.get(&cache_key).is_some() {
-            #[cfg(feature = "logging")]
-            tracing::debug!("Template cache hit (hash: {})", cache_key);
+    // 取缓存环境；未命中则构建后放入（放置时再查一次避免并发重复构建）
+    let env = {
+        let mut cache = ENV_CACHE.lock().unwrap();
+        if let Some(env) = cache.get(&cache_key) {
+            Arc::clone(env)
+        } else {
+            drop(cache);
+
+            let mut env = Environment::new();
+            env.set_undefined_behavior(minijinja::UndefinedBehavior::Strict);
+            env.set_trim_blocks(true);
+            env.set_lstrip_blocks(true);
+            filters::register_all_filters(&mut env);
+
+            // add_template 会借用源字符串，无法装入 'static 缓存环境；
+            // 改用 loader 按名加载（minijinja 内部对加载结果做编译缓存），
+            // 依赖模板的语法错误在首次被引用时以渲染错误形式暴露
+            let owned_templates: HashMap<String, String> = templates.clone();
+            env.set_loader(move |name| Ok(owned_templates.get(name).cloned()));
+
+            let env = Arc::new(env);
+            let mut cache = ENV_CACHE.lock().unwrap();
+            cache.put(cache_key, Arc::clone(&env));
+            env
         }
-    }
+    };
 
-    // 创建新环境（MiniJinja Environment 不支持直接 clone）
-    let mut env = Environment::new();
-
-    // 复制严格模式配置
-    env.set_undefined_behavior(minijinja::UndefinedBehavior::Strict);
-
-    // 去除模板标签产生的多余空行
-    env.set_trim_blocks(true);
-    env.set_lstrip_blocks(true);
-
-    // 注册过滤器（这是必要的，因为每个 Environment 实例需要自己的过滤器）
     #[cfg(feature = "logging")]
-    tracing::debug!("Registering filters for template inheritance environment");
+    tracing::trace!("Inheritance render (env cache key: {})", cache_key);
 
-    filters::register_all_filters(&mut env);
-
-    // 加载所有模板
-    for (name, content) in templates {
-        if let Err(e) = env.add_template(name, content) {
-            return Ok(RenderResult {
-                content: String::new(),
-                success: false,
-                error: Some(RenderError {
-                    error_type: "template_error".to_string(),
-                    message: format!("加载模板 '{}' 失败: {}", name, e),
-                    line: None,
-                    column: None,
-                    context: None,
-                    suggestion: None,
-                }),
-                variables: variables.as_value().clone(),
-            });
-        }
-    }
-
-    // 添加主模板（使用特殊名称）
-    let main_template_name = "__main__";
-    if let Err(e) = env.add_template(main_template_name, template_content) {
-        return Ok(RenderResult {
-            content: String::new(),
-            success: false,
-            error: Some(parse_minijinja_error(&e, template_content)),
-            variables: variables.as_value().clone(),
-        });
-    }
-
-    // 写入缓存
-    {
-        let mut cache = TEMPLATE_CACHE.write().unwrap();
-        cache.insert(cache_key, template_content.to_string());
-    }
-
-    // 渲染
     let context = convert_variables(variables);
-    match env.get_template(main_template_name) {
-        Ok(tpl) => match tpl.render(&context) {
-            Ok(content) => Ok(RenderResult {
-                content,
-                success: true,
-                error: None,
-                variables: variables.as_value().clone(),
-            }),
-            Err(e) => Ok(RenderResult {
-                content: String::new(),
-                success: false,
-                error: Some(parse_minijinja_error(&e, template_content)),
-                variables: variables.as_value().clone(),
-            }),
-        },
+    match env.render_str(template_content, &context) {
+        Ok(content) => Ok(RenderResult {
+            content,
+            success: true,
+            error: None,
+            variables: variables.as_value().clone(),
+        }),
         Err(e) => Ok(RenderResult {
             content: String::new(),
             success: false,
@@ -334,6 +305,53 @@ mod tests {
         let variables = Variables::from_json(r#"{"x": 10, "y": 20}"#).unwrap();
         let result = render_string(template, &variables, None).unwrap();
         assert_eq!(result.content, "10 + 20 = 30");
+    }
+
+    #[test]
+    fn test_env_cache_reuse_and_invalidation() {
+        let templates: HashMap<String, String> = HashMap::from([(
+            "base.html".to_string(),
+            "<b>{% block c %}{% endblock %}</b>".to_string(),
+        )]);
+        let vars = Variables::from_json("{}").unwrap();
+
+        // 首次渲染：构建环境并缓存
+        let r1 = render_string(
+            "{% extends \"base.html\" %}{% block c %}A{% endblock %}",
+            &vars,
+            Some(&templates),
+        )
+        .unwrap();
+        assert_eq!(r1.content, "<b>A</b>");
+        let size_after_first = get_cache_size();
+        assert!(size_after_first >= 1);
+
+        // 二次渲染：命中缓存，继承仍正确
+        let r2 = render_string(
+            "{% extends \"base.html\" %}{% block c %}B{% endblock %}",
+            &vars,
+            Some(&templates),
+        )
+        .unwrap();
+        assert_eq!(r2.content, "<b>B</b>");
+        assert_eq!(get_cache_size(), size_after_first, "命中缓存不应新增条目");
+
+        // 模板内容变化：缓存键变化，新环境生效（自失效验证）
+        let templates_v2: HashMap<String, String> = HashMap::from([(
+            "base.html".to_string(),
+            "<i>{% block c %}{% endblock %}</i>".to_string(),
+        )]);
+        let r3 = render_string(
+            "{% extends \"base.html\" %}{% block c %}C{% endblock %}",
+            &vars,
+            Some(&templates_v2),
+        )
+        .unwrap();
+        assert_eq!(r3.content, "<i>C</i>", "内容变化后应使用新环境");
+
+        // 清空缓存
+        clear_template_cache();
+        assert_eq!(get_cache_size(), 0);
     }
 
     #[test]
