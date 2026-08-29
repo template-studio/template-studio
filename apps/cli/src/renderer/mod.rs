@@ -4,9 +4,9 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use template_studio_template_core::{
-    render_tree, TemplateFile, Variables,
+    filter_files_by_conditions, render_tree, ConditionsYaml, TemplateFile, Variables,
 };
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 
 /// 本地模板渲染器
 pub struct LocalRenderer {
@@ -45,8 +45,7 @@ impl LocalRenderer {
         id_counter: &mut i64,
         parent_id: i64,
     ) -> Result<()> {
-        let entries = fs::read_dir(dir)
-            .context("读取目录失败")?;
+        let entries = fs::read_dir(dir).context("读取目录失败")?;
 
         for entry in entries {
             let entry = entry.context("读取目录项失败")?;
@@ -54,16 +53,15 @@ impl LocalRenderer {
 
             // 跳过 .meta 目录和 .git 目录
             if path.is_dir() {
-                let file_name = path.file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("");
+                let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
                 if file_name == ".meta" || file_name == ".git" {
                     continue;
                 }
 
                 // 创建目录节点
-                let relative_path = path.strip_prefix(&self.template_path)
+                let relative_path = path
+                    .strip_prefix(&self.template_path)
                     .context("计算相对路径失败")?;
 
                 let dir_file = TemplateFile {
@@ -90,20 +88,41 @@ impl LocalRenderer {
                 self.scan_directory(&path, files, id_counter, dir_id)?;
             } else {
                 // 读取文件
-                let relative_path = path.strip_prefix(&self.template_path)
+                let relative_path = path
+                    .strip_prefix(&self.template_path)
                     .context("计算相对路径失败")?;
 
                 // 检测二进制文件
-                let extension = path.extension()
-                    .and_then(|e| e.to_str())
-                    .unwrap_or("");
+                let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
-                let is_binary = matches!(extension,
-                    "png" | "jpg" | "jpeg" | "gif" | "ico" | "webp" |
-                    "woff" | "woff2" | "ttf" | "eot" | "otf" |
-                    "mp3" | "mp4" | "wav" | "ogg" | "webm" |
-                    "pdf" | "zip" | "exe" | "dll" | "so" |
-                    "bin" | "dat" | "db" | "sqlite" | "mdb"
+                let is_binary = matches!(
+                    extension,
+                    "png"
+                        | "jpg"
+                        | "jpeg"
+                        | "gif"
+                        | "ico"
+                        | "webp"
+                        | "woff"
+                        | "woff2"
+                        | "ttf"
+                        | "eot"
+                        | "otf"
+                        | "mp3"
+                        | "mp4"
+                        | "wav"
+                        | "ogg"
+                        | "webm"
+                        | "pdf"
+                        | "zip"
+                        | "exe"
+                        | "dll"
+                        | "so"
+                        | "bin"
+                        | "dat"
+                        | "db"
+                        | "sqlite"
+                        | "mdb"
                 );
 
                 let content = if is_binary {
@@ -112,7 +131,11 @@ impl LocalRenderer {
                 } else {
                     match fs::read_to_string(&path) {
                         Ok(c) => {
-                            info!("  [文本文件] {} - {} 字节", relative_path.display(), c.len());
+                            info!(
+                                "  [文本文件] {} - {} 字节",
+                                relative_path.display(),
+                                c.len()
+                            );
                             c
                         }
                         Err(e) => {
@@ -123,10 +146,10 @@ impl LocalRenderer {
                     }
                 };
 
-                let metadata = fs::metadata(&path)
-                    .context("获取文件元数据失败")?;
+                let metadata = fs::metadata(&path).context("获取文件元数据失败")?;
 
-                let file_name = path.file_name()
+                let file_name = path
+                    .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("")
                     .to_string();
@@ -155,22 +178,79 @@ impl LocalRenderer {
         Ok(())
     }
 
+    /// 读取 .meta/variables/conditions.yml 并应用文件条件过滤
+    ///
+    /// 与 Web 服务端渲染语义保持一致：无条件配置文件时全部生成；
+    /// 条件不满足的文件/目录及其子树被排除，不参与渲染
+    fn apply_file_conditions(
+        &self,
+        files: Vec<TemplateFile>,
+        variables: &Variables,
+    ) -> Vec<TemplateFile> {
+        let conditions_path = self
+            .template_path
+            .join(".meta")
+            .join("variables")
+            .join("conditions.yml");
+
+        let Ok(content) = fs::read_to_string(&conditions_path) else {
+            return files; // 无条件配置，全部生成
+        };
+
+        let yaml = match ConditionsYaml::from_yaml(&content) {
+            Ok(y) => y,
+            Err(e) => {
+                warn!(
+                    "解析 conditions.yml 失败 ({:?})：{}，将忽略文件条件",
+                    conditions_path, e
+                );
+                return files;
+            }
+        };
+
+        // conditions.yml 中的路径可能是 Windows 分隔符，统一按 / 规范化后匹配
+        let normalize = |p: &str| p.replace('\\', "/");
+        let mut files = files;
+        let mut matched = 0usize;
+        for fc in &yaml.conditions {
+            let Some(cond) = &fc.condition else { continue };
+            let target = normalize(&fc.path);
+            for f in files.iter_mut() {
+                if normalize(&f.file_path) == target {
+                    f.condition = Some(cond.clone());
+                    matched += 1;
+                }
+            }
+        }
+        if !yaml.conditions.is_empty() {
+            info!(
+                "文件条件：{} 条配置，命中 {} 个文件",
+                yaml.conditions.len(),
+                matched
+            );
+        }
+
+        filter_files_by_conditions(files, variables)
+    }
+
     /// 渲染模板
-    pub fn render(&self, variables: &HashMap<String, JsonValue>) -> Result<Vec<crate::client::RenderedFile>> {
+    pub fn render(
+        &self,
+        variables: &HashMap<String, JsonValue>,
+    ) -> Result<Vec<crate::client::RenderedFile>> {
         info!("开始本地渲染模板...");
 
         // 1. 扫描模板文件
         let template_files = self.scan_template_files()?;
 
         // 2. 转换变量格式
-        let variables_json = serde_json::to_string(variables)
-            .context("序列化变量失败")?;
+        let variables_json = serde_json::to_string(variables).context("序列化变量失败")?;
         let render_vars = Variables::from_json(&variables_json)
             .map_err(|e| anyhow::anyhow!("创建渲染变量失败: {}", e))?;
 
-        // 3. 渲染文件树
-        let rendered_tree = render_tree(template_files, &render_vars)
-            .context("渲染文件树失败")?;
+        // 3. 应用文件生成条件过滤后渲染文件树
+        let filtered_files = self.apply_file_conditions(template_files, &render_vars);
+        let rendered_tree = render_tree(filtered_files, &render_vars).context("渲染文件树失败")?;
 
         info!("渲染完成，生成 {} 个文件节点", rendered_tree.len());
 
@@ -215,7 +295,10 @@ impl LocalRenderer {
         }
 
         if error_count > 0 {
-            warn!("⚠️  共有 {} 个文件渲染失败，请检查日志获取详细信息", error_count);
+            warn!(
+                "⚠️  共有 {} 个文件渲染失败，请检查日志获取详细信息",
+                error_count
+            );
             warn!("   日志文件位置: ~/.cicbyte/template_studio/logs/template-cli.log");
         }
 

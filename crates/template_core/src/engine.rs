@@ -1,13 +1,13 @@
 //! MiniJinja 引擎封装和核心渲染逻辑
 
+use minijinja::{Environment, Error as MiniError, ErrorKind, Value};
 use once_cell::sync::Lazy;
-use std::sync::RwLock;
 use std::collections::HashMap;
-use minijinja::{Environment, Error as MiniError, Value, ErrorKind};
 use std::hash::{Hash, Hasher};
+use std::sync::RwLock;
 
-use crate::types::{RenderResult, RenderError, Variables};
 use crate::filters;
+use crate::types::{RenderError, RenderResult, Variables};
 
 /// 全局 MiniJinja 环境实例（包含过滤器）
 pub(crate) static GLOBAL_ENV: Lazy<RwLock<Environment<'static>>> = Lazy::new(|| {
@@ -32,9 +32,8 @@ pub(crate) static GLOBAL_ENV: Lazy<RwLock<Environment<'static>>> = Lazy::new(|| 
 /// 模板缓存：缓存已编译的模板
 /// Key: 模板内容的哈希值
 /// Value: 编译后的模板源码
-static TEMPLATE_CACHE: Lazy<RwLock<HashMap<usize, String>>> = Lazy::new(|| {
-    RwLock::new(HashMap::new())
-});
+static TEMPLATE_CACHE: Lazy<RwLock<HashMap<usize, String>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
 
 /// 清理模板缓存
 ///
@@ -194,22 +193,20 @@ fn render_with_templates(
     // 渲染
     let context = convert_variables(variables);
     match env.get_template(main_template_name) {
-        Ok(tpl) => {
-            match tpl.render(&context) {
-                Ok(content) => Ok(RenderResult {
-                    content,
-                    success: true,
-                    error: None,
-                    variables: variables.as_value().clone(),
-                }),
-                Err(e) => Ok(RenderResult {
-                    content: String::new(),
-                    success: false,
-                    error: Some(parse_minijinja_error(&e, template_content)),
-                    variables: variables.as_value().clone(),
-                }),
-            }
-        }
+        Ok(tpl) => match tpl.render(&context) {
+            Ok(content) => Ok(RenderResult {
+                content,
+                success: true,
+                error: None,
+                variables: variables.as_value().clone(),
+            }),
+            Err(e) => Ok(RenderResult {
+                content: String::new(),
+                success: false,
+                error: Some(parse_minijinja_error(&e, template_content)),
+                variables: variables.as_value().clone(),
+            }),
+        },
         Err(e) => Ok(RenderResult {
             content: String::new(),
             success: false,

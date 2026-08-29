@@ -22,17 +22,14 @@
 //! console.log(info.version, info.filters);
 //! ```
 
-use wasm_bindgen::prelude::*;
 use serde_wasm_bindgen::{from_value, to_value};
+use wasm_bindgen::prelude::*;
 
 // 导入核心模板引擎
 use template_studio_template_core::{
-    render_string as core_render_string,
-    render_tree as core_render_tree,
-    RenderResult as CoreRenderResult,
-    RenderError as CoreRenderError,
-    TemplateFile as CoreTemplateFile,
-    Variables,
+    filter_files_by_conditions, render_string as core_render_string,
+    render_tree as core_render_tree, Condition as CoreCondition, RenderError as CoreRenderError,
+    RenderResult as CoreRenderResult, TemplateFile as CoreTemplateFile, Variables,
 };
 
 // ============================================================================
@@ -76,8 +73,7 @@ pub fn render_string(template: String, variables: JsValue) -> Result<JsValue, Js
 
     // 转换为 JS 对象
     let js_result = WasmRenderResult::from_core(result);
-    to_value(&js_result)
-        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+    to_value(&js_result).map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
 }
 
 /// 批量渲染文件树
@@ -111,14 +107,17 @@ pub fn render_tree(files: JsValue, variables: JsValue) -> Result<JsValue, JsValu
             extends: None,
             includes: None,
             imports: None,
-            condition: None,
+            condition: f.condition,
             is_dependency: false,
             required_by: None,
         })
         .collect();
 
+    // 与服务端渲染保持一致：先按文件条件过滤（条件不满足的文件及其子树不参与渲染）
+    let filtered_files = filter_files_by_conditions(core_files, &vars);
+
     // 调用核心渲染
-    let results = core_render_tree(core_files, &vars)
+    let results = core_render_tree(filtered_files, &vars)
         .map_err(|e| JsValue::from_str(&format!("Render tree error: {}", e)))?;
 
     // 转换为 WASM 类型
@@ -160,8 +159,7 @@ pub fn get_engine_info() -> Result<JsValue, JsValue> {
         functions,
     };
 
-    to_value(&info)
-        .map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e)))
+    to_value(&info).map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e)))
 }
 
 /// 获取可用的过滤器列表（带详细信息）
@@ -178,16 +176,13 @@ pub fn get_filters() -> Result<JsValue, JsValue> {
         })
         .collect();
 
-    to_value(&filters)
-        .map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e)))
+    to_value(&filters).map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e)))
 }
 
 /// 检查模板语法是否有效
 #[wasm_bindgen]
 pub fn validate_template(template: String) -> Result<JsValue, JsValue> {
-    let variables = Variables::from_value(serde_json::Value::Object(
-        serde_json::Map::new()
-    ));
+    let variables = Variables::from_value(serde_json::Value::Object(serde_json::Map::new()));
 
     match core_render_string(&template, &variables, None) {
         Ok(result) => {
@@ -202,16 +197,14 @@ pub fn validate_template(template: String) -> Result<JsValue, JsValue> {
                 .map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e)))
             }
         }
-        Err(e) => {
-            to_value(&serde_json::json!({
-                "valid": false,
-                "error": {
-                    "type": "render_error",
-                    "message": e.to_string()
-                }
-            }))
-            .map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e)))
-        }
+        Err(e) => to_value(&serde_json::json!({
+            "valid": false,
+            "error": {
+                "type": "render_error",
+                "message": e.to_string()
+            }
+        }))
+        .map_err(|e| JsValue::from_str(&format!("Failed to serialize: {}", e))),
     }
 }
 
@@ -343,6 +336,9 @@ pub struct WasmTemplateFile {
     pub parent_id: i64,
     /// 文件大小
     pub filesize: i32,
+    /// 文件生成条件（可选；条件不满足时该文件/目录及其子树不参与渲染）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub condition: Option<CoreCondition>,
 }
 
 /// 引擎信息
@@ -388,9 +384,7 @@ fn parse_variables(variables: &JsValue) -> Result<Variables, JsValue> {
 /// 获取构建时间
 fn build_time() -> String {
     // 在 release 构建时，通过环境变量注入构建时间
-    option_env!("BUILD_TIME")
-        .unwrap_or("unknown")
-        .to_string()
+    option_env!("BUILD_TIME").unwrap_or("unknown").to_string()
 }
 
 // ============================================================================

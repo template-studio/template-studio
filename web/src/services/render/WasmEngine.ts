@@ -203,6 +203,7 @@ export class WasmEngine implements RenderEngine {
    * 批量渲染文件树
    */
   async renderTree(
+    _templateId: number,
     files: TemplateFile[],
     variables: Record<string, unknown>
   ): Promise<RenderResult[]> {
@@ -221,6 +222,8 @@ export class WasmEngine implements RenderEngine {
         is_directory: 0,
         parent_id: 0,
         filesize: f.content.length,
+        // 文件生成条件：条件不满足的文件由 WASM 侧统一过滤（与服务端渲染语义一致）
+        condition: f.generateCondition ?? null,
       }));
 
       const results = wasm_render_tree(wasmFiles, variables) as WasmRenderedFile[];

@@ -201,7 +201,8 @@ fn build_string_functions() -> BuiltinFunctionCategory {
                 return_type: "string".to_string(),
                 category: "字符串函数".to_string(),
                 example: "{{ title | slugify }}".to_string(),
-                usage: "slugify 函数将字符串转换为URL友好的格式，空格替换为连字符，移除特殊字符。".to_string(),
+                usage: "slugify 函数将字符串转换为URL友好的格式，空格替换为连字符，移除特殊字符。"
+                    .to_string(),
                 insert_text: "{{ value | slugify }}".to_string(),
                 note: Some("需要注册 tera_text_filters".to_string()),
                 aliases: None,
@@ -395,7 +396,8 @@ fn build_date_functions() -> BuiltinFunctionCategory {
                 return_type: "string".to_string(),
                 category: "日期函数".to_string(),
                 example: "{{ timestamp | date(format=\"%Y-%m-%d\") }}".to_string(),
-                usage: "date 函数格式化时间戳为可读的日期字符串。支持 strftime 格式化符号。".to_string(),
+                usage: "date 函数格式化时间戳为可读的日期字符串。支持 strftime 格式化符号。"
+                    .to_string(),
                 insert_text: "{{ value | date(format=\"%Y-%m-%d\") }}".to_string(),
                 note: Some("需要自定义注册".to_string()),
                 aliases: None,
@@ -408,7 +410,8 @@ fn build_date_functions() -> BuiltinFunctionCategory {
                 return_type: "number".to_string(),
                 category: "日期函数".to_string(),
                 example: "{% set now = now() %}{{ now | date }}".to_string(),
-                usage: "now 函数返回当前时间的 Unix 时间戳（秒）。可与 date 过滤器配合使用。".to_string(),
+                usage: "now 函数返回当前时间的 Unix 时间戳（秒）。可与 date 过滤器配合使用。"
+                    .to_string(),
                 insert_text: "{{ now() }}".to_string(),
                 note: Some("需要自定义注册".to_string()),
                 aliases: None,
@@ -562,7 +565,8 @@ fn build_encoding_functions() -> BuiltinFunctionCategory {
                 return_type: "string".to_string(),
                 category: "编码函数".to_string(),
                 example: "{{ data | base64_encode }}".to_string(),
-                usage: "base64_encode 函数将字符串编码为 Base64 格式，常用于安全传输数据。".to_string(),
+                usage: "base64_encode 函数将字符串编码为 Base64 格式，常用于安全传输数据。"
+                    .to_string(),
                 insert_text: "{{ value | base64_encode }}".to_string(),
                 note: Some("template_core 自定义过滤器".to_string()),
                 aliases: None,
@@ -616,7 +620,8 @@ fn build_encoding_functions() -> BuiltinFunctionCategory {
                 return_type: "string".to_string(),
                 category: "编码函数".to_string(),
                 example: "{{ url | url_encode }}".to_string(),
-                usage: "url_encode 函数将字符串进行 URL 编码，转换特殊字符为 %XX 格式。".to_string(),
+                usage: "url_encode 函数将字符串进行 URL 编码，转换特殊字符为 %XX 格式。"
+                    .to_string(),
                 insert_text: "{{ value | url_encode }}".to_string(),
                 note: Some("template_core 自定义过滤器".to_string()),
                 aliases: None,
@@ -694,7 +699,8 @@ fn build_type_conversion_functions() -> BuiltinFunctionCategory {
                 return_type: "string".to_string(),
                 category: "类型转换".to_string(),
                 example: "{{ price | number_format(decimals=2) }}".to_string(),
-                usage: "number_format 函数格式化数字显示，添加千位分隔符并指定小数位数。".to_string(),
+                usage: "number_format 函数格式化数字显示，添加千位分隔符并指定小数位数。"
+                    .to_string(),
                 insert_text: "{{ value | number_format(decimals=2) }}".to_string(),
                 note: Some("需要自定义注册".to_string()),
                 aliases: None,

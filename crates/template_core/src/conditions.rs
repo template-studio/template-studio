@@ -40,14 +40,15 @@ impl fmt::Display for ConditionType {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Operator {
-    Eq,       // 等于
-    Ne,       // 不等于
-    Gt,       // 大于
-    Lt,       // 小于
-    Gte,      // 大于等于
-    Lte,      // 小于等于
-    In,       // 包含于（数组）
-    NotIn,    // 不包含于（数组）
+    Eq,  // 等于
+    Ne,  // 不等于
+    Gt,  // 大于
+    Lt,  // 小于
+    Gte, // 大于等于
+    Lte, // 小于等于
+    In,  // 包含于（数组）
+    #[serde(alias = "not_in")] // 容错：兼容手写 yml 或旧客户端的下划线拼写
+    NotIn, // 不包含于（数组）
     Contains, // 包含（字符串）
 }
 
@@ -297,7 +298,11 @@ impl Condition {
     }
 
     /// 评估操作符（支持智能类型转换）
-    fn evaluate_operator(op: &Operator, left: &serde_json::Value, right: &serde_json::Value) -> Result<bool, String> {
+    fn evaluate_operator(
+        op: &Operator,
+        left: &serde_json::Value,
+        right: &serde_json::Value,
+    ) -> Result<bool, String> {
         match op {
             Operator::Eq => Ok(Self::compare_with_type_coercion(left, right)),
             Operator::Ne => Ok(!Self::compare_with_type_coercion(left, right)),
@@ -426,7 +431,11 @@ impl ConditionsYaml {
     /// 添加文件条件（如果路径存在则更新）
     pub fn add_condition(&mut self, condition: FileCondition) {
         // 查找是否已存在相同路径的条件
-        if let Some(existing) = self.conditions.iter_mut().find(|c| c.path == condition.path) {
+        if let Some(existing) = self
+            .conditions
+            .iter_mut()
+            .find(|c| c.path == condition.path)
+        {
             // 更新现有条件
             existing.condition = condition.condition;
         } else {
@@ -467,7 +476,8 @@ impl ConditionsYaml {
 
     /// 根据文件路径获取条件
     pub fn get_condition_by_path(&self, file_path: &str) -> Option<Condition> {
-        self.conditions.iter()
+        self.conditions
+            .iter()
             .find(|c| c.path == file_path)
             .and_then(|fc| fc.condition.clone())
     }
@@ -496,14 +506,12 @@ impl ConditionsYaml {
 
     /// 序列化为 YAML 字符串
     pub fn to_yaml(&self) -> Result<String, String> {
-        serde_yaml::to_string(self)
-            .map_err(|e| format!("YAML序列化失败: {}", e))
+        serde_yaml::to_string(self).map_err(|e| format!("YAML序列化失败: {}", e))
     }
 
     /// 从 YAML 字符串反序列化
     pub fn from_yaml(content: &str) -> Result<Self, String> {
-        serde_yaml::from_str(content)
-            .map_err(|e| format!("YAML解析失败: {}", e))
+        serde_yaml::from_str(content).map_err(|e| format!("YAML解析失败: {}", e))
     }
 
     /// 验证所有条件
@@ -551,11 +559,7 @@ mod tests {
 
     #[test]
     fn test_simple_if_condition() {
-        let condition = Condition::new_if(
-            "enableFeature".to_string(),
-            Operator::Eq,
-            json!(true),
-        );
+        let condition = Condition::new_if("enableFeature".to_string(), Operator::Eq, json!(true));
 
         let variables = json!({
             "enableFeature": true
@@ -661,19 +665,29 @@ conditions:
     fn test_operators() {
         // Test Eq
         assert!(Condition::new_if("num".to_string(), Operator::Eq, json!(5))
-            .evaluate(&json!({"num": 5})).unwrap());
+            .evaluate(&json!({"num": 5}))
+            .unwrap());
 
         // Test Gt
         assert!(Condition::new_if("num".to_string(), Operator::Gt, json!(3))
-            .evaluate(&json!({"num": 5})).unwrap());
+            .evaluate(&json!({"num": 5}))
+            .unwrap());
 
         // Test In
-        assert!(Condition::new_if("db".to_string(), Operator::In, json!(["mysql", "postgresql"]))
-            .evaluate(&json!({"db": "mysql"})).unwrap());
+        assert!(Condition::new_if(
+            "db".to_string(),
+            Operator::In,
+            json!(["mysql", "postgresql"])
+        )
+        .evaluate(&json!({"db": "mysql"}))
+        .unwrap());
 
         // Test Contains
-        assert!(Condition::new_if("text".to_string(), Operator::Contains, json!("hello"))
-            .evaluate(&json!({"text": "hello world"})).unwrap());
+        assert!(
+            Condition::new_if("text".to_string(), Operator::Contains, json!("hello"))
+                .evaluate(&json!({"text": "hello world"}))
+                .unwrap()
+        );
     }
 
     // ========== 类型转换测试 ==========
@@ -681,52 +695,82 @@ conditions:
     #[test]
     fn test_type_coercion_bool_string() {
         // 字符串 "true" 与布尔值 true 应该相等
-        assert!(Condition::new_if("flag".to_string(), Operator::Eq, json!("true"))
-            .evaluate(&json!({"flag": true})).unwrap());
+        assert!(
+            Condition::new_if("flag".to_string(), Operator::Eq, json!("true"))
+                .evaluate(&json!({"flag": true}))
+                .unwrap()
+        );
 
         // 字符串 "false" 与布尔值 false 应该相等
-        assert!(Condition::new_if("flag".to_string(), Operator::Eq, json!("false"))
-            .evaluate(&json!({"flag": false})).unwrap());
+        assert!(
+            Condition::new_if("flag".to_string(), Operator::Eq, json!("false"))
+                .evaluate(&json!({"flag": false}))
+                .unwrap()
+        );
 
         // 字符串 "false" 与布尔值 true 应该不相等
-        assert!(!Condition::new_if("flag".to_string(), Operator::Eq, json!("false"))
-            .evaluate(&json!({"flag": true})).unwrap());
+        assert!(
+            !Condition::new_if("flag".to_string(), Operator::Eq, json!("false"))
+                .evaluate(&json!({"flag": true}))
+                .unwrap()
+        );
     }
 
     #[test]
     fn test_type_coercion_number_string() {
         // 字符串 "123" 与数字 123 应该相等
-        assert!(Condition::new_if("count".to_string(), Operator::Eq, json!("123"))
-            .evaluate(&json!({"count": 123})).unwrap());
+        assert!(
+            Condition::new_if("count".to_string(), Operator::Eq, json!("123"))
+                .evaluate(&json!({"count": 123}))
+                .unwrap()
+        );
 
         // 字符串 "456" 与数字 456 应该相等
-        assert!(Condition::new_if("port".to_string(), Operator::Eq, json!("8080"))
-            .evaluate(&json!({"port": 8080})).unwrap());
+        assert!(
+            Condition::new_if("port".to_string(), Operator::Eq, json!("8080"))
+                .evaluate(&json!({"port": 8080}))
+                .unwrap()
+        );
     }
 
     #[test]
     fn test_type_coercion_mixed() {
         // 变量是布尔值，条件是字符串
-        assert!(Condition::new_if("enable".to_string(), Operator::Eq, json!("true"))
-            .evaluate(&json!({"enable": true})).unwrap());
+        assert!(
+            Condition::new_if("enable".to_string(), Operator::Eq, json!("true"))
+                .evaluate(&json!({"enable": true}))
+                .unwrap()
+        );
 
         // 变量是字符串，条件是布尔值
-        assert!(Condition::new_if("debug".to_string(), Operator::Eq, json!(true))
-            .evaluate(&json!({"debug": "true"})).unwrap());
+        assert!(
+            Condition::new_if("debug".to_string(), Operator::Eq, json!(true))
+                .evaluate(&json!({"debug": "true"}))
+                .unwrap()
+        );
 
         // 变量是数字，条件是字符串
-        assert!(Condition::new_if("age".to_string(), Operator::Eq, json!("18"))
-            .evaluate(&json!({"age": 18})).unwrap());
+        assert!(
+            Condition::new_if("age".to_string(), Operator::Eq, json!("18"))
+                .evaluate(&json!({"age": 18}))
+                .unwrap()
+        );
     }
 
     #[test]
     fn test_type_coercion_not_operator() {
         // Ne 操作符也应该使用类型转换
-        assert!(!Condition::new_if("flag".to_string(), Operator::Ne, json!("true"))
-            .evaluate(&json!({"flag": true})).unwrap());
+        assert!(
+            !Condition::new_if("flag".to_string(), Operator::Ne, json!("true"))
+                .evaluate(&json!({"flag": true}))
+                .unwrap()
+        );
 
-        assert!(Condition::new_if("flag".to_string(), Operator::Ne, json!("false"))
-            .evaluate(&json!({"flag": true})).unwrap());
+        assert!(
+            Condition::new_if("flag".to_string(), Operator::Ne, json!("false"))
+                .evaluate(&json!({"flag": true}))
+                .unwrap()
+        );
     }
 
     #[test]

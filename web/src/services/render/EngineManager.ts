@@ -284,6 +284,7 @@ export class EngineManager {
    * 如果当前引擎不可用，自动回退到备用引擎
    */
   async renderTree(
+    templateId: number,
     files: TemplateFile[],
     variables: Record<string, unknown>
   ): Promise<RenderResult[]> {
@@ -295,10 +296,10 @@ export class EngineManager {
     // 如果当前引擎是 WASM 且未就绪，回退到后端
     if (this.currentEngine === this.wasmEngine && !this.wasmEngine.isReady) {
       console.warn('[EngineManager] WASM not ready, falling back to backend');
-      return this.backendEngine.renderTree(files, variables);
+      return this.backendEngine.renderTree(templateId, files, variables);
     }
 
-    return this.currentEngine.renderTree(files, variables);
+    return this.currentEngine.renderTree(templateId, files, variables);
   }
 
   /**

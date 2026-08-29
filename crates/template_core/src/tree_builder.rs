@@ -9,11 +9,11 @@
 //! - **条件过滤** - 根据条件筛选文件
 //! - **WASM兼容** - 无文件系统依赖
 
-use std::collections::{HashMap, HashSet};
-use crate::tree::{TemplateFile, IncludeDependency};
-use crate::dependency_analyzer::TeraDependencyAnalyzer;
 use crate::conditions::ConditionsYaml;
+use crate::dependency_analyzer::TeraDependencyAnalyzer;
+use crate::tree::{IncludeDependency, TemplateFile};
 use crate::types::Variables;
+use std::collections::{HashMap, HashSet};
 
 /// 文件树构建器
 ///
@@ -122,8 +122,7 @@ impl TreeBuilder {
         if visiting.contains(file_path) {
             return Err(format!(
                 "检测到循环依赖: {} -> ... -> {}",
-                file_path,
-                file_path
+                file_path, file_path
             ));
         }
 
@@ -149,24 +148,12 @@ impl TreeBuilder {
 
         // 1. 先添加 extends 父模板（父模板优先）
         if let Some(ref parent_path) = deps.extends {
-            self.collect_dependencies(
-                parent_path,
-                file_map,
-                result,
-                visiting,
-                visited,
-            )?;
+            self.collect_dependencies(parent_path, file_map, result, visiting, visited)?;
         }
 
         // 2. 添加 import 宏文件
         for import_dep in &deps.imports {
-            self.collect_dependencies(
-                &import_dep.path,
-                file_map,
-                result,
-                visiting,
-                visited,
-            )?;
+            self.collect_dependencies(&import_dep.path, file_map, result, visiting, visited)?;
         }
 
         // 3. 添加 include 文件
@@ -180,18 +167,13 @@ impl TreeBuilder {
             for path in paths {
                 // 对于 Optional，如果文件不存在就跳过
                 if matches!(include_dep, IncludeDependency::Optional(_))
-                    && !file_map.contains_key(&path) {
+                    && !file_map.contains_key(&path)
+                {
                     continue;
                 }
 
                 if file_map.contains_key(&path) {
-                    self.collect_dependencies(
-                        &path,
-                        file_map,
-                        result,
-                        visiting,
-                        visited,
-                    )?;
+                    self.collect_dependencies(&path, file_map, result, visiting, visited)?;
                 }
             }
         }
@@ -255,88 +237,101 @@ impl TreeBuilder {
         files: Vec<TemplateFile>,
         variables: &Variables,
     ) -> Vec<TemplateFile> {
-        use std::collections::{HashMap, HashSet};
-
-        // 1. 构建 parent_id -> children_ids 的映射
-        let mut parent_to_children: HashMap<i64, Vec<i64>> = HashMap::new();
-        for file in &files {
-            if file.parent_id != 0 {
-                parent_to_children
-                    .entry(file.parent_id)
-                    .or_default()
-                    .push(file.id);
-            }
-        }
-
-        // 2. 收集所有需要过滤掉的节点 ID（包括子文件）
-        let mut filtered_ids: HashSet<i64> = HashSet::new();
-
-        for file in &files {
-            // 无条件的文件/目录始终包含
-            let condition = match &file.condition {
-                Some(cond) => cond,
-                None => {
-                    #[cfg(feature = "logging")]
-                    tracing::debug!("文件/目录无条件，包含: {}", file.file_path);
-                    continue;
-                }
-            };
-
-            // 评估条件
-            let should_generate = match condition.evaluate(variables.as_value()) {
-                Ok(result) => result,
-                Err(e) => {
-                    #[cfg(feature = "logging")]
-                    tracing::warn!(
-                        "文件/目录 {} 条件评估失败: {}, 将默认生成",
-                        file.file_path,
-                        e
-                    );
-                    true // 评估失败时默认生成
-                }
-            };
-
-            // 如果条件不满足，标记该节点及其所有子节点为过滤
-            if !should_generate {
-                #[cfg(feature = "logging")]
-                tracing::info!(
-                    "文件/目录 {} 被条件过滤 (条件: {:?}, 变量: {:?})",
-                    file.file_path,
-                    condition,
-                    variables.as_value()
-                );
-
-                // 递归收集所有子节点 ID
-                let mut to_visit = vec![file.id];
-                while let Some(current_id) = to_visit.pop() {
-                    filtered_ids.insert(current_id);
-                    if let Some(children) = parent_to_children.get(&current_id) {
-                        to_visit.extend(children);
-                    }
-                }
-            } else {
-                #[cfg(feature = "logging")]
-                tracing::debug!(
-                    "文件/目录 {} 条件评估通过，包含: {} (条件: {:?})",
-                    file.file_path,
-                    should_generate,
-                    condition
-                );
-            }
-        }
-
-        // 3. 过滤掉所有被标记的节点
-        files.into_iter()
-            .filter(|file| {
-                let included = !filtered_ids.contains(&file.id);
-                if !included {
-                    #[cfg(feature = "logging")]
-                    tracing::debug!("文件/目录 {} 被级联过滤", file.file_path);
-                }
-                included
-            })
-            .collect()
+        filter_files_by_conditions(files, variables)
     }
+}
+
+/// 按文件条件过滤文件树（服务端渲染、WASM、桌面端、CLI 共用的统一入口）
+///
+/// 语义：
+/// - 无条件 → 默认生成；条件评估失败 → 默认生成（fail-open）
+/// - 目录条件不满足 → 级联剔除其全部子节点
+pub fn filter_files_by_conditions(
+    files: Vec<TemplateFile>,
+    variables: &Variables,
+) -> Vec<TemplateFile> {
+    use std::collections::{HashMap, HashSet};
+
+    // 1. 构建 parent_id -> children_ids 的映射
+    let mut parent_to_children: HashMap<i64, Vec<i64>> = HashMap::new();
+    for file in &files {
+        if file.parent_id != 0 {
+            parent_to_children
+                .entry(file.parent_id)
+                .or_default()
+                .push(file.id);
+        }
+    }
+
+    // 2. 收集所有需要过滤掉的节点 ID（包括子文件）
+    let mut filtered_ids: HashSet<i64> = HashSet::new();
+
+    for file in &files {
+        // 无条件的文件/目录始终包含
+        let condition = match &file.condition {
+            Some(cond) => cond,
+            None => {
+                #[cfg(feature = "logging")]
+                tracing::debug!("文件/目录无条件，包含: {}", file.file_path);
+                continue;
+            }
+        };
+
+        // 评估条件
+        let should_generate = match condition.evaluate(variables.as_value()) {
+            Ok(result) => result,
+            Err(e) => {
+                #[cfg(feature = "logging")]
+                tracing::warn!(
+                    "文件/目录 {} 条件评估失败: {}, 将默认生成",
+                    file.file_path,
+                    e
+                );
+                true // 评估失败时默认生成
+            }
+        };
+
+        // 如果条件不满足，标记该节点及其所有子节点为过滤
+        if !should_generate {
+            #[cfg(feature = "logging")]
+            tracing::info!(
+                "文件/目录 {} 被条件过滤 (条件: {:?}, 变量: {:?})",
+                file.file_path,
+                condition,
+                variables.as_value()
+            );
+
+            // 递归收集所有子节点 ID
+            let mut to_visit = vec![file.id];
+            while let Some(current_id) = to_visit.pop() {
+                filtered_ids.insert(current_id);
+                if let Some(children) = parent_to_children.get(&current_id) {
+                    to_visit.extend(children);
+                }
+            }
+        } else {
+            #[cfg(feature = "logging")]
+            tracing::debug!(
+                "文件/目录 {} 条件评估通过，包含: {} (条件: {:?})",
+                file.file_path,
+                should_generate,
+                condition
+            );
+        }
+    }
+
+    // 3. 过滤掉所有被标记的节点
+    files
+        .into_iter()
+        .filter(|file| {
+            let included = !filtered_ids.contains(&file.id);
+            if !included {
+                #[cfg(feature = "logging")]
+                tracing::debug!("文件/目录 {} 被级联过滤", file.file_path);
+            }
+            included
+        })
+        .collect()
 }
 
 impl Default for TreeBuilder {
@@ -444,7 +439,9 @@ mod tests {
                 id: 1,
                 file_path: "child.html".to_string(),
                 file_name: "child.html".to_string(),
-                file_content: "{% extends \"parent.html\" %}\n{% block content %}Child{% endblock %}".to_string(),
+                file_content:
+                    "{% extends \"parent.html\" %}\n{% block content %}Child{% endblock %}"
+                        .to_string(),
                 is_directory: 0,
                 parent_id: 0,
                 filesize: 80,
@@ -459,7 +456,9 @@ mod tests {
                 id: 2,
                 file_path: "parent.html".to_string(),
                 file_name: "parent.html".to_string(),
-                file_content: "{% extends \"base.html\" %}\n{% block content %}Parent{% endblock %}".to_string(),
+                file_content:
+                    "{% extends \"base.html\" %}\n{% block content %}Parent{% endblock %}"
+                        .to_string(),
                 is_directory: 0,
                 parent_id: 0,
                 filesize: 80,
@@ -498,26 +497,23 @@ mod tests {
 
     #[test]
     fn test_auto_disabled() {
-        let builder = TreeBuilder::new()
-            .with_auto_resolve(false);
+        let builder = TreeBuilder::new().with_auto_resolve(false);
 
-        let files = vec![
-            TemplateFile {
-                id: 1,
-                file_path: "main.html".to_string(),
-                file_name: "main.html".to_string(),
-                file_content: "{% include \"header.html\" %}".to_string(),
-                is_directory: 0,
-                parent_id: 0,
-                filesize: 50,
-                extends: None,
-                includes: None,
-                imports: None,
-                condition: None,
-                is_dependency: false,
-                required_by: None,
-            },
-        ];
+        let files = vec![TemplateFile {
+            id: 1,
+            file_path: "main.html".to_string(),
+            file_name: "main.html".to_string(),
+            file_content: "{% include \"header.html\" %}".to_string(),
+            is_directory: 0,
+            parent_id: 0,
+            filesize: 50,
+            extends: None,
+            includes: None,
+            imports: None,
+            condition: None,
+            is_dependency: false,
+            required_by: None,
+        }];
 
         let result = builder.build_complete_tree(files).unwrap();
 

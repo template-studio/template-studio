@@ -51,11 +51,16 @@ export interface RenderEngine {
   /**
    * 批量渲染文件树
    *
+   * @param templateId - 模板 ID（后端引擎按它读取模板文件与 conditions.yml；WASM 引擎忽略此参数，以传入的 files 为准）
    * @param files - 模板文件列表
    * @param variables - 模板变量对象
    * @returns 每个文件的渲染结果（按顺序对应）
    */
-  renderTree(files: TemplateFile[], variables: Record<string, unknown>): Promise<RenderResult[]>;
+  renderTree(
+    templateId: number,
+    files: TemplateFile[],
+    variables: Record<string, unknown>
+  ): Promise<RenderResult[]>;
 
   /**
    * 获取引擎详细信息
@@ -105,6 +110,20 @@ export interface RenderError {
 export type RenderErrorType = 'syntax' | 'runtime' | 'network' | 'not_found' | 'unknown';
 
 /**
+ * 文件生成条件（与后端 template_core::Condition 的 serde 格式一致）
+ * type=if 时用 variable/operator/value；and/or 用 conditions 嵌套；not 用单元素 conditions；switch 用 cases
+ */
+export interface FileGenCondition {
+  type: 'if' | 'and' | 'or' | 'not' | 'switch';
+  variable?: string;
+  operator?: 'eq' | 'ne' | 'gt' | 'lt' | 'gte' | 'lte' | 'in' | 'notin' | 'contains';
+  value?: unknown;
+  conditions?: FileGenCondition[];
+  cases?: { value: unknown; description?: string }[];
+  description?: string;
+}
+
+/**
  * 模板文件定义
  */
 export interface TemplateFile {
@@ -116,6 +135,8 @@ export interface TemplateFile {
   type: TemplateFileType;
   /** 渲染条件表达式（可选） */
   condition?: string;
+  /** 文件生成条件（可选，结构与后端 template_core::Condition 一致；条件不满足时该文件及其子树不参与渲染） */
+  generateCondition?: FileGenCondition;
   /** 依赖的其他文件路径列表（可选） */
   dependencies?: string[];
   /** 是否为二进制文件 */

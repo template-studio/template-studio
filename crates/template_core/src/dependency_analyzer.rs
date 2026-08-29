@@ -11,8 +11,8 @@
 //! - **完整覆盖** - 支持 Tera 的所有文件依赖语法
 //! - **WASM兼容** - 无文件系统依赖
 
-use regex::Regex;
 use crate::tree::IncludeDependency;
+use regex::Regex;
 
 /// 文件依赖信息
 ///
@@ -54,14 +54,13 @@ impl TeraDependencyAnalyzer {
     pub fn new() -> Self {
         Self {
             // Extends 语句模式: {% extends "base.html" %}
-            extends_pattern: Regex::new(
-                r#"\{%\s*extends\s+"(?P<path>[^"]+)"\s*%\}"#
-            ).unwrap(),
+            extends_pattern: Regex::new(r#"\{%\s*extends\s+"(?P<path>[^"]+)"\s*%\}"#).unwrap(),
 
             // Import 语句模式: {% import "macros.html" as macros %}
             import_pattern: Regex::new(
-                r#"\{%\s*import\s+"(?P<path>[^"]+)"\s+as\s+(?P<name>\w+)\s*%\}"#
-            ).unwrap(),
+                r#"\{%\s*import\s+"(?P<path>[^"]+)"\s+as\s+(?P<name>\w+)\s*%\}"#,
+            )
+            .unwrap(),
         }
     }
 
@@ -92,10 +91,7 @@ impl TeraDependencyAnalyzer {
     /// assert_eq!(deps.imports.len(), 1);
     /// assert_eq!(deps.includes.len(), 1);
     /// ```
-    pub fn analyze(
-        &self,
-        file_content: &str,
-    ) -> Result<FileDependencies, String> {
+    pub fn analyze(&self, file_content: &str) -> Result<FileDependencies, String> {
         let mut deps = FileDependencies::default();
 
         // 1. 解析 extends
@@ -110,25 +106,26 @@ impl TeraDependencyAnalyzer {
 
         // 2. 解析 include - 使用更精确的正则，避免重复匹配
         // 先匹配带 ignore missing 的
-        let include_ignore_missing = Regex::new(
-            r#"\{%\s*include\s+"(?P<path>[^"]+)"\s+ignore\s+missing\s*%\}"#
-        ).unwrap();
+        let include_ignore_missing =
+            Regex::new(r#"\{%\s*include\s+"(?P<path>[^"]+)"\s+ignore\s+missing\s*%\}"#).unwrap();
 
         // 单个文件（带 ignore missing）
         for caps in include_ignore_missing.captures_iter(file_content) {
             if let Some(path) = caps.name("path") {
-                deps.includes.push(IncludeDependency::Optional(path.as_str().to_string()));
+                deps.includes
+                    .push(IncludeDependency::Optional(path.as_str().to_string()));
             }
         }
 
         // 多候选项
-        let include_multiple = Regex::new(
-            r#"\{%\s*include\s+\[(?P<paths>[^\]]+)\](?:\s+ignore\s+missing)?\s*%\}"#
-        ).unwrap();
+        let include_multiple =
+            Regex::new(r#"\{%\s*include\s+\[(?P<paths>[^\]]+)\](?:\s+ignore\s+missing)?\s*%\}"#)
+                .unwrap();
 
         for caps in include_multiple.captures_iter(file_content) {
             if let Some(paths) = caps.name("paths") {
-                let paths: Vec<String> = paths.as_str()
+                let paths: Vec<String> = paths
+                    .as_str()
                     .split(',')
                     .map(|s| s.trim().trim_matches('"').trim_matches('\'').to_string())
                     .collect();
@@ -139,7 +136,8 @@ impl TeraDependencyAnalyzer {
 
                 if has_ignore_missing {
                     // 整个列表是可选的
-                    deps.includes.push(IncludeDependency::Optional(paths.join(", ")));
+                    deps.includes
+                        .push(IncludeDependency::Optional(paths.join(", ")));
                 } else {
                     deps.includes.push(IncludeDependency::Multiple(paths));
                 }
@@ -147,16 +145,15 @@ impl TeraDependencyAnalyzer {
         }
 
         // 单个文件（不带 ignore missing，且不在数组中）
-        let include_single = Regex::new(
-            r#"\{%\s*include\s+"(?P<path>[^"]+)"\s*%\}"#
-        ).unwrap();
+        let include_single = Regex::new(r#"\{%\s*include\s+"(?P<path>[^"]+)"\s*%\}"#).unwrap();
 
         for caps in include_single.captures_iter(file_content) {
             if let Some(path) = caps.name("path") {
                 // 确保不是前面已经匹配过的
                 let full_match = caps.get(0).map(|m| m.as_str()).unwrap_or("");
                 if !full_match.contains("ignore") && !full_match.contains('[') {
-                    deps.includes.push(IncludeDependency::Single(path.as_str().to_string()));
+                    deps.includes
+                        .push(IncludeDependency::Single(path.as_str().to_string()));
                 }
             }
         }
@@ -165,10 +162,7 @@ impl TeraDependencyAnalyzer {
         for caps in self.import_pattern.captures_iter(file_content) {
             let path = caps.name("path").unwrap().as_str().to_string();
             let namespace = caps.name("name").unwrap().as_str().to_string();
-            deps.imports.push(ImportDependency {
-                path,
-                namespace,
-            });
+            deps.imports.push(ImportDependency { path, namespace });
         }
 
         Ok(deps)

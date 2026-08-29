@@ -75,10 +75,11 @@ export class RenderService {
    * 批量渲染文件树
    */
   async renderTree(
+    templateId: number,
     files: TemplateFile[],
     variables: Record<string, unknown>
   ): Promise<RenderResult[]> {
-    return this.manager.renderTree(files, variables);
+    return this.manager.renderTree(templateId, files, variables);
   }
 
   /**

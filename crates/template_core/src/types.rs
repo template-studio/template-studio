@@ -68,7 +68,10 @@ impl RenderError {
             line: None,
             column: None,
             context: None,
-            suggestion: Some(format!("检查变量名 `{}` 是否正确，确保变量在上下文中已定义", var_name)),
+            suggestion: Some(format!(
+                "检查变量名 `{}` 是否正确，确保变量在上下文中已定义",
+                var_name
+            )),
         }
     }
 

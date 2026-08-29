@@ -3,8 +3,8 @@
 //! - Native 平台：使用 rayon 多线程并行渲染
 //! - WASM 平台：降级到单线程串行渲染
 
-use crate::{RenderedFile, TemplateFile, Variables};
 use crate::tree::render_single_file;
+use crate::{RenderedFile, TemplateFile, Variables};
 
 #[cfg(feature = "native")]
 use rayon::prelude::*;
@@ -80,25 +80,24 @@ fn render_tree_parallel(
 
     // 并行渲染（直接使用引用，rayon 会自动处理生命周期）
     let results: Vec<_> = files
-        .into_par_iter()  // 并行迭代器
+        .into_par_iter() // 并行迭代器
         .map(|file| {
-            render_single_file(&file, variables, all_templates)
-                .unwrap_or_else(|e| {
-                    #[cfg(feature = "logging")]
-                    tracing::error!("Failed to render file {:?}: {}", file.file_name, e);
+            render_single_file(&file, variables, all_templates).unwrap_or_else(|e| {
+                #[cfg(feature = "logging")]
+                tracing::error!("Failed to render file {:?}: {}", file.file_name, e);
 
-                    // 返回错误结果
-                    RenderedFile {
-                        id: file.id,
-                        file_path: file.file_path.clone(),
-                        file_name: file.file_name.clone(),
-                        file_content: None,
-                        is_directory: file.is_directory,
-                        filesize: 0,
-                        parent_id: file.parent_id,
-                        error: Some(e),
-                    }
-                })
+                // 返回错误结果
+                RenderedFile {
+                    id: file.id,
+                    file_path: file.file_path.clone(),
+                    file_name: file.file_name.clone(),
+                    file_content: None,
+                    is_directory: file.is_directory,
+                    filesize: 0,
+                    parent_id: file.parent_id,
+                    error: Some(e),
+                }
+            })
         })
         .collect();
 
@@ -160,7 +159,7 @@ mod tests {
                 id: i as i64,
                 file_path: format!("test{}.txt", i),
                 file_name: format!("test{}.txt", i),
-                file_content: "Value: {{x}}".to_string(),  // MiniJinja 模板语法
+                file_content: "Value: {{x}}".to_string(), // MiniJinja 模板语法
                 is_directory: 0,
                 parent_id: 0,
                 filesize: 20,
@@ -184,7 +183,7 @@ mod tests {
 
         assert_eq!(results.len(), 10);
         for result in results {
-            assert!(result.error.is_none());  // 修复：检查 error 字段而不是 success()
+            assert!(result.error.is_none()); // 修复：检查 error 字段而不是 success()
             assert_eq!(result.file_content, Some("Value: 42".to_string()));
         }
     }
@@ -192,7 +191,7 @@ mod tests {
     #[test]
     fn test_small_batch_uses_sequential() {
         // 小批量（< 50）应该使用串行
-        let files = create_test_files(10);  // 10 < 50，应该串行
+        let files = create_test_files(10); // 10 < 50，应该串行
         let variables = Variables::from_json(r#"{"x": 42}"#).unwrap();
         let templates = std::collections::HashMap::new();
 
@@ -206,7 +205,7 @@ mod tests {
     #[test]
     fn test_large_batch_uses_parallel() {
         // 大批量（>= 50）应该使用并行
-        let files = create_test_files(100);  // 100 >= 50，应该并行
+        let files = create_test_files(100); // 100 >= 50，应该并行
         let variables = Variables::from_json(r#"{"x": 42}"#).unwrap();
         let templates = std::collections::HashMap::new();
 
@@ -247,6 +246,6 @@ mod tests {
 
         // 检查错误文件
         let error_file = results.iter().find(|f| f.file_name == "error.txt").unwrap();
-        assert!(error_file.error.is_some());  // 修复：检查 error 字段
+        assert!(error_file.error.is_some()); // 修复：检查 error 字段
     }
 }

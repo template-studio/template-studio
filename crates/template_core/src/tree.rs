@@ -8,10 +8,10 @@
 //! - **纯函数设计** - 易于测试和WASM编译
 //! - **容错处理** - 单个文件渲染失败不影响其他文件
 
-use serde::{Deserialize, Serialize};
-use crate::types::{RenderError, Variables};
-use crate::render_string;
 use crate::conditions::Condition;
+use crate::render_string;
+use crate::types::{RenderError, Variables};
+use serde::{Deserialize, Serialize};
 
 /// Include 依赖类型
 ///
@@ -56,7 +56,6 @@ pub struct TemplateFile {
     pub filesize: i32,
 
     // ==================== 新增：依赖关系字段 ====================
-
     /// 继承的父模板路径（extends）: {% extends "base.html" %}
     #[serde(skip_serializing_if = "Option::is_none")]
     pub extends: Option<String>,
@@ -271,15 +270,13 @@ pub(crate) fn render_single_file(
     // 检查渲染是否成功
     if !render_result.success {
         // 返回错误信息
-        return Err(render_result.error.unwrap_or_else(|| {
-            RenderError {
-                error_type: "render_error".to_string(),
-                message: "Unknown rendering error".to_string(),
-                line: None,
-                column: None,
-                context: None,
-                suggestion: None,
-            }
+        return Err(render_result.error.unwrap_or_else(|| RenderError {
+            error_type: "render_error".to_string(),
+            message: "Unknown rendering error".to_string(),
+            line: None,
+            column: None,
+            context: None,
+            suggestion: None,
         }));
     }
 
@@ -304,23 +301,21 @@ mod tests {
 
     #[test]
     fn test_render_single_file() {
-        let files = vec![
-            TemplateFile {
-                id: 1,
-                file_path: "README.md".to_string(),
-                file_name: "README.md".to_string(),
-                file_content: "# {{ projectName }}".to_string(),
-                is_directory: 0,
-                parent_id: 0,
-                filesize: 20,
-                extends: None,
-                includes: None,
-                imports: None,
-                condition: None,
-                is_dependency: false,
-                required_by: None,
-            }
-        ];
+        let files = vec![TemplateFile {
+            id: 1,
+            file_path: "README.md".to_string(),
+            file_name: "README.md".to_string(),
+            file_content: "# {{ projectName }}".to_string(),
+            is_directory: 0,
+            parent_id: 0,
+            filesize: 20,
+            extends: None,
+            includes: None,
+            imports: None,
+            condition: None,
+            is_dependency: false,
+            required_by: None,
+        }];
 
         let variables = Variables::from_json(r#"{"projectName": "test"}"#).unwrap();
         let result = render_tree(files, &variables).unwrap();
@@ -332,23 +327,21 @@ mod tests {
 
     #[test]
     fn test_render_directory() {
-        let files = vec![
-            TemplateFile {
-                id: 1,
-                file_path: "src".to_string(),
-                file_name: "src".to_string(),
-                file_content: "".to_string(),
-                is_directory: 1,
-                parent_id: 0,
-                filesize: 0,
-                extends: None,
-                includes: None,
-                imports: None,
-                condition: None,
-                is_dependency: false,
-                required_by: None,
-            }
-        ];
+        let files = vec![TemplateFile {
+            id: 1,
+            file_path: "src".to_string(),
+            file_name: "src".to_string(),
+            file_content: "".to_string(),
+            is_directory: 1,
+            parent_id: 0,
+            filesize: 0,
+            extends: None,
+            includes: None,
+            imports: None,
+            condition: None,
+            is_dependency: false,
+            required_by: None,
+        }];
 
         let variables = Variables::from_json(r#"{}"#).unwrap();
         let result = render_tree(files, &variables).unwrap();
@@ -361,23 +354,21 @@ mod tests {
     #[test]
     fn test_render_with_error() {
         // 测试语法错误的情况
-        let files = vec![
-            TemplateFile {
-                id: 1,
-                file_path: "test.txt".to_string(),
-                file_name: "test.txt".to_string(),
-                file_content: "Hello {{ undefined_var }!".to_string(), // 语法错误：缺少右括号
-                is_directory: 0,
-                parent_id: 0,
-                filesize: 30,
-                extends: None,
-                includes: None,
-                imports: None,
-                condition: None,
-                is_dependency: false,
-                required_by: None,
-            }
-        ];
+        let files = vec![TemplateFile {
+            id: 1,
+            file_path: "test.txt".to_string(),
+            file_name: "test.txt".to_string(),
+            file_content: "Hello {{ undefined_var }!".to_string(), // 语法错误：缺少右括号
+            is_directory: 0,
+            parent_id: 0,
+            filesize: 30,
+            extends: None,
+            includes: None,
+            imports: None,
+            condition: None,
+            is_dependency: false,
+            required_by: None,
+        }];
 
         let variables = Variables::from_json(r#"{}"#).unwrap();
         let result = render_tree(files, &variables).unwrap();
@@ -390,23 +381,21 @@ mod tests {
 
     #[test]
     fn test_render_file_name_and_path() {
-        let files = vec![
-            TemplateFile {
-                id: 1,
-                file_path: "src/{{ language }}/main.go".to_string(),
-                file_name: "main.{{ ext }}".to_string(),
-                file_content: "package main".to_string(),
-                is_directory: 0,
-                parent_id: 0,
-                filesize: 20,
-                extends: None,
-                includes: None,
-                imports: None,
-                condition: None,
-                is_dependency: false,
-                required_by: None,
-            }
-        ];
+        let files = vec![TemplateFile {
+            id: 1,
+            file_path: "src/{{ language }}/main.go".to_string(),
+            file_name: "main.{{ ext }}".to_string(),
+            file_content: "package main".to_string(),
+            is_directory: 0,
+            parent_id: 0,
+            filesize: 20,
+            extends: None,
+            includes: None,
+            imports: None,
+            condition: None,
+            is_dependency: false,
+            required_by: None,
+        }];
 
         let variables = Variables::from_json(r#"{"language": "go", "ext": "go"}"#).unwrap();
         let result = render_tree(files, &variables).unwrap();
@@ -430,7 +419,8 @@ mod tests {
 <body>
     {% block content %}{% endblock %}
 </body>
-</html>"#.to_string(),
+</html>"#
+                    .to_string(),
                 is_directory: 0,
                 parent_id: 0,
                 filesize: 100,
@@ -451,7 +441,8 @@ mod tests {
 
 {% block content %}
     <h1>欢迎</h1>
-{% endblock %}"#.to_string(),
+{% endblock %}"#
+                    .to_string(),
                 is_directory: 0,
                 parent_id: 0,
                 filesize: 100,
@@ -461,7 +452,7 @@ mod tests {
                 condition: None,
                 is_dependency: false,
                 required_by: None,
-            }
+            },
         ];
 
         let variables = Variables::from_json(r#"{}"#).unwrap();

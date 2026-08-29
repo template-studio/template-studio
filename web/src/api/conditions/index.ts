@@ -104,7 +104,7 @@ export const Operators = {
   GTE: 'gte', // 大于等于
   LTE: 'lte', // 小于等于
   IN: 'in', // 包含于
-  NOT_IN: 'not_in', // 不包含于
+  NOT_IN: 'notin', // 不包含于（与后端 serde 的 lowercase 规范一致，勿写成 not_in）
   CONTAINS: 'contains', // 包含字符串
 };
 

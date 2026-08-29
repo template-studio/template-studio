@@ -55,57 +55,45 @@
 //! let rendered = render_tree(tree, &variables).unwrap();
 //! ```
 
-mod engine;
-mod filters;
-mod types;
 mod builtin;
-mod parallel;  // 批量渲染优化
-pub mod tree;
 pub mod conditions;
 pub mod dependency_analyzer;
+mod engine;
+mod filters;
+mod parallel; // 批量渲染优化
+pub mod tree;
 pub mod tree_builder;
+mod types;
 
 // 重新导出公共类型
-pub use types::{RenderResult, RenderError, Variables, FilterInfo};
+pub use types::{FilterInfo, RenderError, RenderResult, Variables};
 
 // 导出文件树渲染相关类型和函数
-pub use tree::{TemplateFile, RenderedFile, render_tree, IncludeDependency};
+pub use tree::{render_tree, IncludeDependency, RenderedFile, TemplateFile};
 
 // 导出批量渲染
 pub use parallel::render_tree_batch;
 
 // 导出依赖分析相关类型和函数
-pub use dependency_analyzer::{
-    TeraDependencyAnalyzer,
-    FileDependencies,
-    ImportDependency,
-};
+pub use dependency_analyzer::{FileDependencies, ImportDependency, TeraDependencyAnalyzer};
 
 // 导出树构建器相关类型和函数
+pub use tree_builder::filter_files_by_conditions;
 pub use tree_builder::TreeBuilder;
 
 // 导出条件管理相关类型和函数
 pub use conditions::{
-    ConditionType,
-    Operator,
-    SwitchCase,
-    Condition,
-    FileCondition,
-    ConditionsYaml,
+    Condition, ConditionType, ConditionsYaml, FileCondition, Operator, SwitchCase,
 };
 
 // 导出内置函数相关类型和函数
 pub use builtin::{
-    BuiltinFunctionCategory,
-    BuiltinFunction,
-    BuiltinFunctionParam,
-    BuiltinFunctionsResponse,
-    get_builtin_function_categories,
-    get_builtin_functions_response,
+    get_builtin_function_categories, get_builtin_functions_response, BuiltinFunction,
+    BuiltinFunctionCategory, BuiltinFunctionParam, BuiltinFunctionsResponse,
 };
 
 // 导出渲染函数
-pub use engine::{render_string, clear_template_cache, get_cache_size};
+pub use engine::{clear_template_cache, get_cache_size, render_string};
 
 /// 预注册所有内置过滤器和函数
 ///

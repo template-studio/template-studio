@@ -226,12 +226,21 @@ export class BackendEngine implements RenderEngine {
 
   /**
    * 批量渲染文件树
+   *
+   * 后端 preview-tree 接口按 templateId 从存储读取模板文件与 conditions.yml
+   * 并在服务端完成条件过滤，因此这里只传 templateId 与变量；
+   * 返回结果与服务端渲染出的文件树对应（与入参 files 无对应关系）
    */
   async renderTree(
-    files: TemplateFile[],
+    templateId: number,
+    _files: TemplateFile[],
     variables: Record<string, unknown>
   ): Promise<RenderResult[]> {
     const startTime = performance.now();
+
+    const failAll = (type: 'network' | 'runtime', message: string): RenderResult[] => [
+      { path: '', content: '', success: false, error: { type, message }, duration: Math.round(performance.now() - startTime) },
+    ];
 
     try {
       const response = await fetch(`${this.baseUrl}/template-files/preview-tree`, {
@@ -240,14 +249,7 @@ export class BackendEngine implements RenderEngine {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          files: files.map((f) => ({
-            file_path: f.path,
-            file_name: f.path.split('/').pop() || f.path,
-            file_content: f.content,
-            is_directory: 0,
-            parent_id: 0,
-            filesize: f.content.length,
-          })),
+          templateId,
           variables,
         }),
       });
@@ -255,63 +257,46 @@ export class BackendEngine implements RenderEngine {
       const duration = Math.round(performance.now() - startTime);
 
       if (!response.ok) {
-        return files.map(() => ({
-          content: '',
-          success: false,
-          error: {
-            type: 'network',
-            message: `HTTP error: ${response.status} ${response.statusText}`,
-          },
-          duration,
-        }));
+        return failAll('network', `HTTP error: ${response.status} ${response.statusText}`);
       }
 
       const result = await response.json();
 
       if (result.code !== 0) {
-        return files.map(() => ({
-          content: '',
-          success: false,
-          error: {
-            type: 'runtime',
-            message: result.message || 'Unknown error',
-          },
-          duration,
-        }));
+        return failAll('runtime', result.message || 'Unknown error');
       }
 
-      // 转换后端响应格式
-      const renderedFiles = result.data || [];
+      // 后端返回嵌套树（data.tree，camelCase 字段），递归展平为渲染结果列表
+      const tree: any[] = result.data?.tree || [];
+      const flattened: any[] = [];
+      const walk = (nodes: any[]) => {
+        for (const n of nodes) {
+          flattened.push(n);
+          if (Array.isArray(n.children)) walk(n.children);
+        }
+      };
+      walk(tree);
 
-      return files.map((file, index) => {
-        const rendered = renderedFiles[index];
-        return {
-          path: file.path,
-          content: rendered?.file_content || '',
-          success: !rendered?.error,
-          error: rendered?.error
-            ? {
-                type: 'runtime' as const,
-                message: rendered.error.message || 'Render error',
-                line: rendered.error.line,
-                column: rendered.error.column,
-                context: rendered.error.context,
-              }
-            : undefined,
-          duration,
-        };
-      });
-    } catch (error) {
-      const duration = Math.round(performance.now() - startTime);
-      return files.map(() => ({
-        content: '',
-        success: false,
-        error: {
-          type: 'network',
-          message: error instanceof Error ? error.message : 'Network error',
-        },
+      return flattened.map((node) => ({
+        path: node.filePath || '',
+        content: node.fileContent || '',
+        success: !node.renderError,
+        error: node.renderError
+          ? {
+              type: 'runtime' as const,
+              message: node.renderError.message || 'Render error',
+              line: node.renderError.line,
+              column: node.renderError.column,
+              context: node.renderError.context,
+            }
+          : undefined,
         duration,
       }));
+    } catch (error) {
+      return failAll(
+        'network',
+        error instanceof Error ? error.message : 'Network error'
+      );
     }
   }
 

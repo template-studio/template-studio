@@ -1,10 +1,10 @@
 //! 自定义过滤器（MiniJinja 版本）
 
-use minijinja::{Value, Error as MiniError, ErrorKind};
+use minijinja::{Error as MiniError, ErrorKind, Value};
 
 /// Base64 编码过滤器
 fn base64_encode(value: &Value, _args: &[Value]) -> Result<Value, MiniError> {
-    use base64::{Engine as _, engine::general_purpose};
+    use base64::{engine::general_purpose, Engine as _};
 
     // 检查是否为 undefined
     if value.is_undefined() || value.is_none() {
@@ -25,7 +25,7 @@ fn base64_encode(value: &Value, _args: &[Value]) -> Result<Value, MiniError> {
 
 /// Base64 解码过滤器
 fn base64_decode(value: &Value, _args: &[Value]) -> Result<Value, MiniError> {
-    use base64::{Engine as _, engine::general_purpose};
+    use base64::{engine::general_purpose, Engine as _};
 
     if value.is_undefined() || value.is_none() {
         return Ok(Value::from(""));
@@ -34,12 +34,10 @@ fn base64_decode(value: &Value, _args: &[Value]) -> Result<Value, MiniError> {
     // 只处理字符串类型
     if let Some(s) = value.as_str() {
         match general_purpose::STANDARD.decode(s) {
-            Ok(bytes) => {
-                match String::from_utf8(bytes) {
-                    Ok(decoded) => Ok(Value::from(decoded)),
-                    Err(_) => Ok(Value::from(format!("<binary data: {} bytes>", s.len()))),
-                }
-            }
+            Ok(bytes) => match String::from_utf8(bytes) {
+                Ok(decoded) => Ok(Value::from(decoded)),
+                Err(_) => Ok(Value::from(format!("<binary data: {} bytes>", s.len()))),
+            },
             Err(e) => Ok(Value::from(format!("<base64 decode error: {}>", e))),
         }
     } else {
@@ -64,7 +62,8 @@ fn url_encode(value: &Value, _args: &[Value]) -> Result<Value, MiniError> {
     }
 
     let s = value.to_string();
-    let encoded = percent_encoding::utf8_percent_encode(&s, percent_encoding::NON_ALPHANUMERIC).to_string();
+    let encoded =
+        percent_encoding::utf8_percent_encode(&s, percent_encoding::NON_ALPHANUMERIC).to_string();
     Ok(Value::from(encoded))
 }
 
@@ -221,10 +220,10 @@ pub(super) fn register_all_filters(env: &mut minijinja::Environment<'_>) {
     env.add_filter("base64_decode", base64_decode);
     env.add_filter("json_encode", json_encode);
     env.add_filter("url_encode", url_encode);
-    env.add_filter("upper", uppercase);  // MiniJinja 内置的是 upper，但我们还是注册
-    env.add_filter("uppercase", uppercase);  // 兼容 Tera
+    env.add_filter("upper", uppercase); // MiniJinja 内置的是 upper，但我们还是注册
+    env.add_filter("uppercase", uppercase); // 兼容 Tera
     env.add_filter("lower", lowercase);
-    env.add_filter("lowercase", lowercase);  // 兼容 Tera
+    env.add_filter("lowercase", lowercase); // 兼容 Tera
     env.add_filter("reverse", reverse);
     env.add_filter("length", length);
     env.add_filter("truncate", truncate);
@@ -258,7 +257,10 @@ fn convert_minijinja_to_json(value: &Value) -> Result<serde_json::Value, MiniErr
                 return Ok(serde_json::Value::Number(n));
             }
         }
-        return Err(MiniError::new(ErrorKind::BadSerialization, "Cannot convert number"));
+        return Err(MiniError::new(
+            ErrorKind::BadSerialization,
+            "Cannot convert number",
+        ));
     }
 
     // 处理字符串
@@ -268,9 +270,7 @@ fn convert_minijinja_to_json(value: &Value) -> Result<serde_json::Value, MiniErr
 
     // 处理数组/序列
     if let Ok(iter) = value.try_iter() {
-        let vec: Result<Vec<_>, _> = iter
-            .map(|v| convert_minijinja_to_json(&v))
-            .collect();
+        let vec: Result<Vec<_>, _> = iter.map(|v| convert_minijinja_to_json(&v)).collect();
         return Ok(serde_json::Value::Array(vec?));
     }
 
@@ -292,6 +292,9 @@ fn convert_minijinja_to_json(value: &Value) -> Result<serde_json::Value, MiniErr
     // 尝试通过序列化转换其他类型
     match serde_json::to_value(value.to_string()) {
         Ok(v) => Ok(v),
-        Err(_) => Err(MiniError::new(ErrorKind::BadSerialization, "Cannot convert value")),
+        Err(_) => Err(MiniError::new(
+            ErrorKind::BadSerialization,
+            "Cannot convert value",
+        )),
     }
 }

@@ -169,6 +169,7 @@ export function useRenderService(options: UseRenderServiceOptions = {}): UseRend
    * 批量渲染文件树
    */
   async function renderTree(
+    templateId: number,
     files: TemplateFile[],
     variables: Record<string, unknown>
   ): Promise<RenderResult[]> {
@@ -176,7 +177,7 @@ export function useRenderService(options: UseRenderServiceOptions = {}): UseRend
       await initialize();
     }
 
-    return service.renderTree(files, variables);
+    return service.renderTree(templateId, files, variables);
   }
 
   /**
