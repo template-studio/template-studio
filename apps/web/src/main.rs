@@ -234,7 +234,11 @@ async fn main() -> anyhow::Result<()> {
     // 启动文件系统监听（监听 templates 目录）
     let templates_cache = template_render_service.get_cache();
     let templates_path = config.storage.base_path.join("templates");
-    match file_watcher::start_file_watcher(templates_path, templates_cache) {
+    match file_watcher::start_file_watcher(
+        templates_path,
+        templates_cache,
+        tokio::runtime::Handle::current(),
+    ) {
         Ok(_) => info!("文件系统监听已启动"),
         Err(e) => warn!("文件系统监听启动失败: {}", e),
     }

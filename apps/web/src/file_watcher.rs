@@ -17,13 +17,20 @@ use tracing::{debug, error, info};
 ///
 /// * `templates_path` - templates 目录路径
 /// * `cache` - 依赖树缓存实例
+/// * `runtime_handle` - Tokio 运行时句柄（监听线程非 runtime 线程，
+///   异步缓存失效必须经 handle 派发，直接 tokio::spawn 会 panic）
 pub fn start_file_watcher(
     templates_path: PathBuf,
     cache: Arc<Mutex<DependencyTreeCache>>,
+    runtime_handle: tokio::runtime::Handle,
 ) -> NotifyResult<()> {
     use notify::recommended_watcher;
 
     info!("启动文件系统监听: {:?}", templates_path);
+
+    // 规范化为绝对路径：notify 返回的事件路径是绝对路径，
+    // 用相对路径做前缀匹配会失配导致所有事件被静默过滤
+    let templates_path = std::fs::canonicalize(&templates_path).unwrap_or(templates_path);
 
     // 创建通道
     let (tx, rx) = std::sync::mpsc::channel();
@@ -34,20 +41,25 @@ pub fn start_file_watcher(
     // 监听 templates 目录
     watcher.watch(&templates_path, RecursiveMode::Recursive)?;
 
-    // 在独立线程中处理事件
+    // 在独立线程中处理事件。
+    // watcher 必须 move 进线程并保持存活：watcher 被 drop 时监听随之停止，
+    // 留在当前函数作用域会导致函数返回后监听静默失效
     std::thread::spawn(move || {
+        let _watcher = watcher;
         info!("文件系统监听线程已启动");
 
         for event in rx {
             match event {
                 Ok(event) => {
-                    handle_file_event(event, &templates_path, cache.clone());
+                    handle_file_event(event, &templates_path, cache.clone(), &runtime_handle);
                 }
                 Err(e) => {
                     error!("文件监听错误: {:?}", e);
                 }
             }
         }
+
+        info!("文件系统监听线程退出");
     });
 
     info!("文件系统监听已设置");
@@ -60,6 +72,7 @@ fn handle_file_event(
     event: Event,
     templates_path: &PathBuf,
     cache: Arc<Mutex<DependencyTreeCache>>,
+    runtime_handle: &tokio::runtime::Handle,
 ) {
     // 过滤非目标事件
     let relevant = event.paths.iter().any(|path| {
@@ -88,6 +101,7 @@ fn handle_file_event(
                         path.clone(),
                         &event.kind,
                         cache.clone(),
+                        runtime_handle,
                     );
                 }
             }
@@ -101,6 +115,7 @@ fn handle_template_file_change(
     file_path: PathBuf,
     event_kind: &EventKind,
     cache: Arc<Mutex<DependencyTreeCache>>,
+    runtime_handle: &tokio::runtime::Handle,
 ) {
     // 判断是否是需要处理的事件
     let should_invalidate = match event_kind {
@@ -120,8 +135,8 @@ fn handle_template_file_change(
     };
 
     if should_invalidate {
-        // 使用 tokio 运行时来异步处理缓存失效
-        tokio::spawn(async move {
+        // 监听线程不在 Tokio runtime 上下文中，必须经 handle 派发异步任务
+        runtime_handle.spawn(async move {
             let mut cache = cache.lock().await;
             cache.invalidate(template_id);
             info!(
