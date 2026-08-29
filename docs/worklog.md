@@ -196,3 +196,11 @@
 **涉及文件：** `crates/template_core/src/engine.rs`、`crates/template_core/Cargo.toml`、`apps/web/src/handlers/template_files.rs`
 
 **验收结果：** 新增专项单测（命中不新增条目、继承跨命中正确、内容变化自失效、清空生效），crate 总测试 47+6 全过；WASM 重建后浏览器实测连续三次整树渲染继承全部正确且 get_cache_size 稳定为 1（缓存真实命中）；服务端重启后正常渲染。
+
+## 2026-08-29 引擎修复（继承分析项 2/4）：双键注册与全文件继承
+
+**变更内容：** 落实分析文档 §3.1/§3.2。`render_tree` 的模板映射改为双键注册：file_path 相对路径为主键（`extends "layouts/base.html"` 路径引用三端可解析，跨目录同名文件天然消歧），basename 为兼容键且仅在全树唯一时注册（保持简写可用，同名冲突时明确失败而非旧的随机覆盖）；`render_single_file` 移除 .html/.htm 分流，所有文件统一走支持继承的渲染（`.j2/.md/.txt` 中的 extends/include 可用），性能由上一项的环境缓存吸收。新增 3 个单测（路径+basename 双引用、同名消歧、非 HTML 继承）。
+
+**涉及文件：** `crates/template_core/src/tree.rs`
+
+**验收结果：** crate 总测试 50+6 全过；WASM 重建后浏览器复验当初失败场景——路径引用 `extends "layouts/base.html"` 现输出 `<html>B</html>`（修复前 template not found）、basename 简写保持可用、`.txt` 文件 include HTML 片段正常；服务端已重启同步生效。

@@ -209,12 +209,32 @@ pub fn render_tree(
     tree: Vec<TemplateFile>,
     variables: &Variables,
 ) -> Result<Vec<RenderedFile>, RenderError> {
-    // 构建所有模板文件的映射（用于模板继承）
-    let all_templates: std::collections::HashMap<String, String> = tree
+    // 构建所有模板文件的映射（用于模板继承），采用双键注册：
+    // - file_path 相对路径为主键：`{% extends "layouts/base.html" %}` 按路径引用可解析，
+    //   跨目录同名文件天然消歧
+    // - file_name（basename）为兼容键，仅在全树唯一时注册：保持 `extends "base.html"`
+    //   这种简写可用；同名冲突时跳过（明确报找不到，优于旧的随机覆盖）
+    let content_files: Vec<&TemplateFile> = tree
         .iter()
         .filter(|f| f.is_directory == 0 && !f.file_content.is_empty())
-        .map(|f| (f.file_name.clone(), f.file_content.clone()))
         .collect();
+
+    let mut basename_counts: std::collections::HashMap<&str, usize> =
+        std::collections::HashMap::new();
+    for f in &content_files {
+        *basename_counts.entry(f.file_name.as_str()).or_insert(0) += 1;
+    }
+
+    let mut all_templates: std::collections::HashMap<String, String> =
+        std::collections::HashMap::with_capacity(content_files.len() * 2);
+    for f in &content_files {
+        all_templates.insert(f.file_path.clone(), f.file_content.clone());
+        if basename_counts[f.file_name.as_str()] == 1 {
+            all_templates
+                .entry(f.file_name.clone())
+                .or_insert_with(|| f.file_content.clone());
+        }
+    }
 
     // 使用批量渲染（自动选择最优策略：Native 并行 / WASM 串行）
     let results = crate::parallel::render_tree_batch(tree, variables, &all_templates);
@@ -257,15 +277,10 @@ pub(crate) fn render_single_file(
         });
     }
 
-    // 渲染文件内容
-    // 检查是否是 HTML 模板文件，如果是则使用支持继承的渲染
-    let render_result = if file.file_name.ends_with(".html") || file.file_name.ends_with(".htm") {
-        // HTML 文件：使用支持模板继承的渲染（传递所有模板）
-        render_string(&file.file_content, variables, Some(all_templates))?
-    } else {
-        // 普通文件：使用简单渲染（不传递模板）
-        render_string(&file.file_content, variables, None)?
-    };
+    // 渲染文件内容：所有文件统一走支持继承的渲染（传递整棵模板树）。
+    // MiniJinja 对任意模板支持 extends/include 语法，不再按 .html 扩展名分流；
+    // 性能由引擎侧的环境缓存（模板集哈希复用）吸收
+    let render_result = render_string(&file.file_content, variables, Some(all_templates))?;
 
     // 检查渲染是否成功
     if !render_result.success {
@@ -298,6 +313,102 @@ pub(crate) fn render_single_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn mk_file(id: i64, path: &str, content: &str) -> TemplateFile {
+        TemplateFile {
+            id,
+            file_path: path.to_string(),
+            file_name: path.rsplit('/').next().unwrap_or(path).to_string(),
+            file_content: content.to_string(),
+            is_directory: 0,
+            parent_id: 0,
+            filesize: content.len() as i32,
+            extends: None,
+            includes: None,
+            imports: None,
+            condition: None,
+            is_dependency: false,
+            required_by: None,
+        }
+    }
+
+    #[test]
+    fn test_inheritance_by_path_and_basename() {
+        let vars = crate::types::Variables::from_json("{}").unwrap();
+        let tree = vec![
+            mk_file(1, "layouts/base.html", "<b>{% block c %}{% endblock %}</b>"),
+            mk_file(
+                2,
+                "pages/by_path.html",
+                "{% extends \"layouts/base.html\" %}{% block c %}P{% endblock %}",
+            ),
+            mk_file(
+                3,
+                "pages/by_name.html",
+                "{% extends \"base.html\" %}{% block c %}N{% endblock %}",
+            ),
+        ];
+        let out = render_tree(tree, &vars).unwrap();
+        assert_eq!(
+            out[1].file_content.as_deref(),
+            Some("<b>P</b>"),
+            "路径引用应可解析"
+        );
+        assert_eq!(
+            out[2].file_content.as_deref(),
+            Some("<b>N</b>"),
+            "basename 简写应保持可用"
+        );
+    }
+
+    #[test]
+    fn test_same_name_cross_dir_no_silent_overwrite() {
+        let vars = crate::types::Variables::from_json("{}").unwrap();
+        let tree = vec![
+            mk_file(1, "a/base.html", "<A>{% block c %}{% endblock %}</A>"),
+            mk_file(2, "b/base.html", "<B>{% block c %}{% endblock %}</B>"),
+            // 同名冲突：basename 简写不可用（明确失败，不随机继承某一个）
+            mk_file(
+                3,
+                "pages/ambiguous.html",
+                "{% extends \"base.html\" %}{% block c %}X{% endblock %}",
+            ),
+            // 路径引用精确消歧
+            mk_file(
+                4,
+                "pages/precise.html",
+                "{% extends \"b/base.html\" %}{% block c %}Y{% endblock %}",
+            ),
+        ];
+        let out = render_tree(tree, &vars).unwrap();
+        assert!(!out[2].file_content.as_deref().unwrap_or("").contains("<A>"));
+        assert!(!out[2].file_content.as_deref().unwrap_or("").contains("<B>"));
+        assert_eq!(
+            out[3].file_content.as_deref(),
+            Some("<B>Y</B>"),
+            "路径引用应精确消歧"
+        );
+    }
+
+    #[test]
+    fn test_inheritance_for_non_html_files() {
+        let vars = crate::types::Variables::from_json("{}").unwrap();
+        let tree = vec![
+            mk_file(1, "fragments/header.txt", "HEADER[{{ name }}]"),
+            mk_file(
+                2,
+                "notes/readme.txt",
+                "{% include \"fragments/header.txt\" %} body",
+            ),
+        ];
+        let vars = crate::types::Variables::from_json(r#"{"name":"n"}"#).unwrap();
+        let out = render_tree(tree, &vars).unwrap();
+        assert_eq!(
+            out[1].file_content.as_deref(),
+            Some("HEADER[n] body"),
+            "非 HTML 文件也应支持 include/extends"
+        );
+    }
 
     #[test]
     fn test_render_single_file() {
