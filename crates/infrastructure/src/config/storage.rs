@@ -1,5 +1,6 @@
 use crate::config::settings::StorageConfig;
 use std::path::PathBuf;
+use template_studio_shared::utils::path::validate_relative_path;
 
 /// 存储管理器
 pub struct StorageManager {
@@ -42,10 +43,16 @@ impl StorageManager {
     }
 
     /// 获取指定模板指定版本的发布路径
-    pub fn get_release_path(&self, template_id: i64, version: &str) -> PathBuf {
-        self.get_releases_base_path()
+    ///
+    /// version 来自客户端请求，必须经过路径校验防止穿越
+    /// （../、绝对路径、盘符），这是所有按版本定位存储的统一咽喉点
+    pub fn get_release_path(&self, template_id: i64, version: &str) -> anyhow::Result<PathBuf> {
+        validate_relative_path(version)
+            .map_err(|e| anyhow::anyhow!("非法版本号 {}: {}", version, e))?;
+        Ok(self
+            .get_releases_base_path()
             .join(template_id.to_string())
-            .join(version)
+            .join(version.replace('\\', "/")))
     }
 
     /// 确保目录存在
@@ -70,7 +77,7 @@ impl StorageManager {
         self.ensure_dir_exists(&meta_subscribe_path).await?;
 
         // 创建空的 variables.json 和 test.json 文件（如果不存在）
-        self.ensure_file_exists(&variables_file_path, "{}").await?;  // 修复：变量schema应该是对象，不是数组
+        self.ensure_file_exists(&variables_file_path, "{}").await?; // 修复：变量schema应该是对象，不是数组
         self.ensure_file_exists(&test_file_path, "{}").await?;
 
         Ok(())
@@ -88,21 +95,28 @@ impl StorageManager {
 
     /// 获取订阅文件路径
     pub fn get_subscribe_file_path(&self, template_id: i64, preset_id: u64) -> PathBuf {
-        self.get_template_meta_subscribe_path(template_id).join(format!("{}.json", preset_id))
+        self.get_template_meta_subscribe_path(template_id)
+            .join(format!("{}.json", preset_id))
     }
 
     /// 获取变量文件路径 (variables.json)
     pub fn get_variables_file_path(&self, template_id: i64) -> PathBuf {
-        self.get_template_meta_variables_path(template_id).join("variables.json")
+        self.get_template_meta_variables_path(template_id)
+            .join("variables.json")
     }
 
     /// 获取测试数据文件路径 (test.json)
     pub fn get_test_file_path(&self, template_id: i64) -> PathBuf {
-        self.get_template_meta_variables_path(template_id).join("test.json")
+        self.get_template_meta_variables_path(template_id)
+            .join("test.json")
     }
 
     /// 确保文件存在，如果不存在则创建并写入默认内容
-    pub async fn ensure_file_exists(&self, path: &PathBuf, default_content: &str) -> anyhow::Result<()> {
+    pub async fn ensure_file_exists(
+        &self,
+        path: &PathBuf,
+        default_content: &str,
+    ) -> anyhow::Result<()> {
         if !path.exists() {
             tokio::fs::write(path, default_content).await?;
             tracing::debug!("创建文件: {:?}, 内容: {}", path, default_content);
@@ -128,13 +142,14 @@ impl StorageManager {
         }
 
         // 解析并格式化 JSON，确保有良好的缩进
-        let formatted_content = if let Ok(value) = serde_json::from_str::<serde_json::Value>(content) {
-            // 格式化输出：2个空格缩进
-            serde_json::to_string_pretty(&value)?
-        } else {
-            // 如果解析失败，使用原始内容
-            content.to_string()
-        };
+        let formatted_content =
+            if let Ok(value) = serde_json::from_str::<serde_json::Value>(content) {
+                // 格式化输出：2个空格缩进
+                serde_json::to_string_pretty(&value)?
+            } else {
+                // 如果解析失败，使用原始内容
+                content.to_string()
+            };
 
         tokio::fs::write(path, formatted_content).await?;
         tracing::debug!("写入文件: {:?}", path);

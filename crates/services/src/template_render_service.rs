@@ -1,16 +1,18 @@
 //! 模板渲染服务
 //! 使用 template_core 提供的核心渲染能力
 
-use template_studio_shared::utils::error::AppError;
-use template_studio_shared::models::file_tree::FileTreeNode;
-use template_studio_template_core::{render_string, render_tree, Variables, TemplateFile, TreeBuilder};
-use template_studio_template_core::conditions::ConditionsYaml;
+use crate::cache::DependencyTreeCache;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
+use template_studio_shared::models::file_tree::FileTreeNode;
+use template_studio_shared::utils::error::AppError;
+use template_studio_template_core::conditions::ConditionsYaml;
+use template_studio_template_core::{
+    render_string, render_tree, TemplateFile, TreeBuilder, Variables,
+};
 use tokio::fs;
-use serde::{Serialize, Deserialize};
-use tracing::{info, error, warn, debug};
-use crate::cache::DependencyTreeCache;
+use tracing::{debug, error, info, warn};
 
 /// 模板渲染服务
 pub struct TemplateRenderService {
@@ -58,7 +60,8 @@ impl TemplateRenderService {
         }
 
         // 读取模板内容
-        let template_content = fs::read_to_string(&template_path).await
+        let template_content = fs::read_to_string(&template_path)
+            .await
             .map_err(|e| AppError::Internal(format!("读取文件失败: {}", e)))?;
 
         // 获取文件名
@@ -97,7 +100,9 @@ impl TemplateRenderService {
         file_path: &str,
         variables: &serde_json::Value,
     ) -> Result<RenderResult, AppError> {
-        let template_path = base_path.join(file_path.trim_start_matches('/'));
+        // file_path 来自客户端请求，先做穿越校验（../、绝对路径、盘符）
+        let template_path = template_studio_shared::utils::path::safe_join(base_path, file_path)
+            .map_err(AppError::Validation)?;
 
         tracing::info!("从指定路径渲染模板文件: {:?}", template_path);
 
@@ -107,7 +112,8 @@ impl TemplateRenderService {
         }
 
         // 读取模板内容
-        let template_content = fs::read_to_string(&template_path).await
+        let template_content = fs::read_to_string(&template_path)
+            .await
             .map_err(|e| AppError::Internal(format!("读取文件失败: {}", e)))?;
 
         // 获取文件名
@@ -133,8 +139,8 @@ impl TemplateRenderService {
 
                     // 检查是否是 HTML 文件
                     if path.extension().and_then(|s| s.to_str()) == Some("html")
-                        || path.extension().and_then(|s| s.to_str()) == Some("htm") {
-
+                        || path.extension().and_then(|s| s.to_str()) == Some("htm")
+                    {
                         // 获取文件名
                         if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                             // 读取文件内容
@@ -223,14 +229,21 @@ impl TemplateRenderService {
                     .with_conditions(conditions);
 
                 let original_count = complete_tree.len();
-                info!("使用缓存依赖树: 共 {} 个文件 (基础节点: {})", original_count, cached_base_count);
+                info!(
+                    "使用缓存依赖树: 共 {} 个文件 (基础节点: {})",
+                    original_count, cached_base_count
+                );
 
                 // 转换变量格式
                 let render_vars = Variables::from_value(variables.clone());
 
                 // 根据条件过滤文件
                 let filtered_tree = builder.filter_by_conditions(complete_tree, &render_vars);
-                debug!("条件过滤完成: 共 {} 个文件（原始 {} 个）", filtered_tree.len(), original_count);
+                debug!(
+                    "条件过滤完成: 共 {} 个文件（原始 {} 个）",
+                    filtered_tree.len(),
+                    original_count
+                );
 
                 // 渲染
                 let rendered_files = render_tree(filtered_tree, &render_vars)
@@ -258,23 +271,24 @@ impl TemplateRenderService {
         let base_file_count = file_tree.len();
 
         // 1. 扁平化文件树并读取文件内容（同时记录 mtime）
-        let template_files = self.convert_to_template_files_with_mtime(
-            template_id,
-            file_tree,
-            &mut cache
-        ).await?;
+        let template_files = self
+            .convert_to_template_files_with_mtime(template_id, file_tree, &mut cache)
+            .await?;
 
         info!("文件树转换完成: 共 {} 个文件/目录", template_files.len());
 
         // 2. 加载条件配置（同时记录 mtime）
-        let conditions = self.load_conditions_with_mtime(template_id, &mut cache).await?;
+        let conditions = self
+            .load_conditions_with_mtime(template_id, &mut cache)
+            .await?;
 
         // 3. 构建完整的依赖树（使用 TreeBuilder）
         let builder = TreeBuilder::new()
-            .with_auto_resolve(true)  // 自动解析所有依赖
+            .with_auto_resolve(true) // 自动解析所有依赖
             .with_conditions(conditions.clone());
 
-        let complete_tree = builder.build_complete_tree(template_files)
+        let complete_tree = builder
+            .build_complete_tree(template_files)
             .map_err(|e| AppError::Internal(format!("构建文件树失败: {}", e)))?;
 
         let original_count = complete_tree.len();
@@ -285,7 +299,7 @@ impl TemplateRenderService {
             template_id,
             complete_tree.clone(),
             conditions.clone(),
-            base_file_count,  // ✅ 传入基础节点数量
+            base_file_count, // ✅ 传入基础节点数量
         );
         cache.update_version(template_id);
 
@@ -294,7 +308,11 @@ impl TemplateRenderService {
 
         // 6. 根据条件过滤文件
         let filtered_tree = builder.filter_by_conditions(complete_tree, &render_vars);
-        info!("条件过滤完成: 共 {} 个文件（原始 {} 个）", filtered_tree.len(), original_count);
+        info!(
+            "条件过滤完成: 共 {} 个文件（原始 {} 个）",
+            filtered_tree.len(),
+            original_count
+        );
 
         // 7. 调用 render_tree() 渲染
         let rendered_files = render_tree(filtered_tree, &render_vars)
@@ -329,11 +347,15 @@ impl TemplateRenderService {
         if failed_files > 0 {
             warn!("文件树渲染完成，但有 {} 个文件渲染失败", failed_files);
         } else {
-            info!("文件树渲染成功完成: 总文件数={}, 总大小={} bytes", total_files, total_size);
+            info!(
+                "文件树渲染成功完成: 总文件数={}, 总大小={} bytes",
+                total_files, total_size
+            );
         }
 
         // 转换为响应格式（扁平结构）
-        let flat_tree: Vec<RenderedFileInfo> = rendered_files.into_iter()
+        let flat_tree: Vec<RenderedFileInfo> = rendered_files
+            .into_iter()
             .map(|f| RenderedFileInfo {
                 id: f.id,
                 file_path: f.file_path,
@@ -471,11 +493,10 @@ impl TemplateRenderService {
 
             // 读取文件内容（仅文件）
             let file_content = if node.is_directory == 0 {
-                fs::read_to_string(&file_path).await
-                    .unwrap_or_else(|e| {
-                        error!("读取文件失败: {:?}, error: {}", file_path, e);
-                        String::new()
-                    })
+                fs::read_to_string(&file_path).await.unwrap_or_else(|e| {
+                    error!("读取文件失败: {:?}, error: {}", file_path, e);
+                    String::new()
+                })
             } else {
                 String::new()
             };
@@ -516,7 +537,8 @@ impl TemplateRenderService {
     /// 从 .meta/variables/conditions.yml 加载条件配置
     #[allow(dead_code)]
     async fn load_conditions(&self, template_id: i64) -> Result<ConditionsYaml, AppError> {
-        let conditions_path = self.base_path
+        let conditions_path = self
+            .base_path
             .join(template_id.to_string())
             .join(".meta/variables/conditions.yml");
 
@@ -525,7 +547,8 @@ impl TemplateRenderService {
             return Ok(ConditionsYaml::new());
         }
 
-        let content = fs::read_to_string(&conditions_path).await
+        let content = fs::read_to_string(&conditions_path)
+            .await
             .map_err(|e| AppError::Internal(format!("读取条件文件失败: {}", e)))?;
 
         ConditionsYaml::from_yaml(&content)
@@ -548,7 +571,8 @@ impl TemplateRenderService {
         let conditions = self.load_conditions(template_id).await?;
 
         // 递归扁平化文件树
-        self.flatten_file_tree(&template_root_path, &file_tree, &mut result, &conditions).await?;
+        self.flatten_file_tree(&template_root_path, &file_tree, &mut result, &conditions)
+            .await?;
 
         Ok(result)
     }
@@ -573,8 +597,9 @@ impl TemplateRenderService {
             &mut result,
             &conditions,
             template_id,
-            cache
-        ).await?;
+            cache,
+        )
+        .await?;
 
         Ok(result)
     }
@@ -600,11 +625,10 @@ impl TemplateRenderService {
 
             // 读取文件内容（仅文件）
             let file_content = if node.is_directory == 0 {
-                fs::read_to_string(&file_path).await
-                    .unwrap_or_else(|e| {
-                        error!("读取文件失败: {:?}, error: {}", file_path, e);
-                        String::new()
-                    })
+                fs::read_to_string(&file_path).await.unwrap_or_else(|e| {
+                    error!("读取文件失败: {:?}, error: {}", file_path, e);
+                    String::new()
+                })
             } else {
                 String::new()
             };
@@ -638,8 +662,9 @@ impl TemplateRenderService {
                     result,
                     conditions,
                     template_id,
-                    cache
-                )).await?;
+                    cache,
+                ))
+                .await?;
             }
         }
 
@@ -652,7 +677,8 @@ impl TemplateRenderService {
         template_id: i64,
         cache: &mut tokio::sync::MutexGuard<'_, crate::cache::DependencyTreeCache>,
     ) -> Result<ConditionsYaml, AppError> {
-        let conditions_path = self.base_path
+        let conditions_path = self
+            .base_path
             .join(template_id.to_string())
             .join(".meta/variables/conditions.yml");
 
@@ -661,11 +687,15 @@ impl TemplateRenderService {
         }
 
         // 记录条件文件修改时间
-        if let Ok(mtime) = fs::metadata(&conditions_path).await.and_then(|m| m.modified()) {
+        if let Ok(mtime) = fs::metadata(&conditions_path)
+            .await
+            .and_then(|m| m.modified())
+        {
             cache.record_condition_mtime(template_id, mtime);
         }
 
-        let content = fs::read_to_string(&conditions_path).await
+        let content = fs::read_to_string(&conditions_path)
+            .await
             .map_err(|e| AppError::Internal(format!("读取条件文件失败: {}", e)))?;
 
         ConditionsYaml::from_yaml(&content)

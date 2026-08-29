@@ -15,8 +15,8 @@ use zip::{ZipArchive, ZipWriter};
 
 use template_studio_infrastructure::config::storage::StorageManager;
 use template_studio_shared::models::backup::{
-    BackupFileCondition, BackupManifest, BackupTemplateInfo,
-    BackupPreviewResponse, RestoreBackupResponse, RestoreStats, BACKUP_FORMAT_VERSION,
+    BackupFileCondition, BackupManifest, BackupPreviewResponse, BackupTemplateInfo,
+    RestoreBackupResponse, RestoreStats, BACKUP_FORMAT_VERSION,
 };
 use template_studio_shared::utils::error::AppError;
 
@@ -76,8 +76,16 @@ impl BackupService {
             is_featured: template.is_featured,
             logo: template.logo.clone(),
             icon: template.icon.clone(),
-            git_repo_path: if template.git_repo_path.is_empty() { None } else { Some(template.git_repo_path.clone()) },
-            current_version: if template.current_version.is_empty() { None } else { Some(template.current_version.clone()) },
+            git_repo_path: if template.git_repo_path.is_empty() {
+                None
+            } else {
+                Some(template.git_repo_path.clone())
+            },
+            current_version: if template.current_version.is_empty() {
+                None
+            } else {
+                Some(template.current_version.clone())
+            },
             languages: Vec::new(), // 暂时不保存语言信息
         };
 
@@ -351,7 +359,8 @@ impl BackupService {
             .map_err(|e| AppError::Internal(format!("写入 ZIP 失败: {}", e)))?;
 
         // finish() 消费 ZipWriter 并返回底层的 writer
-        let buffer = zip.finish()
+        let buffer = zip
+            .finish()
             .map_err(|e| AppError::Internal(format!("完成 ZIP 失败: {}", e)))?;
 
         Ok(buffer.into_inner())
@@ -362,11 +371,10 @@ impl BackupService {
         let zip_data_owned = zip_data.to_vec();
 
         // 在 spawn_blocking 中读取 ZIP 文件
-        let preview_data = tokio::task::spawn_blocking(move || {
-            Self::extract_preview_data(&zip_data_owned)
-        })
-        .await
-        .map_err(|e| AppError::Internal(format!("任务执行失败: {}", e)))??;
+        let preview_data =
+            tokio::task::spawn_blocking(move || Self::extract_preview_data(&zip_data_owned))
+                .await
+                .map_err(|e| AppError::Internal(format!("任务执行失败: {}", e)))??;
 
         Ok(preview_data)
     }
@@ -484,11 +492,10 @@ impl BackupService {
         let zip_data_owned = zip_data.to_vec();
 
         // 在 spawn_blocking 中读取 ZIP 文件
-        let extracted = tokio::task::spawn_blocking(move || {
-            Self::extract_backup_data(&zip_data_owned)
-        })
-        .await
-        .map_err(|e| AppError::Internal(format!("任务执行失败: {}", e)))??;
+        let extracted =
+            tokio::task::spawn_blocking(move || Self::extract_backup_data(&zip_data_owned))
+                .await
+                .map_err(|e| AppError::Internal(format!("任务执行失败: {}", e)))??;
 
         // 验证格式
         if extracted.manifest.format != "template-studio-backup" {
@@ -623,7 +630,12 @@ impl BackupService {
         let mut count = 0;
 
         for (relative_path, content) in files {
-            let file_path = template_path.join(relative_path);
+            // 备份包内条目路径来自上传文件，逐条做 zip-slip 校验
+            let file_path =
+                template_studio_shared::utils::path::safe_join(&template_path, relative_path)
+                    .map_err(|e| {
+                        AppError::Validation(format!("备份包含非法路径 {}: {}", relative_path, e))
+                    })?;
 
             // 确保父目录存在
             if let Some(parent) = file_path.parent() {

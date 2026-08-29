@@ -2,14 +2,14 @@
 //!
 //! 提供模板版本管理功能，包括创建发布、版本列表查询、版本回滚等。
 
+use anyhow::Result;
+use chrono::Utc;
+use sqlx::{MySql, Pool};
+use std::path::PathBuf;
+use std::sync::Arc;
 use template_studio_infrastructure::config::storage::StorageManager;
 use template_studio_shared::models::release::*;
-use std::sync::Arc;
-use anyhow::Result;
-use sqlx::{Pool, MySql};
-use std::path::PathBuf;
 use tracing::{info, warn};
-use chrono::Utc;
 
 /// 发布服务
 pub struct ReleaseService {
@@ -19,7 +19,10 @@ pub struct ReleaseService {
 
 impl ReleaseService {
     pub fn new(storage_manager: Arc<StorageManager>, db: Pool<MySql>) -> Self {
-        Self { storage_manager, db }
+        Self {
+            storage_manager,
+            db,
+        }
     }
 
     /// 创建发布版本
@@ -51,12 +54,16 @@ impl ReleaseService {
 
         // 2. Git 提交和打标签
         let template_path = self.storage_manager.get_template_path(template_id);
-        let commit_hash = self.git_commit_and_tag(&template_path, &version, req.message.as_deref()).await?;
+        let commit_hash = self
+            .git_commit_and_tag(&template_path, &version, req.message.as_deref())
+            .await?;
 
         info!("Git commit: {}", commit_hash);
 
-        // 3. 创建发布快照
-        let release_path = self.storage_manager.get_release_path(template_id, &version);
+        // 3. 创建发布快照（version 经存储层路径校验）
+        let release_path = self
+            .storage_manager
+            .get_release_path(template_id, &version)?;
         self.clone_to_release(&template_path, &release_path).await?;
         self.remove_git_dir(&release_path).await?;
 
@@ -84,26 +91,26 @@ impl ReleaseService {
         }))?;
 
         let meta_dir = release_path.join(".meta").join("release");
-        tokio::fs::create_dir_all(&meta_dir).await
+        tokio::fs::create_dir_all(&meta_dir)
+            .await
             .map_err(|e| anyhow::anyhow!("创建元数据目录失败: {}", e))?;
-        tokio::fs::write(meta_dir.join("release.json"), release_info_json).await
+        tokio::fs::write(meta_dir.join("release.json"), release_info_json)
+            .await
             .map_err(|e| anyhow::anyhow!("写入发布信息文件失败: {}", e))?;
 
         // 6. 更新数据库：将旧版本的 is_latest 设为 false
-        sqlx::query(
-            "UPDATE template_versions SET is_latest = false WHERE template_id = ?"
-        )
-        .bind(template_id)
-        .execute(&self.db)
-        .await
-        .map_err(|e| anyhow::anyhow!("更新旧版本状态失败: {}", e))?;
+        sqlx::query("UPDATE template_versions SET is_latest = false WHERE template_id = ?")
+            .bind(template_id)
+            .execute(&self.db)
+            .await
+            .map_err(|e| anyhow::anyhow!("更新旧版本状态失败: {}", e))?;
 
         // 7. 插入新版本记录
         let version_id = sqlx::query(
             "INSERT INTO template_versions
             (template_id, version, commit_hash, commit_message, changelog, is_latest, is_deprecated,
              creator_id, creator_name, file_count, total_size, storage_path)
-            VALUES (?, ?, ?, ?, ?, true, false, ?, ?, ?, ?, ?)"
+            VALUES (?, ?, ?, ?, ?, true, false, ?, ?, ?, ?, ?)",
         )
         .bind(template_id)
         .bind(&version)
@@ -139,7 +146,7 @@ impl ReleaseService {
         let versions = sqlx::query_as::<_, TemplateVersion>(
             "SELECT * FROM template_versions
              WHERE template_id = ?
-             ORDER BY created_at DESC"
+             ORDER BY created_at DESC",
         )
         .bind(template_id)
         .fetch_all(&self.db)
@@ -153,7 +160,7 @@ impl ReleaseService {
     pub async fn get_latest_version(&self, template_id: i64) -> Result<String> {
         let version = sqlx::query_as::<_, (String,)>(
             "SELECT version FROM template_versions
-             WHERE template_id = ? AND is_latest = true"
+             WHERE template_id = ? AND is_latest = true",
         )
         .bind(template_id)
         .fetch_optional(&self.db)
@@ -170,12 +177,15 @@ impl ReleaseService {
         template_id: i64,
         target_version: &str,
     ) -> Result<RollbackResponse> {
-        info!("回滚版本: template_id={}, target={}", template_id, target_version);
+        info!(
+            "回滚版本: template_id={}, target={}",
+            template_id, target_version
+        );
 
         // 1. 检查目标版本是否存在
         let target = sqlx::query_as::<_, (i64, String, bool)>(
             "SELECT id, version, is_latest FROM template_versions
-             WHERE template_id = ? AND version = ?"
+             WHERE template_id = ? AND version = ?",
         )
         .bind(template_id)
         .bind(target_version)
@@ -183,9 +193,8 @@ impl ReleaseService {
         .await
         .map_err(|e| anyhow::anyhow!("查询目标版本失败: {}", e))?;
 
-        let (target_id, _, is_current) = target.ok_or_else(|| {
-            anyhow::anyhow!("版本 {} 不存在", target_version)
-        })?;
+        let (target_id, _, is_current) =
+            target.ok_or_else(|| anyhow::anyhow!("版本 {} 不存在", target_version))?;
 
         if is_current {
             return Err(anyhow::anyhow!("版本 {} 已经是当前版本", target_version));
@@ -194,7 +203,7 @@ impl ReleaseService {
         // 2. 获取之前的当前版本
         let previous_version = sqlx::query_as::<_, (String,)>(
             "SELECT version FROM template_versions
-             WHERE template_id = ? AND is_latest = true"
+             WHERE template_id = ? AND is_latest = true",
         )
         .bind(template_id)
         .fetch_optional(&self.db)
@@ -206,7 +215,7 @@ impl ReleaseService {
         // 3. 将当前版本的 is_latest 设为 false
         sqlx::query(
             "UPDATE template_versions SET is_latest = false
-             WHERE template_id = ? AND is_latest = true"
+             WHERE template_id = ? AND is_latest = true",
         )
         .bind(template_id)
         .execute(&self.db)
@@ -216,7 +225,7 @@ impl ReleaseService {
         // 4. 将目标版本的 is_latest 设为 true
         sqlx::query(
             "UPDATE template_versions SET is_latest = true, is_deprecated = false
-             WHERE id = ?"
+             WHERE id = ?",
         )
         .bind(target_id)
         .execute(&self.db)
@@ -232,16 +241,15 @@ impl ReleaseService {
     }
 
     /// 标记版本为已弃用
-    pub async fn deprecate_version(
-        &self,
-        template_id: i64,
-        version: &str,
-    ) -> Result<()> {
-        info!("标记版本为弃用: template_id={}, version={}", template_id, version);
+    pub async fn deprecate_version(&self, template_id: i64, version: &str) -> Result<()> {
+        info!(
+            "标记版本为弃用: template_id={}, version={}",
+            template_id, version
+        );
 
         let rows_affected = sqlx::query(
             "UPDATE template_versions SET is_deprecated = true
-             WHERE template_id = ? AND version = ?"
+             WHERE template_id = ? AND version = ?",
         )
         .bind(template_id)
         .bind(version)
@@ -280,7 +288,10 @@ impl ReleaseService {
             .map_err(|e| anyhow::anyhow!("Git reset 失败: {}", e))?;
 
         if !status.success() {
-            return Err(anyhow::anyhow!("Git reset 失败，请确认版本 {} 的标签存在", latest_version));
+            return Err(anyhow::anyhow!(
+                "Git reset 失败，请确认版本 {} 的标签存在",
+                latest_version
+            ));
         }
 
         // 4. 清理未跟踪的文件（新增的文件）
@@ -293,7 +304,10 @@ impl ReleaseService {
         let clean_output = String::from_utf8_lossy(&output.stdout);
         let deleted_count = clean_output.lines().filter(|l| !l.is_empty()).count() as i32;
 
-        info!("重置完成: 已恢复到版本 {}, 清理 {} 个未跟踪文件", latest_version, deleted_count);
+        info!(
+            "重置完成: 已恢复到版本 {}, 清理 {} 个未跟踪文件",
+            latest_version, deleted_count
+        );
 
         Ok(ResetToLatestResponse {
             version: latest_version,
@@ -306,7 +320,8 @@ impl ReleaseService {
         let latest = self.get_latest_version(template_id).await.ok();
 
         let (major, minor, patch) = if let Some(v) = latest {
-            let parts: Vec<u32> = v.trim_start_matches('v')
+            let parts: Vec<u32> = v
+                .trim_start_matches('v')
                 .split('.')
                 .map(|s| s.parse().unwrap_or(0))
                 .collect();
@@ -333,12 +348,14 @@ impl ReleaseService {
 
     /// 验证版本号是否有效（不低于当前版本）
     fn is_version_valid(&self, new_version: &str, current_version: &str) -> Result<bool> {
-        let v1: Vec<u32> = new_version.trim_start_matches('v')
+        let v1: Vec<u32> = new_version
+            .trim_start_matches('v')
             .split('.')
             .map(|s| s.parse().unwrap_or(0))
             .collect();
 
-        let v2: Vec<u32> = current_version.trim_start_matches('v')
+        let v2: Vec<u32> = current_version
+            .trim_start_matches('v')
             .split('.')
             .map(|s| s.parse().unwrap_or(0))
             .collect();
@@ -348,18 +365,28 @@ impl ReleaseService {
             return Ok(false);
         }
 
-        if v1[0] > v2[0] { return Ok(true); }
-        if v1[0] < v2[0] { return Ok(false); }
+        if v1[0] > v2[0] {
+            return Ok(true);
+        }
+        if v1[0] < v2[0] {
+            return Ok(false);
+        }
 
         // 主版本相同，比较次版本号
         if v1.len() > 1 && v2.len() > 1 {
-            if v1[1] > v2[1] { return Ok(true); }
-            if v1[1] < v2[1] { return Ok(false); }
+            if v1[1] > v2[1] {
+                return Ok(true);
+            }
+            if v1[1] < v2[1] {
+                return Ok(false);
+            }
         }
 
         // 次版本相同，比较修订号
         if v1.len() > 2 && v2.len() > 2 {
-            if v1[2] >= v2[2] { return Ok(true); }
+            if v1[2] >= v2[2] {
+                return Ok(true);
+            }
             return Ok(false);
         }
 
@@ -458,7 +485,8 @@ impl ReleaseService {
     async fn remove_git_dir(&self, path: &PathBuf) -> Result<()> {
         let git_dir = path.join(".git");
         if git_dir.exists() {
-            tokio::fs::remove_dir_all(&git_dir).await
+            tokio::fs::remove_dir_all(&git_dir)
+                .await
                 .map_err(|e| anyhow::anyhow!("删除 .git 目录失败: {}", e))?;
         }
         Ok(())
@@ -473,7 +501,9 @@ impl ReleaseService {
             .await
             .map_err(|e| anyhow::anyhow!("读取目录失败: {}", e))?;
 
-        while let Some(entry) = entries.next_entry().await
+        while let Some(entry) = entries
+            .next_entry()
+            .await
             .map_err(|e| anyhow::anyhow!("读取目录项失败: {}", e))?
         {
             let name = entry.file_name();
@@ -485,7 +515,8 @@ impl ReleaseService {
             let entry_path = entry.path();
             if entry_path.is_file() {
                 file_count += 1;
-                let metadata = tokio::fs::metadata(&entry_path).await
+                let metadata = tokio::fs::metadata(&entry_path)
+                    .await
                     .map_err(|e| anyhow::anyhow!("获取文件信息失败: {}", e))?;
                 total_size += metadata.len() as i64;
             } else if entry_path.is_dir() {
@@ -514,7 +545,8 @@ impl ReleaseService {
                 total_size += metadata.len() as i64;
             } else if entry_path.is_dir() {
                 // 使用 Box::pin 避免递归异步函数的无限大小问题
-                let (sub_count, sub_size) = Box::pin(self.collect_file_info_recursive(&entry_path)).await?;
+                let (sub_count, sub_size) =
+                    Box::pin(self.collect_file_info_recursive(&entry_path)).await?;
                 file_count += sub_count;
                 total_size += sub_size;
             }

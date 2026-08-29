@@ -23,26 +23,35 @@ pub async fn preview_template_file(
         Some(v) => match v {
             serde_json::Value::Number(n) => n.as_i64().unwrap(),
             serde_json::Value::String(s) => s.parse::<i64>().unwrap_or(0),
-            _ => return Err((
-                StatusCode::BAD_REQUEST,
-                Json(json!({"code": 400, "message": "templateId 类型错误"})),
-            )),
+            _ => {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({"code": 400, "message": "templateId 类型错误"})),
+                ))
+            }
         },
-        None => return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"code": 400, "message": "templateId 缺失"})),
-        )),
+        None => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({"code": 400, "message": "templateId 缺失"})),
+            ))
+        }
     };
 
     let file_path = match payload.get("filePath") {
         Some(serde_json::Value::String(s)) => s.clone(),
-        _ => return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"code": 400, "message": "filePath 缺失或类型错误"})),
-        )),
+        _ => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({"code": 400, "message": "filePath 缺失或类型错误"})),
+            ))
+        }
     };
 
-    let variables = payload.get("variables").cloned().unwrap_or_else(|| json!({}));
+    let variables = payload
+        .get("variables")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
 
     // 从工作目录（开发模式）读取
     let template_path = state.storage_manager.get_template_path(template_id);
@@ -87,26 +96,35 @@ pub async fn generate_template_file(
         Some(v) => match v {
             serde_json::Value::Number(n) => n.as_i64().unwrap(),
             serde_json::Value::String(s) => s.parse::<i64>().unwrap_or(0),
-            _ => return Err((
-                StatusCode::BAD_REQUEST,
-                Json(json!({"code": 400, "message": "templateId 类型错误"})),
-            )),
+            _ => {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({"code": 400, "message": "templateId 类型错误"})),
+                ))
+            }
         },
-        None => return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"code": 400, "message": "templateId 缺失"})),
-        )),
+        None => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({"code": 400, "message": "templateId 缺失"})),
+            ))
+        }
     };
 
     let file_path = match payload.get("filePath") {
         Some(serde_json::Value::String(s)) => s.clone(),
-        _ => return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"code": 400, "message": "filePath 缺失或类型错误"})),
-        )),
+        _ => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({"code": 400, "message": "filePath 缺失或类型错误"})),
+            ))
+        }
     };
 
-    let variables = payload.get("variables").cloned().unwrap_or_else(|| json!({}));
+    let variables = payload
+        .get("variables")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
 
     // 1. 查询当前最新版本
     let version = match state.release_service.get_latest_version(template_id).await {
@@ -114,10 +132,16 @@ pub async fn generate_template_file(
         Err(e) => return error_response(StatusCode::NOT_FOUND, &e.to_string()),
     };
 
-    // 2. 从发布版本目录读取
+    // 2. 从发布版本目录读取（version 经存储层路径校验）
     let release_path = state
         .storage_manager
-        .get_release_path(template_id, &version);
+        .get_release_path(template_id, &version)
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"code": 400, "message": e.to_string()})),
+            )
+        })?;
 
     match state
         .template_render_service
@@ -153,20 +177,31 @@ pub async fn preview_file_tree(
         Some(v) => match v {
             serde_json::Value::Number(n) => n.as_i64().unwrap(),
             serde_json::Value::String(s) => s.parse::<i64>().unwrap_or(0),
-            _ => return Err((
-                StatusCode::BAD_REQUEST,
-                Json(json!({"code": 400, "message": "templateId 类型错误"})),
-            )),
+            _ => {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({"code": 400, "message": "templateId 类型错误"})),
+                ))
+            }
         },
-        None => return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"code": 400, "message": "templateId 缺失"})),
-        )),
+        None => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({"code": 400, "message": "templateId 缺失"})),
+            ))
+        }
     };
-    let variables = payload.get("variables").cloned().unwrap_or_else(|| json!({}));
+    let variables = payload
+        .get("variables")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
 
     // 1. 获取文件树
-    let file_tree_response = match state.file_tree_service.get_template_file_tree(template_id).await {
+    let file_tree_response = match state
+        .file_tree_service
+        .get_template_file_tree(template_id)
+        .await
+    {
         Ok(response) => response,
         Err(e) => {
             return Err((
@@ -207,17 +242,24 @@ pub async fn generate_file_tree(
         Some(v) => match v {
             serde_json::Value::Number(n) => n.as_i64().unwrap(),
             serde_json::Value::String(s) => s.parse::<i64>().unwrap_or(0),
-            _ => return Err((
-                StatusCode::BAD_REQUEST,
-                Json(json!({"code": 400, "message": "templateId 类型错误"})),
-            )),
+            _ => {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({"code": 400, "message": "templateId 类型错误"})),
+                ))
+            }
         },
-        None => return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"code": 400, "message": "templateId 缺失"})),
-        )),
+        None => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({"code": 400, "message": "templateId 缺失"})),
+            ))
+        }
     };
-    let variables = payload.get("variables").cloned().unwrap_or_else(|| json!({}));
+    let variables = payload
+        .get("variables")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
     let version_option = payload.get("version").and_then(|v| v.as_str());
 
     // 1. 确定要使用的版本
@@ -235,14 +277,24 @@ pub async fn generate_file_tree(
         }
     };
 
-    // 2. 确定发布版本目录（用于验证版本存在）
+    // 2. 确定发布版本目录（用于验证版本存在；version 经存储层路径校验）
     let _release_path = state
         .storage_manager
-        .get_release_path(template_id, &version);
+        .get_release_path(template_id, &version)
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"code": 400, "message": e.to_string()})),
+            )
+        })?;
 
     // 3. 获取文件树（从发布版本）
     // 注意：由于发布版本目录结构相同，可以直接使用同一个文件树
-    let file_tree_response = match state.file_tree_service.get_template_file_tree(template_id).await {
+    let file_tree_response = match state
+        .file_tree_service
+        .get_template_file_tree(template_id)
+        .await
+    {
         Ok(response) => response,
         Err(e) => {
             return Err((
@@ -278,7 +330,10 @@ pub async fn generate_file_tree(
 }
 
 /// 错误响应
-fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+fn error_response(
+    status: StatusCode,
+    message: &str,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     Err((
         status,
         Json(json!({
@@ -298,15 +353,19 @@ pub async fn get_template_variables(
     let template_id = match params.get("templateId") {
         Some(id_str) => match id_str.parse::<i64>() {
             Ok(id) => id,
-            Err(_) => return Err((
-                StatusCode::BAD_REQUEST,
-                Json(json!({"code": 400, "message": "templateId 格式错误"})),
-            )),
+            Err(_) => {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({"code": 400, "message": "templateId 格式错误"})),
+                ))
+            }
         },
-        None => return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"code": 400, "message": "templateId 缺失"})),
-        )),
+        None => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({"code": 400, "message": "templateId 缺失"})),
+            ))
+        }
     };
 
     let version_option = params.get("version");
@@ -321,15 +380,26 @@ pub async fn get_template_variables(
             Err(e) => {
                 return Err((
                     StatusCode::NOT_FOUND,
-                    Json(json!({"code": 404, "message": format!("该模板暂无发布版本，请先在编辑器中发布版本: {}", e)})),
+                    Json(
+                        json!({"code": 404, "message": format!("该模板暂无发布版本，请先在编辑器中发布版本: {}", e)}),
+                    ),
                 ))
             }
         }
     };
 
-    // 2. 从发布版本目录读取变量定义
-    let release_path = state.storage_manager.get_release_path(template_id, &version);
-    let variables_json_path = std::path::Path::new(&release_path).join(".meta/variables/variables.json");
+    // 2. 从发布版本目录读取变量定义（version 经存储层路径校验）
+    let release_path = state
+        .storage_manager
+        .get_release_path(template_id, &version)
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"code": 400, "message": e.to_string()})),
+            )
+        })?;
+    let variables_json_path =
+        std::path::Path::new(&release_path).join(".meta/variables/variables.json");
 
     // 直接读取文件内容，文件本身就是变量定义JSON
     let field_schema_json = tokio::fs::read_to_string(&variables_json_path)
@@ -357,20 +427,28 @@ pub async fn generate_zip(
         Some(v) => match v {
             serde_json::Value::Number(n) => n.as_i64().unwrap(),
             serde_json::Value::String(s) => s.parse::<i64>().unwrap_or(0),
-            _ => return Err((
-                StatusCode::BAD_REQUEST,
-                Json(json!({"code": 400, "message": "templateId 类型错误"})),
-            )),
+            _ => {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({"code": 400, "message": "templateId 类型错误"})),
+                ))
+            }
         },
-        None => return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"code": 400, "message": "templateId 缺失"})),
-        )),
+        None => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({"code": 400, "message": "templateId 缺失"})),
+            ))
+        }
     };
 
-    let variables = payload.get("variables").cloned().unwrap_or_else(|| json!({}));
+    let variables = payload
+        .get("variables")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
     let version_option = payload.get("version").and_then(|v| v.as_str());
-    let file_name = payload.get("fileName")
+    let file_name = payload
+        .get("fileName")
         .and_then(|v| v.as_str())
         .unwrap_or("project");
 
@@ -389,13 +467,23 @@ pub async fn generate_zip(
         }
     };
 
-    // 2. 确定发布版本目录（用于验证版本存在）
+    // 2. 确定发布版本目录（用于验证版本存在；version 经存储层路径校验）
     let _release_path = state
         .storage_manager
-        .get_release_path(template_id, &version);
+        .get_release_path(template_id, &version)
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"code": 400, "message": e.to_string()})),
+            )
+        })?;
 
     // 3. 获取文件树
-    let file_tree_response = match state.file_tree_service.get_template_file_tree(template_id).await {
+    let file_tree_response = match state
+        .file_tree_service
+        .get_template_file_tree(template_id)
+        .await
+    {
         Ok(response) => response,
         Err(e) => {
             return Err((
@@ -435,15 +523,20 @@ pub async fn generate_zip(
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/zip")
-        .header(header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}.zip\"", file_name))
+        .header(
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{}.zip\"", file_name),
+        )
         .body(Body::from(zip_bytes))
         .unwrap())
 }
 
 /// 从渲染后的文件树创建ZIP
-async fn create_zip_from_rendered_tree(render_result: &template_studio_services::template_render_service::RenderFileTreeResponse) -> Result<Vec<u8>, String> {
-    use zip::{ZipWriter, write::FileOptions};
+async fn create_zip_from_rendered_tree(
+    render_result: &template_studio_services::template_render_service::RenderFileTreeResponse,
+) -> Result<Vec<u8>, String> {
     use std::io::{Cursor, Write};
+    use zip::{write::FileOptions, ZipWriter};
 
     let buffer = Cursor::new(Vec::new());
     let options = FileOptions::default()
@@ -496,8 +589,7 @@ async fn create_zip_from_rendered_tree(render_result: &template_studio_services:
     add_files_to_zip(&mut zip, &render_result.tree, "", options)
         .map_err(|e| format!("构建ZIP失败: {}", e))?;
 
-    let buffer = zip.finish()
-        .map_err(|e| format!("完成ZIP失败: {}", e))?;
+    let buffer = zip.finish().map_err(|e| format!("完成ZIP失败: {}", e))?;
 
     Ok(buffer.into_inner())
 }
@@ -513,15 +605,19 @@ pub async fn clear_cache(
         Some(v) => match v {
             serde_json::Value::Number(n) => n.as_i64().unwrap(),
             serde_json::Value::String(s) => s.parse::<i64>().unwrap_or(0),
-            _ => return Err((
-                StatusCode::BAD_REQUEST,
-                Json(json!({"code": 400, "message": "templateId 类型错误"})),
-            )),
+            _ => {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({"code": 400, "message": "templateId 类型错误"})),
+                ))
+            }
         },
-        None => return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"code": 400, "message": "templateId 缺失"})),
-        )),
+        None => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({"code": 400, "message": "templateId 缺失"})),
+            ))
+        }
     };
 
     // 清除缓存

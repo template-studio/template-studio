@@ -1,5 +1,5 @@
-use validator::Validate;
 use crate::utils::error::AppError;
+use validator::Validate;
 
 /// 验证请求数据
 pub fn validate_request<T: Validate>(req: &T) -> Result<(), AppError> {
@@ -8,7 +8,15 @@ pub fn validate_request<T: Validate>(req: &T) -> Result<(), AppError> {
             .field_errors()
             .into_iter()
             .flat_map(|(field, field_errors)| {
-                field_errors.iter().map(move |fe| format!("{}: {}", field, fe.message.as_ref().unwrap_or(&std::borrow::Cow::Borrowed("验证失败"))))
+                field_errors.iter().map(move |fe| {
+                    format!(
+                        "{}: {}",
+                        field,
+                        fe.message
+                            .as_ref()
+                            .unwrap_or(&std::borrow::Cow::Borrowed("验证失败"))
+                    )
+                })
             })
             .collect();
 

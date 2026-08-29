@@ -1,27 +1,28 @@
+use axum::body::Body;
+use axum::response::Response;
 use axum::{
-    extract::{Path, Query, State, Multipart, Extension},
+    extract::{Extension, Multipart, Path, Query, State},
     http::StatusCode,
     response::Json,
 };
-use template_studio_shared::models::auth::AuthUser;
+use base64::{engine::general_purpose, Engine as _};
+use bytes::Bytes;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use std::collections::HashSet;
+use std::fs::File;
+use std::io::{Read, Seek, Write};
+use template_studio_shared::models::auth::AuthUser;
 use template_studio_shared::models::template::*;
 use validator::Validate;
-use base64::{Engine as _, engine::general_purpose};
-use bytes::Bytes;
-use std::io::{Read, Write, Seek};
 use zip::read::ZipArchive;
-use zip::{ZipWriter, write::FileOptions};
-use std::collections::HashSet;
-use axum::response::Response;
-use axum::body::Body;
-use std::fs::File;
+use zip::{write::FileOptions, ZipWriter};
 
 pub type AppState = super::super::AppState;
 
 /// Git操作函数指针类型
-type GitInitFn = fn(&std::path::PathBuf, &str, Option<&str>, Option<&str>) -> Result<(), anyhow::Error>;
+type GitInitFn =
+    fn(&std::path::PathBuf, &str, Option<&str>, Option<&str>) -> Result<(), anyhow::Error>;
 
 // 全局Git初始化函数指针
 static mut GIT_INIT_FN: Option<GitInitFn> = None;
@@ -38,16 +39,20 @@ async fn execute_git_init(
     repo_path: &std::path::PathBuf,
     template_name: &str,
 ) -> Result<(), anyhow::Error> {
-    let f = unsafe {
-        GIT_INIT_FN.ok_or_else(|| anyhow::anyhow!("Git初始化函数未设置"))?
-    };
+    let f = unsafe { GIT_INIT_FN.ok_or_else(|| anyhow::anyhow!("Git初始化函数未设置"))? };
 
     // 在blocking task中执行同步Git操作
     let repo_path = repo_path.clone();
     let template_name = template_name.to_string();
     tokio::task::spawn_blocking(move || {
-        f(&repo_path, &template_name, Some("Template Studio"), Some("template@studio.local"))
-    }).await?
+        f(
+            &repo_path,
+            &template_name,
+            Some("Template Studio"),
+            Some("template@studio.local"),
+        )
+    })
+    .await?
 }
 
 /// 切换推荐状态请求
@@ -70,7 +75,11 @@ pub async fn list_templates(
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
     }
 
-    match state.template_service.list_templates_original_format(query).await {
+    match state
+        .template_service
+        .list_templates_original_format(query)
+        .await
+    {
         Ok(template_list_response) => Ok(Json(json!({
             "code": 0,
             "message": "OK",
@@ -148,11 +157,23 @@ pub async fn get_template_file_content(
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
     }
 
-    // 获取模板存储路径
+    // 获取模板存储路径（file_path 来自客户端，经穿越校验）
     let template_path = state.storage_manager.get_template_path(params.template_id);
-    let file_path = template_path.join(&params.file_path);
+    let file_path =
+        template_studio_shared::utils::path::safe_join(&template_path, &params.file_path).map_err(
+            |e| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({"code": 400, "message": e})),
+                )
+            },
+        )?;
 
-    tracing::info!("读取文件: template_id={}, file_path={:?}", params.template_id, file_path);
+    tracing::info!(
+        "读取文件: template_id={}, file_path={:?}",
+        params.template_id,
+        file_path
+    );
 
     // 检查文件是否存在
     if !file_path.exists() {
@@ -219,19 +240,38 @@ pub async fn add_template_file(
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
     }
 
-    // 获取模板存储路径
+    // 获取模板存储路径（parent_path/file_name 来自客户端，经穿越校验）
     let template_path = state.storage_manager.get_template_path(request.template_id);
     let parent_path = if request.parent_path.is_empty() {
         template_path.clone()
     } else {
-        template_path.join(&request.parent_path)
+        template_studio_shared::utils::path::safe_join(&template_path, &request.parent_path)
+            .map_err(|e| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({"code": 400, "message": e})),
+                )
+            })?
     };
 
-    // 创建文件或目录的完整路径
-    let file_path = parent_path.join(&request.file_name);
+    // 创建文件或目录的完整路径（file_name 同样校验，防止恶意文件名）
+    let file_path =
+        template_studio_shared::utils::path::safe_join(&parent_path, &request.file_name).map_err(
+            |e| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({"code": 400, "message": e})),
+                )
+            },
+        )?;
 
-    tracing::info!("创建文件: template_id={}, file_name={}, parent_path={}, is_directory={}",
-        request.template_id, request.file_name, request.parent_path, request.is_directory);
+    tracing::info!(
+        "创建文件: template_id={}, file_name={}, parent_path={}, is_directory={}",
+        request.template_id,
+        request.file_name,
+        request.parent_path,
+        request.is_directory
+    );
 
     // 检查父目录是否存在
     if !parent_path.exists() {
@@ -247,13 +287,19 @@ pub async fn add_template_file(
     if request.is_directory == 1 {
         // 创建目录
         if let Err(e) = tokio::fs::create_dir_all(&file_path).await {
-            return error_response(StatusCode::INTERNAL_SERVER_ERROR, &format!("创建目录失败: {}", e));
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("创建目录失败: {}", e),
+            );
         }
         tracing::info!("目录创建成功: {:?}", file_path);
     } else {
         // 创建空文件
         if let Err(e) = tokio::fs::write(&file_path, b"").await {
-            return error_response(StatusCode::INTERNAL_SERVER_ERROR, &format!("创建文件失败: {}", e));
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("创建文件失败: {}", e),
+            );
         }
         tracing::info!("文件创建成功: {:?}", file_path);
     }
@@ -270,7 +316,12 @@ pub async fn add_template_file(
     } else {
         match tokio::fs::metadata(&file_path).await {
             Ok(metadata) => metadata.len() as i64,
-            Err(e) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, &format!("获取文件信息失败: {}", e)),
+            Err(e) => {
+                return error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &format!("获取文件信息失败: {}", e),
+                )
+            }
         }
     };
 
@@ -327,11 +378,23 @@ pub async fn delete_template_file(
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
     }
 
-    // 获取模板存储路径
+    // 获取模板存储路径（file_path 来自客户端，经穿越校验）
     let template_path = state.storage_manager.get_template_path(params.template_id);
-    let file_path = template_path.join(&params.file_path);
+    let file_path =
+        template_studio_shared::utils::path::safe_join(&template_path, &params.file_path).map_err(
+            |e| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({"code": 400, "message": e})),
+                )
+            },
+        )?;
 
-    tracing::info!("删除文件: template_id={}, file_path={:?}", params.template_id, file_path);
+    tracing::info!(
+        "删除文件: template_id={}, file_path={:?}",
+        params.template_id,
+        file_path
+    );
 
     // 检查文件是否存在
     if !file_path.exists() {
@@ -343,7 +406,10 @@ pub async fn delete_template_file(
         // 如果是目录，尝试删除目录
         if let Err(dir_err) = tokio::fs::remove_dir_all(&file_path).await {
             tracing::error!("删除失败: {:?}, 目录删除也失败: {:?}", e, dir_err);
-            return error_response(StatusCode::INTERNAL_SERVER_ERROR, &format!("删除失败: {}", e));
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("删除失败: {}", e),
+            );
         }
     }
 
@@ -382,7 +448,11 @@ pub async fn edit_template_file(
     let template_path = state.storage_manager.get_template_path(request.template_id);
     let file_path = template_path.join(&request.file_path);
 
-    tracing::info!("保存文件: template_id={}, file_path={:?}", request.template_id, file_path);
+    tracing::info!(
+        "保存文件: template_id={}, file_path={:?}",
+        request.template_id,
+        file_path
+    );
 
     // 检查文件是否存在
     if !file_path.exists() {
@@ -392,10 +462,17 @@ pub async fn edit_template_file(
     // 写入文件内容
     if let Err(e) = tokio::fs::write(&file_path, &request.content).await {
         tracing::error!("文件保存失败: {:?}", e);
-        return error_response(StatusCode::INTERNAL_SERVER_ERROR, &format!("文件保存失败: {}", e));
+        return error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            &format!("文件保存失败: {}", e),
+        );
     }
 
-    tracing::info!("文件保存成功: {:?}, size={} bytes", file_path, request.content.len());
+    tracing::info!(
+        "文件保存成功: {:?}, size={} bytes",
+        file_path,
+        request.content.len()
+    );
 
     Ok(Json(json!({
         "code": 0,
@@ -432,7 +509,12 @@ pub async fn move_template_file(
     let source_path = template_path.join(&request.file_path);
     let target_path = template_path.join(&request.new_path);
 
-    tracing::info!("移动文件: template_id={}, from={:?}, to={:?}", request.template_id, source_path, target_path);
+    tracing::info!(
+        "移动文件: template_id={}, from={:?}, to={:?}",
+        request.template_id,
+        source_path,
+        target_path
+    );
 
     // 检查源文件是否存在
     if !source_path.exists() {
@@ -460,15 +542,24 @@ pub async fn move_template_file(
             tracing::info!("跨设备移动，尝试复制后删除");
             if let Err(copy_err) = tokio::fs::copy(&source_path, &target_path).await {
                 tracing::error!("文件复制失败: {:?}", copy_err);
-                return error_response(StatusCode::INTERNAL_SERVER_ERROR, &format!("文件移动失败: {}", copy_err));
+                return error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &format!("文件移动失败: {}", copy_err),
+                );
             }
             // 删除源文件
             if let Err(del_err) = tokio::fs::remove_file(&source_path).await {
                 tracing::error!("删除源文件失败: {:?}", del_err);
-                return error_response(StatusCode::INTERNAL_SERVER_ERROR, &format!("删除源文件失败: {}", del_err));
+                return error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &format!("删除源文件失败: {}", del_err),
+                );
             }
         } else {
-            return error_response(StatusCode::INTERNAL_SERVER_ERROR, &format!("文件移动失败: {}", e));
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("文件移动失败: {}", e),
+            );
         }
     }
 
@@ -486,15 +577,13 @@ pub async fn get_template_types(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.template_service.get_template_types().await {
         Ok(template_types) => {
-            let response = TemplateTypesResponse {
-                template_types,
-            };
+            let response = TemplateTypesResponse { template_types };
             Ok(Json(json!({
                 "code": 0,
                 "data": response,
                 "message": "OK"
             })))
-        },
+        }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -509,7 +598,11 @@ pub async fn toggle_featured(
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
     }
 
-    match state.template_service.toggle_featured(request.id, request.is_featured).await {
+    match state
+        .template_service
+        .toggle_featured(request.id, request.is_featured)
+        .await
+    {
         Ok(()) => Ok(Json(json!({
             "code": 0,
             "message": "切换推荐状态成功"
@@ -558,10 +651,18 @@ pub async fn create_template(
 
             match execute_git_init(&git_repo_path, &template_name).await {
                 Ok(_) => {
-                    tracing::info!("Git仓库初始化成功: template_id={}, path={:?}", template_id, git_repo_path);
+                    tracing::info!(
+                        "Git仓库初始化成功: template_id={}, path={:?}",
+                        template_id,
+                        git_repo_path
+                    );
                 }
                 Err(e) => {
-                    tracing::error!("Git仓库初始化失败: template_id={}, error={}", template_id, e);
+                    tracing::error!(
+                        "Git仓库初始化失败: template_id={}, error={}",
+                        template_id,
+                        e
+                    );
                     // 注意：这里不返回错误，因为模板已经创建成功
                     // Git初始化失败不应该影响模板创建
                 }
@@ -585,11 +686,17 @@ pub async fn create_template(
 }
 
 /// 错误响应
-fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    Err((status, Json(json!({
-        "code": status.as_u16() as i32,
-        "message": message
-    }))))
+fn error_response(
+    status: StatusCode,
+    message: &str,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    Err((
+        status,
+        Json(json!({
+            "code": status.as_u16() as i32,
+            "message": message
+        })),
+    ))
 }
 
 /// PAT scope 权限检查，无权限时返回 403
@@ -597,10 +704,13 @@ fn check_scope(auth_user: &AuthUser, scope: &str) -> Result<(), (StatusCode, Jso
     if auth_user.has_scope(scope) {
         Ok(())
     } else {
-        Err((StatusCode::FORBIDDEN, Json(json!({
-            "code": 403,
-            "message": format!("权限不足，需要 {} 权限", scope)
-        }))))
+        Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({
+                "code": 403,
+                "message": format!("权限不足，需要 {} 权限", scope)
+            })),
+        ))
     }
 }
 
@@ -617,7 +727,8 @@ fn is_text_file(content: &[u8]) -> bool {
     }
 
     // 计算控制字符的比例（排除常见的文本控制字符）
-    let control_count = sample.iter()
+    let control_count = sample
+        .iter()
         .filter(|&&b| {
             // 排除常见的文本控制字符：\t, \n, \r, \f (换页符)
             b < 0x20 && b != 0x09 && b != 0x0A && b != 0x0D && b != 0x0C
@@ -663,10 +774,13 @@ pub async fn upload_code(
     // 解析 multipart 数据
     while let Some(field) = multipart.next_field().await.map_err(|e| {
         tracing::error!("读取multipart字段失败: {:?}", e);
-        (StatusCode::BAD_REQUEST, Json(json!({
-            "code": StatusCode::BAD_REQUEST.as_u16() as i32,
-            "message": format!("读取请求数据失败: {}", e)
-        })))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "code": StatusCode::BAD_REQUEST.as_u16() as i32,
+                "message": format!("读取请求数据失败: {}", e)
+            })),
+        )
     })? {
         let field_name = field.name().unwrap_or("").to_string();
 
@@ -674,20 +788,26 @@ pub async fn upload_code(
             "templateId" => {
                 let value = field.text().await.map_err(|e| {
                     tracing::error!("读取templateId失败: {:?}", e);
-                    (StatusCode::BAD_REQUEST, Json(json!({
-                        "code": StatusCode::BAD_REQUEST.as_u16() as i32,
-                        "message": format!("读取templateId失败: {}", e)
-                    })))
+                    (
+                        StatusCode::BAD_REQUEST,
+                        Json(json!({
+                            "code": StatusCode::BAD_REQUEST.as_u16() as i32,
+                            "message": format!("读取templateId失败: {}", e)
+                        })),
+                    )
                 })?;
                 template_id = value.parse().ok();
             }
             "parentPath" => {
                 let value = field.text().await.map_err(|e| {
                     tracing::error!("读取parentPath失败: {:?}", e);
-                    (StatusCode::BAD_REQUEST, Json(json!({
-                        "code": StatusCode::BAD_REQUEST.as_u16() as i32,
-                        "message": format!("读取parentPath失败: {}", e)
-                    })))
+                    (
+                        StatusCode::BAD_REQUEST,
+                        Json(json!({
+                            "code": StatusCode::BAD_REQUEST.as_u16() as i32,
+                            "message": format!("读取parentPath失败: {}", e)
+                        })),
+                    )
                 })?;
                 // 如果 parentPath 不为空，则使用；否则为根目录
                 if !value.is_empty() {
@@ -698,10 +818,13 @@ pub async fn upload_code(
                 file_name = field.file_name().map(|s| s.to_string());
                 file_content = Some(Bytes::from(field.bytes().await.map_err(|e| {
                     tracing::error!("读取文件内容失败: {:?}", e);
-                    (StatusCode::BAD_REQUEST, Json(json!({
-                        "code": StatusCode::BAD_REQUEST.as_u16() as i32,
-                        "message": format!("读取文件内容失败: {}", e)
-                    })))
+                    (
+                        StatusCode::BAD_REQUEST,
+                        Json(json!({
+                            "code": StatusCode::BAD_REQUEST.as_u16() as i32,
+                            "message": format!("读取文件内容失败: {}", e)
+                        })),
+                    )
                 })?));
             }
             _ => {
@@ -712,24 +835,33 @@ pub async fn upload_code(
 
     // 验证必需参数
     let template_id = template_id.ok_or_else(|| {
-        (StatusCode::BAD_REQUEST, Json(json!({
-            "code": StatusCode::BAD_REQUEST.as_u16() as i32,
-            "message": "缺少templateId参数"
-        })))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "code": StatusCode::BAD_REQUEST.as_u16() as i32,
+                "message": "缺少templateId参数"
+            })),
+        )
     })?;
 
     let file_name = file_name.ok_or_else(|| {
-        (StatusCode::BAD_REQUEST, Json(json!({
-            "code": StatusCode::BAD_REQUEST.as_u16() as i32,
-            "message": "缺少文件"
-        })))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "code": StatusCode::BAD_REQUEST.as_u16() as i32,
+                "message": "缺少文件"
+            })),
+        )
     })?;
 
     let file_content = file_content.ok_or_else(|| {
-        (StatusCode::BAD_REQUEST, Json(json!({
-            "code": StatusCode::BAD_REQUEST.as_u16() as i32,
-            "message": "缺少文件内容"
-        })))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "code": StatusCode::BAD_REQUEST.as_u16() as i32,
+                "message": "缺少文件内容"
+            })),
+        )
     })?;
 
     // 检查是否为文本文件
@@ -737,16 +869,19 @@ pub async fn upload_code(
 
     if !is_text {
         tracing::warn!("上传的文件可能是二进制文件: {}", file_name);
-        return Err((StatusCode::BAD_REQUEST, Json(json!({
-            "code": StatusCode::BAD_REQUEST.as_u16() as i32,
-            "message": "只支持上传文本文件"
-        }))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "code": StatusCode::BAD_REQUEST.as_u16() as i32,
+                "message": "只支持上传文本文件"
+            })),
+        ));
     }
 
     // 获取模板存储路径
     let template_path = state.storage_manager.get_template_path(template_id);
 
-    // 构造文件保存路径
+    // 构造文件保存路径（parent_path/file_name 来自客户端，经穿越校验）
     let file_path = if let Some(pp) = parent_path {
         // 如果有父目录路径，使用它
         format!("{}/{}", pp, file_name)
@@ -755,39 +890,61 @@ pub async fn upload_code(
         file_name.clone()
     };
 
-    let full_path = template_path.join(&file_path);
+    let full_path = template_studio_shared::utils::path::safe_join(&template_path, &file_path)
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"code": 400, "message": e})),
+            )
+        })?;
 
     // 确保父目录存在
     if let Some(parent) = full_path.parent() {
         if !parent.exists() {
             tokio::fs::create_dir_all(parent).await.map_err(|e| {
                 tracing::error!("创建目录失败: {:?}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-                    "code": StatusCode::INTERNAL_SERVER_ERROR.as_u16() as i32,
-                    "message": format!("创建目录失败: {}", e)
-                })))
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({
+                        "code": StatusCode::INTERNAL_SERVER_ERROR.as_u16() as i32,
+                        "message": format!("创建目录失败: {}", e)
+                    })),
+                )
             })?;
         }
     }
 
     // 检查文件是否已存在
     if full_path.exists() {
-        return Err((StatusCode::CONFLICT, Json(json!({
-            "code": StatusCode::CONFLICT.as_u16() as i32,
-            "message": "文件已存在"
-        }))));
+        return Err((
+            StatusCode::CONFLICT,
+            Json(json!({
+                "code": StatusCode::CONFLICT.as_u16() as i32,
+                "message": "文件已存在"
+            })),
+        ));
     }
 
     // 保存文件
-    tokio::fs::write(&full_path, &file_content).await.map_err(|e| {
-        tracing::error!("写入文件失败: {:?}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "code": StatusCode::INTERNAL_SERVER_ERROR.as_u16() as i32,
-            "message": format!("写入文件失败: {}", e)
-        })))
-    })?;
+    tokio::fs::write(&full_path, &file_content)
+        .await
+        .map_err(|e| {
+            tracing::error!("写入文件失败: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "code": StatusCode::INTERNAL_SERVER_ERROR.as_u16() as i32,
+                    "message": format!("写入文件失败: {}", e)
+                })),
+            )
+        })?;
 
-    tracing::info!("文件上传成功: template_id={}, path={:?}, is_text={}", template_id, full_path, is_text);
+    tracing::info!(
+        "文件上传成功: template_id={}, path={:?}, is_text={}",
+        template_id,
+        full_path,
+        is_text
+    );
 
     Ok(Json(json!({
         "code": 0,
@@ -811,10 +968,13 @@ pub async fn upload_zip(
     // 解析 multipart 数据
     while let Some(field) = multipart.next_field().await.map_err(|e| {
         tracing::error!("读取multipart字段失败: {:?}", e);
-        (StatusCode::BAD_REQUEST, Json(json!({
-            "code": StatusCode::BAD_REQUEST.as_u16() as i32,
-            "message": format!("读取请求数据失败: {}", e)
-        })))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "code": StatusCode::BAD_REQUEST.as_u16() as i32,
+                "message": format!("读取请求数据失败: {}", e)
+            })),
+        )
     })? {
         let field_name = field.name().unwrap_or("").to_string();
 
@@ -822,21 +982,33 @@ pub async fn upload_zip(
             "templateId" => {
                 let value = field.text().await.map_err(|e| {
                     tracing::error!("读取templateId失败: {:?}", e);
-                    (StatusCode::BAD_REQUEST, Json(json!({
-                        "code": StatusCode::BAD_REQUEST.as_u16() as i32,
-                        "message": format!("读取templateId失败: {}", e)
-                    })))
+                    (
+                        StatusCode::BAD_REQUEST,
+                        Json(json!({
+                            "code": StatusCode::BAD_REQUEST.as_u16() as i32,
+                            "message": format!("读取templateId失败: {}", e)
+                        })),
+                    )
                 })?;
                 template_id = value.parse().ok();
             }
             "zipFile" => {
-                zip_content = Some(field.bytes().await.map_err(|e| {
-                    tracing::error!("读取ZIP文件失败: {:?}", e);
-                    (StatusCode::BAD_REQUEST, Json(json!({
-                        "code": StatusCode::BAD_REQUEST.as_u16() as i32,
-                        "message": format!("读取ZIP文件失败: {}", e)
-                    })))
-                })?.to_vec());
+                zip_content = Some(
+                    field
+                        .bytes()
+                        .await
+                        .map_err(|e| {
+                            tracing::error!("读取ZIP文件失败: {:?}", e);
+                            (
+                                StatusCode::BAD_REQUEST,
+                                Json(json!({
+                                    "code": StatusCode::BAD_REQUEST.as_u16() as i32,
+                                    "message": format!("读取ZIP文件失败: {}", e)
+                                })),
+                            )
+                        })?
+                        .to_vec(),
+                );
             }
             _ => {}
         }
@@ -844,17 +1016,23 @@ pub async fn upload_zip(
 
     // 验证必需参数
     let template_id = template_id.ok_or_else(|| {
-        (StatusCode::BAD_REQUEST, Json(json!({
-            "code": StatusCode::BAD_REQUEST.as_u16() as i32,
-            "message": "缺少templateId参数"
-        })))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "code": StatusCode::BAD_REQUEST.as_u16() as i32,
+                "message": "缺少templateId参数"
+            })),
+        )
     })?;
 
     let zip_content = zip_content.ok_or_else(|| {
-        (StatusCode::BAD_REQUEST, Json(json!({
-            "code": StatusCode::BAD_REQUEST.as_u16() as i32,
-            "message": "缺少ZIP文件"
-        })))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "code": StatusCode::BAD_REQUEST.as_u16() as i32,
+                "message": "缺少ZIP文件"
+            })),
+        )
     })?;
 
     // 获取模板存储路径
@@ -862,36 +1040,52 @@ pub async fn upload_zip(
 
     // 确保模板目录存在
     if !template_path.exists() {
-        tokio::fs::create_dir_all(&template_path).await.map_err(|e| {
-            tracing::error!("创建模板目录失败: {:?}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-                "code": StatusCode::INTERNAL_SERVER_ERROR.as_u16() as i32,
-                "message": format!("创建模板目录失败: {}", e)
-            })))
-        })?;
+        tokio::fs::create_dir_all(&template_path)
+            .await
+            .map_err(|e| {
+                tracing::error!("创建模板目录失败: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({
+                        "code": StatusCode::INTERNAL_SERVER_ERROR.as_u16() as i32,
+                        "message": format!("创建模板目录失败: {}", e)
+                    })),
+                )
+            })?;
     }
 
     // 在 blocking task 中解压 ZIP
     let template_path_clone = template_path.clone();
-    let result = tokio::task::spawn_blocking(move || {
-        process_zip_upload(template_path_clone, &zip_content)
-    }).await.map_err(|e| {
-        tracing::error!("解压ZIP失败: {:?}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "code": StatusCode::INTERNAL_SERVER_ERROR.as_u16() as i32,
-            "message": format!("解压ZIP失败: {}", e)
-        })))
-    })?;
+    let result =
+        tokio::task::spawn_blocking(move || process_zip_upload(template_path_clone, &zip_content))
+            .await
+            .map_err(|e| {
+                tracing::error!("解压ZIP失败: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({
+                        "code": StatusCode::INTERNAL_SERVER_ERROR.as_u16() as i32,
+                        "message": format!("解压ZIP失败: {}", e)
+                    })),
+                )
+            })?;
 
     let (success_count, failed_files) = result.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "code": StatusCode::INTERNAL_SERVER_ERROR.as_u16() as i32,
-            "message": e
-        })))
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "code": StatusCode::INTERNAL_SERVER_ERROR.as_u16() as i32,
+                "message": e
+            })),
+        )
     })?;
 
-    tracing::info!("ZIP上传成功: template_id={}, success_count={}, failed_files={:?}",
-        template_id, success_count, failed_files);
+    tracing::info!(
+        "ZIP上传成功: template_id={}, success_count={}, failed_files={:?}",
+        template_id,
+        success_count,
+        failed_files
+    );
 
     Ok(Json(json!({
         "code": 0,
@@ -912,8 +1106,8 @@ fn check_template_has_custom_files(template_path: &std::path::Path) -> Result<()
     }
 
     // 遍历模板目录
-    let entries = std::fs::read_dir(template_path)
-        .map_err(|e| format!("读取模板目录失败: {}", e))?;
+    let entries =
+        std::fs::read_dir(template_path).map_err(|e| format!("读取模板目录失败: {}", e))?;
 
     for entry in entries {
         let entry = entry.map_err(|e| format!("读取目录项失败: {}", e))?;
@@ -923,7 +1117,11 @@ fn check_template_has_custom_files(template_path: &std::path::Path) -> Result<()
         let file_name_str = file_name.to_string_lossy();
 
         // 排除 .meta 文件夹、.git 文件夹、.gitignore、README.md
-        if file_name_str == ".meta" || file_name_str == ".git" || file_name_str == ".gitignore" || file_name_str == "README.md" {
+        if file_name_str == ".meta"
+            || file_name_str == ".git"
+            || file_name_str == ".gitignore"
+            || file_name_str == "README.md"
+        {
             continue;
         }
 
@@ -964,12 +1162,15 @@ fn process_zip_upload(
     let mut files_to_extract: Vec<(String, Vec<u8>)> = Vec::new();
 
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i).map_err(|e| format!("读取ZIP文件失败: {}", e))?;
+        let mut file = archive
+            .by_index(i)
+            .map_err(|e| format!("读取ZIP文件失败: {}", e))?;
         let file_path = file.name().to_string();
 
         // 检查是否在排除的文件夹中
         let path_parts: Vec<&str> = file_path.split('/').collect();
-        let is_excluded = path_parts.iter()
+        let is_excluded = path_parts
+            .iter()
             .take(path_parts.len().saturating_sub(1))
             .any(|part| excluded_dirs.contains(part));
 
@@ -982,7 +1183,8 @@ fn process_zip_upload(
         if file_path == ".gitignore" {
             has_gitignore = true;
             let mut content = String::new();
-            file.read_to_string(&mut content).map_err(|e| format!("读取.gitignore失败: {}", e))?;
+            file.read_to_string(&mut content)
+                .map_err(|e| format!("读取.gitignore失败: {}", e))?;
             gitignore_content = content;
             continue;
         }
@@ -990,7 +1192,8 @@ fn process_zip_upload(
         if file_path == "README.md" || file_path.ends_with("/README.md") {
             has_readme = true;
             let mut content = Vec::new();
-            file.read_to_end(&mut content).map_err(|e| format!("读取README.md失败: {}", e))?;
+            file.read_to_end(&mut content)
+                .map_err(|e| format!("读取README.md失败: {}", e))?;
             readme_content = content;
             continue;
         }
@@ -998,7 +1201,8 @@ fn process_zip_upload(
         // 普通文件，读取内容
         if !file.name().ends_with('/') {
             let mut content = Vec::new();
-            file.read_to_end(&mut content).map_err(|e| format!("读取文件{}失败: {}", file_path, e))?;
+            file.read_to_end(&mut content)
+                .map_err(|e| format!("读取文件{}失败: {}", file_path, e))?;
             files_to_extract.push((file_path, content));
         }
     }
@@ -1008,8 +1212,8 @@ fn process_zip_upload(
         let existing_gitignore_path = template_path.join(".gitignore");
         if existing_gitignore_path.exists() {
             // 读取现有的 .gitignore
-            let existing_content = std::fs::read_to_string(&existing_gitignore_path)
-                .unwrap_or_default();
+            let existing_content =
+                std::fs::read_to_string(&existing_gitignore_path).unwrap_or_default();
 
             // 合并内容（去重）
             let mut combined_rules = HashSet::new();
@@ -1048,9 +1252,10 @@ fn process_zip_upload(
         success_count += 1;
     }
 
-    // 提取普通文件
+    // 提取普通文件（zip 条目名来自上传内容，逐条做 zip-slip 校验）
     for (file_path, content) in files_to_extract {
-        let full_path = template_path.join(&file_path);
+        let full_path = template_studio_shared::utils::path::safe_join(&template_path, &file_path)
+            .map_err(|e| format!("zip 内包含非法路径 {}: {}", file_path, e))?;
 
         // 确保父目录存在
         if let Some(parent) = full_path.parent() {
@@ -1066,11 +1271,10 @@ fn process_zip_upload(
         }
 
         // 写入文件
-        std::fs::write(&full_path, content)
-            .map_err(|e| {
-                tracing::error!("写入文件{}失败: {:?}", file_path, e);
-                format!("写入文件{}失败: {}", file_path, e)
-            })?;
+        std::fs::write(&full_path, content).map_err(|e| {
+            tracing::error!("写入文件{}失败: {:?}", file_path, e);
+            format!("写入文件{}失败: {}", file_path, e)
+        })?;
 
         success_count += 1;
     }
@@ -1088,42 +1292,57 @@ pub async fn export_template(
 
     // 检查模板目录是否存在
     if !template_path.exists() {
-        return Err((StatusCode::NOT_FOUND, Json(json!({
-            "code": 404,
-            "message": "模板目录不存在"
-        }))));
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({
+                "code": 404,
+                "message": "模板目录不存在"
+            })),
+        ));
     }
 
     // 在 blocking task 中打包 ZIP
     let template_path_clone = template_path.clone();
-    let zip_bytes = tokio::task::spawn_blocking(move || {
-        create_template_zip(template_path_clone)
-    }).await.map_err(|e| {
-        tracing::error!("创建ZIP失败: {:?}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "code": 500,
-            "message": format!("创建ZIP失败: {}", e)
-        })))
-    })?
-    .map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "code": 500,
-            "message": e
-        })))
-    })?;
+    let zip_bytes = tokio::task::spawn_blocking(move || create_template_zip(template_path_clone))
+        .await
+        .map_err(|e| {
+            tracing::error!("创建ZIP失败: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "code": 500,
+                    "message": format!("创建ZIP失败: {}", e)
+                })),
+            )
+        })?
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "code": 500,
+                    "message": e
+                })),
+            )
+        })?;
 
     // 返回 ZIP 文件
     let response = Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/zip")
-        .header("Content-Disposition", format!("attachment; filename=\"template_{}.zip\"", id))
+        .header(
+            "Content-Disposition",
+            format!("attachment; filename=\"template_{}.zip\"", id),
+        )
         .body(Body::from(zip_bytes))
         .map_err(|e| {
             tracing::error!("构建响应失败: {:?}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-                "code": 500,
-                "message": format!("构建响应失败: {}", e)
-            })))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "code": 500,
+                    "message": format!("构建响应失败: {}", e)
+                })),
+            )
         })?;
 
     Ok(response)
@@ -1135,52 +1354,78 @@ pub async fn download_template_version(
     State(state): State<AppState>,
     Path((id, version)): Path<(i64, String)>,
 ) -> Result<Response<Body>, (StatusCode, Json<Value>)> {
-    // 构建版本存储路径
-    let version_path = state.storage_manager.get_release_path(id, &version);
+    // 构建版本存储路径（version 来自 URL，经存储层路径校验）
+    let version_path = state
+        .storage_manager
+        .get_release_path(id, &version)
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(json!({
+                    "code": 400,
+                    "message": e.to_string()
+                })),
+            )
+        })?;
 
     // 检查版本目录是否存在
     if !version_path.exists() {
-        return Err((StatusCode::NOT_FOUND, Json(json!({
-            "code": 404,
-            "message": format!("版本目录不存在: {}", version)
-        }))));
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({
+                "code": 404,
+                "message": format!("版本目录不存在: {}", version)
+            })),
+        ));
     }
 
     // 在 blocking task 中打包 ZIP
     let version_path_clone = version_path.clone();
-    let zip_bytes = tokio::task::spawn_blocking(move || {
-        create_template_zip(version_path_clone)
-    }).await.map_err(|e| {
-        tracing::error!("创建ZIP失败: {:?}", e);
-        format!("创建ZIP失败: {}", e)
-    })
-    .map_err(|e| {
-        tracing::error!("打包任务失败: {:?}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "code": 500,
-            "message": e
-        })))
-    })?
-    .map_err(|e| {
-        tracing::error!("获取ZIP失败: {:?}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "code": 500,
-            "message": e
-        })))
-    })?;
+    let zip_bytes = tokio::task::spawn_blocking(move || create_template_zip(version_path_clone))
+        .await
+        .map_err(|e| {
+            tracing::error!("创建ZIP失败: {:?}", e);
+            format!("创建ZIP失败: {}", e)
+        })
+        .map_err(|e| {
+            tracing::error!("打包任务失败: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "code": 500,
+                    "message": e
+                })),
+            )
+        })?
+        .map_err(|e| {
+            tracing::error!("获取ZIP失败: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "code": 500,
+                    "message": e
+                })),
+            )
+        })?;
 
     // 返回 ZIP 文件
     let response = Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/zip")
-        .header("Content-Disposition", format!("attachment; filename=\"template_{}_{}.zip\"", id, version))
+        .header(
+            "Content-Disposition",
+            format!("attachment; filename=\"template_{}_{}.zip\"", id, version),
+        )
         .body(Body::from(zip_bytes))
         .map_err(|e| {
             tracing::error!("构建响应失败: {:?}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-                "code": 500,
-                "message": format!("构建响应失败: {}", e)
-            })))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "code": 500,
+                    "message": format!("构建响应失败: {}", e)
+                })),
+            )
         })?;
 
     Ok(response)
@@ -1199,8 +1444,8 @@ fn create_template_zip(template_path: std::path::PathBuf) -> Result<Vec<u8>, Str
         let excluded_dirs = HashSet::from([".git"]);
 
         // 遍历模板目录
-        let entries = std::fs::read_dir(&template_path)
-            .map_err(|e| format!("读取模板目录失败: {}", e))?;
+        let entries =
+            std::fs::read_dir(&template_path).map_err(|e| format!("读取模板目录失败: {}", e))?;
 
         for entry in entries {
             let entry = entry.map_err(|e| format!("读取目录项失败: {}", e))?;
@@ -1221,7 +1466,8 @@ fn create_template_zip(template_path: std::path::PathBuf) -> Result<Vec<u8>, Str
                     let relative_path_str = relative_path.to_string_lossy().replace('\\', "/");
 
                     // 检查是否在排除的目录中
-                    let should_exclude = relative_path_str.split('/')
+                    let should_exclude = relative_path_str
+                        .split('/')
                         .take(relative_path_str.split('/').count().saturating_sub(1))
                         .any(|part| excluded_dirs.contains(part));
 
@@ -1283,7 +1529,8 @@ fn add_dir_to_zip<W: Write + Seek>(
                 let relative_path_str = relative_path.to_string_lossy().replace('\\', "/");
 
                 // 检查是否在排除的目录中
-                let should_exclude = relative_path_str.split('/')
+                let should_exclude = relative_path_str
+                    .split('/')
                     .take(relative_path_str.split('/').count().saturating_sub(1))
                     .any(|part| excluded_dirs.contains(part));
 
@@ -1329,9 +1576,7 @@ pub async fn update_template(
                 "message": "更新模板成功"
             })))
         }
-        Err(e) => {
-            error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string())
-        }
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
 
@@ -1352,23 +1597,36 @@ pub async fn fork_template(
 
     match state.template_service.fork_template(request).await {
         Ok(new_template_id) => {
-            tracing::info!("Fork 模板成功: source_id={}, new_id={}", source_id, new_template_id);
+            tracing::info!(
+                "Fork 模板成功: source_id={}, new_id={}",
+                source_id,
+                new_template_id
+            );
 
             // 同步执行 Git 克隆，确保文件就绪后再返回
             let clone_result = tokio::task::spawn_blocking(move || {
-                use template_studio_infrastructure::git::service::GitService;
                 use template_studio_infrastructure::config::settings::GitConfig;
+                use template_studio_infrastructure::git::service::GitService;
 
                 let start_time = std::time::Instant::now();
-                tracing::info!("开始 Git 克隆操作: source_id={}, new_id={}", source_id, new_template_id);
+                tracing::info!(
+                    "开始 Git 克隆操作: source_id={}, new_id={}",
+                    source_id,
+                    new_template_id
+                );
 
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 let template_name = rt.block_on(async {
-                    template_service.get_template(new_template_id).await
+                    template_service
+                        .get_template(new_template_id)
+                        .await
                         .ok()
                         .and_then(|t| t.map(|tmpl| tmpl.name))
                         .unwrap_or_else(|| {
-                            tracing::warn!("无法获取模板名称，使用默认名称: template_id={}", new_template_id);
+                            tracing::warn!(
+                                "无法获取模板名称，使用默认名称: template_id={}",
+                                new_template_id
+                            );
                             "Forked Template".to_string()
                         })
                 });
@@ -1376,7 +1634,11 @@ pub async fn fork_template(
                 let source_path = storage_manager.get_template_path(source_id);
                 let target_path = storage_manager.get_template_path(new_template_id);
 
-                tracing::info!("Git 克隆路径: source={:?}, target={:?}", source_path, target_path);
+                tracing::info!(
+                    "Git 克隆路径: source={:?}, target={:?}",
+                    source_path,
+                    target_path
+                );
 
                 let git_config = GitConfig {
                     auto_init: true,
@@ -1385,25 +1647,36 @@ pub async fn fork_template(
                 let git_service = GitService::new(git_config);
 
                 let result = rt.block_on(async {
-                    git_service.clone_and_clean(
-                        &source_path,
-                        &target_path,
-                        &template_name,
-                        Some("Template Studio"),
-                        Some("template@studio.local")
-                    ).await
+                    git_service
+                        .clone_and_clean(
+                            &source_path,
+                            &target_path,
+                            &template_name,
+                            Some("Template Studio"),
+                            Some("template@studio.local"),
+                        )
+                        .await
                 });
 
                 let elapsed = start_time.elapsed();
-                tracing::info!("Git 克隆完成: template_id={}, 耗时={:?}", new_template_id, elapsed);
+                tracing::info!(
+                    "Git 克隆完成: template_id={}, 耗时={:?}",
+                    new_template_id,
+                    elapsed
+                );
 
                 result
-            }).await;
+            })
+            .await;
 
             match clone_result {
                 Ok(Ok(_)) => tracing::info!("Git 仓库克隆成功: new_id={}", new_template_id),
-                Ok(Err(e)) => tracing::error!("Git 仓库克隆失败: new_id={}, error={}", new_template_id, e),
-                Err(e) => tracing::error!("Git 克隆任务异常: new_id={}, error={}", new_template_id, e),
+                Ok(Err(e)) => {
+                    tracing::error!("Git 仓库克隆失败: new_id={}, error={}", new_template_id, e)
+                }
+                Err(e) => {
+                    tracing::error!("Git 克隆任务异常: new_id={}, error={}", new_template_id, e)
+                }
             }
 
             Ok(Json(json!({
@@ -1412,9 +1685,7 @@ pub async fn fork_template(
                 "message": "Fork 模板成功"
             })))
         }
-        Err(e) => {
-            error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string())
-        }
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
 
@@ -1427,8 +1698,14 @@ pub async fn create_user_template(
     Json(request): Json<CreateTemplateRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     check_scope(&auth_user, "template:write")?;
-    match state.template_service.create_user_template(auth_user.user_id, request).await {
-        Ok(id) => Ok(Json(json!({ "code": 200, "message": "模板创建成功", "result": { "id": id } }))),
+    match state
+        .template_service
+        .create_user_template(auth_user.user_id, request)
+        .await
+    {
+        Ok(id) => Ok(Json(
+            json!({ "code": 200, "message": "模板创建成功", "result": { "id": id } }),
+        )),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
 }
@@ -1440,7 +1717,11 @@ pub async fn list_my_templates(
     Query(query): Query<UserTemplateListQuery>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     check_scope(&auth_user, "template:read")?;
-    match state.template_service.list_user_templates(auth_user.user_id, query).await {
+    match state
+        .template_service
+        .list_user_templates(auth_user.user_id, query)
+        .await
+    {
         Ok(resp) => Ok(Json(json!({ "code": 200, "result": resp }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -1455,7 +1736,11 @@ pub async fn update_user_template(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     check_scope(&auth_user, "template:write")?;
     request.id = id;
-    match state.template_service.update_user_template(auth_user.user_id, request).await {
+    match state
+        .template_service
+        .update_user_template(auth_user.user_id, request)
+        .await
+    {
         Ok(_) => Ok(Json(json!({ "code": 200, "message": "模板更新成功" }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
@@ -1468,7 +1753,11 @@ pub async fn delete_user_template(
     Path(id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     check_scope(&auth_user, "template:delete")?;
-    match state.template_service.delete_user_template(auth_user.user_id, id).await {
+    match state
+        .template_service
+        .delete_user_template(auth_user.user_id, id)
+        .await
+    {
         Ok(_) => Ok(Json(json!({ "code": 200, "message": "模板删除成功" }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
@@ -1481,7 +1770,11 @@ pub async fn submit_for_review(
     Path(id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     check_scope(&auth_user, "template:publish")?;
-    match state.template_service.submit_for_review(auth_user.user_id, id).await {
+    match state
+        .template_service
+        .submit_for_review(auth_user.user_id, id)
+        .await
+    {
         Ok(_) => Ok(Json(json!({ "code": 200, "message": "已提交审核" }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
@@ -1514,7 +1807,11 @@ pub async fn list_pending_templates(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let page = query.page.unwrap_or(1);
     let page_size = query.page_size.unwrap_or(20);
-    match state.template_service.list_pending_templates(page, page_size).await {
+    match state
+        .template_service
+        .list_pending_templates(page, page_size)
+        .await
+    {
         Ok(resp) => Ok(Json(json!({ "code": 200, "result": resp }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -1526,7 +1823,11 @@ pub async fn review_template_admin(
     Extension(auth_user): Extension<AuthUser>,
     Json(request): Json<ReviewTemplateRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    match state.template_service.review_template(auth_user.user_id, request).await {
+    match state
+        .template_service
+        .review_template(auth_user.user_id, request)
+        .await
+    {
         Ok(_) => Ok(Json(json!({ "code": 200, "message": "审核完成" }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
