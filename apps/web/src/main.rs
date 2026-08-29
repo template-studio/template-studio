@@ -282,13 +282,17 @@ pub fn create_app(state: AppState) -> Router {
     let admin = routes::admin_routes()
         .layer(axum::middleware::from_fn_with_state(state.clone(), middleware::auth::auth_middleware));
 
+    // 模板写操作与 admin 一样需通过认证中间件（读操作保持公开）
+    let template_protected = template_protected_routes()
+        .layer(axum::middleware::from_fn_with_state(state.clone(), middleware::auth::auth_middleware));
+
     Router::new()
         // 健康检查
         .route("/health", get(health_check))
         // 认证API（公开）
         .nest("/api/v1/auth", routes::auth::auth_routes())
-        // 模板API
-        .nest("/api/v1/template", template_routes())
+        // 模板API（读公开 + 写认证）
+        .nest("/api/v1/template", template_routes().merge(template_protected))
         // 管理员API（受认证保护）
         .nest("/api/v1/admin", admin)
         // 编辑器API
@@ -306,26 +310,36 @@ pub fn create_app(state: AppState) -> Router {
 }
 
 /// 模板路由
+/// 模板公开路由（只读，前台未登录可访问）
 fn template_routes() -> Router<AppState> {
     Router::new()
         .route("/templates/types", get(handlers::template::get_template_types))
         .route("/templateList", get(handlers::template::list_templates))
-        .route("/templates/add", post(handlers::template::create_template))
         .route("/templates/detail", get(handlers::template::get_template_detail))
+        // GET 下载类接口：前端用 <a href> 直链下载，无法携带 token 请求头，暂保持公开。
+        // TODO(安全): 改为支持 ?token= 查询参数或短时下载签名后纳入认证组
+        .route("/templates/:id/export", get(handlers::template::export_template))
+        .route("/templates/:id/releases", get(handlers::releases::list_releases))
+        // 版本发布路由（写操作在 template_protected_routes）
+        // 下载版本模板（发布内容的公开下载）
+        .route("/templates/:id/releases/:version/download", get(handlers::template::download_template_version))
+}
+
+/// 模板写操作路由（需认证）
+fn template_protected_routes() -> Router<AppState> {
+    Router::new()
+        .route("/templates/add", post(handlers::template::create_template))
         .route("/templates/edit", put(handlers::template::update_template))
         .route("/templates/toggle-featured", put(handlers::template::toggle_featured))
         .route("/templates/del", delete(handlers::template::delete_template))
+        // fork 的 handler 依赖 AuthUser，必须在认证组内（此前挂在公开路由上导致恒 500）
         .route("/templates/fork", post(handlers::template::fork_template))
         .route("/templates/:id/analyze-variables", post(handlers::template_analysis::analyze_variables))
-        .route("/templates/:id/export", get(handlers::template::export_template))
-        // 版本发布路由
-        .route("/templates/:id/releases", get(handlers::releases::list_releases))
+        // 版本发布（写操作）
         .route("/templates/:id/releases", post(handlers::releases::create_release))
         .route("/templates/:id/releases/reset-to-latest", post(handlers::releases::reset_to_latest))
         .route("/templates/:id/releases/:version/rollback", post(handlers::releases::rollback_version))
         .route("/templates/:id/releases/:version/deprecate", post(handlers::releases::deprecate_version))
-        // 下载版本模板
-        .route("/templates/:id/releases/:version/download", get(handlers::template::download_template_version))
 }
 
 /// 编辑器路由
