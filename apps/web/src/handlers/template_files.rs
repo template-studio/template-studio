@@ -21,7 +21,7 @@ pub async fn preview_template_file(
     // 解析参数（兼容字符串和数字）
     let template_id = match payload.get("templateId") {
         Some(v) => match v {
-            serde_json::Value::Number(n) => n.as_i64().unwrap(),
+            serde_json::Value::Number(n) => n.as_i64().unwrap_or(0),
             serde_json::Value::String(s) => s.parse::<i64>().unwrap_or(0),
             _ => {
                 return Err((
@@ -94,7 +94,7 @@ pub async fn generate_template_file(
     // 解析参数（兼容字符串和数字）
     let template_id = match payload.get("templateId") {
         Some(v) => match v {
-            serde_json::Value::Number(n) => n.as_i64().unwrap(),
+            serde_json::Value::Number(n) => n.as_i64().unwrap_or(0),
             serde_json::Value::String(s) => s.parse::<i64>().unwrap_or(0),
             _ => {
                 return Err((
@@ -175,7 +175,7 @@ pub async fn preview_file_tree(
     // 解析参数（兼容字符串和数字）
     let template_id = match payload.get("templateId") {
         Some(v) => match v {
-            serde_json::Value::Number(n) => n.as_i64().unwrap(),
+            serde_json::Value::Number(n) => n.as_i64().unwrap_or(0),
             serde_json::Value::String(s) => s.parse::<i64>().unwrap_or(0),
             _ => {
                 return Err((
@@ -240,7 +240,7 @@ pub async fn generate_file_tree(
     // 解析参数（兼容字符串和数字）
     let template_id = match payload.get("templateId") {
         Some(v) => match v {
-            serde_json::Value::Number(n) => n.as_i64().unwrap(),
+            serde_json::Value::Number(n) => n.as_i64().unwrap_or(0),
             serde_json::Value::String(s) => s.parse::<i64>().unwrap_or(0),
             _ => {
                 return Err((
@@ -425,7 +425,7 @@ pub async fn generate_zip(
     // 解析参数（兼容字符串和数字）
     let template_id = match payload.get("templateId") {
         Some(v) => match v {
-            serde_json::Value::Number(n) => n.as_i64().unwrap(),
+            serde_json::Value::Number(n) => n.as_i64().unwrap_or(0),
             serde_json::Value::String(s) => s.parse::<i64>().unwrap_or(0),
             _ => {
                 return Err((
@@ -603,7 +603,7 @@ pub async fn clear_cache(
     // 解析参数（兼容字符串和数字）
     let template_id = match payload.get("templateId") {
         Some(v) => match v {
-            serde_json::Value::Number(n) => n.as_i64().unwrap(),
+            serde_json::Value::Number(n) => n.as_i64().unwrap_or(0),
             serde_json::Value::String(s) => s.parse::<i64>().unwrap_or(0),
             _ => {
                 return Err((

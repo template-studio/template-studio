@@ -1,7 +1,7 @@
-use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use bcrypt::{hash, DEFAULT_COST};
 use sqlx::{MySqlPool, Row};
+use std::sync::Arc;
 use template_studio_repositories::SystemSettingRepository;
 
 pub struct EmailService {
@@ -11,15 +11,24 @@ pub struct EmailService {
 }
 
 impl EmailService {
-    pub fn new(db: MySqlPool, setting_repo: Arc<SystemSettingRepository>, base_url: String) -> Self {
-        Self { db, setting_repo, base_url }
+    pub fn new(
+        db: MySqlPool,
+        setting_repo: Arc<SystemSettingRepository>,
+        base_url: String,
+    ) -> Self {
+        Self {
+            db,
+            setting_repo,
+            base_url,
+        }
     }
 
     /// 从系统设置获取 SMTP 配置
     async fn get_smtp_config(&self) -> Result<SmtpConfig> {
         let settings = self.setting_repo.get_by_group("smtp").await?;
         let get = |key: &str| -> String {
-            settings.iter()
+            settings
+                .iter()
                 .find(|s| s.key == key)
                 .and_then(|s| s.value.clone())
                 .unwrap_or_default()
@@ -43,13 +52,12 @@ impl EmailService {
     /// 发送密码重置邮件
     pub async fn send_reset_email(&self, email: &str) -> Result<()> {
         // 查找用户
-        let user_id: Option<i64> = sqlx::query_scalar(
-            "SELECT id FROM users WHERE email = ? AND status = 1"
-        )
-        .bind(email)
-        .fetch_optional(&self.db)
-        .await?
-        .flatten();
+        let user_id: Option<i64> =
+            sqlx::query_scalar("SELECT id FROM users WHERE email = ? AND status = 1")
+                .bind(email)
+                .fetch_optional(&self.db)
+                .await?
+                .flatten();
 
         let user_id = match user_id {
             Some(id) => id,
@@ -71,11 +79,19 @@ impl EmailService {
         .execute(&self.db)
         .await?;
 
-        tracing::info!("Password reset token created for user {}: {}...", user_id, &token[..8]);
+        tracing::info!(
+            "Password reset token created for user {}: {}...",
+            user_id,
+            &token[..8]
+        );
 
         // 发送邮件
         let smtp = self.get_smtp_config().await?;
-        let reset_url = format!("{}/reset-password?token={}", self.base_url.trim_end_matches('/'), token);
+        let reset_url = format!(
+            "{}/reset-password?token={}",
+            self.base_url.trim_end_matches('/'),
+            token
+        );
 
         let subject = "Template Studio - 密码重置";
         let body = format!(
@@ -104,16 +120,18 @@ impl EmailService {
     /// 重置密码
     pub async fn reset_password(&self, token: &str, new_password: &str) -> Result<()> {
         // 先检查 token 是否存在（不管 used 状态）
-        let exists: bool = sqlx::query_scalar(
-            "SELECT COUNT(*) > 0 FROM password_reset_tokens WHERE token = ?"
-        )
-        .bind(token)
-        .fetch_one(&self.db)
-        .await
-        .unwrap_or(false);
+        let exists: bool =
+            sqlx::query_scalar("SELECT COUNT(*) > 0 FROM password_reset_tokens WHERE token = ?")
+                .bind(token)
+                .fetch_one(&self.db)
+                .await
+                .unwrap_or(false);
 
         if !exists {
-            tracing::error!("Token not found in database: {}", &token[..8.min(token.len())]);
+            tracing::error!(
+                "Token not found in database: {}",
+                &token[..8.min(token.len())]
+            );
             return Err(anyhow!("重置链接无效或已过期"));
         }
 
@@ -150,12 +168,23 @@ impl EmailService {
     }
 
     /// 发送邮件
-    async fn send_email(&self, config: &SmtpConfig, to: &str, subject: &str, html_body: &str) -> Result<()> {
-        use lettre::{Message, SmtpTransport, Transport};
+    async fn send_email(
+        &self,
+        config: &SmtpConfig,
+        to: &str,
+        subject: &str,
+        html_body: &str,
+    ) -> Result<()> {
         use lettre::message::{header::ContentType, Mailbox};
+        use lettre::{Message, SmtpTransport, Transport};
 
-        let from = config.sender.parse::<Mailbox>()
-            .unwrap_or_else(|_| format!("Template Studio <{}>", config.username).parse().unwrap());
+        // 发件人解析失败时回退到用户名构造，两者都非法则返回错误而非 panic
+        let from = match config.sender.parse::<Mailbox>() {
+            Ok(mb) => mb,
+            Err(_) => format!("Template Studio <{}>", config.username)
+                .parse::<Mailbox>()
+                .map_err(|e| anyhow!("发件人地址无效（sender/username 均无法解析）: {}", e))?,
+        };
 
         let email = Message::builder()
             .from(from)

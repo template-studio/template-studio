@@ -24,14 +24,12 @@ pub type AppState = super::super::AppState;
 type GitInitFn =
     fn(&std::path::PathBuf, &str, Option<&str>, Option<&str>) -> Result<(), anyhow::Error>;
 
-// 全局Git初始化函数指针
-static mut GIT_INIT_FN: Option<GitInitFn> = None;
+// 全局Git初始化函数指针（OnceLock 提供线程安全的初始化与读取，替代 static mut 的数据竞争）
+static GIT_INIT_FN: std::sync::OnceLock<GitInitFn> = std::sync::OnceLock::new();
 
 /// 设置Git初始化函数
 pub fn set_git_init_fn(f: GitInitFn) {
-    unsafe {
-        GIT_INIT_FN = Some(f);
-    }
+    let _ = GIT_INIT_FN.set(f);
 }
 
 /// 执行Git初始化
@@ -39,7 +37,9 @@ async fn execute_git_init(
     repo_path: &std::path::PathBuf,
     template_name: &str,
 ) -> Result<(), anyhow::Error> {
-    let f = unsafe { GIT_INIT_FN.ok_or_else(|| anyhow::anyhow!("Git初始化函数未设置"))? };
+    let f = GIT_INIT_FN
+        .get()
+        .ok_or_else(|| anyhow::anyhow!("Git初始化函数未设置"))?;
 
     // 在blocking task中执行同步Git操作
     let repo_path = repo_path.clone();

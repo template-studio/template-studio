@@ -1,8 +1,10 @@
-use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use bcrypt::{hash, DEFAULT_COST};
-use template_studio_shared::models::pat::{CreatePatRequest, CreatePatResponse, PatListItem, PatValidation};
+use std::sync::Arc;
 use template_studio_repositories::PatRepository;
+use template_studio_shared::models::pat::{
+    CreatePatRequest, CreatePatResponse, PatListItem, PatValidation,
+};
 
 const MAX_TOKENS_PER_USER: i64 = 20;
 const TOKEN_PREFIX: &str = "ts_pat_";
@@ -34,19 +36,37 @@ impl PatService {
 
         let raw_token = format!("{}{}", TOKEN_PREFIX, generate_random_string(32));
         let token_hash = hash(&raw_token, DEFAULT_COST)?;
-        let token_prefix = format!("{}{}…", TOKEN_PREFIX, &raw_token[TOKEN_PREFIX.len()..TOKEN_PREFIX.len() + 8]);
+        let token_prefix = format!(
+            "{}{}…",
+            TOKEN_PREFIX,
+            &raw_token[TOKEN_PREFIX.len()..TOKEN_PREFIX.len() + 8]
+        );
 
-        let expires_at = req.expires_in_days.map(|days| {
-            chrono::Utc::now()
-                .checked_add_signed(chrono::Duration::days(days))
-                .unwrap()
-                .naive_utc()
-        });
+        // 过期时间由用户请求指定，极端值可能溢出，避免 unwrap panic
+        let expires_at = match req.expires_in_days {
+            Some(days) => Some(
+                chrono::Utc::now()
+                    .checked_add_signed(chrono::Duration::days(days))
+                    .ok_or_else(|| anyhow!("过期天数超出可表示范围: {}", days))?
+                    .naive_utc(),
+            ),
+            None => None,
+        };
 
         let validated_scopes = validate_scopes(&req.scopes)?;
         let scopes_json = serde_json::to_string(&validated_scopes)?;
 
-        let id = self.pat_repo.create(user_id, &req.name, &token_hash, &token_prefix, &scopes_json, expires_at).await?;
+        let id = self
+            .pat_repo
+            .create(
+                user_id,
+                &req.name,
+                &token_hash,
+                &token_prefix,
+                &scopes_json,
+                expires_at,
+            )
+            .await?;
 
         Ok(CreatePatResponse {
             id,
@@ -69,8 +89,10 @@ impl PatService {
     /// 通过原始令牌值验证，返回 user_id 和 scopes
     pub async fn validate(&self, raw_token: &str) -> Result<PatValidation> {
         let pat = {
-            let prefix_part = &raw_token[..TOKEN_PREFIX.len() + 8.min(raw_token.len() - TOKEN_PREFIX.len())];
-            let all = self.pat_repo.list_by_prefix_like(prefix_part).await?;
+            // raw_token 来自请求头，完全受用户控制：按字符截取避免
+            // 多字节字符跨字节边界切片 panic，也避免长度不足时下标越界
+            let prefix_part: String = raw_token.chars().take(TOKEN_PREFIX.len() + 8).collect();
+            let all = self.pat_repo.list_by_prefix_like(&prefix_part).await?;
             let mut found = None;
             for p in all {
                 if bcrypt::verify(raw_token, &p.token_hash).unwrap_or(false) {
@@ -104,7 +126,9 @@ fn generate_random_string(len: usize) -> String {
     use rand::Rng;
     const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
     let mut rng = rand::thread_rng();
-    (0..len).map(|_| CHARSET[rng.gen_range(0..CHARSET.len())] as char).collect()
+    (0..len)
+        .map(|_| CHARSET[rng.gen_range(0..CHARSET.len())] as char)
+        .collect()
 }
 
 fn validate_scopes(scopes: &[String]) -> Result<Vec<String>> {
