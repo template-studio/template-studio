@@ -1025,7 +1025,7 @@
       console.log('Form validation result:', error); // 调试日志
 
       if (error && typeof error === 'object' && !error.message) {
-        // 处理NaiveUI表单验证结果
+        // 处理表单验证结果（校验失败时 antd Form 会 reject 一个对象）
         if (error.warnings === undefined) {
           // 验证成功的情况
           console.log('Form validation passed, but caught as error - continuing execution');

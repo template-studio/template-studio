@@ -1,10 +1,8 @@
 {
-  "name": "naive-ui-admin",
+  "name": "template-studio-antd-web",
   "version": "2.1.0",
   "author": {
-    "name": "Ahjung",
-    "email": "735878602@qq.com",
-    "url": "https://github.com/jekip/naive-ui-admin"
+    "name": "Template Studio Team"
   },
   "private": true,
   "scripts": {
@@ -147,13 +145,13 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jekip/naive-ui-admin.git"
+    "url": "git+https://github.com/template-studio/template-studio.git"
   },
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/jekip/naive-ui-admin/issues"
+    "url": "https://github.com/template-studio/template-studio/issues"
   },
-  "homepage": "https://github.com/jekip/naive-ui-admin",
+  "homepage": "https://github.com/template-studio/template-studio",
   "engines": {
     "node": ">=16"
   }

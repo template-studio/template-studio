@@ -56,8 +56,8 @@
             <template #switcherIcon>
               <ChevronForward style="font-size: 14px" />
             </template>
-            <template #icon="{ isDirectory, isExpanded }">
-              <FolderOpenOutline v-if="isDirectory && isExpanded" style="font-size: 16px" />
+            <template #icon="{ isDirectory, expanded }">
+              <FolderOpenOutline v-if="isDirectory && expanded" style="font-size: 16px" />
               <FolderIcon v-else-if="isDirectory" style="font-size: 16px" />
               <FileTrayFullOutline v-else style="font-size: 16px" />
             </template>

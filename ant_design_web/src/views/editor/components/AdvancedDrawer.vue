@@ -220,7 +220,7 @@
                     <a-radio-group
                       v-model:value="selectedEngine"
                       :disabled="engineState.isLoading"
-                      @change="handleEngineSwitch"
+                      @change="(e) => handleEngineSwitch(e.target.value)"
                     >
                       <a-space>
                         <a-radio value="wasm">

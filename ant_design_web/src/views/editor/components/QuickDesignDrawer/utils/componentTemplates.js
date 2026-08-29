@@ -440,26 +440,6 @@ export function getComponentDisplayInfo(componentType) {
 }
 
 /**
- * 获取类型标签的 Naive UI 类型
- * @param {string} type - 组件类型
- * @returns {string} Naive UI Tag 类型
- */
-export function getTypeTagType(type) {
-  const typeMap = {
-    string: 'info',
-    integer: 'success',
-    number: 'success',
-    boolean: 'warning',
-    enum: 'default',
-    secret: 'error',
-    object: 'error',
-    array: 'default',
-    object_arr: 'default'
-  }
-  return typeMap[type] || 'default'
-}
-
-/**
  * Schema 转换工具函数
  */
 export const SchemaConverter = {

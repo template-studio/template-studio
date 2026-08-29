@@ -308,10 +308,10 @@
 
   // 计算属性，确保展开状态变化时重新渲染
   const treeDataComputed = computed(() => {
-    return treeToNaive(localTreeData.value);
+    return convertToAntTree(localTreeData.value);
   });
 
-  function treeToNaive(tree) {
+  function convertToAntTree(tree) {
     if (!Array.isArray(tree)) return [];
     // 排序逻辑：目录在前，文件在后，同类型按名称排序
     const customSort = (a, b) => {
@@ -338,7 +338,7 @@
         isDirectory: node.isDirectory === 1,
         hasCondition: node.hasCondition,
         generateCondition: node.generateCondition,
-        children: node.children ? treeToNaive(node.children) : [],
+        children: node.children ? convertToAntTree(node.children) : [],
         // 添加拖拽状态的类名
         class: getDragClass(nodeKey),
       };
@@ -1392,32 +1392,6 @@
     target.value = '';
   }
 
-
-  // 渲染条件指示器
-  function renderConditionIndicator(node) {
-    // 只检查新系统的 hasCondition 标记
-    if (!node.hasCondition) return null;
-
-    const iconStyle = {
-      fontSize: '14px',
-      marginLeft: '4px',
-      color: '#22c55e',
-      fontWeight: 'bold',
-    };
-
-    const title = `文件生成条件：\n${
-      node.conditionSummary || '已设置条件'
-    }\n点击右键菜单可编辑条件`;
-
-    return h(
-      'span',
-      {
-        style: iconStyle,
-        title: title,
-      },
-      '⚡'
-    );
-  }
 
   // 处理导出模板
   function handleExport() {

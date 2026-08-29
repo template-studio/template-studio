@@ -55,7 +55,9 @@ export function useColumns(propsRef: ComputedRef<BasicTableProps>) {
         column.ellipsis = typeof column.ellipsis === 'undefined' ? { tooltip: true } : false;
         const { edit } = column;
         if (edit) {
-          column.customRender = renderEditCell(column);
+          // renderEditCell 沿用 naive 的 (record, index) 签名，antd 的 customRender 以单对象调用，需做包装
+          const editCellRender = renderEditCell(column);
+          column.customRender = ({ record, index }) => editCellRender(record, index);
           if (edit) {
             const title: any = column.title;
             column.title = () => {

@@ -238,7 +238,7 @@ const userStore = useUserStore();
 
 const formInline = reactive({
   username: 'admin',
-  password: 'admin123',
+  password: '12345678',
   email: '',
   confirmPassword: '',
 });

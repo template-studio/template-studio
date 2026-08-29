@@ -1,11 +1,16 @@
 <template>
   <div class="page-footer">
     <div class="page-footer-link">
-      <a href="https://github.com/jekip/naive-ui-admin" target="_blank"> 官网 </a>
-      <a href="https://github.com/jekip/naive-ui-admin" target="_blank"> 社区 </a>
-      <a href="https://github.com/jekip/naive-ui-admin/issues" target="_blank"> 交流 </a>
+      <a href="https://github.com/template-studio/template-studio" target="_blank"> 官网 </a>
+      <a
+        href="https://github.com/template-studio/template-studio/discussions"
+        target="_blank"
+      >
+        社区
+      </a>
+      <a href="https://github.com/template-studio/template-studio/issues" target="_blank"> 交流 </a>
     </div>
-    <div class="copyright"> naive-ui-admin 1.4 · Made by Ah jung </div>
+    <div class="copyright"> Template Studio · Made by Template Studio Team </div>
   </div>
 </template>
 
