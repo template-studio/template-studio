@@ -754,9 +754,9 @@ fn build_default_functions() -> BuiltinFunctionCategory {
                 return_type: "string".to_string(),
                 category: "默认值".to_string(),
                 example: "{{ content | escape }}".to_string(),
-                usage: "escape 函数转义 HTML 特殊字符（<, >, &, \", '），防止 XSS 攻击。Tera 默认会转义，使用 safe 可输出原始内容。".to_string(),
+                usage: "escape 函数转义 HTML 特殊字符（<, >, &, \", '），防止 XSS 攻击。.html/.htm/.xml 模板中 {{ }} 默认已自动转义；需要原样输出 HTML 时使用 safe。".to_string(),
                 insert_text: "{{ value | escape }}".to_string(),
-                note: Some("Tera 默认行为".to_string()),
+                note: Some("HTML/XML 模板默认自动转义，safe 可豁免".to_string()),
                 aliases: None,
             },
             BuiltinFunction {

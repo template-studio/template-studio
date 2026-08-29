@@ -93,7 +93,7 @@ pub use builtin::{
 };
 
 // 导出渲染函数
-pub use engine::{clear_template_cache, get_cache_size, render_string};
+pub use engine::{clear_template_cache, get_cache_size, render_string, render_string_named};
 
 /// 预注册所有内置过滤器和函数
 ///

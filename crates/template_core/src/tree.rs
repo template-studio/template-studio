@@ -9,8 +9,8 @@
 //! - **容错处理** - 单个文件渲染失败不影响其他文件
 
 use crate::conditions::Condition;
-use crate::render_string;
 use crate::types::{RenderError, Variables};
+use crate::{render_string, render_string_named};
 use serde::{Deserialize, Serialize};
 
 /// Include 依赖类型
@@ -293,7 +293,12 @@ pub(crate) fn render_single_file(
     // 渲染文件内容：所有文件统一走支持继承的渲染（传递整棵模板树）。
     // MiniJinja 对任意模板支持 extends/include 语法，不再按 .html 扩展名分流；
     // 性能由引擎侧的环境缓存（模板集哈希复用）吸收
-    let render_result = render_string(&file.file_content, variables, Some(all_templates))?;
+    let render_result = render_string_named(
+        &file.file_name,
+        &file.file_content,
+        variables,
+        Some(all_templates),
+    )?;
 
     // 检查渲染是否成功
     if !render_result.success {

@@ -72,10 +72,15 @@ impl TemplateRenderService {
             .unwrap_or("unknown")
             .to_string();
 
-        // 使用 template_core 进行渲染
+        // 使用 template_core 进行渲染（带文件名，HTML 系扩展名自动转义）
         let render_vars = Variables::from_value(variables.clone());
-        let core_result = render_string(&template_content, &render_vars, None)
-            .map_err(|e| AppError::Internal(format!("渲染失败: {}", e)))?;
+        let core_result = template_studio_template_core::render_string_named(
+            &file_name,
+            &template_content,
+            &render_vars,
+            None,
+        )
+        .map_err(|e| AppError::Internal(format!("渲染失败: {}", e)))?;
 
         // 转换结果格式
         Ok(RenderResult {
@@ -132,8 +137,13 @@ impl TemplateRenderService {
 
         // 使用 template_core 进行渲染
         let render_vars = Variables::from_value(variables.clone());
-        let core_result = render_string(&template_content, &render_vars, all_templates.as_ref())
-            .map_err(|e| AppError::Internal(format!("渲染失败: {}", e)))?;
+        let core_result = template_studio_template_core::render_string_named(
+            &file_name,
+            &template_content,
+            &render_vars,
+            all_templates.as_ref(),
+        )
+        .map_err(|e| AppError::Internal(format!("渲染失败: {}", e)))?;
 
         // 转换结果格式
         Ok(RenderResult {

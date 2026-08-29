@@ -212,3 +212,11 @@
 **涉及文件：** `crates/template_core/src/{dependency_analyzer,tree,lib}.rs`、`crates/services/src/template_render_service.rs`
 
 **验收结果：** 新增单测覆盖单引号 extends/include 与 from-import（crate 总测试 51+6 全过）；真实模板端到端实测——写入跨目录继承文件（pages/child extends layouts/base 路径引用）后经公开预览接口正确渲染 `<div class="layout">CHILD</div>`（修复前同目录限制必失败）；测试文件已清理。
+
+## 2026-08-29 引擎修复（继承分析项 4/4）：按扩展名自动转义（方案 A）
+
+**变更内容：** 落实分析文档 §3.4。新增 `render_string_named`（带模板名渲染）并成为文件内容渲染的标准入口：`.html/.htm/.xml` 结尾时 `{{ var }}` 输出自动 HTML 转义、`| safe` 豁免，其余扩展名与无名渲染（文件名/路径内部渲染、WASM 单文件入口）保持不转义。实现方式：全局环境与缓存环境均设置 `set_auto_escape_callback`，主模板经 `render_named_str` 携带真实文件名参与决策。接入点：整树渲染 `render_single_file`、编辑器单文件渲染 `render_file`、预览 `render_file_from_path`。builtin.rs 中「Tera 默认会转义」的错误文档同步修正为准确描述。AI 工具的展示性渲染与 WASM 单字符串入口维持不转义（非部署产物场景）。
+
+**涉及文件：** `crates/template_core/src/{engine,tree,lib,builtin}.rs`、`crates/services/src/template_render_service.rs`
+
+**验收结果：** 单测覆盖（HTML 转义、safe 豁免、非 HTML 不转义、无名不转义），crate 总测试 52+6 全过；浏览器 WASM 实测树渲染中 .html 输出 `&lt;b&gt;&amp;` 且 `| safe` 原样、.md 不转义；存量模板回归：gin-vue-base 无 .html 文件（转义零影响），全量渲染 failedFiles=11 均为预存的「空变量 + Strict 模式」undefined 错误（非本次引入，早期响应样本即含同类 renderError）。

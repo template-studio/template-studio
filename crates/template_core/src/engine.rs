@@ -19,6 +19,17 @@ pub(crate) static GLOBAL_ENV: Lazy<RwLock<Environment<'static>>> = Lazy::new(|| 
     // 注册所有自定义过滤器
     filters::register_all_filters(&mut env);
 
+    // 按模板名扩展名决定自动转义：HTML/XML 系转义，其余保持原样。
+    // 主模板经 render_named_str 携带真实文件名；无名渲染（文件名/路径等
+    // 内部渲染）收到空名不转义，行为与历史一致
+    env.set_auto_escape_callback(|name: &str| {
+        if name.ends_with(".html") || name.ends_with(".htm") || name.ends_with(".xml") {
+            minijinja::AutoEscape::Html
+        } else {
+            minijinja::AutoEscape::None
+        }
+    });
+
     // 启用严格模式：未定义的变量会导致错误
     env.set_undefined_behavior(minijinja::UndefinedBehavior::Strict);
 
@@ -91,13 +102,27 @@ pub fn render_string(
     variables: &Variables,
     all_templates: Option<&std::collections::HashMap<String, String>>,
 ) -> Result<RenderResult, RenderError> {
+    // 无名渲染：自动转义回调收到空名，不做转义（文件名/路径等内部渲染与
+    // WASM 单文件预览走此入口，保持既有行为）
+    render_string_named("", template_content, variables, all_templates)
+}
+
+/// 带模板名的渲染：模板名（通常为文件相对路径或文件名）参与自动转义决策——
+/// `.html`/`.htm`/`.xml` 结尾时 `{{ var }}` 输出自动 HTML 转义（`| safe` 可豁免），
+/// 其余扩展名不转义。文件内容渲染应优先使用此入口；文件名/路径渲染用 render_string。
+#[allow(clippy::result_large_err)]
+pub fn render_string_named(
+    template_name: &str,
+    template_content: &str,
+    variables: &Variables,
+    all_templates: Option<&std::collections::HashMap<String, String>>,
+) -> Result<RenderResult, RenderError> {
     let env = GLOBAL_ENV.read().unwrap();
 
-    // 如果提供了所有模板的映射，使用支持继承的渲染
     if let Some(templates) = all_templates {
-        render_with_templates(&env, template_content, variables, templates)
+        render_with_templates(&env, template_name, template_content, variables, templates)
     } else {
-        render_simple(&env, template_content, variables)
+        render_simple(&env, template_name, template_content, variables)
     }
 }
 
@@ -105,12 +130,13 @@ pub fn render_string(
 #[allow(clippy::result_large_err)]
 fn render_simple(
     env: &Environment<'_>,
+    template_name: &str,
     template_content: &str,
     variables: &Variables,
 ) -> Result<RenderResult, RenderError> {
     let context = convert_variables(variables);
 
-    match env.render_str(template_content, &context) {
+    match env.render_named_str(template_name, template_content, &context) {
         Ok(content) => Ok(RenderResult {
             content,
             success: true,
@@ -134,6 +160,7 @@ fn render_simple(
 #[allow(clippy::result_large_err)]
 fn render_with_templates(
     _env: &Environment<'_>,
+    template_name: &str,
     template_content: &str,
     variables: &Variables,
     templates: &HashMap<String, String>,
@@ -154,6 +181,17 @@ fn render_with_templates(
             env.set_lstrip_blocks(true);
             filters::register_all_filters(&mut env);
 
+            // 按模板名扩展名决定自动转义：HTML/XML 系转义，其余保持原样。
+            // 主模板经 render_named_str 携带真实文件名；无名渲染（文件名/路径等
+            // 内部渲染）收到空名不转义，行为与历史一致
+            env.set_auto_escape_callback(|name: &str| {
+                if name.ends_with(".html") || name.ends_with(".htm") || name.ends_with(".xml") {
+                    minijinja::AutoEscape::Html
+                } else {
+                    minijinja::AutoEscape::None
+                }
+            });
+
             // add_template 会借用源字符串，无法装入 'static 缓存环境；
             // 改用 loader 按名加载（minijinja 内部对加载结果做编译缓存），
             // 依赖模板的语法错误在首次被引用时以渲染错误形式暴露
@@ -171,7 +209,7 @@ fn render_with_templates(
     tracing::trace!("Inheritance render (env cache key: {})", cache_key);
 
     let context = convert_variables(variables);
-    match env.render_str(template_content, &context) {
+    match env.render_named_str(template_name, template_content, &context) {
         Ok(content) => Ok(RenderResult {
             content,
             success: true,
@@ -352,6 +390,27 @@ mod tests {
         // 清空缓存
         clear_template_cache();
         assert_eq!(get_cache_size(), 0);
+    }
+
+    #[test]
+    fn test_auto_escape_by_extension() {
+        let vars = Variables::from_json(r#"{"v": "<b>&"}"#).unwrap();
+
+        // HTML 系扩展名：自动转义
+        let r = render_string_named("page.html", "{{ v }}", &vars, None).unwrap();
+        assert_eq!(r.content, "&lt;b&gt;&amp;");
+
+        // | safe 豁免
+        let r = render_string_named("page.html", "{{ v | safe }}", &vars, None).unwrap();
+        assert_eq!(r.content, "<b>&");
+
+        // 非 HTML 扩展名：不转义
+        let r = render_string_named("config.yml", "{{ v }}", &vars, None).unwrap();
+        assert_eq!(r.content, "<b>&");
+
+        // 无名渲染（render_string）：不转义（文件名/路径渲染与 WASM 单文件入口）
+        let r = render_string("{{ v }}", &vars, None).unwrap();
+        assert_eq!(r.content, "<b>&");
     }
 
     #[test]
