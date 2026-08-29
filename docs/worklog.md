@@ -160,6 +160,15 @@
 
 **验收结果：** 实测浮点 templateId 返回业务错误（修复前 panic）、多字节与超短 PAT 头均 401（修复前 panic/越界）、正常请求 200、后端日志零 panic；编译通过。
 
+## 2026-08-29 P1 修复 4：删除模板事务与孤儿数据清理
+
+**变更内容：** 仓库层 `delete` 事务化并补齐关联清理（template_languages、template_versions 无外键级联需显式删除；template_reviews 有 CASCADE 自动处理）；服务层删除时同步清理磁盘上的发布快照目录 `releases/<id>/`（此前会成为孤儿）。
+
+**涉及文件：** `crates/repositories/src/template_repository.rs`、`crates/services/src/template_service.rs`
+
+**验收结果：** 端到端实测：创建测试模板（目录落盘）→ 删除（成功）→ 模板列表无残留、存储目录无残留、后端日志「删除模板目录成功/删除模板成功」。测试数据已随删除清理。
+
+
 
 
 

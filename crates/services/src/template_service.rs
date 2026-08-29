@@ -1,13 +1,11 @@
-use template_studio_repositories::{TemplateRepository, CategoryRepository, LanguageRepository};
-use template_studio_shared::{
-    models::template::*,
-    models::studio::*,
-    utils::{validation::validate_request, error::AppError},
-    constants::api::ApiConstants,
-};
 use std::sync::Arc;
-use template_studio_infrastructure::{
-    config::storage::StorageManager,
+use template_studio_infrastructure::config::storage::StorageManager;
+use template_studio_repositories::{CategoryRepository, LanguageRepository, TemplateRepository};
+use template_studio_shared::{
+    constants::api::ApiConstants,
+    models::studio::*,
+    models::template::*,
+    utils::{error::AppError, validation::validate_request},
 };
 
 /// 模板业务服务
@@ -39,26 +37,41 @@ impl TemplateService {
         validate_request(&request)?;
 
         // 检查分类是否存在
-        let _category = self.category_repository.get_by_id(request.category_id).await?
+        let _category = self
+            .category_repository
+            .get_by_id(request.category_id)
+            .await?
             .ok_or_else(|| AppError::NotFound(format!("分类 {} 不存在", request.category_id)))?;
 
         // 检查语言是否存在
         for lang in &request.languages {
-            let _language = self.language_repository.get_by_id(lang.language_id).await?
-                .ok_or_else(|| AppError::NotFound(format!("编程语言 {} 不存在", lang.language_id)))?;
+            let _language = self
+                .language_repository
+                .get_by_id(lang.language_id)
+                .await?
+                .ok_or_else(|| {
+                    AppError::NotFound(format!("编程语言 {} 不存在", lang.language_id))
+                })?;
         }
 
         // 创建模板ID和存储路径
         let template_id = chrono::Utc::now().timestamp_millis() as i64;
-        let git_repo_path = self.storage_manager.get_template_path(template_id)
+        let git_repo_path = self
+            .storage_manager
+            .get_template_path(template_id)
             .to_string_lossy()
             .to_string();
 
         // 初始化模板存储结构
-        self.storage_manager.initialize_template_structure(template_id).await?;
+        self.storage_manager
+            .initialize_template_structure(template_id)
+            .await?;
 
         // 创建模板记录 (使用Service层生成的ID)
-        let created_id = self.repository.create(&request, template_id, &git_repo_path).await?;
+        let created_id = self
+            .repository
+            .create(&request, template_id, &git_repo_path)
+            .await?;
 
         // TODO: 初始化Git仓库 - Git服务已经实现,需要集成到模板创建流程中
         // 当前状态: GitService已在 infrastructure/git/service.rs 实现
@@ -114,17 +127,28 @@ impl TemplateService {
         validate_request(&request)?;
 
         // 检查模板是否存在
-        let _template = self.repository.get_by_id(request.id).await?
+        let _template = self
+            .repository
+            .get_by_id(request.id)
+            .await?
             .ok_or_else(|| AppError::NotFound(format!("模板 {} 不存在", request.id)))?;
 
         // 检查分类是否存在
-        let _category = self.category_repository.get_by_id(request.category_id).await?
+        let _category = self
+            .category_repository
+            .get_by_id(request.category_id)
+            .await?
             .ok_or_else(|| AppError::NotFound(format!("分类 {} 不存在", request.category_id)))?;
 
         // 检查语言是否存在
         for lang in &request.languages {
-            let _language = self.language_repository.get_by_id(lang.language_id).await?
-                .ok_or_else(|| AppError::NotFound(format!("编程语言 {} 不存在", lang.language_id)))?;
+            let _language = self
+                .language_repository
+                .get_by_id(lang.language_id)
+                .await?
+                .ok_or_else(|| {
+                    AppError::NotFound(format!("编程语言 {} 不存在", lang.language_id))
+                })?;
         }
 
         // 更新模板
@@ -155,13 +179,39 @@ impl TemplateService {
                     tracing::info!("删除模板目录成功: id={}, path={:?}", id, template_path);
                 }
                 Err(e) => {
-                    tracing::error!("删除模板目录失败: id={}, path={}, error={}", id, template_path.display(), e);
+                    tracing::error!(
+                        "删除模板目录失败: id={}, path={}, error={}",
+                        id,
+                        template_path.display(),
+                        e
+                    );
                     // 目录删除失败不影响数据库删除成功的状态
                     // 但记录错误日志供后续排查
                 }
             }
         } else {
-            tracing::warn!("模板目录不存在，跳过删除: id={}, path={:?}", id, template_path);
+            tracing::warn!(
+                "模板目录不存在，跳过删除: id={}, path={:?}",
+                id,
+                template_path
+            );
+        }
+
+        // 同步删除该模板的全部发布快照目录，避免 releases/<id>/ 成为磁盘孤儿
+        let releases_path = self
+            .storage_manager
+            .get_releases_base_path()
+            .join(id.to_string());
+        if releases_path.exists() {
+            match tokio::fs::remove_dir_all(&releases_path).await {
+                Ok(_) => tracing::info!("删除发布快照目录成功: id={}", id),
+                Err(e) => tracing::error!(
+                    "删除发布快照目录失败: id={}, path={}, error={}",
+                    id,
+                    releases_path.display(),
+                    e
+                ),
+            }
         }
 
         // 无论模板是否存在，只要删除操作执行了就认为成功
@@ -176,22 +226,36 @@ impl TemplateService {
     }
 
     /// 分页获取模板列表
-    pub async fn list_templates(&self, query: TemplateListQuery) -> Result<template_studio_shared::utils::response::PagedResponse<Template>, AppError> {
+    pub async fn list_templates(
+        &self,
+        query: TemplateListQuery,
+    ) -> Result<template_studio_shared::utils::response::PagedResponse<Template>, AppError> {
         let paged_response = self.repository.list(&query).await?;
         Ok(paged_response)
     }
 
     /// 获取模板列表（匹配原系统格式）
-    pub async fn list_templates_original_format(&self, query: TemplateListQuery) -> Result<template_studio_shared::models::template::TemplateListResponse, AppError> {
-        tracing::info!("TemplateService::list_templates_original_format called with query: {:?}", query);
+    pub async fn list_templates_original_format(
+        &self,
+        query: TemplateListQuery,
+    ) -> Result<template_studio_shared::models::template::TemplateListResponse, AppError> {
+        tracing::info!(
+            "TemplateService::list_templates_original_format called with query: {:?}",
+            query
+        );
         let paged_response = self.repository.list(&query).await?;
 
         // 转换为原系统格式
-        let mut templates_list: Vec<template_studio_shared::models::template::TemplateItem> = Vec::new();
+        let mut templates_list: Vec<template_studio_shared::models::template::TemplateItem> =
+            Vec::new();
 
         for tmpl in paged_response.items {
             // 获取模板的关联语言
-            let languages = self.repository.get_template_languages(tmpl.id).await.unwrap_or_default();
+            let languages = self
+                .repository
+                .get_template_languages(tmpl.id)
+                .await
+                .unwrap_or_default();
 
             // 格式化时间
             let created_at = tmpl.created_at.format("%Y-%m-%d %H:%M:%S").to_string();
@@ -218,17 +282,22 @@ impl TemplateService {
             });
         }
 
-        Ok(template_studio_shared::models::template::TemplateListResponse {
-            current_page: paged_response.page,
-            total: paged_response.total,
-            templates_list,
-        })
+        Ok(
+            template_studio_shared::models::template::TemplateListResponse {
+                current_page: paged_response.page,
+                total: paged_response.total,
+                templates_list,
+            },
+        )
     }
 
     /// 切换推荐状态
     pub async fn toggle_featured(&self, id: i64, is_featured: i32) -> Result<(), AppError> {
         // 检查模板是否存在
-        let _template = self.repository.get_by_id(id).await?
+        let _template = self
+            .repository
+            .get_by_id(id)
+            .await?
             .ok_or_else(|| AppError::NotFound(format!("模板 {} 不存在", id)))?;
 
         // 验证推荐状态值
@@ -242,7 +311,11 @@ impl TemplateService {
             return Err(AppError::NotFound(format!("模板 {} 不存在", id)));
         }
 
-        tracing::info!("切换模板推荐状态成功: id={}, is_featured={}", id, is_featured);
+        tracing::info!(
+            "切换模板推荐状态成功: id={}, is_featured={}",
+            id,
+            is_featured
+        );
         Ok(())
     }
 
@@ -254,12 +327,18 @@ impl TemplateService {
         let category_id = request.category_id;
 
         // 检查源模板是否存在
-        let _source_template = self.repository.get_by_id(source_id).await?
+        let _source_template = self
+            .repository
+            .get_by_id(source_id)
+            .await?
             .ok_or_else(|| AppError::NotFound(format!("源模板 {} 不存在", source_id)))?;
 
         // 如果指定了新分类，检查分类是否存在
         if let Some(cat_id) = category_id {
-            let _category = self.category_repository.get_by_id(cat_id).await?
+            let _category = self
+                .category_repository
+                .get_by_id(cat_id)
+                .await?
                 .ok_or_else(|| AppError::NotFound(format!("分类 {} 不存在", cat_id)))?;
         }
 
@@ -267,13 +346,19 @@ impl TemplateService {
         let new_template_id = self.repository.fork(&request).await?;
 
         // 初始化模板存储结构
-        self.storage_manager.initialize_template_structure(new_template_id).await?;
+        self.storage_manager
+            .initialize_template_structure(new_template_id)
+            .await?;
 
         // TODO: Git 服务克隆并清理仓库（暂时注释）
         // self.clone_git_repository(source_id, new_template_id, &name).await?;
 
-        tracing::info!("Fork模板成功: source_id={}, new_id={}, new_name={}",
-            source_id, new_template_id, name);
+        tracing::info!(
+            "Fork模板成功: source_id={}, new_id={}, new_name={}",
+            source_id,
+            new_template_id,
+            name
+        );
         Ok(new_template_id)
     }
 
@@ -302,7 +387,10 @@ impl TemplateService {
     }
 
     /// 获取Studio首页数据
-    pub async fn get_studio_index(&self, request: StudioIndexRequest) -> Result<StudioIndexResponse, AppError> {
+    pub async fn get_studio_index(
+        &self,
+        request: StudioIndexRequest,
+    ) -> Result<StudioIndexResponse, AppError> {
         let category_limit = request.category_limit.unwrap_or(6);
         let featured_limit = request.featured_limit.unwrap_or(8);
 
@@ -345,20 +433,33 @@ impl TemplateService {
     }
 
     /// 获取分类及其模板
-    async fn get_categories_with_templates(&self, limit: u32) -> Result<Vec<CategoryWithTemplates>, AppError> {
-        let categories = self.category_repository.get_with_templates_limit(limit).await?;
+    async fn get_categories_with_templates(
+        &self,
+        limit: u32,
+    ) -> Result<Vec<CategoryWithTemplates>, AppError> {
+        let categories = self
+            .category_repository
+            .get_with_templates_limit(limit)
+            .await?;
 
         let mut result = Vec::new();
         for category in categories {
-            let templates = self.repository.get_by_category_limit(category.id, 3).await.unwrap_or_default();
+            let templates = self
+                .repository
+                .get_by_category_limit(category.id, 3)
+                .await
+                .unwrap_or_default();
 
-            let category_templates: Vec<CategoryTemplate> = templates.into_iter().map(|tmpl| CategoryTemplate {
-                id: tmpl.id,
-                name: tmpl.name,
-                description: tmpl.description,
-                template_type: tmpl.template_type,
-                created_at: tmpl.created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
-            }).collect();
+            let category_templates: Vec<CategoryTemplate> = templates
+                .into_iter()
+                .map(|tmpl| CategoryTemplate {
+                    id: tmpl.id,
+                    name: tmpl.name,
+                    description: tmpl.description,
+                    template_type: tmpl.template_type,
+                    created_at: tmpl.created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+                })
+                .collect();
 
             result.push(CategoryWithTemplates {
                 id: category.id,
@@ -374,22 +475,38 @@ impl TemplateService {
 
     /// 获取推荐模板
     async fn get_featured_templates(&self, limit: u32) -> Result<Vec<FeaturedTemplate>, AppError> {
-        let templates = self.repository.get_featured_limit(limit).await.unwrap_or_default();
+        let templates = self
+            .repository
+            .get_featured_limit(limit)
+            .await
+            .unwrap_or_default();
 
         let mut result = Vec::new();
         for template in templates {
             // 获取分类信息
-            let category = self.category_repository.get_by_id(template.category_id).await?
-                .ok_or_else(|| AppError::NotFound(format!("分类 {} 不存在", template.category_id)))?;
+            let category = self
+                .category_repository
+                .get_by_id(template.category_id)
+                .await?
+                .ok_or_else(|| {
+                    AppError::NotFound(format!("分类 {} 不存在", template.category_id))
+                })?;
 
             // 获取语言信息
-            let languages = self.repository.get_template_languages(template.id).await.unwrap_or_default();
+            let languages = self
+                .repository
+                .get_template_languages(template.id)
+                .await
+                .unwrap_or_default();
 
-            let template_languages: Vec<StudioTemplateLanguage> = languages.into_iter().map(|lang| StudioTemplateLanguage {
-                language_id: lang.language_id,
-                name: format!("语言{}", lang.language_id), // 临时实现，应该关联查询languages表
-                is_primary: lang.is_primary,
-            }).collect();
+            let template_languages: Vec<StudioTemplateLanguage> = languages
+                .into_iter()
+                .map(|lang| StudioTemplateLanguage {
+                    language_id: lang.language_id,
+                    name: format!("语言{}", lang.language_id), // 临时实现，应该关联查询languages表
+                    is_primary: lang.is_primary,
+                })
+                .collect();
 
             result.push(FeaturedTemplate {
                 id: template.id,
@@ -412,7 +529,10 @@ impl TemplateService {
     }
 
     /// 获取模板的语言信息
-    async fn get_template_languages(&self, _template_id: i64) -> Result<Vec<TemplateLanguageInfo>, AppError> {
+    async fn get_template_languages(
+        &self,
+        _template_id: i64,
+    ) -> Result<Vec<TemplateLanguageInfo>, AppError> {
         // TODO: 实现获取模板语言关联的逻辑
         // 这里需要查询template_languages表并关联languages表
         let languages = vec![]; // 临时返回空列表
@@ -428,7 +548,11 @@ impl TemplateService {
     // ===== 用户模板投稿 =====
 
     /// 用户创建模板
-    pub async fn create_user_template(&self, user_id: i64, mut request: CreateTemplateRequest) -> Result<i64, AppError> {
+    pub async fn create_user_template(
+        &self,
+        user_id: i64,
+        mut request: CreateTemplateRequest,
+    ) -> Result<i64, AppError> {
         validate_request(&request)?;
         request.owner_id = Some(user_id);
         request.visibility = request.visibility.or_else(|| Some("private".to_string()));
@@ -436,9 +560,16 @@ impl TemplateService {
     }
 
     /// 用户更新模板
-    pub async fn update_user_template(&self, user_id: i64, request: UpdateTemplateRequest) -> Result<(), AppError> {
+    pub async fn update_user_template(
+        &self,
+        user_id: i64,
+        request: UpdateTemplateRequest,
+    ) -> Result<(), AppError> {
         validate_request(&request)?;
-        let updated = self.repository.update_user_template(&request, user_id).await
+        let updated = self
+            .repository
+            .update_user_template(&request, user_id)
+            .await
             .map_err(|e| AppError::Forbidden(e.to_string()))?;
         if !updated {
             return Err(AppError::NotFound(format!("模板 {} 不存在", request.id)));
@@ -448,8 +579,15 @@ impl TemplateService {
     }
 
     /// 用户删除模板
-    pub async fn delete_user_template(&self, user_id: i64, template_id: i64) -> Result<(), AppError> {
-        let deleted = self.repository.delete_user_template(template_id, user_id).await
+    pub async fn delete_user_template(
+        &self,
+        user_id: i64,
+        template_id: i64,
+    ) -> Result<(), AppError> {
+        let deleted = self
+            .repository
+            .delete_user_template(template_id, user_id)
+            .await
             .map_err(|e| AppError::Forbidden(e.to_string()))?;
         if !deleted {
             return Err(AppError::NotFound(format!("模板 {} 不存在", template_id)));
@@ -464,24 +602,40 @@ impl TemplateService {
 
     /// 提交审核 (private → pending)
     pub async fn submit_for_review(&self, user_id: i64, template_id: i64) -> Result<(), AppError> {
-        let is_owner = self.repository.is_owner(template_id, user_id).await
+        let is_owner = self
+            .repository
+            .is_owner(template_id, user_id)
+            .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
         if !is_owner {
             return Err(AppError::Forbidden("无权操作此模板".to_string()));
         }
-        self.repository.update_visibility(template_id, "pending").await
+        self.repository
+            .update_visibility(template_id, "pending")
+            .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
         tracing::info!("用户 {} 提交模板 {} 审核", user_id, template_id);
         Ok(())
     }
 
     /// 列出用户的模板
-    pub async fn list_user_templates(&self, user_id: i64, query: UserTemplateListQuery) -> Result<TemplateListResponse, AppError> {
-        let paged = self.repository.list_user_templates(user_id, &query).await
+    pub async fn list_user_templates(
+        &self,
+        user_id: i64,
+        query: UserTemplateListQuery,
+    ) -> Result<TemplateListResponse, AppError> {
+        let paged = self
+            .repository
+            .list_user_templates(user_id, &query)
+            .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
         let mut list = Vec::new();
         for tmpl in paged.items {
-            let languages = self.repository.get_template_languages(tmpl.id).await.unwrap_or_default();
+            let languages = self
+                .repository
+                .get_template_languages(tmpl.id)
+                .await
+                .unwrap_or_default();
             list.push(TemplateItem {
                 id: tmpl.id,
                 name: tmpl.name,
@@ -510,12 +664,22 @@ impl TemplateService {
     }
 
     /// 获取公开模板列表
-    pub async fn list_public_templates(&self, query: UserTemplateListQuery) -> Result<TemplateListResponse, AppError> {
-        let paged = self.repository.list_public_templates(&query).await
+    pub async fn list_public_templates(
+        &self,
+        query: UserTemplateListQuery,
+    ) -> Result<TemplateListResponse, AppError> {
+        let paged = self
+            .repository
+            .list_public_templates(&query)
+            .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
         let mut list = Vec::new();
         for tmpl in paged.items {
-            let languages = self.repository.get_template_languages(tmpl.id).await.unwrap_or_default();
+            let languages = self
+                .repository
+                .get_template_languages(tmpl.id)
+                .await
+                .unwrap_or_default();
             list.push(TemplateItem {
                 id: tmpl.id,
                 name: tmpl.name,
@@ -544,12 +708,23 @@ impl TemplateService {
     }
 
     /// 获取待审核模板列表（管理员）
-    pub async fn list_pending_templates(&self, page: u32, page_size: u32) -> Result<TemplateListResponse, AppError> {
-        let paged = self.repository.list_pending_templates(page, page_size).await
+    pub async fn list_pending_templates(
+        &self,
+        page: u32,
+        page_size: u32,
+    ) -> Result<TemplateListResponse, AppError> {
+        let paged = self
+            .repository
+            .list_pending_templates(page, page_size)
+            .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
         let mut list = Vec::new();
         for tmpl in paged.items {
-            let languages = self.repository.get_template_languages(tmpl.id).await.unwrap_or_default();
+            let languages = self
+                .repository
+                .get_template_languages(tmpl.id)
+                .await
+                .unwrap_or_default();
             list.push(TemplateItem {
                 id: tmpl.id,
                 name: tmpl.name,
@@ -578,13 +753,27 @@ impl TemplateService {
     }
 
     /// 审核模板（管理员）
-    pub async fn review_template(&self, reviewer_id: i64, req: ReviewTemplateRequest) -> Result<(), AppError> {
-        let _template = self.repository.get_by_id(req.template_id).await?
+    pub async fn review_template(
+        &self,
+        reviewer_id: i64,
+        req: ReviewTemplateRequest,
+    ) -> Result<(), AppError> {
+        let _template = self
+            .repository
+            .get_by_id(req.template_id)
+            .await?
             .ok_or_else(|| AppError::NotFound(format!("模板 {} 不存在", req.template_id)))?;
         let reason = req.reason.unwrap_or_default();
-        self.repository.review_template(req.template_id, reviewer_id, &req.action, &reason).await
+        self.repository
+            .review_template(req.template_id, reviewer_id, &req.action, &reason)
+            .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
-        tracing::info!("审核人 {} 审核模板 {} action={}", reviewer_id, req.template_id, req.action);
+        tracing::info!(
+            "审核人 {} 审核模板 {} action={}",
+            reviewer_id,
+            req.template_id,
+            req.action
+        );
         Ok(())
     }
 }

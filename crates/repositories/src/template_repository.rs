@@ -132,18 +132,29 @@ impl TemplateRepository {
     }
 
     /// 删除模板
+    ///
+    /// 关联数据清理与主记录删除放入同一事务：
+    /// - template_languages / template_versions 无外键级联，需显式删除，否则留孤儿数据
+    /// - template_reviews 有 ON DELETE CASCADE，随主记录自动清理
     pub async fn delete(&self, id: i64) -> Result<bool> {
-        // 首先删除模板的语言关联记录
+        let mut tx = self.pool.begin().await?;
+
         sqlx::query("DELETE FROM template_languages WHERE template_id = ?")
             .bind(id)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await?;
 
-        // 然后删除模板记录
+        sqlx::query("DELETE FROM template_versions WHERE template_id = ?")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+
         let result = sqlx::query("DELETE FROM templates WHERE id = ?")
             .bind(id)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await?;
+
+        tx.commit().await?;
 
         Ok(result.rows_affected() > 0)
     }
