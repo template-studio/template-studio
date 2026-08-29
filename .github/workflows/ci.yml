@@ -1,0 +1,101 @@
+# CI 流水线（当前仅手动触发）
+#
+# 设计约定（2026-08-29）：
+# - 仅 workflow_dispatch 手动触发：不挂在 push/PR 上自动运行
+# - 不做强制门禁：不在分支保护中设为必需检查，结果仅供参考
+# - 不含发版/部署：构建产物不上传，发布流程后续单独设计
+#
+# 内容：
+# - rust:      格式检查 + clippy（警告不阻断）+ 全 workspace 测试（排除 wasm crate）
+# - frontend:  web/ 类型检查 + eslint
+# - wasm:      template_core_wasm 的 wasm32 目标编译检查
+
+name: CI
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: Rust 检查（fmt / clippy / test）
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: 缓存构建产物
+        uses: Swatinem/rust-cache@v2
+
+      - name: 代码格式检查
+        run: cargo fmt --all -- --check
+
+      # 警告不阻断（-D warnings 未启用）：存量代码尚有少量警告，待清理后可收紧
+      - name: Clippy 静态检查
+        run: cargo clippy --workspace --all-targets
+
+      # 排除 wasm crate：其面向 wasm32 目标，由 wasm job 单独检查。
+      # 注：若后续新增依赖数据库的集成测试，需在此 job 配置 services.mysql
+      - name: 单元测试
+        run: cargo test --workspace --exclude template-studio-template-core-wasm
+
+  frontend:
+    name: 前端检查（web/ 类型检查 + eslint）
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      # 注：当前前端未安装 vue-tsc（无 type-check 脚本），类型检查待引入后启用；
+      # eslint 已含 @typescript-eslint 规则，先行覆盖大部分类型层面问题
+      # lint 脚本自带 --fix，CI 中仅用于暴露不可自动修复的问题，改动不会被提交
+      - name: ESLint
+        run: pnpm run lint:eslint
+
+  wasm:
+    name: WASM 编译检查（wasm32 目标）
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: 缓存构建产物
+        uses: Swatinem/rust-cache@v2
+
+      # 编译级检查即可覆盖绑定层错误；需要产物时再升级为 wasm-pack build
+      - name: wasm32 目标编译检查
+        run: cargo check -p template-studio-template-core-wasm --target wasm32-unknown-unknown

@@ -220,3 +220,11 @@
 **涉及文件：** `crates/template_core/src/{engine,tree,lib,builtin}.rs`、`crates/services/src/template_render_service.rs`
 
 **验收结果：** 单测覆盖（HTML 转义、safe 豁免、非 HTML 不转义、无名不转义），crate 总测试 52+6 全过；浏览器 WASM 实测树渲染中 .html 输出 `&lt;b&gt;&amp;` 且 `| safe` 原样、.md 不转义；存量模板回归：gin-vue-base 无 .html 文件（转义零影响），全量渲染 failedFiles=11 均为预存的「空变量 + Strict 模式」undefined 错误（非本次引入，早期响应样本即含同类 renderError）。
+
+## 2026-08-29 新增 CI 流水线（仅手动触发）
+
+**变更内容：** 新增 GitHub Actions workflow（`.github/workflows/ci.yml`）：rust job（cargo fmt --check + clippy 警告不阻断 + workspace 测试，排除 wasm crate）、frontend job（web/ 安装依赖 + eslint；因未安装 vue-tsc 无 type-check 脚本，类型检查留待引入后启用）、wasm job（wasm32 目标 cargo check）。按约定仅 `workflow_dispatch` 手动触发，不做强制门禁，不含发版/部署。
+
+**涉及文件：** `.github/workflows/ci.yml`（新增）
+
+**验收结果：** YAML 语法经 js-yaml 解析通过；job 内引用的包名（template-studio-template-core-wasm）与前端脚本（lint:eslint）已与实际文件核对（发现并绕开了不存在的 type-check 脚本——CLAUDE.md 中该说明为旧版前端遗留，又一处文档漂移）。首次真实运行待推送到 GitHub 后手动触发验证。
