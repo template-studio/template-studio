@@ -6,8 +6,8 @@ use axum::{
     response::Json,
 };
 use serde_json::{json, Value};
-use validator::Validate;
 use template_studio_shared::models::release::*;
+use validator::Validate;
 
 pub type AppState = super::super::AppState;
 
@@ -20,7 +20,10 @@ pub async fn create_release(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     // 验证请求参数
     if let Err(errors) = payload.validate() {
-        return error_response(StatusCode::BAD_REQUEST, &format!("参数验证失败: {}", errors));
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            &format!("参数验证失败: {}", errors),
+        );
     }
 
     // TODO: 从认证上下文获取创建者信息
@@ -66,11 +69,7 @@ pub async fn rollback_version(
     State(state): State<AppState>,
     Path((id, version)): Path<(i64, String)>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    match state
-        .release_service
-        .rollback_version(id, &version)
-        .await
-    {
+    match state.release_service.rollback_version(id, &version).await {
         Ok(response) => Ok(Json(json!({
             "code": 0,
             "message": "回滚成功",
@@ -86,11 +85,7 @@ pub async fn deprecate_version(
     State(state): State<AppState>,
     Path((id, version)): Path<(i64, String)>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    match state
-        .release_service
-        .deprecate_version(id, &version)
-        .await
-    {
+    match state.release_service.deprecate_version(id, &version).await {
         Ok(()) => Ok(Json(json!({
             "code": 0,
             "message": "版本已标记为弃用"
@@ -116,7 +111,10 @@ pub async fn reset_to_latest(
 }
 
 /// 错误响应
-fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+fn error_response(
+    status: StatusCode,
+    message: &str,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     Err((
         status,
         Json(json!({

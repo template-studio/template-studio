@@ -143,9 +143,15 @@ pub async fn delete_category_by_query(
 }
 
 /// 错误响应
-fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    Err((status, Json(json!({
-        "code": status.as_u16() as i32,
-        "message": message
-    }))))
+fn error_response(
+    status: StatusCode,
+    message: &str,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    Err((
+        status,
+        Json(json!({
+            "code": status.as_u16() as i32,
+            "message": message
+        })),
+    ))
 }

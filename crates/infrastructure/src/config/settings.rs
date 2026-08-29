@@ -15,6 +15,9 @@ pub struct AppConfig {
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
+    /// 显式放行的 CORS 来源（生产部署必须配置；未配置时仅放行 localhost 开发来源）
+    #[serde(default)]
+    pub cors_origins: Option<Vec<String>>,
 }
 
 /// 数据库配置
@@ -44,6 +47,7 @@ impl Default for AppConfig {
             server: ServerConfig {
                 host: "127.0.0.1".to_string(),
                 port: 8080,
+                cors_origins: None,
             },
             database: DatabaseConfig {
                 url: "mysql://root:password@localhost/template_studio".to_string(),

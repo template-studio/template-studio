@@ -21,7 +21,9 @@ pub async fn get_subscribe_list(
         Err(_) => return error_response(StatusCode::BAD_REQUEST, "无效的模板ID"),
     };
 
-    let subscribe_path = state.storage_manager.get_template_meta_subscribe_path(template_id_i64);
+    let subscribe_path = state
+        .storage_manager
+        .get_template_meta_subscribe_path(template_id_i64);
 
     match state
         .preset_subscribe_service
@@ -52,7 +54,9 @@ pub async fn subscribe(
         Err(_) => return error_response(StatusCode::BAD_REQUEST, "无效的模板ID"),
     };
 
-    let subscribe_path = state.storage_manager.get_template_meta_subscribe_path(template_id);
+    let subscribe_path = state
+        .storage_manager
+        .get_template_meta_subscribe_path(template_id);
 
     match state
         .preset_subscribe_service
@@ -77,7 +81,9 @@ pub async fn unsubscribe(
         Err(_) => return error_response(StatusCode::BAD_REQUEST, "无效的模板ID"),
     };
 
-    let subscribe_path = state.storage_manager.get_template_meta_subscribe_path(template_id_i64);
+    let subscribe_path = state
+        .storage_manager
+        .get_template_meta_subscribe_path(template_id_i64);
     let request = UnsubscribeRequest {
         template_id,
         preset_id,
@@ -106,7 +112,9 @@ pub async fn get_preset_variables(
         Err(_) => return error_response(StatusCode::BAD_REQUEST, "无效的模板ID"),
     };
 
-    let subscribe_path = state.storage_manager.get_template_meta_subscribe_path(template_id_i64);
+    let subscribe_path = state
+        .storage_manager
+        .get_template_meta_subscribe_path(template_id_i64);
 
     match state
         .preset_subscribe_service
@@ -123,7 +131,10 @@ pub async fn get_preset_variables(
 }
 
 /// 错误响应
-fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+fn error_response(
+    status: StatusCode,
+    message: &str,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     Err((
         status,
         Json(json!({

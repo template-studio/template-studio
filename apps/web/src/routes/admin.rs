@@ -1,25 +1,35 @@
+use super::super::AppState;
+use crate::handlers::{
+    auth as auth_handler,
+    category::{
+        create_category, delete_category, delete_category_by_query, get_category, list_categories,
+        update_category,
+    },
+    editor::{get_file_tree, restore_file},
+    email::test_email,
+    language::{get_all_languages, get_popular_languages, list_languages, update_language},
+    permission_management, role_management,
+    statistics::{
+        get_category_distribution, get_language_popularity, get_overview, get_template_complexity,
+        get_usage_trends,
+    },
+    system_setting::{batch_update_settings, get_settings, update_setting},
+    template::{
+        add_template_file, create_user_template, delete_template_file, delete_user_template,
+        edit_template_file, fork_template, get_template, get_template_file_content,
+        list_my_templates, list_pending_templates, list_templates, move_template_file,
+        review_template_admin, submit_for_review, update_user_template, upload_code, upload_zip,
+    },
+    user_management,
+    var_preset::{
+        create_var_preset, delete_var_preset, get_all_var_presets, get_var_preset,
+        get_var_preset_by_query, list_var_presets, toggle_var_preset, update_var_preset,
+    },
+};
 use axum::{
-    routing::{get, post, put, delete},
+    routing::{delete, get, post, put},
     Router,
 };
-use crate::handlers::{
-    category::{create_category, get_category, update_category, delete_category, delete_category_by_query, list_categories},
-    language::{list_languages, get_all_languages, get_popular_languages, update_language},
-    template::{get_template, list_templates, get_template_file_content, add_template_file, delete_template_file, edit_template_file, move_template_file, upload_code, upload_zip,
-        create_user_template, list_my_templates, update_user_template, delete_user_template, submit_for_review,
-        list_pending_templates, review_template_admin, fork_template,
-    },
-    var_preset::{create_var_preset, get_var_preset, get_var_preset_by_query, update_var_preset, delete_var_preset, toggle_var_preset, list_var_presets, get_all_var_presets},
-    editor::{get_file_tree, restore_file},
-    statistics::{get_overview, get_category_distribution, get_language_popularity, get_template_complexity, get_usage_trends},
-    system_setting::{get_settings, update_setting, batch_update_settings},
-    email::test_email,
-    user_management,
-    role_management,
-    permission_management,
-    auth as auth_handler,
-};
-use super::super::AppState;
 
 /// 管理员路由（不含 middleware，由 create_app 添加认证层）
 /// 用户自助路由（登录即可，无需管理角色）：个人资料/密码/PAT/我的模板
@@ -27,7 +37,10 @@ pub fn admin_user_self_routes() -> Router<AppState> {
     Router::new()
         .route("/auth/info", get(auth_handler::get_info))
         .route("/auth/password", put(auth_handler::change_password))
-        .route("/auth/tokens", post(auth_handler::create_pat).get(auth_handler::list_pats))
+        .route(
+            "/auth/tokens",
+            post(auth_handler::create_pat).get(auth_handler::list_pats),
+        )
         .route("/auth/tokens/:id", delete(auth_handler::delete_pat))
         .route("/auth/profile", put(auth_handler::update_profile))
         .route("/auth/avatar", post(auth_handler::upload_avatar))
@@ -125,7 +138,10 @@ fn roles_admin_routes() -> Router<AppState> {
         .route("/add", post(role_management::create_role))
         .route("/edit", put(role_management::update_role))
         .route("/del/:id", delete(role_management::delete_role))
-        .route("/:id/permissions", get(role_management::get_role_permissions).put(role_management::assign_permissions))
+        .route(
+            "/:id/permissions",
+            get(role_management::get_role_permissions).put(role_management::assign_permissions),
+        )
 }
 
 /// 权限管理路由
@@ -163,6 +179,9 @@ fn user_template_routes() -> Router<AppState> {
         .route("/list", get(list_my_templates))
         .route("/add", post(create_user_template))
         .route("/fork", post(fork_template))
-        .route("/:id", put(update_user_template).delete(delete_user_template))
+        .route(
+            "/:id",
+            put(update_user_template).delete(delete_user_template),
+        )
         .route("/:id/submit-review", post(submit_for_review))
 }

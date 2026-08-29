@@ -1,12 +1,8 @@
 //! 模板渲染处理器
 
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::Json,
-};
+use axum::{extract::State, http::StatusCode, response::Json};
+use serde::{de::Error, Deserialize, Deserializer};
 use serde_json::{json, Value};
-use serde::{Deserialize, Deserializer, de::Error};
 
 pub type AppState = super::super::AppState;
 
@@ -83,9 +79,18 @@ pub async fn render_file_tree(
     let variables = payload.variables.unwrap_or_else(|| json!({}));
 
     // 1. 获取文件树
-    let file_tree_response = match state.file_tree_service.get_template_file_tree(template_id).await {
+    let file_tree_response = match state
+        .file_tree_service
+        .get_template_file_tree(template_id)
+        .await
+    {
         Ok(response) => response,
-        Err(e) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, &format!("获取文件树失败: {}", e)),
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("获取文件树失败: {}", e),
+            )
+        }
     };
 
     // 2. 渲染文件树
@@ -104,7 +109,10 @@ pub async fn render_file_tree(
 }
 
 /// 错误响应
-fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+fn error_response(
+    status: StatusCode,
+    message: &str,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     Err((
         status,
         Json(json!({

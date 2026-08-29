@@ -1,13 +1,15 @@
 use axum::{
-    extract::{State, Path, Multipart},
+    extract::{Multipart, Path, State},
     http::StatusCode,
     response::Json,
     Extension,
 };
 use serde_json::{json, Value};
-use template_studio_shared::models::user::{LoginRequest, ChangePasswordRequest, RegisterRequest, UpdateProfileRequest};
-use template_studio_shared::models::auth::{AuthUser, AuthType};
+use template_studio_shared::models::auth::{AuthType, AuthUser};
 use template_studio_shared::models::pat::CreatePatRequest;
+use template_studio_shared::models::user::{
+    ChangePasswordRequest, LoginRequest, RegisterRequest, UpdateProfileRequest,
+};
 use tracing::warn;
 use validator::Validate;
 
@@ -32,7 +34,7 @@ pub async fn login(
         Err(e) => {
             warn!("登录失败: {}", e);
             error_response(StatusCode::UNAUTHORIZED, &e.to_string())
-        },
+        }
     }
 }
 
@@ -79,7 +81,11 @@ pub async fn change_password(
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
     }
 
-    match state.user_service.change_password(auth_user.user_id, &request).await {
+    match state
+        .user_service
+        .change_password(auth_user.user_id, &request)
+        .await
+    {
         Ok(_) => Ok(Json(json!({
             "code": 200,
             "message": "密码修改成功"
@@ -143,11 +149,17 @@ pub async fn delete_pat(
     }
 }
 
-fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    Err((status, Json(json!({
-        "code": status.as_u16(),
-        "message": message
-    }))))
+fn error_response(
+    status: StatusCode,
+    message: &str,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    Err((
+        status,
+        Json(json!({
+            "code": status.as_u16(),
+            "message": message
+        })),
+    ))
 }
 
 /// 更新个人资料（bio）
@@ -159,11 +171,15 @@ pub async fn update_profile(
     if let Err(e) = request.validate() {
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
     }
-    match state.user_repository.update_profile(
-        auth_user.user_id,
-        request.bio.as_deref(),
-        request.avatar.as_deref(),
-    ).await {
+    match state
+        .user_repository
+        .update_profile(
+            auth_user.user_id,
+            request.bio.as_deref(),
+            request.avatar.as_deref(),
+        )
+        .await
+    {
         Ok(_) => Ok(Json(json!({ "code": 0, "message": "更新成功" }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -176,11 +192,17 @@ pub async fn upload_avatar(
     mut multipart: Multipart,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     while let Some(field) = multipart.next_field().await.map_err(|e| {
-        (StatusCode::BAD_REQUEST, Json(json!({ "code": 400, "message": format!("上传失败: {}", e) })))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "code": 400, "message": format!("上传失败: {}", e) })),
+        )
     })? {
         let filename = field.file_name().unwrap_or("avatar.png").to_string();
         let data = field.bytes().await.map_err(|e| {
-            (StatusCode::BAD_REQUEST, Json(json!({ "code": 400, "message": format!("读取失败: {}", e) })))
+            (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "code": 400, "message": format!("读取失败: {}", e) })),
+            )
         })?;
 
         if data.len() > 2 * 1024 * 1024 {
@@ -191,25 +213,38 @@ pub async fn upload_avatar(
             .extension()
             .and_then(|e| e.to_str())
             .unwrap_or("png");
-        let avatar_filename = format!("{}_{}.{}", auth_user.user_id, chrono::Utc::now().timestamp(), ext);
+        let avatar_filename = format!(
+            "{}_{}.{}",
+            auth_user.user_id,
+            chrono::Utc::now().timestamp(),
+            ext
+        );
 
         let avatar_dir = std::path::Path::new("data/avatars");
         std::fs::create_dir_all(avatar_dir).ok();
         let avatar_path = avatar_dir.join(&avatar_filename);
         std::fs::write(&avatar_path, &data).map_err(|e| {
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "code": 500, "message": format!("保存失败: {}", e) })))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "code": 500, "message": format!("保存失败: {}", e) })),
+            )
         })?;
 
         let avatar_url = format!("/avatars/{}", avatar_filename);
-        state.user_repository.update_profile(
-            auth_user.user_id,
-            None,
-            Some(&avatar_url),
-        ).await.map_err(|e| {
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "code": 500, "message": e.to_string() })))
-        })?;
+        state
+            .user_repository
+            .update_profile(auth_user.user_id, None, Some(&avatar_url))
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "code": 500, "message": e.to_string() })),
+                )
+            })?;
 
-        return Ok(Json(json!({ "code": 0, "message": "上传成功", "data": { "avatar": avatar_url } })));
+        return Ok(Json(
+            json!({ "code": 0, "message": "上传成功", "data": { "avatar": avatar_url } }),
+        ));
     }
     error_response(StatusCode::BAD_REQUEST, "未找到上传文件")
 }
@@ -219,17 +254,42 @@ pub async fn public_profile(
     State(state): State<AppState>,
     Path(username): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let user = state.user_repository.find_public_by_username(&username).await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "code": 500, "message": e.to_string() }))))?
-        .ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({ "code": 404, "message": "用户不存在" }))))?;
+    let user = state
+        .user_repository
+        .find_public_by_username(&username)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "code": 500, "message": e.to_string() })),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "code": 404, "message": "用户不存在" })),
+            )
+        })?;
 
     // 获取该用户的公开模板
-    let templates = state.template_repository.list_public_templates_by_owner(user.id).await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "code": 500, "message": e.to_string() }))))?;
+    let templates = state
+        .template_repository
+        .list_public_templates_by_owner(user.id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "code": 500, "message": e.to_string() })),
+            )
+        })?;
 
     let mut templates_list = Vec::new();
     for tmpl in templates {
-        let langs = state.template_repository.get_template_languages(tmpl.id).await.unwrap_or_default();
+        let langs = state
+            .template_repository
+            .get_template_languages(tmpl.id)
+            .await
+            .unwrap_or_default();
         templates_list.push(json!({
             "id": tmpl.id,
             "name": tmpl.name,

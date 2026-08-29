@@ -4,7 +4,11 @@ use axum::{
     response::Json,
 };
 use serde_json::{json, Value};
-use template_studio_shared::models::var_preset::{VarPresetResponse, VarPresetDetailResponse, VarPresetListQuery, VarPresetDetailQuery, CreateVarPresetRequest, UpdateVarPresetRequest, ToggleVarPresetRequest, AvailableVarPresetQuery};
+use template_studio_shared::models::var_preset::{
+    AvailableVarPresetQuery, CreateVarPresetRequest, ToggleVarPresetRequest,
+    UpdateVarPresetRequest, VarPresetDetailQuery, VarPresetDetailResponse, VarPresetListQuery,
+    VarPresetResponse,
+};
 use validator::Validate;
 
 pub type AppState = super::super::AppState;
@@ -44,7 +48,7 @@ pub async fn get_var_preset(
                 "data": detail_response,
                 "message": "OK"
             })))
-        },
+        }
         Ok(None) => error_response(StatusCode::NOT_FOUND, "变量预设不存在"),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -70,7 +74,7 @@ pub async fn get_var_preset_by_query(
                 "data": detail_response,
                 "message": "OK"
             })))
-        },
+        }
         Ok(None) => error_response(StatusCode::NOT_FOUND, "变量预设不存在"),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -142,7 +146,10 @@ pub async fn list_var_presets(
 
     match state.var_preset_service.list_var_presets(query).await {
         Ok(var_presets) => {
-            let response: Vec<VarPresetResponse> = var_presets.into_iter().map(VarPresetResponse::from).collect();
+            let response: Vec<VarPresetResponse> = var_presets
+                .into_iter()
+                .map(VarPresetResponse::from)
+                .collect();
             Ok(Json(json!({
                 "code": 0,
                 "message": "OK",
@@ -151,7 +158,7 @@ pub async fn list_var_presets(
                     "varPresetsList": response
                 }
             })))
-        },
+        }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -162,7 +169,10 @@ pub async fn get_all_var_presets(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.var_preset_service.get_all_var_presets().await {
         Ok(var_presets) => {
-            let response: Vec<VarPresetResponse> = var_presets.into_iter().map(VarPresetResponse::from).collect();
+            let response: Vec<VarPresetResponse> = var_presets
+                .into_iter()
+                .map(VarPresetResponse::from)
+                .collect();
             Ok(Json(json!({
                 "code": 0,
                 "message": "OK",
@@ -171,7 +181,7 @@ pub async fn get_all_var_presets(
                     "varPresetsList": response
                 }
             })))
-        },
+        }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -182,7 +192,10 @@ pub async fn get_enabled_var_presets(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.var_preset_service.get_enabled_var_presets().await {
         Ok(var_presets) => {
-            let response: Vec<VarPresetResponse> = var_presets.into_iter().map(VarPresetResponse::from).collect();
+            let response: Vec<VarPresetResponse> = var_presets
+                .into_iter()
+                .map(VarPresetResponse::from)
+                .collect();
             Ok(Json(json!({
                 "code": 0,
                 "message": "OK",
@@ -191,7 +204,7 @@ pub async fn get_enabled_var_presets(
                     "varPresetsList": response
                 }
             })))
-        },
+        }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -201,9 +214,16 @@ pub async fn get_var_presets_by_category(
     State(state): State<AppState>,
     Path(category): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    match state.var_preset_service.get_var_presets_by_category(&category).await {
+    match state
+        .var_preset_service
+        .get_var_presets_by_category(&category)
+        .await
+    {
         Ok(var_presets) => {
-            let response: Vec<VarPresetResponse> = var_presets.into_iter().map(VarPresetResponse::from).collect();
+            let response: Vec<VarPresetResponse> = var_presets
+                .into_iter()
+                .map(VarPresetResponse::from)
+                .collect();
             Ok(Json(json!({
                 "code": 0,
                 "message": "OK",
@@ -212,7 +232,7 @@ pub async fn get_var_presets_by_category(
                     "varPresetsList": response
                 }
             })))
-        },
+        }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -227,22 +247,30 @@ pub async fn get_available_var_presets(
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
     }
 
-    match state.var_preset_service.get_available_var_presets(query).await {
-        Ok(response) => {
-            Ok(Json(json!({
-                "code": 0,
-                "message": "OK",
-                "data": response
-            })))
-        },
+    match state
+        .var_preset_service
+        .get_available_var_presets(query)
+        .await
+    {
+        Ok(response) => Ok(Json(json!({
+            "code": 0,
+            "message": "OK",
+            "data": response
+        }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
 
 /// 错误响应
-fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    Err((status, Json(json!({
-        "code": status.as_u16() as i32,
-        "message": message
-    }))))
+fn error_response(
+    status: StatusCode,
+    message: &str,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    Err((
+        status,
+        Json(json!({
+            "code": status.as_u16() as i32,
+            "message": message
+        })),
+    ))
 }

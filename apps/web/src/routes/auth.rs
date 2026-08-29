@@ -1,9 +1,9 @@
+use super::super::AppState;
+use crate::handlers::{auth, email};
 use axum::{
     routing::{get, post, put},
     Router,
 };
-use crate::handlers::{auth, email};
-use super::super::AppState;
 
 /// 认证路由（公开，不需要 auth middleware）
 pub fn auth_routes() -> Router<AppState> {

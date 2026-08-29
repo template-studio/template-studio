@@ -1,7 +1,4 @@
-use axum::{
-    extract::State,
-    response::Json,
-};
+use axum::{extract::State, response::Json};
 use serde_json::Value;
 
 use template_studio_template_core::get_builtin_functions_response;

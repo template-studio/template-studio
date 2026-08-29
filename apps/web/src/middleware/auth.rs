@@ -1,14 +1,10 @@
-use std::sync::Arc;
+use crate::AppState;
 use axum::{
-    extract::Request,
-    http::StatusCode,
-    middleware::Next,
-    response::Response,
-    extract::State,
+    extract::Request, extract::State, http::StatusCode, middleware::Next, response::Response,
 };
 use serde_json::json;
-use template_studio_shared::models::auth::{AuthUser, AuthType};
-use crate::AppState;
+use std::sync::Arc;
+use template_studio_shared::models::auth::{AuthType, AuthUser};
 
 const PAT_PREFIX: &str = "ts_pat_";
 

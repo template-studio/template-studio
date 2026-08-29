@@ -4,7 +4,9 @@ use axum::{
     response::Json,
 };
 use serde_json::{json, Value};
-use template_studio_shared::models::role::{CreateRoleRequest, UpdateRoleRequest, AssignPermissionsRequest};
+use template_studio_shared::models::role::{
+    AssignPermissionsRequest, CreateRoleRequest, UpdateRoleRequest,
+};
 use validator::Validate;
 
 pub type AppState = super::super::AppState;
@@ -79,7 +81,11 @@ pub async fn assign_permissions(
     Path(role_id): Path<i64>,
     Json(request): Json<AssignPermissionsRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    match state.role_service.assign_permissions(role_id, &request.permission_ids).await {
+    match state
+        .role_service
+        .assign_permissions(role_id, &request.permission_ids)
+        .await
+    {
         Ok(_) => Ok(Json(json!({
             "code": 0,
             "message": "分配权限成功"
@@ -102,9 +108,15 @@ pub async fn get_role_permissions(
     }
 }
 
-fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    Err((status, Json(json!({
-        "code": status.as_u16() as i32,
-        "message": message
-    }))))
+fn error_response(
+    status: StatusCode,
+    message: &str,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    Err((
+        status,
+        Json(json!({
+            "code": status.as_u16() as i32,
+            "message": message
+        })),
+    ))
 }

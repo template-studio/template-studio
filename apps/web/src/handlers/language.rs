@@ -1,10 +1,8 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::Json,
-};
+use axum::{extract::State, http::StatusCode, response::Json};
 use serde_json::{json, Value};
-use template_studio_shared::models::language::{LanguageResponse, LanguageListQuery, UpdateLanguageRequest};
+use template_studio_shared::models::language::{
+    LanguageListQuery, LanguageResponse, UpdateLanguageRequest,
+};
 use validator::Validate;
 
 pub type AppState = super::super::AppState;
@@ -16,7 +14,8 @@ pub async fn list_languages(
     let query = LanguageListQuery::default();
     match state.language_service.list_languages(query).await {
         Ok(languages) => {
-            let response: Vec<LanguageResponse> = languages.into_iter().map(LanguageResponse::from).collect();
+            let response: Vec<LanguageResponse> =
+                languages.into_iter().map(LanguageResponse::from).collect();
             Ok(Json(json!({
                 "code": 0,
                 "message": "OK",
@@ -26,7 +25,7 @@ pub async fn list_languages(
                     "languagesList": response
                 }
             })))
-        },
+        }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -37,7 +36,8 @@ pub async fn get_all_languages(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.language_service.get_all_languages().await {
         Ok(languages) => {
-            let response: Vec<LanguageResponse> = languages.into_iter().map(LanguageResponse::from).collect();
+            let response: Vec<LanguageResponse> =
+                languages.into_iter().map(LanguageResponse::from).collect();
             Ok(Json(json!({
                 "code": 0,
                 "message": "OK",
@@ -47,7 +47,7 @@ pub async fn get_all_languages(
                     "languagesList": response
                 }
             })))
-        },
+        }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -58,7 +58,8 @@ pub async fn get_popular_languages(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.language_service.get_popular_languages().await {
         Ok(languages) => {
-            let response: Vec<LanguageResponse> = languages.into_iter().map(LanguageResponse::from).collect();
+            let response: Vec<LanguageResponse> =
+                languages.into_iter().map(LanguageResponse::from).collect();
             Ok(Json(json!({
                 "code": 0,
                 "message": "OK",
@@ -68,7 +69,7 @@ pub async fn get_popular_languages(
                     "languagesList": response
                 }
             })))
-        },
+        }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -93,9 +94,15 @@ pub async fn update_language(
 }
 
 /// 错误响应
-fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    Err((status, Json(json!({
-        "code": status.as_u16() as i32,
-        "message": message
-    }))))
+fn error_response(
+    status: StatusCode,
+    message: &str,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    Err((
+        status,
+        Json(json!({
+            "code": status.as_u16() as i32,
+            "message": message
+        })),
+    ))
 }

@@ -44,17 +44,15 @@ pub async fn get_file_condition(
                 }
             })))
         }
-        Ok(None) => {
-            Ok(Json(json!({
-                "code": 0,
-                "message": "OK",
-                "data": {
-                    "template_id": params.template_id,
-                    "file_path": params.file_path,
-                    "condition": null
-                }
-            })))
-        }
+        Ok(None) => Ok(Json(json!({
+            "code": 0,
+            "message": "OK",
+            "data": {
+                "template_id": params.template_id,
+                "file_path": params.file_path,
+                "condition": null
+            }
+        }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -135,16 +133,14 @@ pub async fn export_conditions_yaml(
         .export_conditions_yaml(template_id)
         .await
     {
-        Ok(yaml_content) => {
-            Ok(Json(json!({
-                "code": 0,
-                "message": "导出成功",
-                "data": {
-                    "template_id": template_id,
-                    "yaml": yaml_content
-                }
-            })))
-        }
+        Ok(yaml_content) => Ok(Json(json!({
+            "code": 0,
+            "message": "导出成功",
+            "data": {
+                "template_id": template_id,
+                "yaml": yaml_content
+            }
+        }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -167,16 +163,14 @@ pub async fn import_conditions_yaml(
         .import_conditions_yaml(template_id, &req.yaml)
         .await
     {
-        Ok(count) => {
-            Ok(Json(json!({
-                "code": 0,
-                "message": format!("成功导入 {} 个条件", count),
-                "data": {
-                    "template_id": template_id,
-                    "count": count
-                }
-            })))
-        }
+        Ok(count) => Ok(Json(json!({
+            "code": 0,
+            "message": format!("成功导入 {} 个条件", count),
+            "data": {
+                "template_id": template_id,
+                "count": count
+            }
+        }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -202,25 +196,29 @@ pub async fn evaluate_file_condition(
         .should_generate_file(req.template_id, &req.file_path, &req.variables)
         .await
     {
-        Ok(result) => {
-            Ok(Json(json!({
-                "code": 0,
-                "message": if result { "文件将生成" } else { "文件将不生成" },
-                "data": {
-                    "template_id": req.template_id,
-                    "file_path": req.file_path,
-                    "should_generate": result
-                }
-            })))
-        }
+        Ok(result) => Ok(Json(json!({
+            "code": 0,
+            "message": if result { "文件将生成" } else { "文件将不生成" },
+            "data": {
+                "template_id": req.template_id,
+                "file_path": req.file_path,
+                "should_generate": result
+            }
+        }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
 
 /// 错误响应辅助函数
-fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    Err((status, Json(json!({
-        "code": status.as_u16(),
-        "message": message
-    }))))
+fn error_response(
+    status: StatusCode,
+    message: &str,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    Err((
+        status,
+        Json(json!({
+            "code": status.as_u16(),
+            "message": message
+        })),
+    ))
 }

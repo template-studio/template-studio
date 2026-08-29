@@ -14,7 +14,8 @@ pub async fn get_settings(
     State(state): State<AppState>,
     Query(query): Query<GetSettingsQuery>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    match state.system_setting_service
+    match state
+        .system_setting_service
         .get_settings(query.group.as_deref(), query.key.as_deref())
         .await
     {
@@ -32,7 +33,11 @@ pub async fn get_public_settings(
     State(state): State<AppState>,
     Path(group): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    match state.system_setting_service.get_settings(Some(&group), None).await {
+    match state
+        .system_setting_service
+        .get_settings(Some(&group), None)
+        .await
+    {
         Ok(settings) => Ok(Json(json!({
             "code": 0,
             "message": "OK",
@@ -69,7 +74,11 @@ pub async fn batch_update_settings(
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
     }
 
-    match state.system_setting_service.batch_update_settings(&request).await {
+    match state
+        .system_setting_service
+        .batch_update_settings(&request)
+        .await
+    {
         Ok(()) => Ok(Json(json!({
             "code": 0,
             "message": "批量更新设置成功"
@@ -78,9 +87,15 @@ pub async fn batch_update_settings(
     }
 }
 
-fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    Err((status, Json(json!({
-        "code": status.as_u16() as i32,
-        "message": message
-    }))))
+fn error_response(
+    status: StatusCode,
+    message: &str,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    Err((
+        status,
+        Json(json!({
+            "code": status.as_u16() as i32,
+            "message": message
+        })),
+    ))
 }

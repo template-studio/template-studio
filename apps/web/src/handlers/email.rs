@@ -1,8 +1,4 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::Json,
-};
+use axum::{extract::State, http::StatusCode, response::Json};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use validator::Validate;
@@ -62,7 +58,11 @@ pub async fn reset_password(
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
     }
 
-    match state.email_service.reset_password(&request.token, &request.password).await {
+    match state
+        .email_service
+        .reset_password(&request.token, &request.password)
+        .await
+    {
         Ok(_) => Ok(Json(json!({
             "code": 200,
             "message": "密码重置成功"
@@ -84,13 +84,22 @@ pub async fn test_email(
             "code": 0,
             "message": "测试邮件发送成功"
         }))),
-        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &format!("发送失败: {}", e)),
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            &format!("发送失败: {}", e),
+        ),
     }
 }
 
-fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    Err((status, Json(json!({
-        "code": status.as_u16(),
-        "message": message
-    }))))
+fn error_response(
+    status: StatusCode,
+    message: &str,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    Err((
+        status,
+        Json(json!({
+            "code": status.as_u16(),
+            "message": message
+        })),
+    ))
 }

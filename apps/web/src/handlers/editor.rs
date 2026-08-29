@@ -6,9 +6,9 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use template_studio_shared::models::file_tree::FileTreeQuery;
-use template_studio_infrastructure::git::service::GitService;
 use template_studio_infrastructure::config::settings::GitConfig;
+use template_studio_infrastructure::git::service::GitService;
+use template_studio_shared::models::file_tree::FileTreeQuery;
 
 pub type AppState = super::super::AppState;
 
@@ -26,22 +26,35 @@ pub async fn get_file_tree(
     Query(query): Query<FileTreeQuery>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     // 获取文件树
-    let mut tree_response = match state.file_tree_service.get_template_file_tree(query.template_id).await {
+    let mut tree_response = match state
+        .file_tree_service
+        .get_template_file_tree(query.template_id)
+        .await
+    {
         Ok(data) => data,
         Err(e) => {
-            tracing::error!("获取文件树失败: template_id={}, error={}", query.template_id, e);
+            tracing::error!(
+                "获取文件树失败: template_id={}, error={}",
+                query.template_id,
+                e
+            );
             return error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string());
         }
     };
 
     // 获取条件摘要
-    let conditions_summary = match state.file_conditions_service
+    let conditions_summary = match state
+        .file_conditions_service
         .get_conditions_summary(query.template_id)
         .await
     {
         Ok(summary) => summary,
         Err(e) => {
-            tracing::warn!("获取条件摘要失败: template_id={}, error={}", query.template_id, e);
+            tracing::warn!(
+                "获取条件摘要失败: template_id={}, error={}",
+                query.template_id,
+                e
+            );
             HashMap::new()
         }
     };
@@ -57,7 +70,10 @@ pub async fn get_file_tree(
 }
 
 /// 为文件树节点添加条件信息
-fn enrich_tree_with_conditions(nodes: &mut [template_studio_shared::models::file_tree::FileTreeNode], conditions: &HashMap<String, String>) {
+fn enrich_tree_with_conditions(
+    nodes: &mut [template_studio_shared::models::file_tree::FileTreeNode],
+    conditions: &HashMap<String, String>,
+) {
     for node in nodes.iter_mut() {
         // 检查是否有条件
         if let Some(summary) = conditions.get(&node.file_path) {
@@ -73,11 +89,17 @@ fn enrich_tree_with_conditions(nodes: &mut [template_studio_shared::models::file
 }
 
 /// 错误响应
-fn error_response(status: StatusCode, message: &str) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    Err((status, Json(json!({
-        "code": status.as_u16() as i32,
-        "message": message
-    }))))
+fn error_response(
+    status: StatusCode,
+    message: &str,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    Err((
+        status,
+        Json(json!({
+            "code": status.as_u16() as i32,
+            "message": message
+        })),
+    ))
 }
 
 /// 还原文件到上次提交状态（git restore）
@@ -89,7 +111,11 @@ pub async fn restore_file(
     let template_id = payload.template_id;
     let file_path = payload.file_path;
 
-    tracing::info!("还原文件: template_id={}, file_path={}", template_id, file_path);
+    tracing::info!(
+        "还原文件: template_id={}, file_path={}",
+        template_id,
+        file_path
+    );
 
     // 获取模板路径
     let template_path = state.storage_manager.get_template_path(template_id);
@@ -112,7 +138,10 @@ pub async fn restore_file(
         }
         Err(e) => {
             tracing::error!("文件还原失败: {}", e);
-            error_response(StatusCode::INTERNAL_SERVER_ERROR, &format!("还原失败: {}", e))
+            error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("还原失败: {}", e),
+            )
         }
     }
 }

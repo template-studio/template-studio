@@ -2,12 +2,12 @@
 //!
 //! 监听 templates 目录的文件变化，自动失效相关缓存
 
+use notify::{Event, EventKind, RecursiveMode, Result as NotifyResult, Watcher};
 use std::path::PathBuf;
 use std::sync::Arc;
-use notify::{Watcher, RecursiveMode, Event, EventKind, Result as NotifyResult};
+use template_studio_services::cache::DependencyTreeCache;
 use tokio::sync::Mutex;
 use tracing::{debug, error, info};
-use template_studio_services::cache::DependencyTreeCache;
 
 /// 启动文件系统监听
 ///
@@ -87,7 +87,7 @@ fn handle_file_event(
                         template_id,
                         path.clone(),
                         &event.kind,
-                        cache.clone()
+                        cache.clone(),
                     );
                 }
             }
@@ -124,7 +124,10 @@ fn handle_template_file_change(
         tokio::spawn(async move {
             let mut cache = cache.lock().await;
             cache.invalidate(template_id);
-            info!("模板 {} 缓存已失效（文件变化）: {:?}", template_id, file_path);
+            info!(
+                "模板 {} 缓存已失效（文件变化）: {:?}",
+                template_id, file_path
+            );
         });
     }
 }

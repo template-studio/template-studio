@@ -1,7 +1,7 @@
-mod handlers;
-mod routes;
-mod middleware;
 mod file_watcher;
+mod handlers;
+mod middleware;
+mod routes;
 
 use axum::{
     routing::{delete, get, post, put},
@@ -11,11 +11,19 @@ use std::sync::Arc;
 use template_studio_infrastructure::{
     config::{settings::load_config, storage::StorageManager},
     database::pool::DatabasePool,
-    logging::init_logging,
     file_tree::FileTreeService,
+    logging::init_logging,
 };
-use template_studio_repositories::{CategoryRepository, LanguageRepository, TemplateRepository, VarPresetRepository, SystemSettingRepository, UserRepository, RoleRepository, PermissionRepository, PatRepository};
-use template_studio_services::{CategoryService, LanguageService, TemplateService, VarPresetService, PresetSubscribeService, TemplateAnalysisService, TemplateVariablesService, TemplateRenderService, FileConditionsService, ReleaseService, BackupService, SystemSettingService, AuthService, UserService, RoleService, PermissionService, PatService, EmailService};
+use template_studio_repositories::{
+    CategoryRepository, LanguageRepository, PatRepository, PermissionRepository, RoleRepository,
+    SystemSettingRepository, TemplateRepository, UserRepository, VarPresetRepository,
+};
+use template_studio_services::{
+    AuthService, BackupService, CategoryService, EmailService, FileConditionsService,
+    LanguageService, PatService, PermissionService, PresetSubscribeService, ReleaseService,
+    RoleService, SystemSettingService, TemplateAnalysisService, TemplateRenderService,
+    TemplateService, TemplateVariablesService, UserService, VarPresetService,
+};
 use template_studio_shared::models::auth::JwtConfig;
 use tower_http::cors::CorsLayer;
 use tracing::{info, warn};
@@ -56,8 +64,12 @@ async fn main() -> anyhow::Result<()> {
                 .execute(&pool).await.ok();
             sqlx::query("ALTER TABLE templates ADD INDEX idx_owner_id (owner_id), ADD INDEX idx_visibility (visibility)")
                 .execute(&pool).await.ok();
-            sqlx::query("UPDATE templates SET visibility='public', status='active' WHERE owner_id IS NULL")
-                .execute(&pool).await.ok();
+            sqlx::query(
+                "UPDATE templates SET visibility='public', status='active' WHERE owner_id IS NULL",
+            )
+            .execute(&pool)
+            .await
+            .ok();
             info!("Migration 017 applied: templates table updated with visibility fields");
         }
         // 018: template_reviews 表
@@ -77,8 +89,11 @@ async fn main() -> anyhow::Result<()> {
                     reason VARCHAR(500) DEFAULT '',
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     INDEX idx_template_id (template_id)
-                )"
-            ).execute(&pool).await.ok();
+                )",
+            )
+            .execute(&pool)
+            .await
+            .ok();
             info!("Migration 018 applied: template_reviews table created");
         }
         // 019: password_reset_tokens 表
@@ -100,8 +115,11 @@ async fn main() -> anyhow::Result<()> {
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     INDEX idx_token (token),
                     INDEX idx_user_id (user_id)
-                )"
-            ).execute(&pool).await.ok();
+                )",
+            )
+            .execute(&pool)
+            .await
+            .ok();
             info!("Migration 019 applied: password_reset_tokens table created");
         }
 
@@ -153,7 +171,8 @@ async fn main() -> anyhow::Result<()> {
     let language_repository = Arc::new(LanguageRepository::new(db_pool.get_pool().clone()));
     let template_repository = Arc::new(TemplateRepository::new(db_pool.get_pool().clone()));
     let var_preset_repository = Arc::new(VarPresetRepository::new(db_pool.get_pool().clone()));
-    let system_setting_repository = Arc::new(SystemSettingRepository::new(db_pool.get_pool().clone()));
+    let system_setting_repository =
+        Arc::new(SystemSettingRepository::new(db_pool.get_pool().clone()));
     let user_repository = Arc::new(UserRepository::new(db_pool.get_pool().clone()));
     let role_repository = Arc::new(RoleRepository::new(db_pool.get_pool().clone()));
     let permission_repository = Arc::new(PermissionRepository::new(db_pool.get_pool().clone()));
@@ -170,19 +189,28 @@ async fn main() -> anyhow::Result<()> {
     ));
     let var_preset_service = Arc::new(VarPresetService::new(var_preset_repository.clone()));
     let preset_subscribe_service = Arc::new(PresetSubscribeService::new(var_preset_repository));
-    let template_analysis_service = Arc::new(TemplateAnalysisService::new(config.storage.base_path.join("templates")));
-    let template_variables_service = Arc::new(TemplateVariablesService::new(storage_manager.clone()));
-    let template_render_service = Arc::new(TemplateRenderService::new(config.storage.base_path.join("templates")));
+    let template_analysis_service = Arc::new(TemplateAnalysisService::new(
+        config.storage.base_path.join("templates"),
+    ));
+    let template_variables_service =
+        Arc::new(TemplateVariablesService::new(storage_manager.clone()));
+    let template_render_service = Arc::new(TemplateRenderService::new(
+        config.storage.base_path.join("templates"),
+    ));
     let file_tree_service = Arc::new(FileTreeService::new(storage_manager.clone()));
     let file_conditions_service = Arc::new(FileConditionsService::new(storage_manager.clone()));
-    let release_service = Arc::new(ReleaseService::new(storage_manager.clone(), db_pool.get_pool().clone()));
+    let release_service = Arc::new(ReleaseService::new(
+        storage_manager.clone(),
+        db_pool.get_pool().clone(),
+    ));
     let backup_service = Arc::new(BackupService::new(
         storage_manager.clone(),
         template_service.clone(),
         template_variables_service.clone(),
         file_conditions_service.clone(),
     ));
-    let system_setting_service = Arc::new(SystemSettingService::new(system_setting_repository.clone()));
+    let system_setting_service =
+        Arc::new(SystemSettingService::new(system_setting_repository.clone()));
     let jwt_config = JwtConfig::from_env();
     let auth_service = Arc::new(AuthService::new(user_repository.clone(), jwt_config));
     let user_service = Arc::new(UserService::new(user_repository.clone()));
@@ -238,14 +266,18 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // 创建路由
-    let app = create_app(app_state);
+    let app = create_app(app_state, &config);
 
-    // 启动服务器
+    // 启动服务器（带连接信息，供限速中间件获取客户端 IP）
     let bind_addr = format!("{}:{}", config.server.host, config.server.port);
     let listener = tokio::net::TcpListener::bind(&bind_addr).await?;
     info!("服务器启动成功: http://{}", bind_addr);
 
-    axum::serve(listener, app).await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .await?;
 
     Ok(())
 }
@@ -278,30 +310,49 @@ pub struct AppState {
 }
 
 /// 创建应用路由
-pub fn create_app(state: AppState) -> Router {
+pub fn create_app(
+    state: AppState,
+    config: &template_studio_infrastructure::config::settings::AppConfig,
+) -> Router {
     // /api/v1/admin 下混合两类路由：用户自助（仅登录）与管理功能（super_admin 角色校验）
-    let admin_self = routes::admin_user_self_routes()
-        .layer(axum::middleware::from_fn_with_state(state.clone(), middleware::auth::auth_middleware));
-    let admin = routes::admin_admin_only_routes()
-        .layer(axum::middleware::from_fn_with_state(state.clone(), middleware::auth::admin_auth_middleware));
+    let admin_self = routes::admin_user_self_routes().layer(axum::middleware::from_fn_with_state(
+        state.clone(),
+        middleware::auth::auth_middleware,
+    ));
+    let admin = routes::admin_admin_only_routes().layer(axum::middleware::from_fn_with_state(
+        state.clone(),
+        middleware::auth::admin_auth_middleware,
+    ));
 
     // 模板写操作与 admin 一样需通过认证中间件（读操作保持公开）
-    let template_protected = template_protected_routes()
-        .layer(axum::middleware::from_fn_with_state(state.clone(), middleware::auth::auth_middleware));
+    let template_protected = template_protected_routes().layer(
+        axum::middleware::from_fn_with_state(state.clone(), middleware::auth::auth_middleware),
+    );
 
     // 编辑器（文件增删改/上传/条件管理）与备份（创建/恢复）均为登录后操作，整组认证
-    let editor = editor_routes()
-        .layer(axum::middleware::from_fn_with_state(state.clone(), middleware::auth::auth_middleware));
-    let backup = backup_routes()
-        .layer(axum::middleware::from_fn_with_state(state.clone(), middleware::auth::auth_middleware));
+    let editor = editor_routes().layer(axum::middleware::from_fn_with_state(
+        state.clone(),
+        middleware::auth::auth_middleware,
+    ));
+    let backup = backup_routes().layer(axum::middleware::from_fn_with_state(
+        state.clone(),
+        middleware::auth::auth_middleware,
+    ));
+
+    // 认证API（公开，带限速防暴力破解）
+    let auth = routes::auth::auth_routes().layer(axum::middleware::from_fn(
+        middleware::rate_limit::auth_rate_limit,
+    ));
 
     Router::new()
         // 健康检查
         .route("/health", get(health_check))
-        // 认证API（公开）
-        .nest("/api/v1/auth", routes::auth::auth_routes())
+        .nest("/api/v1/auth", auth)
         // 模板API（读公开 + 写认证）
-        .nest("/api/v1/template", template_routes().merge(template_protected))
+        .nest(
+            "/api/v1/template",
+            template_routes().merge(template_protected),
+        )
         // /api/v1/admin：用户自助路由（仅登录）+ 管理路由（super_admin）
         .nest("/api/v1/admin", admin_self.merge(admin))
         // 编辑器API（受认证保护）
@@ -313,25 +364,67 @@ pub fn create_app(state: AppState) -> Router {
         // 公开API
         .nest("/api/v1", routes::public_routes())
         // 头像静态文件
-        .nest_service("/avatars", tower_http::services::ServeDir::new("data/avatars"))
-        .layer(CorsLayer::permissive())
+        .nest_service(
+            "/avatars",
+            tower_http::services::ServeDir::new("data/avatars"),
+        )
+        .layer(cors_layer(&config))
         .with_state(state)
+}
+
+/// 构建 CORS 层：
+/// - 配置了 `server.cors_origins` 时仅放行配置的来源
+/// - 未配置时放行 localhost/127.0.0.1 任意端口的开发来源（生产部署必须显式配置）
+fn cors_layer(config: &template_studio_infrastructure::config::settings::AppConfig) -> CorsLayer {
+    let configured = config.server.cors_origins.clone().unwrap_or_default();
+    CorsLayer::new()
+        .allow_origin(tower_http::cors::AllowOrigin::predicate(
+            move |origin, _| {
+                let Ok(text) = origin.to_str() else {
+                    return false;
+                };
+                if configured.iter().any(|allowed| allowed == text) {
+                    return true;
+                }
+                text.starts_with("http://localhost:")
+                    || text.starts_with("http://127.0.0.1:")
+                    || text.starts_with("http://[::1]:")
+            },
+        ))
+        // 前端使用自定义 token 头认证，预检必须放行对应方法与头
+        .allow_methods(tower_http::cors::Any)
+        .allow_headers(tower_http::cors::Any)
 }
 
 /// 模板路由
 /// 模板公开路由（只读，前台未登录可访问）
 fn template_routes() -> Router<AppState> {
     Router::new()
-        .route("/templates/types", get(handlers::template::get_template_types))
+        .route(
+            "/templates/types",
+            get(handlers::template::get_template_types),
+        )
         .route("/templateList", get(handlers::template::list_templates))
-        .route("/templates/detail", get(handlers::template::get_template_detail))
+        .route(
+            "/templates/detail",
+            get(handlers::template::get_template_detail),
+        )
         // GET 下载类接口：前端用 <a href> 直链下载，无法携带 token 请求头，暂保持公开。
         // TODO(安全): 改为支持 ?token= 查询参数或短时下载签名后纳入认证组
-        .route("/templates/:id/export", get(handlers::template::export_template))
-        .route("/templates/:id/releases", get(handlers::releases::list_releases))
+        .route(
+            "/templates/:id/export",
+            get(handlers::template::export_template),
+        )
+        .route(
+            "/templates/:id/releases",
+            get(handlers::releases::list_releases),
+        )
         // 版本发布路由（写操作在 template_protected_routes）
         // 下载版本模板（发布内容的公开下载）
-        .route("/templates/:id/releases/:version/download", get(handlers::template::download_template_version))
+        .route(
+            "/templates/:id/releases/:version/download",
+            get(handlers::template::download_template_version),
+        )
 }
 
 /// 模板写操作路由（需认证）
@@ -339,16 +432,37 @@ fn template_protected_routes() -> Router<AppState> {
     Router::new()
         .route("/templates/add", post(handlers::template::create_template))
         .route("/templates/edit", put(handlers::template::update_template))
-        .route("/templates/toggle-featured", put(handlers::template::toggle_featured))
-        .route("/templates/del", delete(handlers::template::delete_template))
+        .route(
+            "/templates/toggle-featured",
+            put(handlers::template::toggle_featured),
+        )
+        .route(
+            "/templates/del",
+            delete(handlers::template::delete_template),
+        )
         // fork 的 handler 依赖 AuthUser，必须在认证组内（此前挂在公开路由上导致恒 500）
         .route("/templates/fork", post(handlers::template::fork_template))
-        .route("/templates/:id/analyze-variables", post(handlers::template_analysis::analyze_variables))
+        .route(
+            "/templates/:id/analyze-variables",
+            post(handlers::template_analysis::analyze_variables),
+        )
         // 版本发布（写操作）
-        .route("/templates/:id/releases", post(handlers::releases::create_release))
-        .route("/templates/:id/releases/reset-to-latest", post(handlers::releases::reset_to_latest))
-        .route("/templates/:id/releases/:version/rollback", post(handlers::releases::rollback_version))
-        .route("/templates/:id/releases/:version/deprecate", post(handlers::releases::deprecate_version))
+        .route(
+            "/templates/:id/releases",
+            post(handlers::releases::create_release),
+        )
+        .route(
+            "/templates/:id/releases/reset-to-latest",
+            post(handlers::releases::reset_to_latest),
+        )
+        .route(
+            "/templates/:id/releases/:version/rollback",
+            post(handlers::releases::rollback_version),
+        )
+        .route(
+            "/templates/:id/releases/:version/deprecate",
+            post(handlers::releases::deprecate_version),
+        )
 }
 
 /// 编辑器路由
@@ -356,8 +470,14 @@ fn editor_routes() -> Router<AppState> {
     Router::new()
         .nest("/templateFiles", routes::admin::editor_routes())
         .nest("/templates", templates_editor_routes())
-        .route("/templateFiles/render", post(handlers::template_render::render_file))
-        .route("/templateFiles/renderFileTree", post(handlers::template_render::render_file_tree))
+        .route(
+            "/templateFiles/render",
+            post(handlers::template_render::render_file),
+        )
+        .route(
+            "/templateFiles/renderFileTree",
+            post(handlers::template_render::render_file_tree),
+        )
         // 文件条件管理路由（方案B：使用 templateId + filePath）
         .route(
             "/file-conditions",
@@ -388,17 +508,31 @@ fn templates_editor_routes() -> Router<AppState> {
 
 /// 预设变量路由
 fn preset_variables_routes() -> Router<AppState> {
-    Router::new()
-        .route("/available", get(handlers::var_preset::get_available_var_presets))
+    Router::new().route(
+        "/available",
+        get(handlers::var_preset::get_available_var_presets),
+    )
 }
 
 /// 模板预设变量路由
 fn template_preset_routes() -> Router<AppState> {
     Router::new()
-        .route("/preset-variables", get(handlers::preset_subscribe::get_preset_variables))
-        .route("/preset-variables/subscribe", get(handlers::preset_subscribe::get_subscribe_list))
-        .route("/preset-variables/subscribe", post(handlers::preset_subscribe::subscribe))
-        .route("/preset-variables/subscribe/:preset_id", delete(handlers::preset_subscribe::unsubscribe))
+        .route(
+            "/preset-variables",
+            get(handlers::preset_subscribe::get_preset_variables),
+        )
+        .route(
+            "/preset-variables/subscribe",
+            get(handlers::preset_subscribe::get_subscribe_list),
+        )
+        .route(
+            "/preset-variables/subscribe",
+            post(handlers::preset_subscribe::subscribe),
+        )
+        .route(
+            "/preset-variables/subscribe/:preset_id",
+            delete(handlers::preset_subscribe::unsubscribe),
+        )
         .nest("/variables", template_variables_routes())
 }
 
@@ -417,10 +551,22 @@ fn studio_routes() -> Router<AppState> {
         .route("/index", get(handlers::studio::studio_index))
         .route("/categories", get(handlers::category::get_all_categories))
         .route("/languages", get(handlers::language::get_all_languages))
-        .route("/languages/popular", get(handlers::language::get_popular_languages))
-        .route("/templates/types", get(handlers::template::get_template_types))
-        .route("/template-types", get(handlers::template::get_template_types))  // 兼容前端调用
-        .route("/templates/list", get(handlers::template::list_public_templates_studio))
+        .route(
+            "/languages/popular",
+            get(handlers::language::get_popular_languages),
+        )
+        .route(
+            "/templates/types",
+            get(handlers::template::get_template_types),
+        )
+        .route(
+            "/template-types",
+            get(handlers::template::get_template_types),
+        ) // 兼容前端调用
+        .route(
+            "/templates/list",
+            get(handlers::template::list_public_templates_studio),
+        )
 }
 
 /// 备份路由
@@ -461,11 +607,13 @@ fn git_init_wrapper(
     // 创建runtime来执行async操作
     let rt = tokio::runtime::Runtime::new()?;
     rt.block_on(async {
-        git_service.init_repository(
-            &repo_path,
-            &template_name,
-            author_name.as_deref(),
-            author_email.as_deref()
-        ).await
+        git_service
+            .init_repository(
+                &repo_path,
+                &template_name,
+                author_name.as_deref(),
+                author_email.as_deref(),
+            )
+            .await
     })
 }

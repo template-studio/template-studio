@@ -117,10 +117,7 @@ pub async fn download_engine() -> impl IntoResponse {
 
     match tokio::fs::read(&wasm_path).await {
         Ok(data) => {
-            tracing::info!(
-                "Serving WASM engine: {} bytes",
-                data.len()
-            );
+            tracing::info!("Serving WASM engine: {} bytes", data.len());
 
             Response::builder()
                 .status(StatusCode::OK)
@@ -206,7 +203,9 @@ fn get_wasm_path() -> std::path::PathBuf {
     }
 
     // 2. 检查工作目录下的 pkg
-    let work_dir_path = std::path::PathBuf::from("crates/template_core_wasm/pkg/template_studio_template_core_wasm_bg.wasm");
+    let work_dir_path = std::path::PathBuf::from(
+        "crates/template_core_wasm/pkg/template_studio_template_core_wasm_bg.wasm",
+    );
     if work_dir_path.exists() {
         return work_dir_path;
     }

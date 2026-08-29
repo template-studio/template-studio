@@ -225,7 +225,11 @@ pub async fn restore_backup(
         backup_data.len()
     );
 
-    match state.backup_service.restore_backup(template_id, &backup_data).await {
+    match state
+        .backup_service
+        .restore_backup(template_id, &backup_data)
+        .await
+    {
         Ok(result) => Ok(Json(json!({
             "code": 0,
             "message": if result.success { "恢复成功" } else { "恢复失败" },
