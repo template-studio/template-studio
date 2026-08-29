@@ -244,3 +244,11 @@
 **涉及文件：** `web/src/utils/http/alova/index.ts`、`web/src/utils/request.ts`
 
 **验收结果：** vite 编译通过；浏览器冒烟四类信封场景页面（模板广场 A 信封/我的模板 B 信封/仪表盘 A/个人中心 B）全部正常渲染、控制台零错误。
+
+## 2026-08-29 API 信封统一第 2/4 步：后端 18 处收敛为 code:0+data
+
+**变更内容：** 落实分析文档第②步。后端 auth.rs（7 处）、email.rs（3 处）、template.rs 用户模板系列（8 处）由 `{code:200, result}` 机械收敛为 `{code:0, data}`。前端同步更新四类消费方（过渡安全写法 `data ?? result` / `code===0 || code===200`）：user store 的 login/getInfo、登录页登录与注册判定、BasicUpload 上传成功判定；Alova 默认解包路径已由第 1 步的拦截器兼容覆盖。决策说明：本轮采用机械替换而非 ApiResponse 构造器重构以控制风险，ApiResponse 启用作为后续增量项。
+
+**涉及文件：** `apps/web/src/handlers/{auth,email,template}.rs`、`web/src/store/modules/user.ts`、`web/src/views/login/index.vue`、`web/src/components/Upload/src/BasicUpload.vue`
+
+**验收结果：** curl 复验登录/auth/info/我的模板均返回 code:0+data；浏览器全新登录周期端到端通过（清 storage → 登录 → 跳转 /admin/dashboard → 个人中心显示 admin 与令牌管理 → 我的模板正常）。过程中发现并修复自查引入的回归一处：getInfo 方法尾部两处未替换的 `result` 引用导致 ReferenceError（现象为路由守卫 catch 后静默登出弹回登录页），已补齐并全文件复扫清零。

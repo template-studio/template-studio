@@ -75,13 +75,15 @@ export const useUserStore = defineStore({
     // 登录
     async login(params: any) {
       const response = await login(params);
-      const { result, code } = response;
-      if (code === ResultEnum.SUCCESS) {
+      // 信封统一过渡：后端已收敛为 {code:0, data}，兼容期同时认 data/result
+      const { data, result, code } = response;
+      const payload = data ?? result;
+      if (code === 0 || code === ResultEnum.SUCCESS) {
         const ex = 7 * 24 * 60 * 60;
-        storage.set(ACCESS_TOKEN, result.token, ex);
-        this.setToken(result.token);
-        if (result.roles) {
-          this.setRoles(result.roles);
+        storage.set(ACCESS_TOKEN, payload.token, ex);
+        this.setToken(payload.token);
+        if (payload.roles) {
+          this.setRoles(payload.roles);
         }
       }
       return response;
@@ -89,30 +91,31 @@ export const useUserStore = defineStore({
     // 获取用户信息
     async getInfo() {
       const data = await getUserInfoApi();
-      const { result } = data;
-      if (result.permissions && result.permissions.length) {
-        const permissionsList = result.permissions;
+      // 信封统一过渡：兼容 data/result 两种负载字段
+      const payload = data.data ?? data.result;
+      if (payload.permissions && payload.permissions.length) {
+        const permissionsList = payload.permissions;
         this.setPermissions(permissionsList);
 
-        if (result.roles) {
-          this.setRoles(result.roles);
+        if (payload.roles) {
+          this.setRoles(payload.roles);
         }
 
         const userInfo = {
-          username: result.username,
-          email: result.email,
-          avatar: result.avatar,
+          username: payload.username,
+          email: payload.email,
+          avatar: payload.avatar,
         };
         this.setUserInfo(userInfo);
-        this.setAvatar(result.avatar);
-        this.username = result.username;
+        this.setAvatar(payload.avatar);
+        this.username = payload.username;
 
         const ex = 7 * 24 * 60 * 60;
-        storage.set(CURRENT_USER, { ...userInfo, permissions: permissionsList, roles: result.roles || [] }, ex);
+        storage.set(CURRENT_USER, { ...userInfo, permissions: permissionsList, roles: payload.roles || [] }, ex);
       } else {
         throw new Error('getInfo: permissionsList must be a non-null array !');
       }
-      return result;
+      return payload;
     },
     // 登出
     async logout() {

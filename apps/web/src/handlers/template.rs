@@ -1704,7 +1704,7 @@ pub async fn create_user_template(
         .await
     {
         Ok(id) => Ok(Json(
-            json!({ "code": 200, "message": "模板创建成功", "result": { "id": id } }),
+            json!({ "code": 0, "message": "模板创建成功", "data": { "id": id } }),
         )),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
@@ -1722,7 +1722,7 @@ pub async fn list_my_templates(
         .list_user_templates(auth_user.user_id, query)
         .await
     {
-        Ok(resp) => Ok(Json(json!({ "code": 200, "result": resp }))),
+        Ok(resp) => Ok(Json(json!({ "code": 0, "data": resp }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -1741,7 +1741,7 @@ pub async fn update_user_template(
         .update_user_template(auth_user.user_id, request)
         .await
     {
-        Ok(_) => Ok(Json(json!({ "code": 200, "message": "模板更新成功" }))),
+        Ok(_) => Ok(Json(json!({ "code": 0, "message": "模板更新成功" }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
 }
@@ -1758,7 +1758,7 @@ pub async fn delete_user_template(
         .delete_user_template(auth_user.user_id, id)
         .await
     {
-        Ok(_) => Ok(Json(json!({ "code": 200, "message": "模板删除成功" }))),
+        Ok(_) => Ok(Json(json!({ "code": 0, "message": "模板删除成功" }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
 }
@@ -1775,7 +1775,7 @@ pub async fn submit_for_review(
         .submit_for_review(auth_user.user_id, id)
         .await
     {
-        Ok(_) => Ok(Json(json!({ "code": 200, "message": "已提交审核" }))),
+        Ok(_) => Ok(Json(json!({ "code": 0, "message": "已提交审核" }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
 }
@@ -1786,7 +1786,7 @@ pub async fn list_public_templates(
     Query(query): Query<UserTemplateListQuery>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.template_service.list_public_templates(query).await {
-        Ok(resp) => Ok(Json(json!({ "code": 200, "result": resp }))),
+        Ok(resp) => Ok(Json(json!({ "code": 0, "data": resp }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -1812,7 +1812,7 @@ pub async fn list_pending_templates(
         .list_pending_templates(page, page_size)
         .await
     {
-        Ok(resp) => Ok(Json(json!({ "code": 200, "result": resp }))),
+        Ok(resp) => Ok(Json(json!({ "code": 0, "data": resp }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -1828,7 +1828,7 @@ pub async fn review_template_admin(
         .review_template(auth_user.user_id, request)
         .await
     {
-        Ok(_) => Ok(Json(json!({ "code": 200, "message": "审核完成" }))),
+        Ok(_) => Ok(Json(json!({ "code": 0, "message": "审核完成" }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
 }

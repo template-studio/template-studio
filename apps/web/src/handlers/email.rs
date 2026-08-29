@@ -35,14 +35,14 @@ pub async fn forgot_password(
 
     match state.email_service.send_reset_email(&request.email).await {
         Ok(_) => Ok(Json(json!({
-            "code": 200,
+            "code": 0,
             "message": "如果该邮箱已注册，重置邮件已发送"
         }))),
         Err(e) => {
             tracing::error!("发送重置邮件失败: {}", e);
             // 不暴露具体错误，防止邮箱枚举
             Ok(Json(json!({
-                "code": 200,
+                "code": 0,
                 "message": "如果该邮箱已注册，重置邮件已发送"
             })))
         }
@@ -64,7 +64,7 @@ pub async fn reset_password(
         .await
     {
         Ok(_) => Ok(Json(json!({
-            "code": 200,
+            "code": 0,
             "message": "密码重置成功"
         }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),

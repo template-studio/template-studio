@@ -27,9 +27,9 @@ pub async fn login(
 
     match state.auth_service.login(&request).await {
         Ok(resp) => Ok(Json(json!({
-            "code": 200,
+            "code": 0,
             "message": "登录成功",
-            "result": resp
+            "data": resp
         }))),
         Err(e) => {
             warn!("登录失败: {}", e);
@@ -49,9 +49,9 @@ pub async fn register(
 
     match state.auth_service.register(&request).await {
         Ok(resp) => Ok(Json(json!({
-            "code": 200,
+            "code": 0,
             "message": "注册成功",
-            "result": resp
+            "data": resp
         }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
@@ -64,8 +64,8 @@ pub async fn get_info(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.auth_service.get_user_info(auth_user.user_id).await {
         Ok(info) => Ok(Json(json!({
-            "code": 200,
-            "result": info
+            "code": 0,
+            "data": info
         }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -87,7 +87,7 @@ pub async fn change_password(
         .await
     {
         Ok(_) => Ok(Json(json!({
-            "code": 200,
+            "code": 0,
             "message": "密码修改成功"
         }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
@@ -105,9 +105,9 @@ pub async fn create_pat(
     }
     match state.pat_service.create(auth_user.user_id, &request).await {
         Ok(resp) => Ok(Json(json!({
-            "code": 200,
+            "code": 0,
             "message": "令牌创建成功",
-            "result": resp
+            "data": resp
         }))),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
@@ -123,8 +123,8 @@ pub async fn list_pats(
     }
     match state.pat_service.list(auth_user.user_id).await {
         Ok(list) => Ok(Json(json!({
-            "code": 200,
-            "result": list
+            "code": 0,
+            "data": list
         }))),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -141,7 +141,7 @@ pub async fn delete_pat(
     }
     match state.pat_service.delete(id, auth_user.user_id).await {
         Ok(true) => Ok(Json(json!({
-            "code": 200,
+            "code": 0,
             "message": "令牌已删除"
         }))),
         Ok(false) => error_response(StatusCode::NOT_FOUND, "令牌不存在"),
