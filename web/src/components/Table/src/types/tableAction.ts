@@ -1,10 +1,10 @@
-import { NButton } from 'naive-ui';
+import type { ButtonProps } from 'ant-design-vue';
 import type { Component } from 'vue';
 import { PermissionsEnum } from '@/enums/permissionsEnum';
-export interface ActionItem extends Partial<InstanceType<typeof NButton>> {
+export interface ActionItem extends Partial<ButtonProps> {
   onClick?: Fn;
   label?: string;
-  type?: 'success' | 'error' | 'warning' | 'info' | 'primary' | 'default';
+  type?: 'success' | 'error' | 'warning' | 'info' | 'primary' | 'default' | 'link' | 'ghost' | 'dashed';
   // 设定 color 后会覆盖 type 的样式
   color?: string;
   icon?: Component;

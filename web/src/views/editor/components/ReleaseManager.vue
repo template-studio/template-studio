@@ -1,146 +1,117 @@
 <template>
-  <n-modal
-    v-model:show="modalVisible"
-    preset="card"
+  <a-modal
+    v-model:open="modalVisible"
+    title="版本管理"
     style="width: 800px; max-height: 80vh"
     :mask-closable="false"
+    :footer="null"
   >
-    <template #header>
-      <div class="release-header">
-        <n-icon size="20" style="margin-right: 8px">
-          <svg viewBox="0 0 24 24">
-            <path
-              fill="currentColor"
-              d="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10s10-4.48 10-10S17.52,2 12,2z M13,17h-2v-2h2V17z M13,13h-2V7h2V13z"
-            />
-          </svg>
-        </n-icon>
-        <span class="modal-title">版本管理</span>
-      </div>
-    </template>
-
     <div class="release-container">
       <!-- 操作区 -->
       <div class="release-actions">
-        <n-space>
-          <n-button type="primary" @click="showCreateReleaseModal">
+        <a-space>
+          <a-button type="primary" @click="showCreateReleaseModal">
             <template #icon>
-              <n-icon>
-                <svg viewBox="0 0 24 24">
-                  <path fill="currentColor" d="M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6V13z" />
-                </svg>
-              </n-icon>
+              <svg viewBox="0 0 24 24" style="width: 14px; height: 14px">
+                <path fill="currentColor" d="M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6V13z" />
+              </svg>
             </template>
             创建发布
-          </n-button>
-          <n-button @click="loadReleases">
+          </a-button>
+          <a-button @click="loadReleases">
             <template #icon>
-              <n-icon>
-                <svg viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M17.65,6.35C16.2,4.9 14.21,4 12,4c-4.42,0-7.99,3.58-7.99,8s3.57,8 7.99,8c3.73,0 6.84-2.55 7.73-6h-2.08 c-0.82,2.33-3.04,4-5.65,4c-3.31,0-6-2.69-6-6s2.69-6 6-6c1.66,0 3.14,0.69 4.22,1.78L13,11h7V4L17.65,6.35z"
-                  />
-                </svg>
-              </n-icon>
+              <svg viewBox="0 0 24 24" style="width: 14px; height: 14px">
+                <path
+                  fill="currentColor"
+                  d="M17.65,6.35C16.2,4.9 14.21,4 12,4c-4.42,0-7.99,3.58-7.99,8s3.57,8 7.99,8c3.73,0 6.84-2.55 7.73-6h-2.08 c-0.82,2.33-3.04,4-5.65,4c-3.31,0-6-2.69-6-6s2.69-6 6-6c1.66,0 3.14,0.69 4.22,1.78L13,11h7V4L17.65,6.35z"
+                />
+              </svg>
             </template>
             刷新
-          </n-button>
-          <n-popconfirm @positive-click="handleResetToLatest">
-            <template #trigger>
-              <n-button type="warning" :disabled="!hasLatestVersion">
-                <template #icon>
-                  <n-icon>
-                    <svg viewBox="0 0 24 24">
-                      <path
-                        fill="currentColor"
-                        d="M12 3a9 9 0 0 0-9 9H0l4 4 4-4H5a7 7 0 0 1 7-7 7 7 0 0 1 7 7 7 7 0 0 1-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.96 8.96 0 0 0 12 21a9 9 0 0 0 9-9 9 9 0 0 0-9-9m-1 5v5l4.25 2.52.77-1.28-3.52-2.09V8z"
-                      />
-                    </svg>
-                  </n-icon>
-                </template>
-                重置
-              </n-button>
-            </template>
-            <div style="max-width: 280px">
-              <p style="font-weight: 500; margin-bottom: 8px">确认重置？</p>
-              <p style="color: #666; font-size: 13px">
-                将舍弃所有未提交的更改，恢复到最新发布版本
-              </p>
-            </div>
-          </n-popconfirm>
-        </n-space>
+          </a-button>
+          <a-popconfirm
+            title="确认重置？"
+            description="将舍弃所有未提交的更改，恢复到最新发布版本"
+            @confirm="handleResetToLatest"
+            ok-text="确认"
+            cancel-text="取消"
+          >
+            <a-button type="default" :disabled="!hasLatestVersion">
+              <template #icon>
+                <svg viewBox="0 0 24 24" style="width: 14px; height: 14px">
+                  <path
+                    fill="currentColor"
+                    d="M12 3a9 9 0 0 0-9 9H0l4 4 4-4H5a7 7 0 0 1 7-7 7 7 0 0 1 7 7 7 7 0 0 1-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.96 8.96 0 0 0 12 21a9 9 0 0 0 9-9 9 9 0 0 0-9-9m-1 5v5l4.25 2.52.77-1.28-3.52-2.09V8z"
+                  />
+                </svg>
+              </template>
+              重置
+            </a-button>
+          </a-popconfirm>
+        </a-space>
       </div>
 
       <!-- 版本列表 -->
-      <n-spin :show="loading">
-        <n-data-table
-          :columns="columns"
-          :data="versions"
+      <a-spin :spinning="loading">
+        <a-table
+          :columns="tableColumns"
+          :data-source="versions"
           :row-key="(row) => row.id"
           :pagination="pagination"
           size="small"
         />
-      </n-spin>
+      </a-spin>
     </div>
-  </n-modal>
+  </a-modal>
 
   <!-- 创建发布对话框 -->
-  <n-modal
-    v-model:show="createModalVisible"
-    preset="card"
-    style="width: 500px"
+  <a-modal
+    v-model:open="createModalVisible"
     title="创建发布"
+    style="width: 500px"
     :mask-closable="false"
+    @ok="handleCreateRelease"
+    :confirm-loading="creating"
+    ok-text="创建发布"
+    cancel-text="取消"
   >
-    <n-form
+    <a-form
       ref="createFormRef"
       :model="createForm"
       :rules="createRules"
-      label-placement="left"
-      label-width="100px"
+      :label-col="{ span: 6 }"
+      :wrapper-col="{ span: 18 }"
     >
-      <n-form-item label="版本号" path="version">
-        <n-input
+      <a-form-item label="版本号" name="version">
+        <a-input
           v-model:value="createForm.version"
           placeholder="留空则自动生成（如 v1.1.0）"
-          clearable
+          allow-clear
         />
-      </n-form-item>
+      </a-form-item>
 
-      <n-form-item label="发布日志" path="changelog">
-        <n-input
+      <a-form-item label="发布日志" name="changelog">
+        <a-textarea
           v-model:value="createForm.changelog"
-          type="textarea"
           placeholder="描述本次发布的变更内容"
           :rows="4"
         />
-      </n-form-item>
+      </a-form-item>
 
-      <n-form-item label="Git提交信息" path="message">
-        <n-input
+      <a-form-item label="Git提交信息" name="message">
+        <a-textarea
           v-model:value="createForm.message"
-          type="textarea"
           placeholder="Git提交信息（留空使用默认）"
           :rows="2"
         />
-      </n-form-item>
-    </n-form>
-
-    <template #footer>
-      <n-space justify="end">
-        <n-button @click="createModalVisible = false">取消</n-button>
-        <n-button type="primary" @click="handleCreateRelease" :loading="creating">
-          创建发布
-        </n-button>
-      </n-space>
-    </template>
-  </n-modal>
+      </a-form-item>
+    </a-form>
+  </a-modal>
 </template>
 
 <script setup>
   import { ref, computed, watch, h } from 'vue';
-  import { NButton, NTag, NSpace, NPopconfirm, useMessage, useDialog } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import { listReleases, createRelease, rollbackVersion, deprecateVersion, resetToLatest } from '@/api/releases';
 
   const props = defineProps({
@@ -155,9 +126,6 @@
   });
 
   const emit = defineEmits(['update:show', 'reset']);
-
-  const message = useMessage();
-  const dialog = useDialog();
 
   // 对话框显示状态
   const modalVisible = computed({
@@ -194,50 +162,45 @@
   };
 
   // 表格列定义
-  const columns = [
+  const tableColumns = [
     {
       title: '版本号',
+      dataIndex: 'version',
       key: 'version',
       width: 120,
-      render: (row) => {
+      customRender: ({ record }) => {
         const tags = [];
         // 兼容后端的 snake_case 和前端的 camelCase
-        const isLatest = row.isLatest ?? row.is_latest ?? false;
-        const isDeprecated = row.isDeprecated ?? row.is_deprecated ?? false;
+        const isLatest = record.isLatest ?? record.is_latest ?? false;
+        const isDeprecated = record.isDeprecated ?? record.is_deprecated ?? false;
 
         if (isLatest) {
-          tags.push(
-            h(
-              NTag,
-              { type: 'success', size: 'small', style: { marginRight: '4px' } },
-              { default: () => '最新' }
-            )
-          );
+          tags.push(h('a-tag', { color: 'success', style: { marginRight: '4px' } }, () => '最新'));
         }
         if (isDeprecated) {
-          tags.push(h(NTag, { type: 'warning', size: 'small' }, { default: () => '已弃用' }));
+          tags.push(h('a-tag', { color: 'warning' }, () => '已弃用'));
         }
         return h('div', { style: { display: 'flex', alignItems: 'center' } }, [
-          h('span', { style: { fontWeight: 'bold', marginRight: '8px' } }, row.version),
+          h('span', { style: { fontWeight: 'bold', marginRight: '8px' } }, record.version),
           ...tags,
         ]);
       },
     },
     {
       title: '发布日志',
+      dataIndex: 'changelog',
       key: 'changelog',
-      ellipsis: {
-        tooltip: true,
-      },
+      ellipsis: true,
     },
     {
       title: '文件统计',
+      dataIndex: 'fileCount',
       key: 'fileCount',
       width: 100,
-      render: (row) => {
+      customRender: ({ record }) => {
         // 兼容后端的 snake_case 和前端的 camelCase
-        const fileCount = row.fileCount ?? row.file_count ?? 0;
-        const totalSize = row.totalSize ?? row.total_size ?? 0;
+        const fileCount = record.fileCount ?? record.file_count ?? 0;
+        const totalSize = record.totalSize ?? record.total_size ?? 0;
         const sizeMB = (totalSize / 1024 / 1024).toFixed(2);
         return h('div', [
           h('div', `${fileCount} 个文件`),
@@ -247,19 +210,21 @@
     },
     {
       title: '创建者',
+      dataIndex: 'creatorName',
       key: 'creatorName',
       width: 100,
-      render: (row) => {
-        return row.creatorName ?? row.creator_name ?? 'System';
+      customRender: ({ record }) => {
+        return record.creatorName ?? record.creator_name ?? 'System';
       },
     },
     {
       title: '创建时间',
+      dataIndex: 'createdAt',
       key: 'createdAt',
       width: 180,
-      render: (row) => {
+      customRender: ({ record }) => {
         // 兼容后端的 snake_case 和前端的 camelCase
-        const createdAt = row.createdAt ?? row.created_at;
+        const createdAt = record.createdAt ?? record.created_at;
         const date = new Date(createdAt);
         if (isNaN(date.getTime())) {
           return h('div', { style: { color: '#999' } }, '无效日期');
@@ -279,34 +244,31 @@
       key: 'actions',
       width: 150,
       fixed: 'right',
-      render: (row) => {
+      customRender: ({ record }) => {
         const actions = [];
 
         // 兼容后端的 snake_case 和前端的 camelCase
-        const isLatest = row.isLatest ?? row.is_latest ?? false;
-        const isDeprecated = row.isDeprecated ?? row.is_deprecated ?? false;
-
-        // 调试日志
-        console.log('Row data:', row, { isLatest, isDeprecated });
+        const isLatest = record.isLatest ?? record.is_latest ?? false;
+        const isDeprecated = record.isDeprecated ?? record.is_deprecated ?? false;
 
         // 如果不是最新版本，显示回滚按钮
         if (!isLatest) {
           actions.push(
             h(
-              NPopconfirm,
+              'a-popconfirm',
               {
-                positiveText: '确认',
-                negativeText: '取消',
-                onPositiveClick: () => handleRollback(row.version),
+                title: `确定要回滚到版本 ${record.version} 吗？`,
+                onConfirm: () => handleRollback(record.version),
+                okText: '确认',
+                cancelText: '取消',
               },
               {
-                trigger: () =>
+                default: () =>
                   h(
-                    NButton,
+                    'a-button',
                     { size: 'small', style: { marginRight: '4px' } },
-                    { default: () => '回滚' }
+                    () => '回滚'
                   ),
-                default: () => `确定要回滚到版本 ${row.version} 吗？`,
               }
             )
           );
@@ -316,20 +278,20 @@
         if (!isDeprecated && !isLatest) {
           actions.push(
             h(
-              NPopconfirm,
+              'a-popconfirm',
               {
-                positiveText: '确认',
-                negativeText: '取消',
-                onPositiveClick: () => handleDeprecate(row.version),
+                title: `确定要弃用版本 ${record.version} 吗？`,
+                onConfirm: () => handleDeprecate(record.version),
+                okText: '确认',
+                cancelText: '取消',
               },
               {
-                trigger: () =>
+                default: () =>
                   h(
-                    NButton,
-                    { size: 'small', type: 'warning', ghost: true },
-                    { default: () => '弃用' }
+                    'a-button',
+                    { size: 'small', danger: true },
+                    () => '弃用'
                   ),
-                default: () => `确定要弃用版本 ${row.version} 吗？`,
               }
             )
           );
@@ -340,7 +302,7 @@
           return h('span', { style: { color: '#999', fontSize: '12px' } }, '当前版本，无需操作');
         }
 
-        return h(NSpace, { size: 'small' }, { default: () => actions });
+        return h('a-space', { size: 'small' }, () => actions);
       },
     },
   ];

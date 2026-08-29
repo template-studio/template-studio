@@ -6,43 +6,37 @@
         <span class="file-name">{{ currentFileName }}</span>
       </div>
       <div class="file-actions">
-        <n-button size="small" @click="saveCurrentFile">
+        <a-button size="small" @click="saveCurrentFile">
           <template #icon>
-            <n-icon>
-              <Save />
-            </n-icon>
+            <Save />
           </template>
           保存
-        </n-button>
-        <n-button size="small" @click="triggerPreview">
+        </a-button>
+        <a-button size="small" @click="triggerPreview">
           <template #icon>
-            <n-icon>
-              <Eye />
-            </n-icon>
+            <Eye />
           </template>
           预览
-        </n-button>
+        </a-button>
       </div>
     </div>
 
     <!-- 编辑器容器 -->
     <div v-if="!currentFileName" class="no-file-selected">
       <div class="no-file-icon">
-        <n-icon size="48" color="#ccc">
-          <Document />
-        </n-icon>
+        <Document style="font-size: 48px; color: #ccc" />
       </div>
       <div class="no-file-text">请选择左侧文件进行编辑</div>
     </div>
     <div v-else class="codemirror-container" ref="editorContainer"></div>
 
     <!-- HTML 预览弹框 -->
-    <n-modal v-model:show="showHtmlPreviewModal" preset="card" :style="modalStyle">
-      <template #header>
+    <a-modal v-model:open="showHtmlPreviewModal" title="HTML 预览" :style="modalStyle" :footer="null" :width="isFullscreen ? '100vw' : '90vw'">
+      <template #title>
         <div class="modal-header">
           <span>HTML 预览</span>
           <div class="modal-actions">
-            <n-button size="small" quaternary circle @click="toggleFullscreen">
+            <a-button size="small" @click="toggleFullscreen">
               <template #icon>
                 <svg
                   v-if="!isFullscreen"
@@ -71,7 +65,7 @@
                   />
                 </svg>
               </template>
-            </n-button>
+            </a-button>
           </div>
         </div>
       </template>
@@ -82,15 +76,15 @@
           sandbox="allow-scripts allow-same-origin"
         ></iframe>
       </div>
-    </n-modal>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
   import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue';
-  import { NButton, NIcon, useNotification } from 'naive-ui';
+  import { notification } from 'ant-design-vue';
   import { editTemplateFile, restoreTemplateFile } from '@/api/templateFiles';
-  import { Save, Eye, Document } from '@vicons/ionicons5';
+  import { Save, Eye, Document } from '@/icons/ionicons5';
 
   // CodeMirror 核心模块 - 按照官方示例导入
   import {
@@ -172,8 +166,6 @@
   const showHtmlPreviewModal = ref(false);
   const isFullscreen = ref(false);
   let editorView = null;
-
-  const notification = useNotification();
 
   // 计算属性
   const modalStyle = computed(() => {

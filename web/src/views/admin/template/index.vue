@@ -1,433 +1,346 @@
 <template>
   <div class="templates-manage">
-    <n-flex vertical>
+    <div style="display: flex; flex-direction: column; gap: 16px">
       <!-- 搜索和工具栏 -->
-      <n-card :bordered="false">
-        <n-form inline :label-width="80" :model="searchForm">
-          <n-form-item label="关键词">
-            <n-input
+      <a-card :bordered="false">
+        <a-form layout="inline" :model="searchForm">
+          <a-form-item label="关键词">
+            <a-input
               v-model:value="searchForm.keyword"
               placeholder="输入模板名称或描述进行搜索"
-              clearable
+              allow-clear
               style="width: 240px"
               @keyup.enter="handleSearch"
             >
               <template #prefix>
-                <n-icon>
-                  <SearchOutline />
-                </n-icon>
+                <SearchOutline />
               </template>
-            </n-input>
-          </n-form-item>
-          <n-form-item label="分类">
-            <n-select
+            </a-input>
+          </a-form-item>
+          <a-form-item label="分类">
+            <a-select
               v-model:value="searchForm.categoryId"
               placeholder="选择分类"
-              clearable
+              allow-clear
               style="width: 160px"
               :options="categoryOptions"
             />
-          </n-form-item>
-          <n-form-item label="语言">
-            <n-select
+          </a-form-item>
+          <a-form-item label="语言">
+            <a-select
               v-model:value="searchForm.languageId"
               placeholder="选择语言"
-              clearable
+              allow-clear
               style="width: 160px"
               :options="languageOptions"
             />
-          </n-form-item>
-          <n-form-item>
-            <n-space>
-              <n-button type="primary" @click="handleSearch">
+          </a-form-item>
+          <a-form-item>
+            <a-space>
+              <a-button type="primary" @click="handleSearch">
                 <template #icon>
-                  <n-icon>
-                    <SearchOutline />
-                  </n-icon>
+                  <SearchOutline />
                 </template>
                 搜索
-              </n-button>
-              <n-button @click="handleReset">
+              </a-button>
+              <a-button @click="handleReset">
                 <template #icon>
-                  <n-icon>
-                    <RefreshOutline />
-                  </n-icon>
+                  <RefreshOutline />
                 </template>
                 重置
-              </n-button>
-            </n-space>
-          </n-form-item>
-        </n-form>
-      </n-card>
+              </a-button>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </a-card>
 
       <!-- 表格 -->
-      <n-card :bordered="false">
+      <a-card :bordered="false">
         <BasicTable
           ref="actionRef"
           :columns="columns"
           :request="loadDataTable"
           :row-key="(row) => row.id"
           :actionColumn="actionColumn"
-          :scroll-x="1600"
+          :scroll-x="1300"
         >
           <template #tableTitle>
-            <n-button type="primary" @click="handleAdd">
+            <a-button type="primary" @click="handleAdd">
               <template #icon>
-                <n-icon>
-                  <AddOutline />
-                </n-icon>
+                <AddOutline />
               </template>
               新建模板
-            </n-button>
+            </a-button>
           </template>
         </BasicTable>
-      </n-card>
-    </n-flex>
+      </a-card>
+    </div>
 
     <!-- 添加/编辑模板弹窗 -->
-    <n-modal v-model:show="showAddModal" :mask-closable="false">
-      <n-card
-        style="width: 1000px; height: 700px"
-        :title="editingTemplate ? '编辑模板' : '添加模板'"
-        :bordered="false"
-        size="huge"
-        role="dialog"
-        aria-modal="true"
-      >
-        <template #header-extra>
-          <n-button quaternary circle @click="closeModal">
-            <template #icon>
-              <n-icon>
-                <CloseOutline />
-              </n-icon>
-            </template>
-          </n-button>
-        </template>
-
-        <n-tabs
-          v-model:value="activeTab"
-          type="line"
-          animated
-          style="height: 520px; display: flex; flex-direction: column"
-        >
-          <!-- 基本信息 Tab -->
-          <n-tab-pane name="basic" tab="基本信息" style="flex: 1; overflow-y: auto">
-            <n-form
-              ref="formRef"
-              :model="formData"
-              :rules="formRules"
-              label-placement="left"
-              :label-width="120"
-              require-mark-placement="right-hanging"
-            >
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px">
-                <!-- 第一行：模板名称 + 模板类型 -->
-                <div>
-                  <n-form-item label="模板名称" path="name">
-                    <n-input
-                      v-model:value="formData.name"
-                      placeholder="请输入模板名称"
-                      :maxlength="100"
-                      show-count
-                    />
-                  </n-form-item>
-                </div>
-                <div>
-                  <n-form-item label="模板类型" path="templateType">
-                    <n-select
-                      v-model:value="formData.templateType"
-                      placeholder="请选择模板类型"
-                      :options="templateTypeSelectOptions"
-                      style="width: 100%"
-                      :disabled="!!editingTemplate"
-                    />
-                  </n-form-item>
-                </div>
-
-                <!-- 第二行：所属分类 + 支持语言 -->
-                <div>
-                  <n-form-item label="所属分类" path="categoryId">
-                    <n-select
-                      v-model:value="formData.categoryId"
-                      placeholder="请选择分类"
-                      :options="categorySelectOptions"
-                      style="width: 100%"
-                    />
-                  </n-form-item>
-                </div>
-                <div>
-                  <n-form-item label="支持语言" path="languages">
-                    <n-select
-                      v-model:value="formData.languages"
-                      placeholder="请选择支持的语言"
-                      :options="languageSelectOptions"
-                      multiple
-                      style="width: 100%"
-                      @update:value="onLanguagesChange"
-                    />
-                  </n-form-item>
-                </div>
-
-                <!-- 第三行：主语言占据双栏 -->
-                <div style="grid-column: 1 / -1">
-                  <n-form-item label="主语言" path="primaryLanguage">
-                    <n-select
-                      v-model:value="formData.primaryLanguage"
-                      placeholder="请选择主语言"
-                      :options="primaryLanguageOptions"
-                      style="width: 100%"
-                    />
-                  </n-form-item>
-                </div>
-
-                <!-- 第四行：模板描述占据双栏 -->
-                <div style="grid-column: 1 / -1">
-                  <n-form-item label="模板描述" path="description">
-                    <n-input
-                      v-model:value="formData.description"
-                      type="textarea"
-                      placeholder="请输入模板描述"
-                      :maxlength="500"
-                      show-count
-                      :rows="4"
-                      style="width: 100%"
-                    />
-                  </n-form-item>
-                </div>
+    <a-modal v-model:open="showAddModal" :mask-closable="false" :title="editingTemplate ? '编辑模板' : '添加模板'" width="1000px">
+      <a-tabs v-model:activeKey="activeTab" type="line" style="height: 520px; display: flex; flex-direction: column">
+        <!-- 基本信息 Tab -->
+        <a-tab-pane key="basic" tab="基本信息" style="flex: 1; overflow-y: auto">
+          <a-form
+            ref="formRef"
+            :model="formData"
+            :rules="formRules"
+            :label-col="{ span: 6 }"
+            :wrapper-col="{ span: 18 }"
+          >
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px">
+              <!-- 第一行：模板名称 + 模板类型 -->
+              <div>
+                <a-form-item label="模板名称" name="name">
+                  <a-input
+                    v-model:value="formData.name"
+                    placeholder="请输入模板名称"
+                    :maxlength="100"
+                    show-count
+                  />
+                </a-form-item>
               </div>
-            </n-form>
-          </n-tab-pane>
-
-          <!-- 详细描述 Tab -->
-          <n-tab-pane name="introduction" tab="详细描述" style="flex: 1; overflow-y: auto">
-            <div style="height: 500px; display: flex; flex-direction: column; gap: 12px">
-              <!-- 工具栏说明 -->
-              <div style="display: flex; justify-content: space-between; align-items: center">
-                <n-text depth="3" style="font-size: 14px"
-                  >支持 Markdown
-                  格式，可添加代码块、表格、链接等丰富内容。点击编辑器工具栏小眼睛预览按钮查看实时效果。</n-text
-                >
+              <div>
+                <a-form-item label="模板类型" name="templateType">
+                  <a-select
+                    v-model:value="formData.templateType"
+                    placeholder="请选择模板类型"
+                    :options="templateTypeSelectOptions"
+                    style="width: 100%"
+                    :disabled="!!editingTemplate"
+                  />
+                </a-form-item>
               </div>
 
-              <!-- Markdown 编辑器 -->
-              <div
-                style="
-                  flex: 1;
-                  border: 1px solid var(--n-border-color);
-                  border-radius: 6px;
-                  overflow: hidden;
-                "
-              >
-                <MdEditor
-                  v-model="formData.introduction"
-                  :style="{ height: '500px' }"
-                  :toolbars="editorToolbars"
-                  placeholder="请输入模板的详细介绍，支持Markdown格式..."
-                />
+              <!-- 第二行：所属分类 + 支持语言 -->
+              <div>
+                <a-form-item label="所属分类" name="categoryId">
+                  <a-select
+                    v-model:value="formData.categoryId"
+                    placeholder="请选择分类"
+                    :options="categorySelectOptions"
+                    style="width: 100%"
+                  />
+                </a-form-item>
+              </div>
+              <div>
+                <a-form-item label="支持语言" name="languages">
+                  <a-select
+                    v-model:value="formData.languages"
+                    placeholder="请选择支持的语言"
+                    :options="languageSelectOptions"
+                    mode="multiple"
+                    style="width: 100%"
+                    @change="onLanguagesChange"
+                  />
+                </a-form-item>
+              </div>
+
+              <!-- 第三行：主语言占据双栏 -->
+              <div style="grid-column: 1 / -1">
+                <a-form-item label="主语言" name="primaryLanguage" :label-col="{ span: 3 }" :wrapper-col="{ span: 21 }">
+                  <a-select
+                    v-model:value="formData.primaryLanguage"
+                    placeholder="请选择主语言"
+                    :options="primaryLanguageOptions"
+                    style="width: 100%"
+                  />
+                </a-form-item>
+              </div>
+
+              <!-- 第四行：模板描述占据双栏 -->
+              <div style="grid-column: 1 / -1">
+                <a-form-item label="模板描述" name="description" :label-col="{ span: 3 }" :wrapper-col="{ span: 21 }">
+                  <a-textarea
+                    v-model:value="formData.description"
+                    placeholder="请输入模板描述"
+                    :maxlength="500"
+                    show-count
+                    :rows="4"
+                    style="width: 100%"
+                  />
+                </a-form-item>
               </div>
             </div>
-          </n-tab-pane>
-        </n-tabs>
+          </a-form>
+        </a-tab-pane>
 
-        <template #footer>
-          <div class="modal-footer">
-            <n-button @click="closeModal">取消</n-button>
-            <n-button type="primary" @click="handleSubmit" :loading="submitting">
-              {{ editingTemplate ? '更新' : '添加' }}
-            </n-button>
-          </div>
-        </template>
-      </n-card>
-    </n-modal>
+        <!-- 详细描述 Tab -->
+        <a-tab-pane key="introduction" tab="详细描述" style="flex: 1; overflow-y: auto">
+          <div style="height: 500px; display: flex; flex-direction: column; gap: 12px">
+            <!-- 工具栏说明 -->
+            <div style="display: flex; justify-content: space-between; align-items: center">
+              <span style="font-size: 14px; color: #999"
+                >支持 Markdown
+                格式，可添加代码块、表格、链接等丰富内容。点击编辑器工具栏小眼睛预览按钮查看实时效果。</span
+              >
+            </div>
 
-    <!-- 删除确认弹窗 -->
-    <n-modal v-model:show="showDeleteModal" :mask-closable="false">
-      <n-card
-        style="width: 400px"
-        title="确认删除"
-        :bordered="false"
-        size="huge"
-        role="dialog"
-        aria-modal="true"
-      >
-        <div class="delete-content">
-          <div class="delete-icon">
-            <n-icon size="48" color="#d03050">
-              <TrashOutline />
-            </n-icon>
-          </div>
-          <p class="delete-message">
-            确定要删除模板 <strong>"{{ deletingTemplate?.name }}"</strong> 吗？
-          </p>
-          <p class="delete-warning"> 此操作不可撤销，删除后相关模板文件和配置将无法恢复。 </p>
-        </div>
-
-        <template #footer>
-          <div class="modal-footer">
-            <n-button @click="showDeleteModal = false">取消</n-button>
-            <n-button type="error" @click="confirmDelete" :loading="deleting"> 确认删除 </n-button>
-          </div>
-        </template>
-      </n-card>
-    </n-modal>
-
-    <!-- 预览弹窗 -->
-    <n-modal v-model:show="showPreviewModal" :mask-closable="true">
-      <n-card
-        style="width: 80%; max-width: 900px"
-        title="模板详情"
-        :bordered="false"
-        size="huge"
-        role="dialog"
-        aria-modal="true"
-      >
-        <template #header-extra>
-          <n-button quaternary circle @click="showPreviewModal = false">
-            <template #icon>
-              <n-icon>
-                <CloseOutline />
-              </n-icon>
-            </template>
-          </n-button>
-        </template>
-
-        <div v-if="previewData" class="preview-content">
-          <n-descriptions :column="2" bordered>
-            <n-descriptions-item label="模板名称">
-              <div style="display: flex; align-items: center; gap: 8px">
-                <span
-                  v-if="previewData.isFeatured || previewData.is_featured"
-                  style="color: #f0a020"
-                  >⭐</span
-                >
-                {{ previewData.name }}
-              </div>
-            </n-descriptions-item>
-            <n-descriptions-item label="模板类型">
-              <n-tag :type="getTemplateTypeColor(previewData.templateType)" size="small">
-                {{ getTemplateTypeLabel(previewData.templateType) }}
-              </n-tag>
-            </n-descriptions-item>
-            <n-descriptions-item label="分类">
-              {{ getCategoryName(previewData.categoryId || previewData.category_id) || '-' }}
-            </n-descriptions-item>
-            <n-descriptions-item label="支持语言">
-              <n-space :size="4">
-                <n-tag
-                  v-for="lang in previewData.languages"
-                  :key="lang.languageId"
-                  :type="lang.isPrimary === 1 || lang.is_primary === 1 ? 'info' : 'default'"
-                  size="small"
-                >
-                  {{ getLanguageName(lang.languageId) }}
-                  <span
-                    v-if="lang.isPrimary === 1 || lang.is_primary === 1"
-                    style="margin-left: 4px"
-                    >(主)</span
-                  >
-                </n-tag>
-              </n-space>
-            </n-descriptions-item>
-            <n-descriptions-item label="模板描述" :span="2">
-              {{ previewData.description || '暂无描述' }}
-            </n-descriptions-item>
-            <n-descriptions-item label="创建时间" :span="2">
-              {{ formatDate(previewData.createdAt || previewData.created_at) }}
-            </n-descriptions-item>
-          </n-descriptions>
-
-          <div v-if="previewData.introduction" style="margin-top: 20px">
-            <h4 style="margin-bottom: 12px; color: #333; font-weight: 600">详细介绍：</h4>
-            <div class="markdown-preview" v-html="previewData.introduction"></div>
-          </div>
-        </div>
-      </n-card>
-    </n-modal>
-
-    <!-- Fork模板对话框 -->
-    <n-modal v-model:show="showForkModal" :mask-closable="false">
-      <n-card
-        style="width: 600px"
-        title="Fork模板"
-        :bordered="false"
-        size="huge"
-        role="dialog"
-        aria-modal="true"
-      >
-        <template #header-extra>
-          <n-button quaternary circle @click="closeForkModal">
-            <template #icon>
-              <n-icon>
-                <CloseOutline />
-              </n-icon>
-            </template>
-          </n-button>
-        </template>
-
-        <n-form
-          ref="forkFormRef"
-          :model="forkFormData"
-          :rules="forkFormRules"
-          label-placement="left"
-          :label-width="100"
-          require-mark-placement="right-hanging"
-        >
-          <n-form-item label="源模板" path="">
+            <!-- Markdown 编辑器 -->
             <div
               style="
-                padding: 8px 12px;
-                background: #f5f5f5;
-                border-radius: 4px;
-                color: #666;
-                width: 100%;
+                flex: 1;
+                border: 1px solid #d9d9d9;
+                border-radius: 6px;
+                overflow: hidden;
               "
             >
-              {{ forkingTemplate?.name }}
+              <MdEditor
+                v-model="formData.introduction"
+                :style="{ height: '500px' }"
+                :toolbars="editorToolbars"
+                placeholder="请输入模板的详细介绍，支持Markdown格式..."
+              />
             </div>
-          </n-form-item>
-
-          <n-form-item label="新模板名称" path="name">
-            <n-input v-model:value="forkFormData.name" placeholder="请输入新模板名称" />
-          </n-form-item>
-
-          <n-form-item label="新模板描述" path="description">
-            <n-input
-              v-model:value="forkFormData.description"
-              type="textarea"
-              :rows="3"
-              placeholder="请输入新模板描述"
-            />
-          </n-form-item>
-
-          <n-form-item label="详细介绍" path="introduction">
-            <n-input
-              v-model:value="forkFormData.introduction"
-              type="textarea"
-              :rows="5"
-              placeholder="请输入新模板的详细介绍（可选）"
-            />
-          </n-form-item>
-
-          <n-form-item label="分类" path="categoryId">
-            <n-select
-              v-model:value="forkFormData.categoryId"
-              :options="categorySelectOptions"
-              placeholder="选择分类（默认使用源模板分类）"
-              clearable
-            />
-          </n-form-item>
-        </n-form>
-
-        <template #footer>
-          <div class="modal-footer">
-            <n-button @click="closeForkModal">取消</n-button>
-            <n-button type="primary" @click="handleForkSubmit" :loading="submitting">
-              确认Fork
-            </n-button>
           </div>
-        </template>
-      </n-card>
-    </n-modal>
+        </a-tab-pane>
+      </a-tabs>
+
+      <template #footer>
+        <div class="modal-footer">
+          <a-button @click="closeModal">取消</a-button>
+          <a-button type="primary" @click="handleSubmit" :loading="submitting">
+            {{ editingTemplate ? '更新' : '添加' }}
+          </a-button>
+        </div>
+      </template>
+    </a-modal>
+
+    <!-- 删除确认弹窗 -->
+    <a-modal v-model:open="showDeleteModal" :mask-closable="false" title="确认删除" width="400px">
+      <div class="delete-content">
+        <div class="delete-icon">
+          <TrashOutline style="font-size: 48px; color: #d03050" />
+        </div>
+        <p class="delete-message">
+          确定要删除模板 <strong>"{{ deletingTemplate?.name }}"</strong> 吗？
+        </p>
+        <p class="delete-warning"> 此操作不可撤销，删除后相关模板文件和配置将无法恢复。 </p>
+      </div>
+
+      <template #footer>
+        <div class="modal-footer">
+          <a-button @click="showDeleteModal = false">取消</a-button>
+          <a-button danger @click="confirmDelete" :loading="deleting"> 确认删除 </a-button>
+        </div>
+      </template>
+    </a-modal>
+
+    <!-- 预览弹窗 -->
+    <a-modal v-model:open="showPreviewModal" :mask-closable="true" title="模板详情" width="80%" :style="{ maxWidth: '900px' }">
+      <div v-if="previewData" class="preview-content">
+        <a-descriptions :column="2" bordered>
+          <a-descriptions-item label="模板名称">
+            <div style="display: flex; align-items: center; gap: 8px">
+              <span
+                v-if="previewData.isFeatured || previewData.is_featured"
+                style="color: #f0a020"
+                >⭐</span
+              >
+              {{ previewData.name }}
+            </div>
+          </a-descriptions-item>
+          <a-descriptions-item label="模板类型">
+            <a-tag :color="getTemplateTypeColor(previewData.templateType)">
+              {{ getTemplateTypeLabel(previewData.templateType) }}
+            </a-tag>
+          </a-descriptions-item>
+          <a-descriptions-item label="分类">
+            {{ getCategoryName(previewData.categoryId || previewData.category_id) || '-' }}
+          </a-descriptions-item>
+          <a-descriptions-item label="支持语言">
+            <a-space :size="4">
+              <a-tag
+                v-for="lang in previewData.languages"
+                :key="lang.languageId"
+                :color="lang.isPrimary === 1 || lang.is_primary === 1 ? 'blue' : 'default'"
+              >
+                {{ getLanguageName(lang.languageId) }}
+                <span
+                  v-if="lang.isPrimary === 1 || lang.is_primary === 1"
+                  style="margin-left: 4px"
+                  >(主)</span
+                >
+              </a-tag>
+            </a-space>
+          </a-descriptions-item>
+          <a-descriptions-item label="模板描述" :span="2">
+            {{ previewData.description || '暂无描述' }}
+          </a-descriptions-item>
+          <a-descriptions-item label="创建时间" :span="2">
+            {{ formatDate(previewData.createdAt || previewData.created_at) }}
+          </a-descriptions-item>
+        </a-descriptions>
+
+        <div v-if="previewData.introduction" style="margin-top: 20px">
+          <h4 style="margin-bottom: 12px; color: #333; font-weight: 600">详细介绍：</h4>
+          <div class="markdown-preview" v-html="previewData.introduction"></div>
+        </div>
+      </div>
+    </a-modal>
+
+    <!-- Fork模板对话框 -->
+    <a-modal v-model:open="showForkModal" :mask-closable="false" title="Fork模板" width="600px">
+      <a-form
+        ref="forkFormRef"
+        :model="forkFormData"
+        :rules="forkFormRules"
+        :label-col="{ span: 5 }"
+        :wrapper-col="{ span: 19 }"
+      >
+        <a-form-item label="源模板">
+          <div
+            style="
+              padding: 8px 12px;
+              background: #f5f5f5;
+              border-radius: 4px;
+              color: #666;
+              width: 100%;
+            "
+          >
+            {{ forkingTemplate?.name }}
+          </div>
+        </a-form-item>
+
+        <a-form-item label="新模板名称" name="name">
+          <a-input v-model:value="forkFormData.name" placeholder="请输入新模板名称" />
+        </a-form-item>
+
+        <a-form-item label="新模板描述" name="description">
+          <a-textarea
+            v-model:value="forkFormData.description"
+            :rows="3"
+            placeholder="请输入新模板描述"
+          />
+        </a-form-item>
+
+        <a-form-item label="详细介绍" name="introduction">
+          <a-textarea
+            v-model:value="forkFormData.introduction"
+            :rows="5"
+            placeholder="请输入新模板的详细介绍（可选）"
+          />
+        </a-form-item>
+
+        <a-form-item label="分类" name="categoryId">
+          <a-select
+            v-model:value="forkFormData.categoryId"
+            :options="categorySelectOptions"
+            placeholder="选择分类（默认使用源模板分类）"
+            allow-clear
+          />
+        </a-form-item>
+      </a-form>
+
+      <template #footer>
+        <div class="modal-footer">
+          <a-button @click="closeForkModal">取消</a-button>
+          <a-button type="primary" @click="handleForkSubmit" :loading="submitting">
+            确认Fork
+          </a-button>
+        </div>
+      </template>
+    </a-modal>
   </div>
 </template>
 
@@ -437,17 +350,7 @@
   import { MdEditor } from 'md-editor-v3';
   import 'md-editor-v3/lib/style.css';
   import { BasicTable, TableAction } from '@/components/Table';
-  import {
-    NButton,
-    NIcon,
-    NSwitch,
-    NTag,
-    useMessage,
-    NText,
-    NSpace,
-    NDescriptions,
-    NDescriptionsItem,
-  } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import {
     AddOutline,
     SearchOutline,
@@ -459,7 +362,7 @@
     CodeOutline,
     GitBranch,
     Star,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
   import {
     listTemplates,
     addTemplate,
@@ -474,7 +377,6 @@
   import { storeToRefs } from 'pinia';
   import { columns as baseColumns, setColumnHelpers } from './columns';
 
-  const message = useMessage();
   const router = useRouter();
   const actionRef = ref();
 
@@ -570,15 +472,15 @@
       max: 100,
       validator: (rule, value) => {
         if (!value || !value.trim()) {
-          return new Error('模板名称不能为空');
+          return Promise.reject('模板名称不能为空');
         }
         if (value.trim().length < 1) {
-          return new Error('模板名称至少1个字符');
+          return Promise.reject('模板名称至少1个字符');
         }
         if (value.trim().length > 100) {
-          return new Error('模板名称不能超过100个字符');
+          return Promise.reject('模板名称不能超过100个字符');
         }
-        return true;
+        return Promise.resolve();
       },
     },
     description: {
@@ -589,15 +491,15 @@
       max: 500,
       validator: (rule, value) => {
         if (!value || !value.trim()) {
-          return new Error('模板描述不能为空');
+          return Promise.reject('模板描述不能为空');
         }
         if (value.trim().length < 1) {
-          return new Error('模板描述至少1个字符');
+          return Promise.reject('模板描述至少1个字符');
         }
         if (value.trim().length > 500) {
-          return new Error('模板描述不能超过500个字符');
+          return Promise.reject('模板描述不能超过500个字符');
         }
-        return true;
+        return Promise.resolve();
       },
     },
     introduction: {
@@ -605,9 +507,9 @@
       trigger: ['input', 'blur'],
       validator: (rule, value) => {
         if (value && value.trim().length > 2000) {
-          return new Error('详细介绍不能超过2000个字符');
+          return Promise.reject('详细介绍不能超过2000个字符');
         }
-        return true;
+        return Promise.resolve();
       },
     },
     categoryId: {
@@ -617,9 +519,9 @@
       trigger: 'change',
       validator: (rule, value) => {
         if (!value || value <= 0) {
-          return new Error('请选择有效的分类');
+          return Promise.reject('请选择有效的分类');
         }
-        return true;
+        return Promise.resolve();
       },
     },
     templateType: {
@@ -628,9 +530,9 @@
       trigger: 'change',
       validator: (rule, value) => {
         if (!value || !['basic', 'scaffold', 'data_driven'].includes(value)) {
-          return new Error('请选择有效的模板类型');
+          return Promise.reject('请选择有效的模板类型');
         }
-        return true;
+        return Promise.resolve();
       },
     },
     languages: {
@@ -641,9 +543,9 @@
       trigger: 'change',
       validator: (rule, value) => {
         if (!value || value.length === 0) {
-          return new Error('至少选择一种支持的语言');
+          return Promise.reject('至少选择一种支持的语言');
         }
-        return true;
+        return Promise.resolve();
       },
     },
     primaryLanguage: {
@@ -653,12 +555,12 @@
       trigger: 'change',
       validator: (rule, value) => {
         if (!value || value <= 0) {
-          return new Error('请选择有效的主语言');
+          return Promise.reject('请选择有效的主语言');
         }
         if (formData.languages.length > 0 && !formData.languages.includes(value)) {
-          return new Error('主语言必须在支持的语言列表中');
+          return Promise.reject('主语言必须在支持的语言列表中');
         }
-        return true;
+        return Promise.resolve();
       },
     },
   };
@@ -730,7 +632,7 @@
 
   // 操作列
   const actionColumn = reactive({
-    width: 480,
+    width: 360,
     title: '操作',
     key: 'action',
     fixed: 'right',
@@ -902,7 +804,7 @@
     forkFormData.description = '';
     forkFormData.introduction = '';
     forkFormData.categoryId = null;
-    forkFormRef.value?.restoreValidation();
+    forkFormRef.value?.resetFields();
   };
 
   const handleForkSubmit = async () => {
@@ -952,7 +854,7 @@
     formData.templateType = 'basic';
     formData.languages = [];
     formData.primaryLanguage = null;
-    formRef.value?.restoreValidation();
+    formRef.value?.resetFields();
   };
 
   // 语言选择变更
@@ -1107,6 +1009,9 @@
   .templates-manage {
     padding: 16px;
     background: transparent;
+    height: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
   }
 
   .modal-footer {

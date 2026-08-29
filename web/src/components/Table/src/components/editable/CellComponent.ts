@@ -4,7 +4,7 @@ import { componentMap } from '@/components/Table/src/componentMap';
 
 import { h } from 'vue';
 
-import { NPopover } from 'naive-ui';
+import { Popover } from 'ant-design-vue';
 
 export interface ComponentProps {
   component: ComponentType;
@@ -14,7 +14,7 @@ export interface ComponentProps {
 }
 
 export const CellComponent: FunctionalComponent = (
-  { component = 'NInput', rule = true, ruleMessage, popoverVisible }: ComponentProps,
+  { component = 'Input', rule = true, ruleMessage, popoverVisible }: ComponentProps,
   { attrs }
 ) => {
   const Comp = componentMap.get(component) as typeof defineComponent;
@@ -24,11 +24,10 @@ export const CellComponent: FunctionalComponent = (
     return DefaultComp;
   }
   return h(
-    NPopover,
-    { 'display-directive': 'show', show: !!popoverVisible, manual: 'manual' },
+    Popover,
+    { open: !!popoverVisible, trigger: [] },
     {
-      trigger: () => DefaultComp,
-      default: () =>
+      content: () =>
         h(
           'span',
           {
@@ -38,10 +37,9 @@ export const CellComponent: FunctionalComponent = (
               display: 'inline-block',
             },
           },
-          {
-            default: () => ruleMessage,
-          }
+          ruleMessage
         ),
+      default: () => DefaultComp,
     }
   );
 };

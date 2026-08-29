@@ -2,17 +2,17 @@
   <div class="drawer-footer">
     <div class="footer-content">
       <div class="footer-stats">
-        <n-text depth="3"> 已添加 {{ componentCount }} 个组件 </n-text>
-        <n-text v-if="hasUnsavedChanges" type="warning" style="margin-left: 12px">
+        <span style="color: #999"> 已添加 {{ componentCount }} 个组件 </span>
+        <span v-if="hasUnsavedChanges" style="margin-left: 12px; color: #faad14">
           ⚠️ 有未保存的更改
-        </n-text>
+        </span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-  import { NText } from 'naive-ui';
+  // ant-design-vue migration: NText replaced with native span/a-typography-text
 
   /**
    * StudioFooter 组件

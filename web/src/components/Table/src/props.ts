@@ -1,9 +1,7 @@
 import type { PropType } from 'vue';
 import { propTypes } from '@/utils/propTypes';
 import { BasicColumn } from './types/table';
-import { NDataTable } from 'naive-ui';
 export const basicProps = {
-  ...NDataTable.props, // 这里继承原 UI 组件的 props
   title: {
     type: String,
     default: null,
@@ -13,8 +11,8 @@ export const basicProps = {
     default: null,
   },
   size: {
-    type: String,
-    default: 'medium',
+    type: String as PropType<'large' | 'middle' | 'small'>,
+    default: 'middle',
   },
   dataSource: {
     type: [Object],
@@ -57,4 +55,22 @@ export const basicProps = {
   canResize: propTypes.bool.def(true),
   resizeHeightOffset: propTypes.number.def(0),
   striped: propTypes.bool.def(false),
+  // Ant Design Vue Table 特有 props
+  bordered: propTypes.bool.def(false),
+  showHeader: propTypes.bool.def(true),
+  scroll: {
+    type: Object as PropType<{ x?: number | string; y?: number | string }>,
+    default: undefined,
+  },
+  indentSize: propTypes.number.def(15),
+  rowSelection: {
+    type: Object,
+    default: undefined,
+  },
+  expandedRowKeys: {
+    type: Array as PropType<string[]>,
+    default: undefined,
+  },
+  defaultExpandAllRows: propTypes.bool.def(false),
+  loading: propTypes.bool.def(false),
 };

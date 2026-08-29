@@ -4,7 +4,7 @@
  * 定义所有可拖拽的组件类型及其默认 Schema 结构
  */
 
-import { TextOutline, RadioButtonOn, GridOutline, ChevronDownOutline, ListOutline } from '@vicons/ionicons5'
+import { TextOutline, RadioButtonOn, GridOutline, ChevronDownOutline, ListOutline } from '@/icons/ionicons5'
 
 /**
  * 基础组件类型定义
@@ -437,26 +437,6 @@ export function getComponentDisplayInfo(componentType) {
   }
 
   return info[componentType] || info[COMPONENT_TYPES.STRING]
-}
-
-/**
- * 获取类型标签的 Naive UI 类型
- * @param {string} type - 组件类型
- * @returns {string} Naive UI Tag 类型
- */
-export function getTypeTagType(type) {
-  const typeMap = {
-    string: 'info',
-    integer: 'success',
-    number: 'success',
-    boolean: 'warning',
-    enum: 'default',
-    secret: 'error',
-    object: 'error',
-    array: 'default',
-    object_arr: 'default'
-  }
-  return typeMap[type] || 'default'
 }
 
 /**

@@ -30,3 +30,5 @@ pnpm-debug.log*
 # WASM build output
 /src/wasm/*.js
 /src/wasm/*.wasm
+.zcode/
+.playwright-cli/

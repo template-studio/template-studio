@@ -4,14 +4,9 @@
       <div class="template-info">
         <div class="template-header">
           <h1 class="template-name">{{ templateInfo?.name }}</h1>
-          <n-tag
-            v-if="templateInfo?.categoryId"
-            :bordered="false"
-            size="medium"
-            type="success"
-          >
+          <a-tag v-if="templateInfo?.categoryId" color="success">
             {{ getCategoryName(templateInfo?.categoryId) }}
-          </n-tag>
+          </a-tag>
         </div>
 
         <div class="template-description">
@@ -26,13 +21,13 @@
         <!-- 版本选择 -->
         <div class="config-section">
           <h3 class="section-title">选择版本</h3>
-          <n-select
+          <a-select
             v-if="versionList.length > 0"
             v-model:value="internalVersion"
             :options="versionOptions"
             size="large"
             placeholder="选择版本"
-            @update:value="handleVersionChange"
+            @change="handleVersionChange"
           />
           <div v-else class="empty-hint">
             该模板暂无发布版本，请联系管理员发布。
@@ -43,16 +38,14 @@
         <div v-if="getTemplateLanguages.length > 0" class="config-section">
           <h3 class="section-title">支持的语言</h3>
           <div class="languages-list">
-            <n-tag
+            <a-tag
               v-for="lang in getTemplateLanguages"
               :key="lang.id"
-              :bordered="false"
-              size="medium"
-              :type="lang.isPrimary === 1 ? 'success' : 'default'"
+              :color="lang.isPrimary === 1 ? 'success' : undefined"
             >
               {{ lang.displayName }}
               <template v-if="lang.isPrimary === 1"> (主语言) </template>
-            </n-tag>
+            </a-tag>
           </div>
         </div>
 
@@ -67,70 +60,60 @@
     </div>
 
     <div class="step-actions">
-      <n-button size="large" @click="handleFork" :disabled="!templateInfo">
+      <a-button size="large" @click="handleFork" :disabled="!templateInfo">
         <template #icon>
-          <n-icon><GitBranchOutline /></n-icon>
+          <GitBranchOutline />
         </template>
         Fork 模板
-      </n-button>
-      <n-button type="primary" size="large" @click="$emit('next')" :disabled="!templateInfo">
+      </a-button>
+      <a-button type="primary" size="large" @click="$emit('next')" :disabled="!templateInfo">
         开始配置
         <template #icon>
-          <n-icon><ArrowForward /></n-icon>
+          <ArrowForward />
         </template>
-      </n-button>
+      </a-button>
     </div>
 
     <!-- Fork模板弹窗 -->
-    <n-modal v-model:show="showForkModal" :mask-closable="false">
-      <n-card style="width: 600px" title="Fork 模板" :bordered="false" size="huge" role="dialog">
-        <template #header-extra>
-          <n-button quaternary circle @click="showForkModal = false">
-            <template #icon><n-icon><CloseOutline /></n-icon></template>
-          </n-button>
-        </template>
-        <n-form ref="forkFormRef" :model="forkFormData" :rules="forkFormRules" label-placement="left" :label-width="100">
-          <n-form-item label="源模板">
-            <div style="padding: 8px 12px; background: #f8fafc; border-radius: 6px; color: #64748b; width: 100%; border: 1px solid #e2e8f0;">
-              {{ templateInfo?.name }}
-            </div>
-          </n-form-item>
-          <n-form-item label="新模板名称" path="name">
-            <n-input v-model:value="forkFormData.name" placeholder="请输入新模板名称" />
-          </n-form-item>
-          <n-form-item label="新模板描述" path="description">
-            <n-input v-model:value="forkFormData.description" type="textarea" :rows="3" placeholder="请输入新模板描述" />
-          </n-form-item>
-          <n-form-item label="详细介绍" path="introduction">
-            <n-input v-model:value="forkFormData.introduction" type="textarea" :rows="4" placeholder="请输入详细介绍（可选）" />
-          </n-form-item>
-          <n-form-item label="分类" path="categoryId">
-            <n-select v-model:value="forkFormData.categoryId" :options="forkCategoryOptions" placeholder="选择分类（默认使用源模板分类）" clearable />
-          </n-form-item>
-        </n-form>
-        <template #footer>
-          <div style="display: flex; gap: 12px; justify-content: flex-end">
-            <n-button @click="showForkModal = false">取消</n-button>
-            <n-button type="primary" @click="handleForkSubmit" :loading="forkSubmitting">确认 Fork</n-button>
+    <a-modal v-model:open="showForkModal" title="Fork 模板" :mask-closable="false" :width="600" :footer="null">
+      <a-form ref="forkFormRef" :model="forkFormData" :rules="forkFormRules" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+        <a-form-item label="源模板">
+          <div style="padding: 8px 12px; background: #f8fafc; border-radius: 6px; color: #64748b; width: 100%; border: 1px solid #e2e8f0;">
+            {{ templateInfo?.name }}
           </div>
-        </template>
-      </n-card>
-    </n-modal>
+        </a-form-item>
+        <a-form-item label="新模板名称" name="name">
+          <a-input v-model:value="forkFormData.name" placeholder="请输入新模板名称" />
+        </a-form-item>
+        <a-form-item label="新模板描述" name="description">
+          <a-textarea v-model:value="forkFormData.description" :rows="3" placeholder="请输入新模板描述" />
+        </a-form-item>
+        <a-form-item label="详细介绍" name="introduction">
+          <a-textarea v-model:value="forkFormData.introduction" :rows="4" placeholder="请输入详细介绍（可选）" />
+        </a-form-item>
+        <a-form-item label="分类" name="categoryId">
+          <a-select v-model:value="forkFormData.categoryId" :options="forkCategoryOptions" placeholder="选择分类（默认使用源模板分类）" allow-clear />
+        </a-form-item>
+      </a-form>
+      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px">
+        <a-button @click="showForkModal = false">取消</a-button>
+        <a-button type="primary" @click="handleForkSubmit" :loading="forkSubmitting">确认 Fork</a-button>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
   import { computed, onMounted, watch, ref } from 'vue';
   import { useRouter } from 'vue-router';
-  import { useMessage } from 'naive-ui';
-  import { Star, ArrowForward, GitBranchOutline, CloseOutline } from '@vicons/ionicons5';
+  import { message } from 'ant-design-vue';
+  import { Star, ArrowForward, GitBranchOutline } from '@/icons/ionicons5';
   import { MdPreview } from 'md-editor-v3';
   import { useLanguageStore } from '@/store/modules/languageStore';
   import { useCategoryStore } from '@/store/modules/categoryStore';
   import { forkTemplate } from '@/api/templates';
 
   const router = useRouter();
-  const message = useMessage();
 
   const props = defineProps({
     templateInfo: { type: Object, default: null },

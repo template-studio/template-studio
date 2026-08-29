@@ -1,6 +1,6 @@
 import type { Plugin, PluginOption } from 'vite';
 import Components from 'unplugin-vue-components/vite';
-import { NaiveUiResolver } from 'unplugin-vue-components/resolvers';
+import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers';
 
 import vue from '@vitejs/plugin-vue';
 import vueJsx from '@vitejs/plugin-vue-jsx';
@@ -17,10 +17,10 @@ export function createVitePlugins(viteEnv: ViteEnv, isBuild: boolean) {
     // have to
     vueJsx(),
 
-    // 按需引入NaiveUi且自动创建组件声明
+    // 按需引入AntDesignVue且自动创建组件声明
     Components({
       dts: true,
-      resolvers: [NaiveUiResolver()],
+      resolvers: [AntDesignVueResolver({ importStyle: false })],
     }),
   ];
 

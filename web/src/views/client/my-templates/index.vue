@@ -7,12 +7,12 @@
           <h1>我的模板</h1>
           <p>管理你创建的模板，编辑内容并提交发布</p>
         </div>
-        <n-button type="primary" @click="handleCreate">
+        <a-button type="primary" @click="handleCreate">
           <template #icon>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </template>
           创建模板
-        </n-button>
+        </a-button>
       </div>
 
       <!-- 状态筛选 -->
@@ -74,114 +74,97 @@
 
       <!-- 分页 -->
       <div v-if="total > pageSize" class="pagination">
-        <n-pagination v-model:page="currentPage" :page-count="Math.ceil(total / pageSize)" @update:page="loadTemplates" />
+        <a-pagination v-model:current="currentPage" :total="total" :page-size="pageSize" @change="loadTemplates" />
       </div>
     </div>
 
     <!-- 右键菜单 -->
-    <n-dropdown
-      placement="bottom-start"
-      trigger="manual"
-      :x="contextMenuX"
-      :y="contextMenuY"
-      :options="contextMenuOptions"
-      :show="showMenu"
-      @select="handleMenuSelect"
-      @clickoutside="showMenu = false"
-    />
+    <a-dropdown v-model:open="showMenu" :trigger="['contextmenu']">
+      <div :style="{ position: 'fixed', left: contextMenuX + 'px', top: contextMenuY + 'px', width: 0, height: 0 }"></div>
+      <template #overlay>
+        <a-menu @click="({ key }) => handleMenuSelect(key)">
+          <template v-for="item in contextMenuOptions" :key="item.key">
+            <a-menu-divider v-if="item.type === 'divider'" />
+            <a-menu-item v-else :style="item.props?.style">
+              {{ item.label }}
+            </a-menu-item>
+          </template>
+        </a-menu>
+      </template>
+    </a-dropdown>
 
     <!-- 创建/编辑弹窗 -->
-    <n-modal v-model:show="showModal" :mask-closable="false">
-      <n-card style="width: 700px" :title="editingId ? '编辑模板' : '创建模板'" :bordered="false" size="huge" role="dialog">
-        <template #header-extra>
-          <n-button quaternary circle @click="showModal = false">
-            <template #icon><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></template>
-          </n-button>
-        </template>
-        <n-form ref="formRef" :model="formData" :rules="formRules" label-placement="left" :label-width="100">
-          <n-form-item label="模板名称" path="name">
-            <n-input v-model:value="formData.name" placeholder="请输入模板名称" :maxlength="100" show-count />
-          </n-form-item>
-          <n-form-item label="模板类型" path="templateType">
-            <n-select v-model:value="formData.templateType" :options="typeOptions" placeholder="选择类型" :disabled="!!editingId" />
-          </n-form-item>
-          <n-form-item label="所属分类" path="categoryId">
-            <n-select v-model:value="formData.categoryId" :options="categoryOptions" placeholder="选择分类" />
-          </n-form-item>
-          <n-form-item label="支持语言" path="languages">
-            <n-select v-model:value="formData.languages" :options="languageOptions" multiple placeholder="选择语言" @update:value="onLanguagesChange" />
-          </n-form-item>
-          <n-form-item v-if="formData.languages.length" label="主语言">
-            <n-select v-model:value="formData.primaryLanguage" :options="primaryLanguageOptions" placeholder="选择主语言" />
-          </n-form-item>
-          <n-form-item label="模板描述" path="description">
-            <n-input v-model:value="formData.description" type="textarea" placeholder="描述模板的用途和特点" :maxlength="500" show-count :rows="3" />
-          </n-form-item>
-        </n-form>
-        <template #footer>
-          <div style="display: flex; gap: 12px; justify-content: flex-end">
-            <n-button @click="showModal = false">取消</n-button>
-            <n-button type="primary" @click="handleSubmit" :loading="submitting">{{ editingId ? '更新' : '创建' }}</n-button>
-          </div>
-        </template>
-      </n-card>
-    </n-modal>
+    <a-modal v-model:open="showModal" :title="editingId ? '编辑模板' : '创建模板'" :mask-closable="false" :width="700" :footer="null">
+      <a-form ref="formRef" :model="formData" :rules="formRules" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
+        <a-form-item label="模板名称" name="name">
+          <a-input v-model:value="formData.name" placeholder="请输入模板名称" :maxlength="100" show-count />
+        </a-form-item>
+        <a-form-item label="模板类型" name="templateType">
+          <a-select v-model:value="formData.templateType" :options="typeOptions" placeholder="选择类型" :disabled="!!editingId" />
+        </a-form-item>
+        <a-form-item label="所属分类" name="categoryId">
+          <a-select v-model:value="formData.categoryId" :options="categoryOptions" placeholder="选择分类" />
+        </a-form-item>
+        <a-form-item label="支持语言" name="languages">
+          <a-select v-model:value="formData.languages" :options="languageOptions" mode="multiple" placeholder="选择语言" @change="onLanguagesChange" />
+        </a-form-item>
+        <a-form-item v-if="formData.languages.length" label="主语言">
+          <a-select v-model:value="formData.primaryLanguage" :options="primaryLanguageOptions" placeholder="选择主语言" />
+        </a-form-item>
+        <a-form-item label="模板描述" name="description">
+          <a-textarea v-model:value="formData.description" placeholder="描述模板的用途和特点" :maxlength="500" show-count :rows="3" />
+        </a-form-item>
+      </a-form>
+      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px">
+        <a-button @click="showModal = false">取消</a-button>
+        <a-button type="primary" @click="handleSubmit" :loading="submitting">{{ editingId ? '更新' : '创建' }}</a-button>
+      </div>
+    </a-modal>
 
     <!-- Fork模板弹窗 -->
-    <n-modal v-model:show="showForkModal" :mask-closable="false">
-      <n-card style="width: 600px" title="Fork 模板" :bordered="false" size="huge" role="dialog">
-        <template #header-extra>
-          <n-button quaternary circle @click="showForkModal = false">
-            <template #icon><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></template>
-          </n-button>
-        </template>
-        <n-form ref="forkFormRef" :model="forkFormData" :rules="forkFormRules" label-placement="left" :label-width="100">
-          <n-form-item label="源模板">
-            <div style="padding: 8px 12px; background: #f8fafc; border-radius: 6px; color: #64748b; width: 100%; border: 1px solid #e2e8f0;">
-              {{ forkingTemplate?.name }}
-            </div>
-          </n-form-item>
-          <n-form-item label="新模板名称" path="name">
-            <n-input v-model:value="forkFormData.name" placeholder="请输入新模板名称" />
-          </n-form-item>
-          <n-form-item label="新模板描述" path="description">
-            <n-input v-model:value="forkFormData.description" type="textarea" :rows="3" placeholder="请输入新模板描述" />
-          </n-form-item>
-          <n-form-item label="详细介绍" path="introduction">
-            <n-input v-model:value="forkFormData.introduction" type="textarea" :rows="4" placeholder="请输入详细介绍（可选）" />
-          </n-form-item>
-          <n-form-item label="分类" path="categoryId">
-            <n-select v-model:value="forkFormData.categoryId" :options="categoryOptions" placeholder="选择分类（默认使用源模板分类）" clearable />
-          </n-form-item>
-        </n-form>
-        <template #footer>
-          <div style="display: flex; gap: 12px; justify-content: flex-end">
-            <n-button @click="showForkModal = false">取消</n-button>
-            <n-button type="primary" @click="handleForkSubmit" :loading="forkSubmitting">确认 Fork</n-button>
+    <a-modal v-model:open="showForkModal" title="Fork 模板" :mask-closable="false" :width="600" :footer="null">
+      <a-form ref="forkFormRef" :model="forkFormData" :rules="forkFormRules" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+        <a-form-item label="源模板">
+          <div style="padding: 8px 12px; background: #f8fafc; border-radius: 6px; color: #64748b; width: 100%; border: 1px solid #e2e8f0;">
+            {{ forkingTemplate?.name }}
           </div>
-        </template>
-      </n-card>
-    </n-modal>
+        </a-form-item>
+        <a-form-item label="新模板名称" name="name">
+          <a-input v-model:value="forkFormData.name" placeholder="请输入新模板名称" />
+        </a-form-item>
+        <a-form-item label="新模板描述" name="description">
+          <a-textarea v-model:value="forkFormData.description" :rows="3" placeholder="请输入新模板描述" />
+        </a-form-item>
+        <a-form-item label="详细介绍" name="introduction">
+          <a-textarea v-model:value="forkFormData.introduction" :rows="4" placeholder="请输入详细介绍（可选）" />
+        </a-form-item>
+        <a-form-item label="分类" name="categoryId">
+          <a-select v-model:value="forkFormData.categoryId" :options="categoryOptions" placeholder="选择分类（默认使用源模板分类）" allow-clear />
+        </a-form-item>
+      </a-form>
+      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px">
+        <a-button @click="showForkModal = false">取消</a-button>
+        <a-button type="primary" @click="handleForkSubmit" :loading="forkSubmitting">确认 Fork</a-button>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch, h } from 'vue';
 import { useRouter } from 'vue-router';
-import { useMessage, useDialog, NIcon } from 'naive-ui';
+import { message, Modal } from 'ant-design-vue';
 import {
   CreateOutline, PencilOutline, TrashOutline,
   GitBranchOutline, SendOutline, ArrowUndoOutline,
-} from '@vicons/ionicons5';
+} from '@/icons/ionicons5';
 import { listMyTemplates, createUserTemplate, updateUserTemplate, deleteUserTemplate, submitForReview } from '@/api/templates/contribution';
 import { forkTemplate } from '@/api/templates';
 import { getPublicCategories, getPublicLanguages } from '@/api/public/index';
 
-const renderIcon = (icon) => () => h(NIcon, { size: 16 }, { default: () => h(icon) });
+const renderIcon = (icon) => () => h(icon, { style: 'font-size: 16px' });
 
 const router = useRouter();
-const message = useMessage();
-const dialog = useDialog();
 
 const templates = ref([]);
 const loading = ref(false);
@@ -422,12 +405,13 @@ async function handleForkSubmit() {
 }
 
 function handleDelete(id, name) {
-  dialog.warning({
+  Modal.confirm({
     title: '确认删除',
     content: `确定删除模板"${name}"吗？此操作不可撤销。`,
-    positiveText: '删除',
-    negativeText: '取消',
-    onPositiveClick: async () => {
+    okText: '删除',
+    okType: 'danger',
+    cancelText: '取消',
+    onOk: async () => {
       try {
         await deleteUserTemplate(id);
         message.success('删除成功');

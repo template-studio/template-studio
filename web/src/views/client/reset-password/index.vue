@@ -38,14 +38,14 @@
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           <h3 style="margin: 16px 0 8px; color: #0f172a">链接无效</h3>
           <p style="color: #64748b; font-size: 14px">{{ error }}</p>
-          <n-button type="primary" style="margin-top: 20px" @click="router.push('/login')">返回登录</n-button>
+          <a-button type="primary" style="margin-top: 20px" @click="router.push('/login')">返回登录</a-button>
         </div>
 
         <div v-else-if="success" class="reset-success">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           <h3 style="margin: 16px 0 8px; color: #0f172a">密码重置成功</h3>
           <p style="color: #64748b; font-size: 14px">请使用新密码登录</p>
-          <n-button type="primary" style="margin-top: 20px" @click="router.push('/login')">去登录</n-button>
+          <a-button type="primary" style="margin-top: 20px" @click="router.push('/login')">去登录</a-button>
         </div>
 
         <div v-else>
@@ -53,23 +53,23 @@
             <h2 class="form-title">设置新密码</h2>
             <p class="form-subtitle">请输入您的新密码</p>
           </div>
-          <n-form ref="formRef" :model="form" :rules="rules" label-placement="left" size="large">
-            <n-form-item path="password">
-              <n-input v-model:value="form.password" type="password" show-password-on="click" placeholder="新密码（至少6位）">
+          <a-form ref="formRef" :model="form" :rules="rules" size="large">
+            <a-form-item name="password">
+              <a-input-password v-model:value="form.password" placeholder="新密码（至少6位）">
                 <template #prefix>
-                  <n-icon size="18" color="#94a3b8"><LockClosedOutline /></n-icon>
+                  <LockClosedOutline style="color: #94a3b8; font-size: 18px" />
                 </template>
-              </n-input>
-            </n-form-item>
-            <n-form-item path="confirmPassword">
-              <n-input v-model:value="form.confirmPassword" type="password" show-password-on="click" placeholder="确认新密码">
+              </a-input-password>
+            </a-form-item>
+            <a-form-item name="confirmPassword">
+              <a-input-password v-model:value="form.confirmPassword" placeholder="确认新密码">
                 <template #prefix>
-                  <n-icon size="18" color="#94a3b8"><LockClosedOutline /></n-icon>
+                  <LockClosedOutline style="color: #94a3b8; font-size: 18px" />
                 </template>
-              </n-input>
-            </n-form-item>
-            <n-button type="primary" block size="large" :loading="loading" @click="handleReset">重置密码</n-button>
-          </n-form>
+              </a-input-password>
+            </a-form-item>
+            <a-button type="primary" block size="large" :loading="loading" @click="handleReset">重置密码</a-button>
+          </a-form>
         </div>
       </div>
     </div>
@@ -79,13 +79,12 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useMessage } from 'naive-ui';
-import { LockClosedOutline } from '@vicons/ionicons5';
+import { LockClosedOutline } from '@/icons/ionicons5';
+import { message } from 'ant-design-vue';
 import { resetPassword } from '@/api/system/password';
 
 const route = useRoute();
 const router = useRouter();
-const message = useMessage();
 const formRef = ref();
 const loading = ref(false);
 const error = ref('');
@@ -94,16 +93,17 @@ const token = ref('');
 
 const form = reactive({ password: '', confirmPassword: '' });
 const rules = {
-  password: { required: true, min: 6, message: '密码至少6位', trigger: 'blur' },
-  confirmPassword: {
-    required: true,
-    message: '请确认密码',
-    trigger: 'blur',
-    validator: (_rule, value) => {
-      if (value !== form.password) return new Error('两次输入的密码不一致');
-      return true;
+  password: [{ required: true, min: 6, message: '密码至少6位', trigger: 'blur' }],
+  confirmPassword: [
+    { required: true, message: '请确认密码', trigger: 'blur' },
+    {
+      validator: (_rule, value) => {
+        if (value !== form.password) return Promise.reject('两次输入的密码不一致');
+        return Promise.resolve();
+      },
+      trigger: 'blur',
     },
-  },
+  ],
 };
 
 onMounted(() => {
@@ -114,7 +114,7 @@ onMounted(() => {
 });
 
 async function handleReset() {
-  try { await formRef.value?.validate(); } catch { return; }
+  try { await formRef.value?.validateFields(); } catch { return; }
   loading.value = true;
   try {
     const res = await resetPassword(token.value, form.password);

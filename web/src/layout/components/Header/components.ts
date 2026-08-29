@@ -7,17 +7,15 @@ import {
   FullscreenExitOutlined,
   PoweroffOutlined,
   GithubOutlined,
-  LockOutlined,
   ReloadOutlined,
   LogoutOutlined,
   UserOutlined,
   CheckOutlined,
   HomeOutlined,
-} from '@vicons/antd';
+} from '@ant-design/icons-vue';
 
 export default {
   SettingOutlined,
-  LockOutlined,
   GithubOutlined,
   SearchOutlined,
   MenuFoldOutlined,

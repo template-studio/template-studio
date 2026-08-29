@@ -16,18 +16,14 @@
           :class="{ 'tabs-card-prev-hide': !scrollable }"
           @click="scrollPrev"
         >
-          <n-icon size="16" color="#515a6e">
-            <LeftOutlined />
-          </n-icon>
+          <LeftOutlined class="scroll-icon" />
         </span>
         <span
           class="tabs-card-next"
           :class="{ 'tabs-card-next-hide': !scrollable }"
           @click="scrollNext"
         >
-          <n-icon size="16" color="#515a6e">
-            <RightOutlined />
-          </n-icon>
+          <RightOutlined class="scroll-icon" />
         </span>
         <div ref="navScroll" class="tabs-card-scroll">
           <Draggable :list="tabsList" animation="300" item-key="fullPath" class="flex">
@@ -40,37 +36,53 @@
                 @contextmenu="handleContextMenu($event, element)"
               >
                 <span>{{ element.meta.title }}</span>
-                <n-icon size="14" @click.stop="closeTabItem(element)" v-if="!element.meta.affix">
-                  <CloseOutlined />
-                </n-icon>
+                <CloseOutlined
+                  class="close-icon"
+                  @click.stop="closeTabItem(element)"
+                  v-if="!element.meta.affix"
+                />
               </div>
             </template>
           </Draggable>
         </div>
       </div>
       <div class="tabs-close">
-        <n-dropdown
-          trigger="hover"
-          @select="closeHandleSelect"
-          placement="bottom-end"
-          :options="TabsMenuOptions"
-        >
+        <a-dropdown placement="bottomRight">
           <div class="tabs-close-btn">
-            <n-icon size="16" color="#515a6e">
-              <DownOutlined />
-            </n-icon>
+            <DownOutlined class="scroll-icon" />
           </div>
-        </n-dropdown>
+          <template #overlay>
+            <a-menu @click="({ key }: any) => closeHandleSelect(key)">
+              <a-menu-item
+                v-for="item in TabsMenuOptions"
+                :key="item.key"
+                :disabled="item.disabled"
+              >
+                <component :is="item.icon" v-if="item.icon" />
+                {{ item.label }}
+              </a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
       </div>
-      <n-dropdown
-        :show="showDropdown"
-        :x="dropdownX"
-        :y="dropdownY"
-        @clickoutside="onClickOutside"
-        placement="bottom-start"
-        @select="closeHandleSelect"
-        :options="TabsMenuOptions"
-      />
+      <!-- Context menu -->
+      <div
+        v-show="showDropdown"
+        class="context-menu-overlay"
+        :style="{ left: dropdownX + 'px', top: dropdownY + 'px' }"
+        @click="onClickOutside"
+      >
+        <a-menu @click="({ key }: any) => closeHandleSelect(key)" mode="vertical">
+          <a-menu-item
+            v-for="item in TabsMenuOptions"
+            :key="item.key"
+            :disabled="item.disabled"
+          >
+            <component :is="item.icon" v-if="item.icon" />
+            {{ item.label }}
+          </a-menu-item>
+        </a-menu>
+      </div>
     </div>
   </div>
 </template>
@@ -94,7 +106,7 @@
   import { useAsyncRouteStore } from '@/store/modules/asyncRoute';
   import { RouteItem } from '@/store/modules/tabsView';
   import { useProjectSetting } from '@/hooks/setting/useProjectSetting';
-  import { useMessage } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import Draggable from 'vuedraggable';
   import { PageEnum } from '@/enums/pageEnum';
   import {
@@ -105,12 +117,12 @@
     MinusOutlined,
     LeftOutlined,
     RightOutlined,
-  } from '@vicons/antd';
+  } from '@ant-design/icons-vue';
   import { renderIcon } from '@/utils';
   import elementResizeDetectorMaker from 'element-resize-detector';
   import { useDesignSetting } from '@/hooks/setting/useDesignSetting';
   import { useProjectSettingStore } from '@/store/modules/projectSetting';
-  import { useThemeVars } from 'naive-ui';
+  // useThemeVars replaced with CSS variables
   import { useGo } from '@/hooks/web/usePage';
 
   export default defineComponent({
@@ -133,7 +145,6 @@
         useProjectSetting();
       const settingStore = useProjectSettingStore();
 
-      const message = useMessage();
       const route = useRoute();
       const router = useRouter();
       const tabsViewStore = useTabsViewStore();
@@ -143,14 +154,12 @@
       const isCurrent = ref(false);
       const go = useGo();
 
-      const themeVars = useThemeVars();
-
       const getCardColor = computed(() => {
-        return themeVars.value.cardColor;
+        return getDarkTheme.value ? '#1f1f1f' : '#ffffff';
       });
 
       const getBaseColor = computed(() => {
-        return themeVars.value.textColor1;
+        return getDarkTheme.value ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.85)';
       });
 
       const state = reactive({
@@ -551,12 +560,14 @@
           line-height: 32px;
           cursor: pointer;
 
-          .n-icon {
+          .scroll-icon {
             display: flex;
             align-items: center;
             justify-content: center;
             height: 32px;
             width: 32px;
+            font-size: 16px;
+            color: #515a6e;
           }
         }
 
@@ -598,7 +609,7 @@
               color: #515a6e;
             }
 
-            .n-icon {
+            .close-icon {
               height: 22px;
               width: 21px;
               margin-right: -6px;
@@ -606,14 +617,10 @@
               vertical-align: middle;
               text-align: center;
               color: #808695;
+              font-size: 14px;
 
               &:hover {
                 color: #515a6e !important;
-              }
-
-              svg {
-                height: 21px;
-                display: inline-block;
               }
             }
           }
@@ -648,6 +655,14 @@
         justify-content: center;
       }
     }
+  }
+
+  .context-menu-overlay {
+    position: fixed;
+    z-index: 1050;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
   .tabs-view-default-background {

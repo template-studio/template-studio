@@ -68,12 +68,10 @@ export default ({ command, mode }: ConfigEnv): UserConfig => {
       rollupOptions: {
         output: {
           manualChunks: {
-            'naive-ui': ['naive-ui'],
+            'ant-design-vue': ['ant-design-vue', '@ant-design/icons-vue'],
             'lodash-es': ['lodash-es'],
             'vue-router': ['vue-router'],
             'vue-quill': ['@vueup/vue-quill'],
-            'vicons-antd': ['@vicons/antd'],
-            'vicons-ionicons5': ['@vicons/ionicons5'],
             vuedraggable: ['vuedraggable'],
             echarts: ['echarts'],
             vueuse: ['@vueuse/core'],

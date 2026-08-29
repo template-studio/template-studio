@@ -63,7 +63,7 @@
           </div>
         </div>
 
-        <n-spin :show="loading">
+        <a-spin :spinning="loading">
           <div class="templates-grid">
             <TemplateCard
               v-for="template in templates"
@@ -73,72 +73,61 @@
               @fork="handleFork"
             />
           </div>
-        </n-spin>
+        </a-spin>
 
         <!-- 分页 -->
         <div class="pagination-section" v-if="totalPages > 1">
-          <n-pagination
-            v-model:page="currentPage"
-            :page-count="totalPages"
-            :page-sizes="[20, 40, 60]"
+          <a-pagination
+            v-model:current="currentPage"
+            :total="totalTemplates"
             :page-size="pageSize"
-            show-size-picker
-            @update:page="handlePageChange"
-            @update:page-size="handlePageSizeChange"
+            show-size-changer
+            :page-size-options="['20', '40', '60']"
+            @change="handlePageChange"
+            @showSizeChange="handlePageSizeChange"
           />
         </div>
       </div>
     </div>
 
     <!-- 模板预览抽屉 -->
-    <n-drawer v-model:show="showPreview" :width="800" placement="right">
-      <n-drawer-content title="模板预览" closable>
-        <TemplatePreview v-if="selectedTemplate" :template="selectedTemplate" />
-      </n-drawer-content>
-    </n-drawer>
+    <a-drawer v-model:open="showPreview" title="模板预览" :width="800" placement="right" closable>
+      <TemplatePreview v-if="selectedTemplate" :template="selectedTemplate" />
+    </a-drawer>
 
     <!-- Fork模板弹窗 -->
-    <n-modal v-model:show="showForkModal" :mask-closable="false">
-      <n-card style="width: 600px" title="Fork 模板" :bordered="false" size="huge" role="dialog">
-        <template #header-extra>
-          <n-button quaternary circle @click="showForkModal = false">
-            <template #icon><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></template>
-          </n-button>
-        </template>
-        <n-form ref="forkFormRef" :model="forkFormData" :rules="forkFormRules" label-placement="left" :label-width="100">
-          <n-form-item label="源模板">
-            <div style="padding: 8px 12px; background: #f8fafc; border-radius: 6px; color: #64748b; width: 100%; border: 1px solid #e2e8f0;">
-              {{ forkingTemplate?.name }}
-            </div>
-          </n-form-item>
-          <n-form-item label="新模板名称" path="name">
-            <n-input v-model:value="forkFormData.name" placeholder="请输入新模板名称" />
-          </n-form-item>
-          <n-form-item label="新模板描述" path="description">
-            <n-input v-model:value="forkFormData.description" type="textarea" :rows="3" placeholder="请输入新模板描述" />
-          </n-form-item>
-          <n-form-item label="详细介绍" path="introduction">
-            <n-input v-model:value="forkFormData.introduction" type="textarea" :rows="4" placeholder="请输入详细介绍（可选）" />
-          </n-form-item>
-          <n-form-item label="分类" path="categoryId">
-            <n-select v-model:value="forkFormData.categoryId" :options="forkCategoryOptions" placeholder="选择分类（默认使用源模板分类）" clearable />
-          </n-form-item>
-        </n-form>
-        <template #footer>
-          <div style="display: flex; gap: 12px; justify-content: flex-end">
-            <n-button @click="showForkModal = false">取消</n-button>
-            <n-button type="primary" @click="handleForkSubmit" :loading="forkSubmitting">确认 Fork</n-button>
+    <a-modal v-model:open="showForkModal" title="Fork 模板" :mask-closable="false" :footer="null" :width="600">
+      <a-form ref="forkFormRef" :model="forkFormData" :rules="forkFormRules" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+        <a-form-item label="源模板">
+          <div style="padding: 8px 12px; background: #f8fafc; border-radius: 6px; color: #64748b; width: 100%; border: 1px solid #e2e8f0;">
+            {{ forkingTemplate?.name }}
           </div>
-        </template>
-      </n-card>
-    </n-modal>
+        </a-form-item>
+        <a-form-item label="新模板名称" name="name">
+          <a-input v-model:value="forkFormData.name" placeholder="请输入新模板名称" />
+        </a-form-item>
+        <a-form-item label="新模板描述" name="description">
+          <a-textarea v-model:value="forkFormData.description" :rows="3" placeholder="请输入新模板描述" />
+        </a-form-item>
+        <a-form-item label="详细介绍" name="introduction">
+          <a-textarea v-model:value="forkFormData.introduction" :rows="4" placeholder="请输入详细介绍（可选）" />
+        </a-form-item>
+        <a-form-item label="分类" name="categoryId">
+          <a-select v-model:value="forkFormData.categoryId" :options="forkCategoryOptions" placeholder="选择分类（默认使用源模板分类）" allow-clear />
+        </a-form-item>
+      </a-form>
+      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px">
+        <a-button @click="showForkModal = false">取消</a-button>
+        <a-button type="primary" @click="handleForkSubmit" :loading="forkSubmitting">确认 Fork</a-button>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
   import { ref, computed, onMounted, watch } from 'vue';
   import { useRouter, useRoute } from 'vue-router';
-  import { NSpin, NPagination, NDrawer, NDrawerContent, useMessage } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import { useLanguageStore } from '@/store/modules/languageStore';
   import { useCategoryStore } from '@/store/modules/categoryStore';
   import { storeToRefs } from 'pinia';
@@ -149,7 +138,6 @@
 
   const router = useRouter();
   const route = useRoute();
-  const message = useMessage();
 
   const languageStore = useLanguageStore();
   const { languagesList } = storeToRefs(languageStore);
@@ -247,11 +235,12 @@
     );
   };
 
-  const handlePageChange = (page) => {
+  const handlePageChange = (page, size) => {
     currentPage.value = page;
+    if (size) pageSize.value = size;
   };
 
-  const handlePageSizeChange = (size) => {
+  const handlePageSizeChange = (_current, size) => {
     pageSize.value = size;
     currentPage.value = 1;
   };

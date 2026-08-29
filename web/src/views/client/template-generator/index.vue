@@ -42,7 +42,7 @@
       <div class="generator-content">
         <!-- 加载状态 -->
         <div v-if="loading" class="loading-container">
-          <n-spin size="large" />
+          <a-spin size="large" />
           <p>正在加载模板信息...</p>
         </div>
 
@@ -87,7 +87,7 @@
 <script setup>
   import { ref, onMounted } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
-  import { useMessage } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import { getTemplateDetail } from '@/api/templates';
   import { listReleases } from '@/api/releases';
   import StepIntro from './components/StepIntro.vue';
@@ -96,7 +96,6 @@
 
   const route = useRoute();
   const router = useRouter();
-  const message = useMessage();
 
   const steps = [
     { label: '模板介绍', key: 'intro' },

@@ -3,9 +3,7 @@
     <div class="variables-content">
       <!-- 加载状态 -->
       <div v-if="loading" class="loading-container">
-        <n-spin size="large">
-          <template #description> 正在加载模板变量信息... </template>
-        </n-spin>
+        <a-spin size="large" tip="正在加载模板变量信息..." />
       </div>
 
       <!-- 变量配置表单 -->
@@ -18,10 +16,7 @@
 
           <!-- 模式切换 -->
           <div class="mode-tabs">
-            <n-tabs v-model:value="currentMode" type="segment" size="small">
-              <n-tab-pane name="normal" tab="普通模式" />
-              <n-tab-pane name="advanced" tab="高级模式" />
-            </n-tabs>
+            <a-segmented v-model:value="currentMode" :options="[{ label: '普通模式', value: 'normal' }, { label: '高级模式', value: 'advanced' }]" />
           </div>
         </div>
 
@@ -30,7 +25,7 @@
           <!-- 自定义变量 -->
           <div class="variable-section" v-if="customVariables.length > 0">
             <h3 class="section-title">
-              <n-icon><CodeSlash /></n-icon>
+              <CodeSlash style="font-size: 16px" />
               自定义变量
               <span class="section-subtitle"
                 >({{ variableStatistics?.totalCustomVariables || 0 }} 个变量)</span
@@ -64,7 +59,7 @@
 
                 <!-- 根据变量类型渲染不同的输入组件 -->
                 <!-- 字符串类型 -->
-                <n-input
+                <a-input
                   v-if="variable.variableType === 'string'"
                   v-model:value="formData[variable.name]"
                   :placeholder="variable.description || '请输入字符串'"
@@ -72,7 +67,7 @@
                 />
 
                 <!-- 数字类型 -->
-                <n-input-number
+                <a-input-number
                   v-else-if="variable.variableType === 'number'"
                   v-model:value="formData[variable.name]"
                   :placeholder="variable.description || '请输入数字'"
@@ -81,20 +76,18 @@
                 />
 
                 <!-- 布尔类型 -->
-                <n-switch
+                <a-switch
                   v-else-if="variable.variableType === 'boolean'"
-                  v-model:value="formData[variable.name]"
-                  :checked-value="true"
-                  :unchecked-value="false"
-                >
-                  <template #checked>是</template>
-                  <template #unchecked>否</template>
-                </n-switch>
+                  v-model:checked="formData[variable.name]"
+                  checked-children="是"
+                  un-checked-children="否"
+                />
 
                 <!-- 列表类型 -->
                 <div v-else-if="variable.variableType === 'list'" class="list-input">
-                  <n-dynamic-tags
+                  <a-select
                     v-model:value="formData[variable.name]"
+                    mode="tags"
                     :placeholder="variable.description || '按回车添加项目'"
                   />
                   <div class="input-hint">按回车添加项目，点击标签删除</div>
@@ -102,24 +95,22 @@
 
                 <!-- 对象类型 -->
                 <div v-else-if="variable.variableType === 'object'" class="object-input">
-                  <n-input
+                  <a-textarea
                     v-model:value="formData[variable.name]"
-                    type="textarea"
                     :placeholder="variable.description || '请输入JSON格式的对象'"
                     :status="getValidationStatus(variable.name)"
-                    :autosize="{ minRows: 3, maxRows: 6 }"
+                    :auto-size="{ minRows: 3, maxRows: 6 }"
                   />
                   <div class="input-hint">请输入有效的JSON格式，例如: {"key": "value"}</div>
                 </div>
 
                 <!-- 对象数组类型 -->
                 <div v-else-if="variable.variableType === 'object_arr'" class="object-array-input">
-                  <n-input
+                  <a-textarea
                     v-model:value="formData[variable.name]"
-                    type="textarea"
                     :placeholder="variable.description || '请输入JSON格式的对象数组'"
                     :status="getValidationStatus(variable.name)"
-                    :autosize="{ minRows: 4, maxRows: 8 }"
+                    :auto-size="{ minRows: 4, maxRows: 8 }"
                   />
                   <div class="input-hint"
                     >请输入有效的JSON格式，例如: [{"name": "字段1", "type": "string"}, {"name":
@@ -128,12 +119,11 @@
                 </div>
 
                 <!-- 其他类型（兼容旧版本） -->
-                <n-input
+                <a-input
                   v-else
                   v-model:value="formData[variable.name]"
                   :placeholder="variable.description || '请输入值'"
                   :status="getValidationStatus(variable.name)"
-                  :type="getInputType(variable.variableType)"
                 />
 
                 <div class="variable-desc">
@@ -156,18 +146,18 @@
                 <span class="editor-desc">直接编辑 JSON 格式的变量数据</span>
               </div>
               <div class="editor-actions">
-                <n-button size="small" @click="formatJSON" quaternary>
+                <a-button size="small" @click="formatJSON">
                   <template #icon>
-                    <n-icon><CodeSlash /></n-icon>
+                    <CodeSlash />
                   </template>
                   格式化
-                </n-button>
-                <n-button size="small" @click="generateFromNormal" type="info" quaternary>
+                </a-button>
+                <a-button size="small" @click="generateFromNormal">
                   <template #icon>
-                    <n-icon><RefreshOutline /></n-icon>
+                    <RefreshOutline />
                   </template>
                   从普通模式生成
-                </n-button>
+                </a-button>
               </div>
             </div>
 
@@ -178,11 +168,11 @@
             <div class="editor-footer">
               <div class="editor-status">
                 <span v-if="jsonValid" class="status-valid">
-                  <n-icon><CheckmarkCircleOutline /></n-icon>
+                  <CheckmarkCircleOutline style="font-size: 14px" />
                   JSON 格式正确
                 </span>
                 <span v-else class="status-invalid">
-                  <n-icon><AlertCircleOutline /></n-icon>
+                  <AlertCircleOutline style="font-size: 14px" />
                   JSON 格式错误: {{ jsonError }}
                 </span>
               </div>
@@ -194,19 +184,19 @@
 
     <!-- 底部操作 -->
     <div class="step-actions">
-      <n-button @click="$emit('prev')">
+      <a-button @click="$emit('prev')">
         <template #icon>
-          <n-icon><ArrowBack /></n-icon>
+          <ArrowBack />
         </template>
         上一步
-      </n-button>
+      </a-button>
 
-      <n-button type="primary" @click="handleNext" :disabled="!isFormValid">
+      <a-button type="primary" @click="handleNext" :disabled="!isFormValid">
         下一步
         <template #icon>
-          <n-icon><ArrowForward /></n-icon>
+          <ArrowForward />
         </template>
-      </n-button>
+      </a-button>
     </div>
   </div>
 </template>
@@ -222,7 +212,7 @@
     RefreshOutline,
     CheckmarkCircleOutline,
     AlertCircleOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
   import { getTemplateExpose } from '@/api/templateExpose';
 
   // CodeMirror 相关导入
@@ -643,7 +633,7 @@
             }
             break;
           case 'list':
-            // 列表类型保持为数组（naive-ui的n-dynamic-tags组件需要数组）
+            // 列表类型保持为数组（a-select mode="tags"组件需要数组）
             if (Array.isArray(value)) {
               converted[variable.name] = value;
             } else if (typeof value === 'string') {
@@ -1269,8 +1259,8 @@
     width: 100%;
   }
 
-  .object-input .n-input,
-  .object-array-input .n-input {
+  .object-input .ant-input,
+  .object-array-input .ant-input {
     width: 100%;
   }
 
@@ -1463,34 +1453,6 @@
 
   .mode-tabs {
     flex-shrink: 0;
-  }
-
-  .mode-tabs :deep(.n-tabs-nav) {
-    background: #f8f9fa;
-    border-radius: 6px;
-    padding: 4px;
-  }
-
-  .mode-tabs :deep(.n-tabs-tab) {
-    border-radius: 4px !important;
-    margin: 0 2px;
-    min-width: 80px;
-    justify-content: center;
-  }
-
-  .mode-tabs :deep(.n-tabs-tab:not(.n-tabs-tab--active)) {
-    background: transparent;
-    color: #666;
-  }
-
-  .mode-tabs :deep(.n-tabs-tab.n-tabs-tab--active) {
-    background: #fff;
-    color: #18a058;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  }
-
-  .mode-tabs :deep(.n-tabs-tab:hover) {
-    background: rgba(255, 255, 255, 0.8);
   }
 
   /* 高级模式样式 */

@@ -1,83 +1,36 @@
 <template>
-  <NConfigProvider
-    v-if="!isLock"
+  <a-config-provider
     :locale="zhCN"
-    :theme="getDarkTheme"
-    :theme-overrides="getThemeOverrides"
-    :date-locale="dateZhCN"
+    :theme="themeConfig"
   >
     <AppProvider>
       <RouterView />
     </AppProvider>
-  </NConfigProvider>
-
-  <transition v-if="isLock && $route.name !== 'login'" name="slide-up">
-    <LockScreen />
-  </transition>
+  </a-config-provider>
 </template>
 
 <script lang="ts" setup>
-  import { computed, onMounted, onUnmounted } from 'vue';
-  import { zhCN, dateZhCN, darkTheme } from 'naive-ui';
-  import { LockScreen } from '@/components/Lockscreen';
+  import { computed, reactive, watch } from 'vue';
+  import zhCN from 'ant-design-vue/locale/zh_CN';
+  import { theme } from 'ant-design-vue';
   import { AppProvider } from '@/components/Application';
-  import { useScreenLockStore } from '@/store/modules/screenLock';
-  import { useRoute } from 'vue-router';
   import { useDesignSettingStore } from '@/store/modules/designSetting';
-  import { lighten } from '@/utils/index';
 
-  const route = useRoute();
-  const useScreenLock = useScreenLockStore();
   const designStore = useDesignSettingStore();
-  const isLock = computed(() => useScreenLock.isLocked);
-  const lockTime = computed(() => useScreenLock.lockTime);
 
-  /**
-   * @type import('naive-ui').GlobalThemeOverrides
-   */
-  const getThemeOverrides = computed(() => {
-    const appTheme = designStore.appTheme;
-    const lightenStr = lighten(designStore.appTheme, 6);
-    return {
-      common: {
-        primaryColor: appTheme,
-        primaryColorHover: lightenStr,
-        primaryColorPressed: lightenStr,
-        primaryColorSuppl: appTheme,
-      },
-      LoadingBar: {
-        colorLoading: appTheme,
-      },
-    };
+  const themeConfig = reactive({
+    algorithm: theme.defaultAlgorithm,
+    token: {
+      colorPrimary: '#2d8cf0',
+    },
   });
 
-  const getDarkTheme = computed(() => (designStore.darkTheme ? darkTheme : undefined));
-
-  let timer: NodeJS.Timer;
-
-  const timekeeping = () => {
-    clearInterval(timer);
-    if (route.name == 'login' || isLock.value) return;
-    // 设置不锁屏
-    useScreenLock.setLock(false);
-    // 重置锁屏时间
-    useScreenLock.setLockTime();
-    timer = setInterval(() => {
-      // 锁屏倒计时递减
-      useScreenLock.setLockTime(lockTime.value - 1);
-      if (lockTime.value <= 0) {
-        // 设置锁屏
-        useScreenLock.setLock(true);
-        return clearInterval(timer);
-      }
-    }, 1000);
-  };
-
-  onMounted(() => {
-    document.addEventListener('mousedown', timekeeping);
-  });
-
-  onUnmounted(() => {
-    document.removeEventListener('mousedown', timekeeping);
-  });
+  watch(
+    () => [designStore.appTheme, designStore.darkTheme],
+    ([appTheme, isDark]) => {
+      themeConfig.algorithm = isDark ? theme.darkAlgorithm : theme.defaultAlgorithm;
+      themeConfig.token.colorPrimary = appTheme;
+    },
+    { immediate: true }
+  );
 </script>

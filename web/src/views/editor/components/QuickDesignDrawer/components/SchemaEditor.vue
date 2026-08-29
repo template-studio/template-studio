@@ -2,56 +2,48 @@
   <div class="schema-preview-container">
     <div class="preview-header">
       <div style="display: flex; align-items: center; gap: 12px">
-        <n-text strong>Schema</n-text>
+        <strong>Schema</strong>
         <!-- 格式切换 -->
-        <n-button-group size="small">
-          <n-button
+        <a-space :size="0">
+          <a-button
+            size="small"
             :type="schemaFormat === 'json' ? 'primary' : 'default'"
             @click="handleFormatChange('json')"
           >
             JSON
-          </n-button>
-          <n-button
+          </a-button>
+          <a-button
+            size="small"
             :type="schemaFormat === 'yaml' ? 'primary' : 'default'"
             @click="handleFormatChange('yaml')"
           >
             YAML
-          </n-button>
-        </n-button-group>
+          </a-button>
+        </a-space>
       </div>
-      <n-space :size="8">
-        <n-button size="small" @click="handleReset" quaternary> 重置 </n-button>
-        <n-button size="small" @click="handleFormat" quaternary>
-          <template #icon>
-            <n-icon><RefreshOutline /></n-icon>
-          </template>
+      <a-space :size="8">
+        <a-button size="small" @click="handleReset"> 重置 </a-button>
+        <a-button size="small" @click="handleFormat">
+          <template #icon><RefreshOutline /></template>
           格式化
-        </n-button>
-        <n-button size="small" @click="handleCopy" quaternary>
-          <template #icon>
-            <n-icon><CopyOutline /></n-icon>
-          </template>
+        </a-button>
+        <a-button size="small" @click="handleCopy">
+          <template #icon><CopyOutline /></template>
           复制
-        </n-button>
-        <n-button size="small" @click="handleImport" quaternary>
-          <template #icon>
-            <n-icon><CloudUploadOutline /></n-icon>
-          </template>
+        </a-button>
+        <a-button size="small" @click="handleImport">
+          <template #icon><CloudUploadOutline /></template>
           导入
-        </n-button>
-        <n-button size="small" @click="handleExport" quaternary>
-          <template #icon>
-            <n-icon><DownloadOutline /></n-icon>
-          </template>
+        </a-button>
+        <a-button size="small" @click="handleExport">
+          <template #icon><DownloadOutline /></template>
           导出
-        </n-button>
-        <n-button size="small" @click="handleSync" quaternary type="primary">
-          <template #icon>
-            <n-icon><SyncOutline /></n-icon>
-          </template>
+        </a-button>
+        <a-button size="small" type="primary" @click="handleSync">
+          <template #icon><SyncOutline /></template>
           同步
-        </n-button>
-      </n-space>
+        </a-button>
+      </a-space>
     </div>
     <div class="preview-content">
       <div ref="editorRef" class="schema-editor"></div>
@@ -61,14 +53,13 @@
 
 <script setup>
   import { onMounted, onUnmounted, watch, nextTick } from 'vue';
-  import { NText, NSpace, NButton, NButtonGroup, NIcon } from 'naive-ui';
   import {
     RefreshOutline,
     CopyOutline,
     CloudUploadOutline,
     DownloadOutline,
     SyncOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
   import { useSchemaEditor } from '../composables/useSchemaEditor';
 
   /**

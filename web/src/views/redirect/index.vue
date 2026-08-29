@@ -1,7 +1,7 @@
 <script lang="tsx">
   import { defineComponent, onBeforeMount } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
-  import { NEmpty } from 'naive-ui';
+  import { Empty } from 'ant-design-vue';
 
   export default defineComponent({
     name: 'Redirect',
@@ -16,7 +16,7 @@
           query,
         });
       });
-      return () => <NEmpty />;
+      return () => <Empty />;
     },
   });
 </script>

@@ -1,100 +1,86 @@
 <template>
-  <n-modal v-model:show="showModal" :mask-closable="false">
-    <n-card
-      style="width: 900px; max-height: 700px"
-      title="生成测试数据"
-      :bordered="false"
-      size="huge"
-    >
-      <template #header-extra>
-        <n-button quaternary circle @click="handleClose">
-          <template #icon>
-            <n-icon><CloseOutline /></n-icon>
-          </template>
-        </n-button>
-      </template>
+  <a-modal
+    v-model:open="showModal"
+    title="生成测试数据"
+    :width="900"
+    :mask-closable="false"
+    :footer="null"
+    @cancel="handleClose"
+  >
+    <a-space direction="vertical" style="width: 100%">
+      <div style="margin-bottom: 12px">
+        <span style="color: #999">
+          基于当前变量定义自动生成的测试数据，你可以直接编辑这些数据用于测试模板。
+        </span>
+      </div>
 
-      <n-space vertical>
-        <div style="margin-bottom: 12px">
-          <n-text depth="3">
-            基于当前变量定义自动生成的测试数据，你可以直接编辑这些数据用于测试模板。
-          </n-text>
+      <div
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+        "
+      >
+        <!-- 格式切换 -->
+        <a-space :size="0">
+          <a-button
+            size="small"
+            :type="dataFormat === 'json' ? 'primary' : 'default'"
+            @click="dataFormat = 'json'"
+          >
+            JSON
+          </a-button>
+          <a-button
+            size="small"
+            :type="dataFormat === 'yaml' ? 'primary' : 'default'"
+            @click="dataFormat = 'yaml'"
+          >
+            YAML
+          </a-button>
+        </a-space>
+
+        <!-- 操作按钮 -->
+        <div style="display: flex; gap: 8px">
+          <a-button size="small" @click="handleRegenerate">
+            <template #icon><RefreshOutline /></template>
+            重新生成
+          </a-button>
+          <a-button size="small" @click="handleCopy">
+            <template #icon><CopyOutline /></template>
+            复制数据
+          </a-button>
+          <a-button size="small" type="primary" @click="handleSave">
+            <template #icon><SaveOutline /></template>
+            保存数据
+          </a-button>
         </div>
+      </div>
 
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-          "
-        >
-          <!-- 格式切换 -->
-          <n-button-group size="small">
-            <n-button
-              :type="dataFormat === 'json' ? 'primary' : 'default'"
-              @click="dataFormat = 'json'"
-            >
-              JSON
-            </n-button>
-            <n-button
-              :type="dataFormat === 'yaml' ? 'primary' : 'default'"
-              @click="dataFormat = 'yaml'"
-            >
-              YAML
-            </n-button>
-          </n-button-group>
+      <div ref="editorRef" class="test-data-editor"></div>
+    </a-space>
 
-          <!-- 操作按钮 -->
-          <div style="display: flex; gap: 8px">
-            <n-button size="small" @click="handleRegenerate" quaternary>
-              <template #icon>
-                <n-icon><RefreshOutline /></n-icon>
-              </template>
-              重新生成
-            </n-button>
-            <n-button size="small" @click="handleCopy" quaternary>
-              <template #icon>
-                <n-icon><CopyOutline /></n-icon>
-              </template>
-              复制数据
-            </n-button>
-            <n-button size="small" @click="handleSave" type="primary">
-              <template #icon>
-                <n-icon><SaveOutline /></n-icon>
-              </template>
-              保存数据
-            </n-button>
-          </div>
+    <template #footer>
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <span style="color: #999; font-size: 12px">
+          数据将保存到服务器，模板ID：{{ templateId }}
+        </span>
+        <div style="display: flex; gap: 12px">
+          <a-button type="primary" @click="handleSave">
+            <template #icon><SaveOutline /></template>
+            保存并应用
+          </a-button>
+          <a-button @click="handleClose">关闭</a-button>
         </div>
-
-        <div ref="editorRef" class="test-data-editor"></div>
-      </n-space>
-
-      <template #footer>
-        <div style="display: flex; justify-content: space-between; align-items: center">
-          <n-text depth="3" style="font-size: 12px">
-            数据将保存到服务器，模板ID：{{ templateId }}
-          </n-text>
-          <div style="display: flex; gap: 12px">
-            <n-button @click="handleSave" type="primary">
-              <template #icon>
-                <n-icon><SaveOutline /></n-icon>
-              </template>
-              保存并应用
-            </n-button>
-            <n-button @click="handleClose">关闭</n-button>
-          </div>
-        </div>
-      </template>
-    </n-card>
-  </n-modal>
+      </div>
+    </template>
+  </a-modal>
 </template>
 
 <script setup>
   import { ref, watch, nextTick, onUnmounted } from 'vue';
-  import { NModal, NCard, NButton, NButtonGroup, NSpace, NText, NIcon, useMessage } from 'naive-ui';
-  import { CloseOutline, RefreshOutline, CopyOutline, SaveOutline } from '@vicons/ionicons5';
+  import { message } from 'ant-design-vue';
+  import { CloseOutline, RefreshOutline, CopyOutline, SaveOutline } from '@/icons/ionicons5';
   import { getTemplateTestData, setTemplateTestData } from '@/api/templateExpose';
   import { EditorView, basicSetup } from 'codemirror';
   import { EditorState } from '@codemirror/state';
@@ -125,8 +111,6 @@
 
   // Emits
   const emit = defineEmits(['update:show', 'test-data-updated']);
-
-  const message = useMessage();
 
   // Refs
   const showModal = ref(false);

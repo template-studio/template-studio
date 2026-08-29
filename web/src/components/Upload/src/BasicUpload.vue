@@ -14,12 +14,8 @@
               <img :src="item" />
             </div>
             <div class="img-box-actions">
-              <n-icon size="18" class="mx-2 action-icon" @click="preview(item)">
-                <EyeOutlined />
-              </n-icon>
-              <n-icon size="18" class="mx-2 action-icon" @click="remove(index)">
-                <DeleteOutlined />
-              </n-icon>
+              <EyeOutlined class="mx-2 action-icon" style="font-size: 18px" @click="preview(item)" />
+              <DeleteOutlined class="mx-2 action-icon" style="font-size: 18px" @click="remove(index)" />
             </div>
           </div>
         </div>
@@ -30,49 +26,44 @@
           :style="getCSSProperties"
           v-if="imgList.length < maxNumber"
         >
-          <n-upload
+          <a-upload
             class="w-auto"
             v-bind="$props"
-            :file-list-style="{ display: 'none' }"
-            @before-upload="beforeUpload"
-            @finish="finish"
+            :showUploadList="false"
+            :beforeUpload="handleBeforeUpload"
+            @change="handleChange"
           >
             <div class="flex flex-col justify-center">
-              <n-icon size="18" class="m-auto">
-                <PlusOutlined />
-              </n-icon>
+              <PlusOutlined style="font-size: 18px; margin: auto" />
               <span class="upload-title">上传图片</span>
             </div>
-          </n-upload>
+          </a-upload>
         </div>
       </div>
     </div>
 
-    <!--上传图片-->
-    <n-space>
-      <n-alert title="提示" type="info" v-if="helpText" class="flex w-full">
-        {{ helpText }}
-      </n-alert>
-    </n-space>
+    <!--上传提示-->
+    <a-space>
+      <a-alert :message="helpText" type="info" v-if="helpText" class="flex w-full" />
+    </a-space>
   </div>
 
   <!--预览图片-->
-  <n-modal
-    v-model:show="showModal"
-    preset="card"
+  <a-modal
+    v-model:open="showModal"
     title="预览"
-    :bordered="false"
+    :footer="null"
     :style="{ width: '520px' }"
   >
-    <img :src="previewUrl" />
-  </n-modal>
+    <img :src="previewUrl" style="width: 100%" />
+  </a-modal>
 </template>
 
 <script lang="ts">
   import { defineComponent, toRefs, reactive, computed, watch } from 'vue';
-  import { EyeOutlined, DeleteOutlined, PlusOutlined } from '@vicons/antd';
+  import { EyeOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue';
+  import { message, Modal } from 'ant-design-vue';
   import { basicProps } from './props';
-  import { useMessage, useDialog } from 'naive-ui';
   import { ResultEnum } from '@/enums/httpEnum';
   import componentSetting from '@/settings/componentSetting';
   import { useGlobSetting } from '@/hooks/setting';
@@ -96,8 +87,6 @@
         };
       });
 
-      const message = useMessage();
-      const dialog = useDialog();
 
       const state = reactive({
         showModal: false,
@@ -125,18 +114,15 @@
 
       //删除
       function remove(index: number) {
-        dialog.info({
+        Modal.confirm({
           title: '提示',
           content: '你确定要删除吗？',
-          positiveText: '确定',
-          negativeText: '取消',
-          onPositiveClick: () => {
+          onOk: () => {
             state.imgList.splice(index, 1);
             state.originalImgList.splice(index, 1);
             emit('uploadChange', state.originalImgList);
             emit('delete', state.originalImgList);
           },
-          onNegativeClick: () => {},
         });
       }
 
@@ -150,21 +136,20 @@
         return componentSetting.upload.fileType.includes(fileType);
       }
 
-      //上传之前
-      function beforeUpload({ file }) {
-        const fileInfo = file.file;
+      //上传之前 (Ant Design Vue beforeUpload 直接接收 File 对象)
+      function handleBeforeUpload(file: File) {
         const { maxSize, accept } = props;
         const acceptRef = (isString(accept) && accept.split(',')) || [];
 
         // 设置最大值，则判断
-        if (maxSize && fileInfo.size / 1024 / 1024 >= maxSize) {
+        if (maxSize && file.size / 1024 / 1024 >= maxSize) {
           message.error(`上传文件最大值不能超过${maxSize}M`);
           return false;
         }
 
         // 设置类型,则判断
-        const fileType = componentSetting.upload.fileType;
-        if (acceptRef.length > 0 && !checkFileType(fileInfo.type)) {
+        if (acceptRef.length > 0 && !checkFileType(file.type)) {
+          const fileType = componentSetting.upload.fileType;
           message.error(`只能上传文件类型为${fileType.join(',')}`);
           return false;
         }
@@ -172,28 +157,34 @@
         return true;
       }
 
-      //上传结束
-      function finish({ event: Event }) {
-        const res = eval('(' + Event.target.response + ')');
-        const infoField = componentSetting.upload.apiSetting.infoField;
-        const { code } = res;
-        const message = res.msg || res.message || '上传失败';
-        const result = res[infoField];
-        //成功
-        if (code === ResultEnum.SUCCESS) {
-          let imgUrl: string = getImgUrl(result.photo);
-          state.imgList.push(imgUrl);
-          state.originalImgList.push(result.photo);
-          emit('uploadChange', state.originalImgList);
-        } else message.error(message);
+      //上传状态变化 (Ant Design Vue @change 事件)
+      function handleChange({ file }) {
+        if (file.status === 'done') {
+          const res = file.response;
+          const infoField = componentSetting.upload.apiSetting.infoField;
+          const { code } = res;
+          const msg = res.msg || res.message || '上传失败';
+          const result = res[infoField];
+          //成功
+          if (code === ResultEnum.SUCCESS) {
+            let imgUrl: string = getImgUrl(result.photo);
+            state.imgList.push(imgUrl);
+            state.originalImgList.push(result.photo);
+            emit('uploadChange', state.originalImgList);
+          } else {
+            message.error(msg);
+          }
+        } else if (file.status === 'error') {
+          message.error('上传失败');
+        }
       }
 
       return {
         ...toRefs(state),
-        finish,
+        handleChange,
         preview,
         remove,
-        beforeUpload,
+        handleBeforeUpload,
         getCSSProperties,
       };
     },

@@ -1,9 +1,9 @@
 export type ComponentType =
-  | 'NInput'
-  | 'NInputNumber'
-  | 'NSelect'
-  | 'NCheckbox'
-  | 'NSwitch'
-  | 'NDatePicker'
-  | 'NTimePicker'
-  | 'NCascader';
+  | 'Input'
+  | 'InputNumber'
+  | 'Select'
+  | 'Checkbox'
+  | 'Switch'
+  | 'DatePicker'
+  | 'TimePicker'
+  | 'Cascader';

@@ -1,6 +1,6 @@
-import type { InternalRowData, TableBaseColumn } from 'naive-ui/lib/data-table/src/interface';
+import type { ColumnType } from 'ant-design-vue/es/table';
 import { ComponentType } from './componentType';
-export interface BasicColumn<T = InternalRowData> extends TableBaseColumn<T> {
+export interface BasicColumn<T = any> extends ColumnType<T> {
   //编辑表格
   edit?: boolean;
   editRow?: boolean;

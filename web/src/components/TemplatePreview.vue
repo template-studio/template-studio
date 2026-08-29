@@ -15,14 +15,13 @@
         <div class="detail-item" v-if="template.languages && template.languages.length > 0">
           <span class="label">支持语言：</span>
           <div class="languages">
-            <n-tag
+            <a-tag
               v-for="lang in template.languages"
               :key="lang.languageId"
-              size="small"
-              :type="lang.isPrimary ? 'primary' : 'default'"
+              :color="lang.isPrimary ? 'blue' : 'default'"
             >
               {{ getLanguageName(lang.languageId) }}
-            </n-tag>
+            </a-tag>
           </div>
         </div>
 
@@ -33,21 +32,21 @@
       </div>
 
       <div class="template-actions">
-        <n-button type="primary" size="large" @click="useTemplate" block>
+        <a-button type="primary" size="large" @click="useTemplate" block>
           <template #icon>
-            <n-icon><DownloadOutline /></n-icon>
+            <DownloadOutline />
           </template>
           使用此模板
-        </n-button>
+        </a-button>
       </div>
     </div>
 
     <div v-else class="empty-preview">
-      <n-empty description="未选择模板">
-        <template #icon>
-          <n-icon size="48"><DocumentTextOutline /></n-icon>
+      <a-empty description="未选择模板">
+        <template #image>
+          <DocumentTextOutline style="font-size: 48px; color: #ccc" />
         </template>
-      </n-empty>
+      </a-empty>
     </div>
   </div>
 </template>
@@ -55,8 +54,8 @@
 <script setup>
   import { computed } from 'vue';
   import { useRouter } from 'vue-router';
-  import { NButton, NIcon, NTag, NEmpty } from 'naive-ui';
-  import { DownloadOutline, DocumentTextOutline } from '@vicons/ionicons5';
+  // ant-design-vue components are globally registered
+  import { DownloadOutline, DocumentTextOutline } from '@/icons/ionicons5';
   import { useCategoryStore } from '@/store/modules/categoryStore';
   import { useLanguageStore } from '@/store/modules/languageStore';
   import { storeToRefs } from 'pinia';

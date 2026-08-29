@@ -1,190 +1,178 @@
 <template>
-  <n-drawer v-model:show="showDrawer" :width="'60vw'" placement="right" @update:show="handleClose">
-    <n-drawer-content
-      :title="drawerTitle"
-      closable
-      body-content-style="padding: 0; display: flex; flex-direction: column;"
-    >
-      <!-- 顶部工具栏 -->
-      <div class="drawer-toolbar">
-        <n-space>
-          <n-button size="small" @click="handleRefresh" :loading="loading">
-            <template #icon>
-              <n-icon><Refresh /></n-icon>
-            </template>
-            刷新
-          </n-button>
-          <n-button size="small" @click="handleClearCache" :disabled="loading">
-            <template #icon>
-              <n-icon><FileTray /></n-icon>
-            </template>
-            清除缓存
-          </n-button>
-          <n-button
-            size="small"
-            @click="downloadRendered"
-            :disabled="renderStats.failedFiles > 0 || loading"
+  <a-drawer v-model:open="showDrawer" :title="drawerTitle" :width="'60vw'" placement="right" @close="handleClose"
+    :body-style="{ padding: '0', display: 'flex', flexDirection: 'column' }">
+    <!-- 顶部工具栏 -->
+    <div class="drawer-toolbar">
+      <a-space>
+        <a-button size="small" @click="handleRefresh" :loading="loading">
+          <template #icon><Refresh style="font-size: 14px" /></template>
+          刷新
+        </a-button>
+        <a-button size="small" @click="handleClearCache" :disabled="loading">
+          <template #icon><FileTray style="font-size: 14px" /></template>
+          清除缓存
+        </a-button>
+        <a-button
+          size="small"
+          @click="downloadRendered"
+          :disabled="renderStats.failedFiles > 0 || loading"
+        >
+          <template #icon><Download style="font-size: 14px" /></template>
+          下载ZIP
+        </a-button>
+      </a-space>
+    </div>
+
+    <!-- 主内容区：使用 flex 布局 -->
+    <div class="drawer-content">
+      <!-- 左侧：文件树 -->
+      <div class="file-tree-panel" :style="{ width: `${treePanelWidth}px` }">
+        <div class="panel-title">渲染文件树</div>
+        <div class="tree-container">
+          <a-empty
+            v-if="!loading && renderedTreeData.length === 0"
+            description="暂无数据"
+            :image-style="{ height: '40px' }"
+          />
+          <a-tree
+            v-else
+            :tree-data="renderedTreeData"
+            :field-names="{ key: 'key', title: 'label', children: 'children' }"
+            :selected-keys="selectedKeys"
+            :default-expanded-keys="defaultExpandedKeys"
+            @select="handleNodeSelect"
+            @expand="handleExpandedKeysChange"
+            class="file-tree"
           >
-            <template #icon>
-              <n-icon><Download /></n-icon>
+            <template #title="{ label, renderError, fileSize, isDirectory }">
+              <span class="tree-node-label">{{ label }}</span>
+              <a-tag v-if="renderError" color="error" size="small" style="margin-left: 8px">
+                渲染失败
+              </a-tag>
+              <span v-if="!isDirectory && fileSize !== undefined" class="file-size-text">
+                {{ formatFileSize(fileSize) }}
+              </span>
             </template>
-            下载ZIP
-          </n-button>
-        </n-space>
+            <template #switcherIcon>
+              <ChevronForward style="font-size: 14px" />
+            </template>
+            <template #icon="{ isDirectory, expanded }">
+              <FolderOpenOutline v-if="isDirectory && expanded" style="font-size: 16px" />
+              <FolderIcon v-else-if="isDirectory" style="font-size: 16px" />
+              <FileTrayFullOutline v-else style="font-size: 16px" />
+            </template>
+          </a-tree>
+        </div>
+        <!-- 拖拽调整宽度的分隔条 -->
+        <div
+          class="resize-handle"
+          @mousedown="startResize"
+          :class="{ 'is-resizing': isResizing }"
+        ></div>
       </div>
 
-      <!-- 主内容区：使用 flex 布局 -->
-      <div class="drawer-content">
-        <!-- 左侧：文件树 -->
-        <div class="file-tree-panel" :style="{ width: `${treePanelWidth}px` }">
-          <div class="panel-title">渲染文件树</div>
-          <div class="tree-container">
-            <n-empty
-              v-if="!loading && renderedTreeData.length === 0"
-              description="暂无数据"
-              size="small"
-            />
-            <n-tree
-              v-else
-              :data="renderedTreeData"
-              :node-props="treeNodeProps"
-              :render-label="renderTreeLabel"
-              :render-switcher-icon="renderSwitcherIcon"
-              :selected-keys="selectedKeys"
-              expand-on-click
-              :default-expanded-keys="defaultExpandedKeys"
-              @update:selected-keys="handleNodeSelect"
-              @update:expanded-keys="handleExpandedKeysChange"
-              class="file-tree"
-            />
-          </div>
-          <!-- 拖拽调整宽度的分隔条 -->
-          <div
-            class="resize-handle"
-            @mousedown="startResize"
-            :class="{ 'is-resizing': isResizing }"
-          ></div>
-        </div>
+      <!-- 分隔条 -->
+      <div class="divider"></div>
 
-        <!-- 分隔条 -->
-        <div class="divider"></div>
-
-        <!-- 右侧：编辑器 -->
-        <div class="editor-panel">
-          <div class="panel-title">
-            <span>{{ selectedFileLabel }}</span>
-            <n-button
-              v-if="selectedFile && selectedFile.fileContent"
-              size="small"
-              @click="copyFileContent"
-              quaternary
-            >
-              <template #icon>
-                <n-icon><Copy /></n-icon>
-              </template>
-              复制
-            </n-button>
-          </div>
-          <div v-if="!selectedFile" class="no-file-selected">
-            <n-empty description="请从左侧选择文件查看内容" size="small" />
-          </div>
-          <div v-else-if="selectedFile.renderError" class="render-error-display">
-            <n-result
-              status="error"
-              title="文件渲染失败"
-              :description="selectedFile.renderError.message"
-            >
-              <template #footer>
-                <n-space vertical>
-                  <n-text v-if="selectedFile.renderError.line" code>
-                    行号: {{ selectedFile.renderError.line }}
-                  </n-text>
-                  <n-text v-if="selectedFile.renderError.column" code>
-                    列号: {{ selectedFile.renderError.column }}
-                  </n-text>
-                  <n-text v-if="selectedFile.renderError.suggestion" type="info">
-                    💡 {{ selectedFile.renderError.suggestion }}
-                  </n-text>
-                </n-space>
-              </template>
-            </n-result>
-          </div>
-          <div v-else class="codemirror-container" ref="editorContainer"></div>
+      <!-- 右侧：编辑器 -->
+      <div class="editor-panel">
+        <div class="panel-title">
+          <span>{{ selectedFileLabel }}</span>
+          <a-button
+            v-if="selectedFile && selectedFile.fileContent"
+            size="small"
+            type="link"
+            @click="copyFileContent"
+          >
+            <template #icon><Copy style="font-size: 14px" /></template>
+            复制
+          </a-button>
         </div>
+        <div v-if="!selectedFile" class="no-file-selected">
+          <a-empty description="请从左侧选择文件查看内容" :image-style="{ height: '40px' }" />
+        </div>
+        <div v-else-if="selectedFile.renderError" class="render-error-display">
+          <a-result
+            status="error"
+            title="文件渲染失败"
+            :sub-title="selectedFile.renderError.message"
+          >
+            <template #extra>
+              <div style="display: flex; flex-direction: column; gap: 8px; align-items: center">
+                <a-typography-text v-if="selectedFile.renderError.line" code>
+                  行号: {{ selectedFile.renderError.line }}
+                </a-typography-text>
+                <a-typography-text v-if="selectedFile.renderError.column" code>
+                  列号: {{ selectedFile.renderError.column }}
+                </a-typography-text>
+                <a-typography-text v-if="selectedFile.renderError.suggestion" type="secondary">
+                  {{ selectedFile.renderError.suggestion }}
+                </a-typography-text>
+              </div>
+            </template>
+          </a-result>
+        </div>
+        <div v-else class="codemirror-container" ref="editorContainer"></div>
       </div>
+    </div>
 
-      <!-- 错误列表（如果有） -->
-      <div v-if="renderErrors.length > 0" class="error-panel">
-        <n-collapse>
-          <n-collapse-item title="渲染错误" name="errors">
-            <n-scrollbar style="max-height: 200px">
-              <n-alert
-                v-for="error in renderErrors"
-                :key="error.id"
-                type="error"
-                size="small"
-                class="mb-2"
-              >
-                <template #header>
-                  <div class="error-header">
-                    <n-icon class="mr-1"><FileTray /></n-icon>
-                    <strong>{{ error.fileName }}</strong>
-                  </div>
-                </template>
+    <!-- 错误列表（如果有） -->
+    <div v-if="renderErrors.length > 0" class="error-panel">
+      <a-collapse>
+        <a-collapse-panel key="errors" header="渲染错误">
+          <div style="max-height: 200px; overflow-y: auto">
+            <a-alert
+              v-for="error in renderErrors"
+              :key="error.id"
+              type="error"
+              size="small"
+              style="margin-bottom: 8px"
+            >
+              <template #message>
+                <div class="error-header">
+                  <FileTray style="font-size: 14px; margin-right: 4px" />
+                  <strong>{{ error.fileName }}</strong>
+                </div>
+              </template>
+              <template #description>
                 <div class="error-content">
                   <p>{{ error.message }}</p>
-                  <div v-if="error.line" class="error-details mt-2">
-                    <n-text code size="small">行号: {{ error.line }}</n-text>
-                    <n-text v-if="error.column" code size="small" class="ml-2">
+                  <div v-if="error.line" class="error-details">
+                    <a-typography-text code>行号: {{ error.line }}</a-typography-text>
+                    <a-typography-text v-if="error.column" code style="margin-left: 8px">
                       列号: {{ error.column }}
-                    </n-text>
+                    </a-typography-text>
                   </div>
                 </div>
-              </n-alert>
-            </n-scrollbar>
-          </n-collapse-item>
-        </n-collapse>
-      </div>
+              </template>
+            </a-alert>
+          </div>
+        </a-collapse-panel>
+      </a-collapse>
+    </div>
 
-      <template #footer>
-        <n-space justify="space-between" align="center" style="width: 100%">
-          <n-space align="center">
-            <n-tag v-if="renderStats.failedFiles > 0" type="error" size="small">
-              {{ renderStats.failedFiles }} 个错误
-            </n-tag>
-            <n-tag v-else-if="renderStats.totalFiles > 0" type="success" size="small">
-              渲染成功
-            </n-tag>
-            <n-text v-if="renderStats.totalFiles > 0" depth="3" style="font-size: 12px">
-              {{ renderStats.totalFiles }} 个文件 | {{ formatFileSize(renderStats.totalSize) }} |
-              耗时 {{ renderTime }}ms
-            </n-text>
-          </n-space>
-        </n-space>
-      </template>
-    </n-drawer-content>
-  </n-drawer>
+    <template #footer>
+      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <a-tag v-if="renderStats.failedFiles > 0" color="error" size="small">
+            {{ renderStats.failedFiles }} 个错误
+          </a-tag>
+          <a-tag v-else-if="renderStats.totalFiles > 0" color="success" size="small">
+            渲染成功
+          </a-tag>
+          <span v-if="renderStats.totalFiles > 0" style="font-size: 12px; color: #999">
+            {{ renderStats.totalFiles }} 个文件 | {{ formatFileSize(renderStats.totalSize) }} |
+            耗时 {{ renderTime }}ms
+          </span>
+        </div>
+      </div>
+    </template>
+  </a-drawer>
 </template>
 
 <script setup>
   import { ref, computed, h, watch, onBeforeUnmount, nextTick } from 'vue';
-  import {
-    NDrawer,
-    NDrawerContent,
-    NTree,
-    NTag,
-    NText,
-    NButton,
-    NIcon,
-    NSpace,
-    NAlert,
-    NCollapse,
-    NCollapseItem,
-    NEmpty,
-    NScrollbar,
-    NResult,
-    useMessage,
-  } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import {
     FolderOutline,
     DocumentOutline,
@@ -197,7 +185,7 @@
     FolderOpenOutline,
     Folder as FolderIcon,
     FileTrayFullOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
   import { previewFileTree, downloadZip, clearRenderCache } from '@/api/templateFiles';
 
   // CodeMirror 核心模块（参考 TemplatePreview 的简化配置）
@@ -247,8 +235,6 @@
   });
 
   const emit = defineEmits(['update:show']);
-
-  const message = useMessage();
 
   // 语言映射
   const languageMap = {
@@ -313,7 +299,7 @@
   const resizeStartWidth = ref(260);
 
   // 计算属性：响应式转换树数据
-  const renderedTreeData = computed(() => convertToNaiveUITree(rawTreeData.value));
+  const renderedTreeData = computed(() => convertToAntTree(rawTreeData.value));
 
   // 计算属性
   const showDrawer = computed({
@@ -336,63 +322,16 @@
     return label;
   });
 
-  // Tree 节点配置
-  const treeNodeProps = ({ option }) => {
-    return {
-      class: option.renderError ? 'tree-node-error' : '',
-    };
-  };
-
-  // 渲染树节点标签
-  const renderTreeLabel = ({ option }) => {
-    const nodes = [h('span', { class: 'tree-node-label' }, option.label || option.fileName)];
-
-    if (option.renderError) {
-      nodes.push(
-        h(
-          NTag,
-          { type: 'error', size: 'small', class: 'ml-2' },
-          {
-            default: () => '渲染失败',
-          }
-        )
-      );
-    }
-
-    if (!option.isDirectory && option.fileSize !== undefined) {
-      nodes.push(
-        h(
-          NText,
-          { depth: 3, class: 'file-size-text' },
-          {
-            default: () => formatFileSize(option.fileSize),
-          }
-        )
-      );
-    }
-
-    return h('div', { class: 'tree-node-wrapper' }, nodes);
-  };
-
-  // 渲染展开箭头（只有目录有箭头）
-  const renderSwitcherIcon = () => h(NIcon, null, { default: () => h(ChevronForward) });
-
   // 处理展开/折叠状态变化
-  const handleExpandedKeysChange = (keys, option, meta) => {
-    if (!meta.node) return;
+  const handleExpandedKeysChange = (expandedKeysList, { expanded, node }) => {
+    if (!node || !node.isDirectory) return;
 
-    // 只对目录节点进行图标更新
-    if (!meta.node.isDirectory) return;
+    const nodeKey = String(node.key);
 
-    const nodeKey = String(meta.node.key);
-
-    switch (meta.action) {
-      case 'expand':
-        expandedKeys.value.add(nodeKey);
-        break;
-      case 'collapse':
-        expandedKeys.value.delete(nodeKey);
-        break;
+    if (expanded) {
+      expandedKeys.value.add(nodeKey);
+    } else {
+      expandedKeys.value.delete(nodeKey);
     }
   };
 
@@ -524,32 +463,25 @@
     }
   };
 
-  // 转换为 Naive UI Tree 格式
-  const convertToNaiveUITree = (tree) => {
+  // 转换为 Ant Design Tree 格式
+  const convertToAntTree = (tree) => {
     if (!tree || !Array.isArray(tree)) return [];
 
     return tree.map((node) => {
       const nodeKey = String(node.id);
-      const isExpanded = expandedKeys.value.has(nodeKey);
       const isDirectory = node.isDirectory === 1;
 
       return {
         key: nodeKey,
         label: node.fileName,
-        fileName: node.fileName, // 添加 fileName 属性，用于语言高亮
+        fileName: node.fileName,
         isDirectory: isDirectory,
         isLeaf: !isDirectory,
         fileSize: node.fileSize,
         filePath: node.filePath,
         fileContent: node.fileContent,
         renderError: node.renderError,
-        prefix: isDirectory
-          ? () =>
-              h(NIcon, null, {
-                default: () => h(isExpanded ? FolderOpenOutline : FolderIcon),
-              })
-          : () => h(NIcon, null, { default: () => h(FileTrayFullOutline) }),
-        children: node.children ? convertToNaiveUITree(node.children) : undefined,
+        children: node.children ? convertToAntTree(node.children) : undefined,
       };
     });
   };
@@ -877,22 +809,22 @@
     background: #fffaf0;
   }
 
-  :deep(.error-panel .n-collapse) {
+  :deep(.error-panel .ant-collapse) {
     border: none;
   }
 
-  :deep(.error-panel .n-collapse-item) {
+  :deep(.error-panel .ant-collapse-item) {
     border: none;
   }
 
-  :deep(.error-panel .n-collapse-item__header) {
+  :deep(.error-panel .ant-collapse-header) {
     padding: 12px 16px;
     background: #fffaf0;
     color: #d03050;
     font-weight: 500;
   }
 
-  :deep(.error-panel .n-collapse-item__content-wrapper) {
+  :deep(.error-panel .ant-collapse-content-box) {
     padding: 0 16px 12px;
   }
 

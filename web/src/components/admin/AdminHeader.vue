@@ -1,15 +1,13 @@
 <template>
-  <n-layout-header class="admin-header">
+  <a-layout-header class="admin-header">
     <div class="header-content">
       <!-- 左侧：侧边栏切换按钮和面包屑 -->
       <div class="header-left">
-        <n-button text @click="$emit('toggle-sidebar')" class="sidebar-toggle">
+        <a-button type="text" @click="$emit('toggle-sidebar')" class="sidebar-toggle">
           <template #icon>
-            <n-icon size="18">
-              <MenuOutline />
-            </n-icon>
+            <MenuOutline style="font-size: 18px" />
           </template>
-        </n-button>
+        </a-button>
 
         <!-- 面包屑 -->
         <div class="breadcrumb-wrapper">
@@ -20,42 +18,32 @@
       <!-- 右侧：操作按钮 -->
       <div class="header-right">
         <!-- 返回前台 -->
-        <n-tooltip trigger="hover">
-          <template #trigger>
-            <n-button text @click="goFrontend" class="header-action">
-              <template #icon>
-                <n-icon size="18">
-                  <ExitOutline />
-                </n-icon>
-              </template>
-            </n-button>
-          </template>
-          返回前台
-        </n-tooltip>
+        <a-tooltip title="返回前台">
+          <a-button type="text" @click="goFrontend" class="header-action">
+            <template #icon>
+              <ExitOutline style="font-size: 18px" />
+            </template>
+          </a-button>
+        </a-tooltip>
 
         <!-- 全屏切换 -->
-        <n-tooltip trigger="hover">
-          <template #trigger>
-            <n-button text @click="toggleFullscreen" class="header-action">
-              <template #icon>
-                <n-icon size="18">
-                  <ScanOutline />
-                </n-icon>
-              </template>
-            </n-button>
-          </template>
-          全屏
-        </n-tooltip>
+        <a-tooltip title="全屏">
+          <a-button type="text" @click="toggleFullscreen" class="header-action">
+            <template #icon>
+              <ScanOutline style="font-size: 18px" />
+            </template>
+          </a-button>
+        </a-tooltip>
       </div>
     </div>
-  </n-layout-header>
+  </a-layout-header>
 </template>
 
 <script setup>
   import { useRouter } from 'vue-router';
-  import { NLayoutHeader, NButton, NIcon, NTooltip } from 'naive-ui';
+  // ant-design-vue components are globally registered
   import AdminBreadcrumb from './AdminBreadcrumb.vue';
-  import { MenuOutline, ScanOutline, ExitOutline } from '@vicons/ionicons5';
+  import { MenuOutline, ScanOutline, ExitOutline } from '@/icons/ionicons5';
 
   const props = defineProps({
     sidebarCollapsed: {
@@ -151,12 +139,12 @@
     font-size: 13px;
   }
 
-  .breadcrumb-wrapper :deep(.n-breadcrumb-item__link) {
+  .breadcrumb-wrapper :deep(.ant-breadcrumb-link) {
     font-size: 13px;
   }
 
   /* 确保面包屑不会换行 */
-  .breadcrumb-wrapper :deep(.n-breadcrumb) {
+  .breadcrumb-wrapper :deep(.ant-breadcrumb) {
     white-space: nowrap;
   }
 </style>

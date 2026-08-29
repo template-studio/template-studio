@@ -5,8 +5,8 @@ import { isArray, isString, isBoolean, isFunction } from '@/utils/is';
 import { usePermission } from '@/hooks/web/usePermission';
 import { ActionItem } from '@/components/Table';
 import { renderEditCell } from '../components/editable';
-import { NTooltip, NIcon } from 'naive-ui';
-import { FormOutlined } from '@vicons/antd';
+import { Tooltip } from 'ant-design-vue';
+import { FormOutlined } from '@ant-design/icons-vue';
 
 export function useColumns(propsRef: ComputedRef<BasicTableProps>) {
   const columnsRef = ref(unref(propsRef).columns) as unknown as Ref<BasicColumn[]>;
@@ -37,9 +37,9 @@ export function useColumns(propsRef: ComputedRef<BasicTableProps>) {
   }
 
   const renderTooltip = (trigger, content) => {
-    return h(NTooltip, null, {
-      trigger: () => trigger,
-      default: () => content,
+    return h(Tooltip, null, {
+      title: () => content,
+      default: () => trigger,
     });
   };
 
@@ -55,22 +55,16 @@ export function useColumns(propsRef: ComputedRef<BasicTableProps>) {
         column.ellipsis = typeof column.ellipsis === 'undefined' ? { tooltip: true } : false;
         const { edit } = column;
         if (edit) {
-          column.render = renderEditCell(column);
+          // renderEditCell 沿用 naive 的 (record, index) 签名，antd 的 customRender 以单对象调用，需做包装
+          const editCellRender = renderEditCell(column);
+          column.customRender = ({ record, index }) => editCellRender(record, index);
           if (edit) {
             const title: any = column.title;
             column.title = () => {
               return renderTooltip(
                 h('div', { class: 'flex items-center' }, [
                   h('span', { style: { 'margin-right': '5px' } }, title),
-                  h(
-                    NIcon,
-                    {
-                      size: 14,
-                    },
-                    {
-                      default: () => h(FormOutlined),
-                    }
-                  ),
+                  h(FormOutlined, { style: { fontSize: '14px' } }),
                 ]),
                 '该列可编辑'
               );
@@ -92,10 +86,16 @@ export function useColumns(propsRef: ComputedRef<BasicTableProps>) {
   function handleActionColumn(propsRef: ComputedRef<BasicTableProps>, columns: BasicColumn[]) {
     const { actionColumn } = unref(propsRef);
     if (!actionColumn) return;
-    !columns.find((col) => col.key === 'action') &&
-      columns.push({
-        ...(actionColumn as any),
-      });
+    if (!columns.find((col) => col.key === 'action')) {
+      const col: any = { ...(actionColumn as any) };
+      // Ant Design Vue uses customRender instead of render
+      if (col.render && !col.customRender) {
+        const originalRender = col.render;
+        col.customRender = ({ record }) => originalRender(record);
+        delete col.render;
+      }
+      columns.push(col);
+    }
   }
 
   //设置
@@ -131,7 +131,7 @@ export function useColumns(propsRef: ComputedRef<BasicTableProps>) {
   function getColumns(): BasicColumn[] {
     const columns = toRaw(unref(getColumnsRef));
     return columns.map((item) => {
-      return { ...item, title: item.title, key: item.key, fixed: item.fixed || undefined };
+      return { ...item, title: item.title, dataIndex: item.dataIndex || item.key, key: item.key, fixed: item.fixed || undefined };
     });
   }
 

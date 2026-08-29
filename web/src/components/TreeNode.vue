@@ -2,16 +2,14 @@
   <div class="tree-node" :style="{ paddingLeft: level * 20 + 'px' }">
     <div class="node-content">
       <div class="node-expand" @click="toggleExpand" v-if="hasChildren">
-        <n-icon size="14" :class="{ expanded: expanded }">
-          <ChevronForwardOutline />
-        </n-icon>
+        <ChevronForwardOutline :class="{ expanded: expanded }" style="font-size: 14px" />
       </div>
       <div class="node-info">
         <div class="node-main">
           <span class="node-name">{{ node.label }}</span>
-          <n-tag size="small" :type="getTypeColor(node.nodeType)" style="margin-left: 8px">
+          <a-tag :color="getTypeColor(node.nodeType)" style="margin-left: 8px">
             {{ getTypeLabel(node.nodeType) }}
-          </n-tag>
+          </a-tag>
           <span v-if="node.description" class="node-desc">- {{ node.description }}</span>
         </div>
         <div class="node-value" v-if="!hasChildren">
@@ -19,33 +17,31 @@
         </div>
       </div>
       <div class="node-actions" v-if="!readonly">
-        <n-button size="tiny" type="primary" secondary @click.stop="$emit('add-child', node)">
+        <a-button size="small" type="primary" ghost @click.stop="$emit('add-child', node)">
           <template #icon>
-            <n-icon size="12"><AddOutline /></n-icon>
+            <AddOutline style="font-size: 12px" />
           </template>
-        </n-button>
-        <n-button
-          size="tiny"
-          type="info"
-          secondary
+        </a-button>
+        <a-button
+          size="small"
           @click.stop="$emit('edit-node', node)"
           style="margin-left: 4px"
         >
           <template #icon>
-            <n-icon size="12"><CreateOutline /></n-icon>
+            <CreateOutline style="font-size: 12px" />
           </template>
-        </n-button>
-        <n-button
-          size="tiny"
-          type="error"
-          secondary
+        </a-button>
+        <a-button
+          size="small"
+          danger
+          ghost
           @click.stop="$emit('delete-node', node)"
           style="margin-left: 4px"
         >
           <template #icon>
-            <n-icon size="12"><TrashOutline /></n-icon>
+            <TrashOutline style="font-size: 12px" />
           </template>
-        </n-button>
+        </a-button>
       </div>
     </div>
 
@@ -67,13 +63,13 @@
 
 <script setup>
   import { ref, computed } from 'vue';
-  import { NButton, NIcon, NTag } from 'naive-ui';
+  // ant-design-vue components are globally registered
   import {
     AddOutline,
     CreateOutline,
     TrashOutline,
     ChevronForwardOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
 
   const props = defineProps({
     node: {
@@ -105,7 +101,7 @@
   const getTypeColor = (type) => {
     const colors = {
       string: 'success',
-      number: 'info',
+      number: 'blue',
       boolean: 'warning',
       object: 'default',
       array: 'error',
@@ -170,11 +166,11 @@
     margin-right: 4px;
   }
 
-  .node-expand .n-icon {
+  .node-expand svg {
     transition: transform 0.2s;
   }
 
-  .node-expand .n-icon.expanded {
+  .node-expand svg.expanded {
     transform: rotate(90deg);
   }
 

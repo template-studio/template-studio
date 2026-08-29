@@ -1,5 +1,5 @@
 <template>
-  <n-layout-header bordered class="n-layout-header header-no-padding">
+  <a-layout-header class="ant-layout-header header-no-padding">
     <div class="nav-bar-center">
       <div class="nav-bar-container">
         <div class="nav-left">
@@ -38,66 +38,76 @@
             </div>
             <span class="logo-text">Template <span class="brand-accent">Studio</span></span>
           </div>
-          <n-menu
+          <a-menu
             class="menu-center"
             mode="horizontal"
-            :options="menuOptions"
-            :value="activeKey"
-            @update:value="handleUpdateValue"
+            :items="menuOptions"
+            :selectedKeys="[activeKey]"
+            @click="({key}) => handleUpdateValue(key)"
           />
           <div class="search-inline" ref="searchRef">
-            <n-input
+            <a-input
               v-model:value="searchKeyword"
-              round
               placeholder="搜索模板..."
               class="search-input"
-              clearable
+              allow-clear
               @keyup.enter="handleSearch"
-              @update:value="handleSearchChange"
+              @change="handleSearchInputChange"
               @clear="handleClear"
             >
               <template #prefix>
-                <n-icon size="16" color="#94a3b8">
-                  <SearchOutline />
-                </n-icon>
+                <SearchOutline style="font-size: 16px; color: #94a3b8" />
               </template>
-            </n-input>
+            </a-input>
           </div>
         </div>
         <div class="nav-right">
           <template v-if="isLoggedIn">
-            <n-dropdown :options="userMenuOptions" @select="handleUserMenu">
+            <a-dropdown>
               <div class="user-trigger">
-                <n-avatar v-if="userAvatar" round size="small" :src="userAvatar" />
-                <n-avatar v-else round size="small" style="background: linear-gradient(135deg, #0f172a, var(--client-theme-color))">
+                <a-avatar v-if="userAvatar" :size="32" :src="userAvatar" />
+                <a-avatar v-else :size="32" style="background: linear-gradient(135deg, #0f172a, var(--client-theme-color))">
                   {{ userStore.getNickname?.charAt(0)?.toUpperCase() || 'U' }}
-                </n-avatar>
+                </a-avatar>
                 <span class="user-name">{{ userStore.getNickname }}</span>
               </div>
-            </n-dropdown>
+              <template #overlay>
+                <a-menu @click="({key}) => handleUserMenu(key)">
+                  <template v-for="opt in userMenuOptions" :key="opt.key">
+                    <a-menu-divider v-if="opt.type === 'divider'" />
+                    <a-menu-item v-else :key="opt.key">
+                      <component v-if="opt.icon" :is="opt.icon" style="margin-right: 8px" />
+                      {{ opt.label }}
+                    </a-menu-item>
+                  </template>
+                </a-menu>
+              </template>
+            </a-dropdown>
           </template>
           <template v-else>
             <div class="auth-buttons">
-              <n-button text @click="goLogin">登录</n-button>
-              <n-button type="primary" size="small" @click="goRegister">注册</n-button>
+              <a-button type="text" @click="goLogin">登录</a-button>
+              <a-button type="primary" size="small" @click="goRegister">注册</a-button>
             </div>
           </template>
         </div>
       </div>
     </div>
-  </n-layout-header>
+  </a-layout-header>
 </template>
 
 <script setup>
-  import { ref, computed, onMounted, watch } from 'vue';
+  import { ref, computed, onMounted, watch, h } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
-  import { NLayoutHeader, NMenu, NInput, NButton, NIcon, NDropdown, NAvatar } from 'naive-ui';
-  import { SearchOutline, SettingsOutline, PersonOutline, LogOutOutline } from '@vicons/ionicons5';
+  import { SearchOutline, SettingsOutline, PersonOutline, LogOutOutline } from '@/icons/ionicons5';
   import { useUser } from '@/store/modules/user';
-  import { renderIcon } from '@/utils/index';
   import { storage } from '@/utils/Storage';
   import { ACCESS_TOKEN } from '@/store/mutation-types';
   import { applyClientTheme, getClientTheme, applyHeroPreset, getHeroPreset, applyCardStyle, getCardStyle } from '@/utils/clientTheme';
+
+  function renderIcon(icon) {
+    return () => h(icon);
+  }
 
   const route = useRoute();
   const router = useRouter();
@@ -179,6 +189,14 @@
     const routeSearch = route.query.search || '';
     searchKeyword.value = routeSearch;
   };
+
+  function handleSearchInputChange(e) {
+    const value = e?.target?.value ?? e;
+    searchKeyword.value = value;
+    if (!String(value).trim() && route.path === '/templates' && route.query.search) {
+      router.push({ path: '/templates', query: {} });
+    }
+  }
 
   function handleSearchChange(value) {
     searchKeyword.value = value;
@@ -326,7 +344,7 @@
   }
 
   /* ===== Fixed Header ===== */
-  .n-layout-header {
+  .ant-layout-header {
     position: fixed;
     top: 0;
     left: 0;
@@ -335,27 +353,14 @@
     background: #fff;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     border-bottom: 1px solid #f1f5f9;
+    height: auto;
+    line-height: normal;
+    padding: 0;
   }
 
-  :deep(.n-layout-header__content) {
-    padding: 0 !important;
-  }
-
-  :deep(.menu-center .n-menu--horizontal .n-menu__content) {
+  :deep(.menu-center.ant-menu-horizontal) {
     justify-content: flex-start !important;
-  }
-
-  /* ===== Dropdown ===== */
-  :deep(.n-dropdown-option .n-dropdown-option-body) {
-    padding: 10px 16px !important;
-  }
-
-  :deep(.n-dropdown-option .n-dropdown-option-body__prefix) {
-    margin-right: 8px !important;
-  }
-
-  :deep(.n-dropdown-option .n-dropdown-option-body__label) {
-    font-size: 14px !important;
+    border-bottom: none;
   }
 
   /* ===== Responsive ===== */

@@ -23,28 +23,23 @@
         <div class="languages-section">
           <span class="meta-label">支持语言:</span>
           <div class="language-tags">
-            <n-tag
+            <a-tag
               v-for="lang in template.languages"
               :key="lang.id || lang.languageId"
-              size="small"
-              :type="lang.isPrimary || lang.is_primary ? 'primary' : 'default'"
+              :color="lang.isPrimary || lang.is_primary ? 'blue' : 'default'"
             >
               {{ getLanguageName(lang.languageId || lang.id) }}
-            </n-tag>
+            </a-tag>
           </div>
         </div>
 
         <div class="template-stats">
           <div class="stat-item">
-            <n-icon size="16">
-              <EyeOutline />
-            </n-icon>
+            <EyeOutline style="font-size: 16px" />
             <span>{{ template.usageCount || 0 }}</span>
           </div>
           <div class="stat-item">
-            <n-icon size="16">
-              <TimeOutline />
-            </n-icon>
+            <TimeOutline style="font-size: 16px" />
             <span>{{ formatDate(template.createdAt) }}</span>
           </div>
         </div>
@@ -52,22 +47,36 @@
     </div>
 
     <!-- 右键菜单 -->
-    <n-dropdown
-      :show="showDropdown"
-      :options="dropdownOptions"
-      :x="dropdownX"
-      :y="dropdownY"
-      placement="bottom-start"
-      @clickoutside="hideContextMenu"
-      @select="handleMenuSelect"
-    />
+    <teleport to="body">
+      <div
+        v-if="showDropdown"
+        class="context-menu-overlay"
+        @click="hideContextMenu"
+        @contextmenu.prevent
+      >
+        <div
+          class="context-menu"
+          :style="{ left: dropdownX + 'px', top: dropdownY + 'px' }"
+        >
+          <a-menu @click="({key}) => handleMenuSelect(key)">
+            <template v-for="opt in dropdownOptions" :key="opt.key || opt.type">
+              <a-menu-divider v-if="opt.type === 'divider'" />
+              <a-menu-item v-else :key="opt.key">
+                <span v-if="opt.icon" style="margin-right: 8px"><component :is="opt.icon" /></span>
+                {{ opt.label }}
+              </a-menu-item>
+            </template>
+          </a-menu>
+        </div>
+      </div>
+    </teleport>
   </div>
 </template>
 
 <script setup>
   import { ref, computed, h, nextTick } from 'vue';
   import { useRouter } from 'vue-router';
-  import { NTag, NDropdown, NIcon, useMessage } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import {
     EyeOutline,
     PencilOutline,
@@ -78,7 +87,7 @@
     PauseOutline,
     ArchiveOutline,
     SendOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
   import { useLanguageStore } from '@/store/modules/languageStore';
   import { storeToRefs } from 'pinia';
 
@@ -100,7 +109,6 @@
   ]);
 
   const router = useRouter();
-  const message = useMessage();
   const languageStore = useLanguageStore();
   const { languagesList } = storeToRefs(languageStore);
 
@@ -246,12 +254,12 @@ app.init()`;
       {
         label: '编辑模板',
         key: 'edit',
-        icon: () => h(NIcon, { size: 16 }, { default: () => h(PencilOutline) }),
+        icon: () => h(PencilOutline, { style: { fontSize: '16px' } }),
       },
       {
         label: '分享模板',
         key: 'share',
-        icon: () => h(NIcon, { size: 16 }, { default: () => h(ShareOutline) }),
+        icon: () => h(ShareOutline, { style: { fontSize: '16px' } }),
       },
     ];
 
@@ -260,33 +268,33 @@ app.init()`;
       options.push({
         label: '发布模板',
         key: 'publish',
-        icon: () => h(NIcon, { size: 16 }, { default: () => h(SendOutline) }),
+        icon: () => h(SendOutline, { style: { fontSize: '16px' } }),
       });
     } else if (status === 'published') {
       options.push({
         label: '暂停发布',
         key: 'archive',
-        icon: () => h(NIcon, { size: 16 }, { default: () => h(PauseOutline) }),
+        icon: () => h(PauseOutline, { style: { fontSize: '16px' } }),
       });
     } else if (status === 'archived') {
       options.push({
         label: '重新发布',
         key: 'republish',
-        icon: () => h(NIcon, { size: 16 }, { default: () => h(CheckmarkCircleOutline) }),
+        icon: () => h(CheckmarkCircleOutline, { style: { fontSize: '16px' } }),
       });
     } else if (status === 'pending_review') {
       options.push({
         label: '撤回审核',
         key: 'withdraw',
-        icon: () => h(NIcon, { size: 16 }, { default: () => h(ArchiveOutline) }),
+        icon: () => h(ArchiveOutline, { style: { fontSize: '16px' } }),
       });
     }
 
-    options.push({ type: 'divider' });
+    options.push({ type: 'divider', key: 'd1' });
     options.push({
       label: '删除模板',
       key: 'delete',
-      icon: () => h(NIcon, { size: 16 }, { default: () => h(TrashOutline) }),
+      icon: () => h(TrashOutline, { style: { fontSize: '16px' } }),
     });
 
     return options;
@@ -626,5 +634,30 @@ app.init()`;
     display: flex;
     align-items: center;
     gap: 4px;
+  }
+
+  /* 右键菜单 */
+  .context-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+  }
+
+  .context-menu {
+    position: fixed;
+    z-index: 10000;
+    min-width: 160px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+    padding: 4px 0;
+  }
+
+  .context-menu :deep(.ant-menu) {
+    border-right: none;
+    box-shadow: none;
   }
 </style>

@@ -15,19 +15,13 @@
         />
       </div>
       <div class="editable-cell-action" v-if="!getRowEditable">
-        <n-icon class="mx-2 cursor-pointer" title="保存">
-          <CheckOutlined @click="handleSubmit" />
-        </n-icon>
-        <n-icon class="mx-2 cursor-pointer" title="取消">
-          <CloseOutlined @click="handleCancel" />
-        </n-icon>
+        <CheckOutlined class="mx-2 cursor-pointer" title="保存" @click="handleSubmit" />
+        <CloseOutlined class="mx-2 cursor-pointer" title="取消" @click="handleCancel" />
       </div>
     </div>
     <div v-else class="flex items-center editable-cell-content" @click="handleEdit">
       {{ getValues }}
-      <n-icon class="ml-1 edit-icon" v-if="!column.editRow">
-        <FormOutlined />
-      </n-icon>
+      <FormOutlined class="ml-1 edit-icon" v-if="!column.editRow" />
     </div>
   </div>
 </template>
@@ -37,7 +31,7 @@
   import type { EditRecordRow } from './index';
 
   import { defineComponent, ref, unref, nextTick, computed, watchEffect, toRaw } from 'vue';
-  import { FormOutlined, CloseOutlined, CheckOutlined } from '@vicons/antd';
+  import { FormOutlined, CloseOutlined, CheckOutlined } from '@ant-design/icons-vue';
   import { CellComponent } from './CellComponent';
 
   import { useTableContext } from '../../hooks/useTableContext';
@@ -84,7 +78,7 @@
 
       // const { prefixCls } = useDesign('editable-cell');
 
-      const getComponent = computed(() => props.column?.editComponent || 'NInput');
+      const getComponent = computed(() => props.column?.editComponent || 'Input');
       const getRule = computed(() => props.column?.editRule);
 
       const getRuleVisible = computed(() => {
@@ -93,7 +87,7 @@
 
       const getIsCheckComp = computed(() => {
         const component = unref(getComponent);
-        return ['NCheckbox', 'NRadio'].includes(component);
+        return ['Checkbox', 'Radio'].includes(component);
       });
 
       const getComponentProps = computed(() => {
@@ -109,20 +103,13 @@
 
         let value = isCheckValue ? (isNumber(val) && isBoolean(val) ? val : !!val) : val;
 
-        //TODO 特殊处理 NDatePicker 可能要根据项目 规范自行调整代码
-        if (component === 'NDatePicker') {
+        //TODO 特殊处理 DatePicker 可能要根据项目 规范自行调整代码
+        if (component === 'DatePicker') {
           if (isString(value)) {
-            if (compProps.valueFormat) {
-              valueField = 'formatted-value';
-            } else {
-              value = parseISO(value as any).getTime();
-            }
+            // Ant Design Vue DatePicker 可以直接接受字符串格式的 value（配合 valueFormat）
+            // 如果没有 valueFormat，保持原值
           } else if (isArray(value)) {
-            if (compProps.valueFormat) {
-              valueField = 'formatted-value';
-            } else {
-              value = value.map((item) => parseISO(item).getTime());
-            }
+            // 范围选择器，保持原值
           }
         }
 
@@ -147,7 +134,7 @@
         }
 
         const component = unref(getComponent);
-        if (!component.includes('NSelect')) {
+        if (!component.includes('Select')) {
           return value;
         }
 
@@ -195,25 +182,16 @@
           currentValueRef.value = e;
         } else if (e?.target && Reflect.has(e.target, 'value')) {
           currentValueRef.value = (e as ChangeEvent).target.value;
-        } else if (component === 'NCheckbox') {
+        } else if (component === 'Checkbox') {
           currentValueRef.value = (e as ChangeEvent).target.checked;
         } else if (isString(e) || isBoolean(e) || isNumber(e)) {
           currentValueRef.value = e;
         }
 
-        //TODO 特殊处理 NDatePicker 可能要根据项目 规范自行调整代码
-        if (component === 'NDatePicker') {
-          if (isNumber(currentValueRef.value)) {
-            if (compProps.valueFormat) {
-              currentValueRef.value = format(currentValueRef.value, compProps.valueFormat);
-            }
-          } else if (isArray(currentValueRef.value)) {
-            if (compProps.valueFormat) {
-              currentValueRef.value = currentValueRef.value.map((item) => {
-                format(item, compProps.valueFormat);
-              });
-            }
-          }
+        //TODO 特殊处理 DatePicker 可能要根据项目 规范自行调整代码
+        if (component === 'DatePicker') {
+          // Ant Design Vue DatePicker 的 onChange 直接返回格式化后的值（配合 valueFormat）
+          // 无需额外处理
         }
 
         const onChange = props.column?.editComponentProps?.onChange;
@@ -303,7 +281,7 @@
         }
         const component = unref(getComponent);
 
-        if (component.includes('NInput')) {
+        if (component.includes('Input')) {
           handleCancel();
         }
       }

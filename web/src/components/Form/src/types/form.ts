@@ -1,7 +1,7 @@
 import { ComponentType } from './index';
 import type { CSSProperties } from 'vue';
-import type { GridProps, GridItemProps } from 'naive-ui/lib/grid';
-import type { ButtonProps } from 'naive-ui/lib/button';
+import type { RowProps, ColProps } from 'ant-design-vue';
+import type { ButtonProps } from 'ant-design-vue/es/button';
 
 export interface FormSchema {
   field: string;
@@ -13,7 +13,7 @@ export interface FormSchema {
   componentProps?: object;
   slot?: string;
   rules?: object | object[];
-  giProps?: GridItemProps;
+  colProps?: ColProps;
   isFull?: boolean;
   suffix?: string;
 }
@@ -35,8 +35,8 @@ export interface FormProps {
   submitButtonOptions?: Partial<ButtonProps>;
   submitButtonText?: string;
   resetButtonText?: string;
-  gridProps?: GridProps;
-  giProps?: GridItemProps;
+  rowProps?: RowProps;
+  colProps?: ColProps;
   resetFunc?: () => Promise<void>;
   submitFunc?: () => Promise<void>;
   submitOnReset?: boolean;

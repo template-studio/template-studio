@@ -1,60 +1,52 @@
 <template>
   <div class="template-review-page">
-    <n-card :bordered="false">
-      <n-flex vertical>
+    <a-card :bordered="false">
+      <div style="display: flex; flex-direction: column; gap: 16px">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px">
           <h2 style="margin: 0; font-size: 18px">待审核模板</h2>
-          <n-button @click="loadData">
+          <a-button @click="loadData">
             <template #icon><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></template>
             刷新
-          </n-button>
+          </a-button>
         </div>
 
-        <n-data-table
+        <a-table
           :columns="columns"
-          :data="templates"
+          :data-source="templates"
           :loading="loading"
           :pagination="pagination"
-          @update:page="handlePageChange"
+          row-key="id"
         />
-      </n-flex>
-    </n-card>
+      </div>
+    </a-card>
 
     <!-- 审核弹窗 -->
-    <n-modal v-model:show="showReviewModal" :mask-closable="false">
-      <n-card style="width: 450px" title="审核模板" :bordered="false" size="huge" role="dialog">
-        <template #header-extra>
-          <n-button quaternary circle @click="showReviewModal = false">
-            <template #icon><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></template>
-          </n-button>
-        </template>
-        <div v-if="reviewingTemplate" style="margin-bottom: 16px">
-          <p style="font-weight: 600; margin: 0 0 4px">{{ reviewingTemplate.name }}</p>
-          <p style="font-size: 13px; color: #94a3b8; margin: 0">{{ reviewingTemplate.description }}</p>
+    <a-modal v-model:open="showReviewModal" :mask-closable="false" title="审核模板" width="450px">
+      <div v-if="reviewingTemplate" style="margin-bottom: 16px">
+        <p style="font-weight: 600; margin: 0 0 4px">{{ reviewingTemplate.name }}</p>
+        <p style="font-size: 13px; color: #94a3b8; margin: 0">{{ reviewingTemplate.description }}</p>
+      </div>
+      <a-form layout="vertical">
+        <a-form-item label="审核备注">
+          <a-textarea v-model:value="reviewReason" placeholder="填写审核意见（拒绝时必填）" :rows="3" />
+        </a-form-item>
+      </a-form>
+      <template #footer>
+        <div style="display: flex; gap: 12px; justify-content: flex-end">
+          <a-button @click="showReviewModal = false">取消</a-button>
+          <a-button danger @click="handleReview('reject')" :loading="reviewing">拒绝</a-button>
+          <a-button type="primary" @click="handleReview('approve')" :loading="reviewing">通过</a-button>
         </div>
-        <n-form label-placement="top">
-          <n-form-item label="审核备注">
-            <n-input v-model:value="reviewReason" type="textarea" placeholder="填写审核意见（拒绝时必填）" :rows="3" />
-          </n-form-item>
-        </n-form>
-        <template #footer>
-          <div style="display: flex; gap: 12px; justify-content: flex-end">
-            <n-button @click="showReviewModal = false">取消</n-button>
-            <n-button type="error" @click="handleReview('reject')" :loading="reviewing">拒绝</n-button>
-            <n-button type="primary" @click="handleReview('approve')" :loading="reviewing">通过</n-button>
-          </div>
-        </template>
-      </n-card>
-    </n-modal>
+      </template>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
 import { ref, h, onMounted } from 'vue';
-import { useMessage, NButton, NTag, NSpace } from 'naive-ui';
+import { Button, Space, message } from 'ant-design-vue';
 import { listPendingTemplates, reviewTemplate } from '@/api/templates/contribution';
 
-const message = useMessage();
 const templates = ref([]);
 const loading = ref(false);
 const currentPage = ref(1);
@@ -67,24 +59,24 @@ const reviewReason = ref('');
 const reviewing = ref(false);
 
 const pagination = {
-  page: 1,
+  current: currentPage,
   pageSize,
-  itemCount: 0,
+  total,
   onChange: (page) => { currentPage.value = page; loadData(); },
 };
 
 const columns = [
-  { title: 'ID', key: 'id', width: 160, ellipsis: { tooltip: true } },
-  { title: '模板名称', key: 'name', ellipsis: { tooltip: true } },
-  { title: '描述', key: 'description', ellipsis: { tooltip: true } },
-  { title: '类型', key: 'templateType', width: 100, render: (row) => {
+  { title: 'ID', dataIndex: 'id', key: 'id', width: 160, ellipsis: true },
+  { title: '模板名称', dataIndex: 'name', key: 'name', ellipsis: true },
+  { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
+  { title: '类型', dataIndex: 'templateType', key: 'templateType', width: 100, customRender: ({ text }) => {
     const map = { basic: '基础', scaffold: '脚手架', data_driven: '数据驱动' };
-    return map[row.templateType] || row.templateType;
+    return map[text] || text;
   }},
-  { title: '创建时间', key: 'createdAt', width: 200 },
-  { title: '操作', key: 'actions', width: 100, render: (row) => {
-    return h(NSpace, { size: 'small' }, () => [
-      h(NButton, { size: 'small', type: 'primary', onClick: () => openReview(row) }, () => '审核'),
+  { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 200 },
+  { title: '操作', dataIndex: 'actions', key: 'actions', width: 100, customRender: ({ record }) => {
+    return h(Space, { size: 'small' }, () => [
+      h(Button, { size: 'small', type: 'primary', onClick: () => openReview(record) }, () => '审核'),
     ]);
   }},
 ];
@@ -95,8 +87,6 @@ async function loadData() {
     const res = await listPendingTemplates({ page: currentPage.value, pageSize });
     templates.value = res?.templatesList || [];
     total.value = res?.total || 0;
-    pagination.itemCount = total.value;
-    pagination.page = currentPage.value;
   } catch {
     message.error('加载失败');
   } finally {

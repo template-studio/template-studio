@@ -16,14 +16,12 @@
     <!-- 自动保存指示器 -->
     <transition name="auto-save-fade">
       <div v-if="autoSaveIndicator" class="auto-save-indicator">
-        <n-icon size="16" style="margin-right: 6px">
-          <svg viewBox="0 0 24 24">
-            <path
-              fill="currentColor"
-              d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"
-            />
-          </svg>
-        </n-icon>
+        <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; margin-right: 6px">
+          <path
+            fill="currentColor"
+            d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"
+          />
+        </svg>
         已自动保存
       </div>
     </transition>
@@ -179,7 +177,7 @@
   import QuickDesignDrawer from './components/QuickDesignDrawer/index.vue';
   import { templateSyntaxCategories as syntaxData } from './data/templateSyntax';
   import { useTemplateFileStore } from '@/store/modules/templateFileStore';
-  import { useMessage, NIcon } from 'naive-ui';
+  import { message } from 'ant-design-vue';
 
   // Props
   const props = defineProps({
@@ -192,8 +190,6 @@
 
   const router = useRouter();
   const route = useRoute();
-  const message = useMessage();
-
   // 编辑器模式
   const editorMode = computed(() => props.mode);
 

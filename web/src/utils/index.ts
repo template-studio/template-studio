@@ -1,14 +1,15 @@
 import { h, unref } from 'vue';
 import type { App, Plugin, Component } from 'vue';
-import { NIcon, NTag } from 'naive-ui';
+import { Tag } from 'ant-design-vue';
 import { PageEnum } from '@/enums/pageEnum';
 import { isObject } from './is/index';
 import { cloneDeep } from 'lodash-es';
 /**
  * render 图标
+ * Ant Design Vue 菜单需要渲染函数
  * */
 export function renderIcon(icon) {
-  return () => h(NIcon, null, { default: () => h(icon) });
+  return () => h(icon);
 }
 /**
  * font 图标(Font class)
@@ -27,25 +28,18 @@ export function renderUnicodeIcon(icon: string, iconName = 'iconfont') {
  * */
 export function renderfontsvg(icon) {
   return () =>
-    h(NIcon, null, {
-      default: () =>
-        h('svg', { class: `icon`, 'aria-hidden': 'true' }, h('use', { 'xlink:href': `#${icon}` })),
-    });
+    h('svg', { class: `icon`, 'aria-hidden': 'true' }, h('use', { 'xlink:href': `#${icon}` }));
 }
 
 /**
  * render new Tag
  * */
-const newTagColors = { color: '#f90', textColor: '#fff', borderColor: '#f90' };
-export function renderNew(type = 'warning', text = 'New', color: object = newTagColors) {
+export function renderNew(type = 'warning', text = 'New', color: object = { color: '#f90' }) {
   return () =>
     h(
-      NTag as any,
+      Tag as any,
       {
-        type,
-        round: true,
-        size: 'small',
-        color,
+        color: (color as any).color || '#f90',
       },
       { default: () => text }
     );
@@ -58,9 +52,7 @@ export function generatorMenu(routerMap: Array<any>) {
   return filterRouter(routerMap).map((item) => {
     const isRoot = isRootRouter(item);
     const info = isRoot ? item.children[0] : item;
-    const currentMenu = {
-      ...info,
-      ...info.meta,
+    const currentMenu: any = {
       label: info.meta?.title,
       key: info.name,
       icon: isRoot ? item.meta?.icon : info.meta?.icon,
@@ -85,10 +77,7 @@ export function generatorMenuMix(routerMap: Array<any>, routerName: string, loca
     newRouter.forEach((item) => {
       const isRoot = isRootRouter(item);
       const info = isRoot ? item.children[0] : item;
-      info.children = undefined;
-      const currentMenu = {
-        ...info,
-        ...info.meta,
+      const currentMenu: any = {
         label: info.meta?.title,
         key: info.name,
       };
@@ -107,9 +96,7 @@ export function getChildrenRouter(routerMap: Array<any>) {
   return filterRouter(routerMap).map((item) => {
     const isRoot = isRootRouter(item);
     const info = isRoot ? item.children[0] : item;
-    const currentMenu = {
-      ...info,
-      ...info.meta,
+    const currentMenu: any = {
       label: info.meta?.title,
       key: info.name,
     };

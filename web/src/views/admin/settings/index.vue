@@ -1,6 +1,6 @@
 <template>
   <div class="settings-page">
-    <n-card title="系统设置" :bordered="false">
+    <a-card title="系统设置" :bordered="false">
       <div class="settings-layout">
         <div class="settings-sidebar">
           <div
@@ -9,7 +9,7 @@
             :class="['sidebar-item', { active: activeTab === tab.key }]"
             @click="activeTab = tab.key"
           >
-            <n-icon size="18"><component :is="tab.icon" /></n-icon>
+            <component :is="tab.icon" style="font-size: 18px" />
             <span>{{ tab.label }}</span>
           </div>
         </div>
@@ -18,13 +18,13 @@
           <SmtpSettings v-if="activeTab === 'smtp'" />
         </div>
       </div>
-    </n-card>
+    </a-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { BookmarkOutline, MailOutline } from '@vicons/ionicons5';
+import { BookmarkOutline, MailOutline } from '@/icons/ionicons5';
 import FooterSettings from './footer.vue';
 import SmtpSettings from './smtp.vue';
 

@@ -1,30 +1,26 @@
 <template>
-  <n-tooltip trigger="hover">
-    <template #trigger>
-      <div class="cursor-pointer table-toolbar-right-icon">
-        <n-popover trigger="click" :width="230" class="toolbar-popover" placement="bottom-end">
-          <template #trigger>
-            <n-icon size="18">
-              <SettingOutlined />
-            </n-icon>
-          </template>
-          <template #header>
-            <div class="table-toolbar-inner-popover-title">
-              <n-space>
-                <n-checkbox v-model:checked="checkAll" @update:checked="onCheckAll"
-                  >列展示</n-checkbox
-                >
-                <n-checkbox v-model:checked="selection" @update:checked="onSelection"
-                  >勾选列</n-checkbox
-                >
-                <n-button text type="info" size="small" class="mt-1" @click="resetColumns"
-                  >重置</n-button
-                >
-              </n-space>
-            </div>
-          </template>
+  <a-tooltip trigger="hover">
+    <template #title>
+      <span>列设置</span>
+    </template>
+    <div class="cursor-pointer table-toolbar-right-icon">
+      <a-popover trigger="click" :overlayStyle="{ width: '230px' }" placement="bottomLeft">
+        <template #content>
+          <div class="table-toolbar-inner-popover-title">
+            <a-space>
+              <a-checkbox v-model:checked="checkAll" @change="onCheckAll"
+                >列展示</a-checkbox
+              >
+              <a-checkbox v-model:checked="selection" @change="onSelection"
+                >勾选列</a-checkbox
+              >
+              <a-button type="link" size="small" class="mt-1" @click="resetColumns"
+                >重置</a-button
+              >
+            </a-space>
+          </div>
           <div class="table-toolbar-inner">
-            <n-checkbox-group v-model:value="checkList" @update:value="onChange">
+            <a-checkbox-group v-model:value="checkList" @change="onChange">
               <Draggable
                 v-model="columnsList"
                 animation="300"
@@ -45,50 +41,44 @@
                       class="drag-icon"
                       :class="{ 'drag-icon-hidden': element.draggable === false }"
                     >
-                      <n-icon size="18">
-                        <DragOutlined />
-                      </n-icon>
+                      <DragOutlined style="font-size: 18px" />
                     </span>
-                    <n-checkbox :value="element.key" :label="element.title" />
+                    <a-checkbox :value="element.key">{{ element.title }}</a-checkbox>
                     <div class="fixed-item">
-                      <n-tooltip trigger="hover" placement="bottom">
-                        <template #trigger>
-                          <n-icon
-                            size="18"
-                            :color="element.fixed === 'left' ? '#2080f0' : undefined"
-                            class="cursor-pointer"
-                            @click="fixedColumn(element, 'left')"
-                          >
-                            <VerticalRightOutlined />
-                          </n-icon>
+                      <a-tooltip trigger="hover" placement="bottom">
+                        <template #title>
+                          <span>固定到左侧</span>
                         </template>
-                        <span>固定到左侧</span>
-                      </n-tooltip>
-                      <n-divider vertical />
-                      <n-tooltip trigger="hover" placement="bottom">
-                        <template #trigger>
-                          <n-icon
-                            size="18"
-                            :color="element.fixed === 'right' ? '#2080f0' : undefined"
-                            class="cursor-pointer"
-                            @click="fixedColumn(element, 'right')"
-                          >
-                            <VerticalLeftOutlined />
-                          </n-icon>
+                        <VerticalRightOutlined
+                          style="font-size: 18px"
+                          :style="{ color: element.fixed === 'left' ? '#2080f0' : undefined }"
+                          class="cursor-pointer"
+                          @click="fixedColumn(element, 'left')"
+                        />
+                      </a-tooltip>
+                      <a-divider type="vertical" />
+                      <a-tooltip trigger="hover" placement="bottom">
+                        <template #title>
+                          <span>固定到右侧</span>
                         </template>
-                        <span>固定到右侧</span>
-                      </n-tooltip>
+                        <VerticalLeftOutlined
+                          style="font-size: 18px"
+                          :style="{ color: element.fixed === 'right' ? '#2080f0' : undefined }"
+                          class="cursor-pointer"
+                          @click="fixedColumn(element, 'right')"
+                        />
+                      </a-tooltip>
                     </div>
                   </div>
                 </template>
               </Draggable>
-            </n-checkbox-group>
+            </a-checkbox-group>
           </div>
-        </n-popover>
-      </div>
-    </template>
-    <span>列设置</span>
-  </n-tooltip>
+        </template>
+        <SettingOutlined style="font-size: 18px" />
+      </a-popover>
+    </div>
+  </a-tooltip>
 </template>
 
 <script lang="ts">
@@ -100,7 +90,7 @@
     DragOutlined,
     VerticalRightOutlined,
     VerticalLeftOutlined,
-  } from '@vicons/antd';
+  } from '@ant-design/icons-vue';
   import Draggable from 'vuedraggable';
   import { useDesignSetting } from '@/hooks/setting/useDesignSetting';
 
@@ -196,7 +186,7 @@
       //全选
       function onCheckAll(e) {
         let checkList = table.getCacheColumns(true);
-        if (e) {
+        if (e.target?.checked ?? e) {
           setColumns(checkList);
           state.checkList = checkList;
         } else {
@@ -215,7 +205,7 @@
       //勾选列
       function onSelection(e) {
         let checkList = table.getCacheColumns();
-        if (e) {
+        if (e.target?.checked ?? e) {
           checkList.unshift({ type: 'selection', key: 'selection' });
           setColumns(checkList);
         } else {
@@ -324,7 +314,7 @@
   }
 
   .toolbar-popover {
-    .n-popover__content {
+    .ant-popover-inner-content {
       padding: 0;
     }
   }

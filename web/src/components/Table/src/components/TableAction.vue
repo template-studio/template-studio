@@ -2,32 +2,35 @@
   <div class="tableAction">
     <div class="flex items-center justify-center">
       <template v-for="(action, index) in getActions" :key="`${index}-${action.label}`">
-        <n-button v-bind="action" class="mx-1">
-          {{ action.label }}
-          <template #icon v-if="action.hasOwnProperty('icon')">
-            <n-icon :component="action.icon" />
+        <a-button v-bind="getButtonProps(action)" @click="action.onClick?.()" class="mx-1">
+          <template #icon v-if="action.icon">
+            <component :is="action.icon" />
           </template>
-        </n-button>
+          {{ action.label }}
+        </a-button>
       </template>
-      <n-dropdown
+      <a-dropdown
         v-if="dropDownActions && getDropdownList.length"
-        trigger="hover"
-        :options="getDropdownList"
-        @select="select"
+        :trigger="['hover']"
       >
         <slot name="more"></slot>
-        <n-button v-bind="getMoreProps" class="mx-1" v-if="!$slots.more" icon-placement="right">
+        <a-button v-bind="getMoreProps" class="mx-1" v-if="!$slots.more">
           <div class="flex items-center">
             <span>更多</span>
-            <n-icon size="14" class="ml-1">
-              <DownOutlined />
-            </n-icon>
+            <DownOutlined class="ml-1" style="font-size: 14px" />
           </div>
-          <!--          <template #icon>-->
-          <!--            -->
-          <!--          </template>-->
-        </n-button>
-      </n-dropdown>
+        </a-button>
+        <template #overlay>
+          <a-menu @click="handleDropdownSelect">
+            <a-menu-item
+              v-for="(item, idx) in getDropdownList"
+              :key="item.key || idx"
+            >
+              {{ item.label }}
+            </a-menu-item>
+          </a-menu>
+        </template>
+      </a-dropdown>
     </div>
   </div>
 </template>
@@ -37,7 +40,7 @@
   import { ActionItem } from '@/components/Table';
   import { usePermission } from '@/hooks/web/usePermission';
   import { isBoolean, isFunction } from '@/utils/is';
-  import { DownOutlined } from '@vicons/antd';
+  import { DownOutlined } from '@ant-design/icons-vue';
 
   export default defineComponent({
     name: 'TableAction',
@@ -71,7 +74,6 @@
 
       const getMoreProps = computed(() => {
         return {
-          text: actionText,
           type: actionType,
           size: 'small',
         };
@@ -82,13 +84,13 @@
           .filter((action) => {
             return hasPermission(action.auth as string[]) && isIfShow(action);
           })
-          .map((action) => {
+          .map((action, index) => {
             const { popConfirm } = action;
             return {
               size: 'small',
-              text: actionText,
               type: actionType,
               ...action,
+              key: action.key || index,
               ...popConfirm,
               onConfirm: popConfirm?.confirm,
               onCancel: popConfirm?.cancel,
@@ -120,7 +122,6 @@
             //需要展示什么风格，自己修改一下参数
             return {
               size: 'small',
-              text: actionText,
               type: actionType,
               ...action,
               ...(popConfirm || {}),
@@ -131,10 +132,21 @@
           });
       });
 
+      function getButtonProps(action: any) {
+        const { icon, label, popConfirm, ifShow, auth, enable, ...rest } = action;
+        return rest;
+      }
+
+      function handleDropdownSelect(e: any) {
+        props.select?.(e.key);
+      }
+
       return {
         getActions,
         getDropdownList,
         getMoreProps,
+        getButtonProps,
+        handleDropdownSelect,
       };
     },
   });

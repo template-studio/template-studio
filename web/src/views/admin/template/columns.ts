@@ -1,7 +1,7 @@
 import { h } from 'vue';
-import { NTag, NIcon } from 'naive-ui';
+import { Tag } from 'ant-design-vue';
 import { BasicColumn } from '@/components/Table';
-import { Star } from '@vicons/ionicons5';
+import { Star } from '@/icons/ionicons5';
 
 export interface TemplateData {
   id: number;
@@ -35,40 +35,43 @@ export const setColumnHelpers = (
 export const columns: BasicColumn<TemplateData>[] = [
   {
     title: 'ID',
+    dataIndex: 'id',
     key: 'id',
-    width: 160,
+    width: 120,
     ellipsis: {
       tooltip: true,
     },
   },
   {
     title: '模板名称',
+    dataIndex: 'name',
     key: 'name',
-    width: 220,
-    render(row) {
+    width: 200,
+    customRender({ record }) {
       try {
         return h('div', { style: 'display: flex; align-items: center; gap: 8px' }, [
-          row.isFeatured || row.is_featured
-            ? h(NIcon, { color: '#f0a020', size: 16 }, { default: () => h(Star) })
+          record.isFeatured || record.is_featured
+            ? h(Star, { style: 'color: #f0a020; font-size: 16px' })
             : null,
-          h('span', { class: 'template-name' }, row.name || '未命名模板'),
+          h('span', { class: 'template-name' }, record.name || '未命名模板'),
         ]);
       } catch (error) {
         console.error('模板名称渲染错误:', error);
-        return h('span', row.name || '未命名模板');
+        return h('span', record.name || '未命名模板');
       }
     },
   },
   {
     title: '描述',
+    dataIndex: 'description',
     key: 'description',
-    width: 250,
+    width: 220,
     ellipsis: {
       tooltip: true,
     },
-    render(row) {
+    customRender({ record }) {
       try {
-        return row.description || h('span', { class: 'text-placeholder' }, '暂无描述');
+        return record.description || h('span', { class: 'text-placeholder' }, '暂无描述');
       } catch (error) {
         console.error('描述渲染错误:', error);
         return '-';
@@ -77,15 +80,16 @@ export const columns: BasicColumn<TemplateData>[] = [
   },
   {
     title: '分类',
+    dataIndex: 'categoryId',
     key: 'categoryId',
     width: 100,
-    render(row) {
+    customRender({ record }) {
       try {
-        const categoryId = row.categoryId || row.category_id;
+        const categoryId = record.categoryId || record.category_id;
         if (!categoryId) return '-';
         const categoryName = getCategoryName?.(Number(categoryId));
         return categoryName
-          ? h(NTag, { type: 'info', size: 'small' }, { default: () => categoryName })
+          ? h(Tag, { color: 'blue' }, { default: () => categoryName })
           : `分类${categoryId}`;
       } catch (error) {
         console.error('分类渲染错误:', error);
@@ -95,24 +99,24 @@ export const columns: BasicColumn<TemplateData>[] = [
   },
   {
     title: '语言',
+    dataIndex: 'languages',
     key: 'languages',
     width: 150,
-    render(row) {
+    customRender({ record }) {
       try {
-        if (!row.languages || row.languages.length === 0) return '-';
+        if (!record.languages || record.languages.length === 0) return '-';
         return h(
           'div',
           { style: 'display: flex; flex-wrap: wrap; gap: 4px' },
-          row.languages
+          record.languages
             .slice(0, 2)
             .map((lang) => {
               const isPrimary = lang.isPrimary === 1 || lang.is_primary === 1;
               const langName = getLanguageName?.(lang.languageId) || `语言${lang.languageId}`;
               return h(
-                NTag,
+                Tag,
                 {
-                  type: isPrimary ? 'info' : 'default',
-                  size: 'small',
+                  color: isPrimary ? 'blue' : 'default',
                 },
                 {
                   default: () => langName,
@@ -120,12 +124,12 @@ export const columns: BasicColumn<TemplateData>[] = [
               );
             })
             .concat(
-              row.languages.length > 2
+              record.languages.length > 2
                 ? [
                     h(
                       'span',
                       { style: 'color: #999; font-size: 12px' },
-                      `+${row.languages.length - 2}`
+                      `+${record.languages.length - 2}`
                     ),
                   ]
                 : []
@@ -139,11 +143,12 @@ export const columns: BasicColumn<TemplateData>[] = [
   },
   {
     title: '创建时间',
+    dataIndex: 'createdAt',
     key: 'createdAt',
     width: 180,
-    render(row) {
+    customRender({ record }) {
       try {
-        return formatDate(row.createdAt || row.created_at);
+        return formatDate(record.createdAt || record.created_at);
       } catch (error) {
         console.error('时间渲染错误:', error);
         return '-';

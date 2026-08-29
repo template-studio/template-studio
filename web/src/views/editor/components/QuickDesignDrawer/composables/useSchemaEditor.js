@@ -3,7 +3,7 @@
  * 负责 CodeMirror 编辑器的初始化、更新、格式化、导入/导出等功能
  */
 import { ref, nextTick } from 'vue'
-import { useMessage } from 'naive-ui'
+import { message } from 'ant-design-vue'
 import { EditorView, basicSetup } from 'codemirror'
 import { EditorState } from '@codemirror/state'
 import { json } from '@codemirror/lang-json'
@@ -11,7 +11,6 @@ import { yaml } from '@codemirror/lang-yaml'
 import * as YAML from 'js-yaml'
 
 export function useSchemaEditor(props, emit) {
-  const message = useMessage()
 
   // ========== 状态 ==========
 

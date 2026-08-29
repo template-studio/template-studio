@@ -1,19 +1,17 @@
 <template>
-  <n-form v-bind="getBindValue" :model="formModel" ref="formElRef">
-    <n-grid v-bind="getGrid">
-      <n-gi v-bind="schema.giProps" v-for="schema in getSchema" :key="schema.field">
-        <n-form-item :label="schema.label" :path="schema.field">
+  <a-form v-bind="getBindValue" :model="formModel" ref="formElRef">
+    <a-row v-bind="getRowProps">
+      <a-col v-bind="schema.colProps ?? getProps.colProps" v-for="schema in getSchema" :key="schema.field">
+        <a-form-item :label="schema.label" :name="schema.field">
           <!--标签名右侧温馨提示-->
           <template #label v-if="schema.labelMessage">
             {{ schema.label }}
-            <n-tooltip trigger="hover" :style="schema.labelMessageStyle">
-              <template #trigger>
-                <n-icon size="18" class="text-gray-400 cursor-pointer">
-                  <QuestionCircleOutlined />
-                </n-icon>
+            <a-tooltip :style="schema.labelMessageStyle">
+              <template #title>
+                {{ schema.labelMessage }}
               </template>
-              {{ schema.labelMessage }}
-            </n-tooltip>
+              <QuestionCircleOutlined class="text-gray-400 cursor-pointer" />
+            </a-tooltip>
           </template>
 
           <!--判断插槽-->
@@ -26,33 +24,34 @@
             ></slot>
           </template>
 
-          <!--NCheckbox-->
-          <template v-else-if="schema.component === 'NCheckbox'">
-            <n-checkbox-group v-model:value="formModel[schema.field]">
-              <n-space>
-                <n-checkbox
-                  v-for="item in schema.componentProps.options"
-                  :key="item.value"
-                  :value="item.value"
-                  :label="item.label"
-                />
-              </n-space>
-            </n-checkbox-group>
-          </template>
-
-          <!--NRadioGroup-->
-          <template v-else-if="schema.component === 'NRadioGroup'">
-            <n-radio-group v-model:value="formModel[schema.field]">
-              <n-space>
-                <n-radio
+          <!--Checkbox-->
+          <template v-else-if="schema.component === 'Checkbox'">
+            <a-checkbox-group v-model:value="formModel[schema.field]">
+              <a-space>
+                <a-checkbox
                   v-for="item in schema.componentProps.options"
                   :key="item.value"
                   :value="item.value"
                 >
                   {{ item.label }}
-                </n-radio>
-              </n-space>
-            </n-radio-group>
+                </a-checkbox>
+              </a-space>
+            </a-checkbox-group>
+          </template>
+
+          <!--RadioGroup-->
+          <template v-else-if="schema.component === 'Radio.Group'">
+            <a-radio-group v-model:value="formModel[schema.field]">
+              <a-space>
+                <a-radio
+                  v-for="item in schema.componentProps.options"
+                  :key="item.value"
+                  :value="item.value"
+                >
+                  {{ item.label }}
+                </a-radio>
+              </a-space>
+            </a-radio-group>
           </template>
           <!--动态渲染表单组件-->
           <component
@@ -71,55 +70,47 @@
               :value="formModel[schema.field]"
             ></slot>
           </template>
-        </n-form-item>
-      </n-gi>
+        </a-form-item>
+      </a-col>
       <!--提交 重置 展开 收起 按钮-->
-      <n-gi
-        :span="isInline ? '' : 24"
-        :suffix="isInline ? true : false"
-        #="{ overflow }"
+      <a-col
+        :span="isInline ? undefined : 24"
+        :offset="isInline ? undefined : 0"
         v-if="getProps.showActionButtonGroup"
       >
-        <n-space
+        <a-space
           align="center"
-          :justify="isInline ? 'end' : 'start'"
           :style="{ 'margin-left': `${isInline ? 12 : getProps.labelWidth}px` }"
         >
-          <n-button
+          <a-button
             v-if="getProps.showSubmitButton"
             v-bind="getSubmitBtnOptions"
             @click="handleSubmit"
             :loading="loadingSub"
-            attr-type="submit"
-            >{{ getProps.submitButtonText }}</n-button
+            html-type="submit"
+            >{{ getProps.submitButtonText }}</a-button
           >
-          <n-button
+          <a-button
             v-if="getProps.showResetButton"
             v-bind="getResetBtnOptions"
             @click="resetFields"
-            >{{ getProps.resetButtonText }}</n-button
+            >{{ getProps.resetButtonText }}</a-button
           >
-          <n-button
-            type="primary"
-            text
-            icon-placement="right"
+          <a-button
+            type="link"
             v-if="isInline && getProps.showAdvancedButton"
             @click="unfoldToggle"
           >
             <template #icon>
-              <n-icon size="14" class="unfold-icon" v-if="overflow">
-                <DownOutlined />
-              </n-icon>
-              <n-icon size="14" class="unfold-icon" v-else>
-                <UpOutlined />
-              </n-icon>
+              <DownOutlined v-if="gridCollapsed" class="unfold-icon" />
+              <UpOutlined v-else class="unfold-icon" />
             </template>
-            {{ overflow ? '展开' : '收起' }}
-          </n-button>
-        </n-space>
-      </n-gi>
-    </n-grid>
-  </n-form>
+            {{ gridCollapsed ? '展开' : '收起' }}
+          </a-button>
+        </a-space>
+      </a-col>
+    </a-row>
+  </a-form>
 </template>
 
 <script lang="ts">
@@ -129,10 +120,10 @@
   import { useFormValues } from './hooks/useFormValues';
 
   import { basicProps } from './props';
-  import { DownOutlined, UpOutlined, QuestionCircleOutlined } from '@vicons/antd';
+  import { DownOutlined, UpOutlined, QuestionCircleOutlined } from '@ant-design/icons-vue';
 
   import type { Ref } from 'vue';
-  import type { GridProps } from 'naive-ui/lib/grid';
+  import type { RowProps } from 'ant-design-vue';
   import type { FormSchema, FormProps, FormActionType } from './types/form';
 
   import { isArray } from '@/utils/is/index';
@@ -204,12 +195,11 @@
         return layout === 'inline';
       });
 
-      const getGrid = computed((): GridProps => {
-        const { gridProps } = unref(getProps);
+      const getRowProps = computed((): RowProps => {
+        const { rowProps } = unref(getProps);
         return {
-          ...gridProps,
-          collapsed: isInline.value ? gridCollapsed.value : false,
-          responsive: 'screen',
+          gutter: 24,
+          ...rowProps,
         };
       });
 
@@ -287,7 +277,7 @@
       return {
         formElRef,
         formModel,
-        getGrid,
+        getRowProps,
         getProps,
         getBindValue,
         getSchema,
@@ -297,6 +287,7 @@
         resetFields,
         loadingSub,
         isInline,
+        gridCollapsed,
         getComponentProps,
         unfoldToggle,
       };

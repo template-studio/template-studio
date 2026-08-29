@@ -1,56 +1,50 @@
 <template>
   <div class="var-preset-manage">
-    <n-flex vertical>
-      <n-card :bordered="false">
-        <n-form inline :label-width="80" :model="searchForm">
-          <n-form-item label="预设名称">
-            <n-input
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <a-card :bordered="false">
+        <a-form layout="inline" :model="searchForm">
+          <a-form-item label="预设名称">
+            <a-input
               v-model:value="searchForm.name"
               placeholder="输入预设名称进行搜索"
-              clearable
+              allow-clear
               style="width: 200px"
               @keyup.enter="handleSearch"
             >
               <template #prefix>
-                <n-icon>
-                  <SearchOutline />
-                </n-icon>
+                <SearchOutline />
               </template>
-            </n-input>
-          </n-form-item>
-          <n-form-item label="分类">
-            <n-select
+            </a-input>
+          </a-form-item>
+          <a-form-item label="分类">
+            <a-select
               v-model:value="searchForm.category"
               placeholder="选择分类"
-              clearable
+              allow-clear
               style="width: 120px"
               :options="categoryOptions"
             />
-          </n-form-item>
-          <n-form-item>
-            <n-space>
-              <n-button type="primary" @click="handleSearch">
+          </a-form-item>
+          <a-form-item>
+            <a-space>
+              <a-button type="primary" @click="handleSearch">
                 <template #icon>
-                  <n-icon>
-                    <SearchOutline />
-                  </n-icon>
+                  <SearchOutline />
                 </template>
                 搜索
-              </n-button>
-              <n-button @click="handleReset">
+              </a-button>
+              <a-button @click="handleReset">
                 <template #icon>
-                  <n-icon>
-                    <RefreshOutline />
-                  </n-icon>
+                  <RefreshOutline />
                 </template>
                 重置
-              </n-button>
-            </n-space>
-          </n-form-item>
-        </n-form>
-      </n-card>
+              </a-button>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </a-card>
 
-      <n-card :bordered="false">
+      <a-card :bordered="false">
         <BasicTable
           ref="actionRef"
           :columns="columns"
@@ -60,232 +54,179 @@
           :scroll-x="1400"
         >
           <template #tableTitle>
-            <n-button type="primary" @click="handleAdd">
+            <a-button type="primary" @click="handleAdd">
               <template #icon>
-                <n-icon>
-                  <AddOutline />
-                </n-icon>
+                <AddOutline />
               </template>
               新建预设
-            </n-button>
+            </a-button>
           </template>
         </BasicTable>
-      </n-card>
-    </n-flex>
+      </a-card>
+    </div>
 
     <!-- 添加/编辑变量预设弹窗 -->
-    <n-modal v-model:show="showAddModal" :mask-closable="false">
-      <n-card
-        style="width: 600px"
-        :title="editingPreset ? '编辑变量预设' : '添加变量预设'"
-        :bordered="false"
-        size="huge"
-        role="dialog"
-        aria-modal="true"
-      >
-        <template #header-extra>
-          <n-button quaternary circle @click="closeModal">
-            <template #icon>
-              <n-icon>
-                <CloseOutline />
-              </n-icon>
-            </template>
-          </n-button>
-        </template>
+    <a-modal v-model:open="showAddModal" :mask-closable="false" :title="editingPreset ? '编辑变量预设' : '添加变量预设'" width="600px">
+      <a-form ref="formRef" :model="formData" :rules="formRules" layout="vertical">
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="预设名称" name="name">
+              <a-input
+                v-model:value="formData.name"
+                placeholder="请输入预设名称"
+                :maxlength="50"
+                show-count
+              />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="显示名称" name="displayName">
+              <a-input
+                v-model:value="formData.displayName"
+                placeholder="请输入显示名称"
+                :maxlength="100"
+                show-count
+              />
+            </a-form-item>
+          </a-col>
+        </a-row>
 
-        <n-form ref="formRef" :model="formData" :rules="formRules" label-placement="top">
-          <n-grid :cols="2" :x-gap="16">
-            <n-grid-item>
-              <n-form-item label="预设名称" path="name">
-                <n-input
-                  v-model:value="formData.name"
-                  placeholder="请输入预设名称"
-                  :maxlength="50"
-                  show-count
-                />
-              </n-form-item>
-            </n-grid-item>
-            <n-grid-item>
-              <n-form-item label="显示名称" path="displayName">
-                <n-input
-                  v-model:value="formData.displayName"
-                  placeholder="请输入显示名称"
-                  :maxlength="100"
-                  show-count
-                />
-              </n-form-item>
-            </n-grid-item>
-          </n-grid>
+        <a-form-item label="描述" name="description">
+          <a-textarea
+            v-model:value="formData.description"
+            placeholder="请输入预设描述"
+            :maxlength="500"
+            show-count
+            :rows="3"
+          />
+        </a-form-item>
 
-          <n-form-item label="描述" path="description">
-            <n-input
-              v-model:value="formData.description"
-              type="textarea"
-              placeholder="请输入预设描述"
-              :maxlength="500"
-              show-count
-              :rows="3"
-            />
-          </n-form-item>
+        <a-row :gutter="16">
+          <a-col :span="8">
+            <a-form-item label="分类" name="category">
+              <a-select
+                v-model:value="formData.category"
+                placeholder="选择分类"
+                :options="categoryOptions"
+              />
+            </a-form-item>
+          </a-col>
+          <a-col :span="8">
+            <a-form-item label="图标" name="icon">
+              <a-input v-model:value="formData.icon" placeholder="图标名称或URL" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="8">
+            <a-form-item label="排序权重" name="sort">
+              <a-input-number
+                v-model:value="formData.sort"
+                placeholder="数值越大越靠前"
+                :min="0"
+                :max="999"
+                style="width: 100%"
+              />
+            </a-form-item>
+          </a-col>
+        </a-row>
 
-          <n-grid :cols="3" :x-gap="16">
-            <n-grid-item>
-              <n-form-item label="分类" path="category">
-                <n-select
-                  v-model:value="formData.category"
-                  placeholder="选择分类"
-                  :options="categoryOptions"
-                />
-              </n-form-item>
-            </n-grid-item>
-            <n-grid-item>
-              <n-form-item label="图标" path="icon">
-                <n-input v-model:value="formData.icon" placeholder="图标名称或URL" />
-              </n-form-item>
-            </n-grid-item>
-            <n-grid-item>
-              <n-form-item label="排序权重" path="sort">
-                <n-input-number
-                  v-model:value="formData.sort"
-                  placeholder="数值越大越靠前"
-                  :min="0"
-                  :max="999"
-                  style="width: 100%"
-                />
-              </n-form-item>
-            </n-grid-item>
-          </n-grid>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="版本" name="version">
+              <a-input v-model:value="formData.version" placeholder="如: 1.0" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="状态" name="isEnabled">
+              <a-switch v-model:checked="formData.isEnabled" />
+              <span style="margin-left: 8px; color: #666">{{
+                formData.isEnabled ? '启用' : '禁用'
+              }}</span>
+            </a-form-item>
+          </a-col>
+        </a-row>
 
-          <n-grid :cols="2" :x-gap="16">
-            <n-grid-item>
-              <n-form-item label="版本" path="version">
-                <n-input v-model:value="formData.version" placeholder="如: 1.0" />
-              </n-form-item>
-            </n-grid-item>
-            <n-grid-item>
-              <n-form-item label="状态" path="isEnabled">
-                <n-switch v-model:value="formData.isEnabled" />
-                <span style="margin-left: 8px; color: #666">{{
-                  formData.isEnabled ? '启用' : '禁用'
-                }}</span>
-              </n-form-item>
-            </n-grid-item>
-          </n-grid>
+        <a-form-item label="默认数据" name="defaultDataJson">
+          <a-textarea
+            v-model:value="formData.defaultDataJson"
+            placeholder="可选，提供默认数据值..."
+            :rows="4"
+          />
+        </a-form-item>
+      </a-form>
 
-          <n-form-item label="默认数据" path="defaultDataJson">
-            <n-input
-              v-model:value="formData.defaultDataJson"
-              type="textarea"
-              placeholder="可选，提供默认数据值..."
-              :rows="4"
-            />
-          </n-form-item>
-        </n-form>
-
-        <template #footer>
-          <div class="modal-footer">
-            <n-button @click="closeModal">取消</n-button>
-            <n-button type="primary" @click="handleSubmit" :loading="submitting">
-              {{ editingPreset ? '更新' : '添加' }}
-            </n-button>
-          </div>
-        </template>
-      </n-card>
-    </n-modal>
+      <template #footer>
+        <div class="modal-footer">
+          <a-button @click="closeModal">取消</a-button>
+          <a-button type="primary" @click="handleSubmit" :loading="submitting">
+            {{ editingPreset ? '更新' : '添加' }}
+          </a-button>
+        </div>
+      </template>
+    </a-modal>
 
     <!-- 预览弹窗 -->
-    <n-modal v-model:show="showPreviewModal" :mask-closable="true">
-      <n-card
-        style="width: 80%; max-width: 800px"
-        title="预设详情"
-        :bordered="false"
-        size="huge"
-        role="dialog"
-        aria-modal="true"
-      >
-        <template #header-extra>
-          <n-button quaternary circle @click="showPreviewModal = false">
-            <template #icon>
-              <n-icon>
-                <CloseOutline />
-              </n-icon>
-            </template>
-          </n-button>
-        </template>
-
-        <div v-if="previewData" class="preview-content">
-          <div class="preview-info">
-            <n-descriptions :column="2" bordered>
-              <n-descriptions-item label="预设名称">{{ previewData.name }}</n-descriptions-item>
-              <n-descriptions-item label="显示名称">{{
-                previewData.displayName
-              }}</n-descriptions-item>
-              <n-descriptions-item label="分类">
-                <n-tag :type="previewData.category === 'system' ? 'info' : 'success'">
-                  {{ previewData.category === 'system' ? '系统' : '自定义' }}
-                </n-tag>
-              </n-descriptions-item>
-              <n-descriptions-item label="版本">{{ previewData.version }}</n-descriptions-item>
-              <n-descriptions-item label="状态">
-                <n-tag :type="previewData.isEnabled === 1 ? 'success' : 'error'">
-                  {{ previewData.isEnabled === 1 ? '启用' : '禁用' }}
-                </n-tag>
-              </n-descriptions-item>
-              <n-descriptions-item label="排序权重">{{ previewData.sort }}</n-descriptions-item>
-              <n-descriptions-item label="描述" :span="2">{{
-                previewData.description || '无'
-              }}</n-descriptions-item>
-            </n-descriptions>
-          </div>
-
-          <div class="preview-schema" style="margin-top: 20px">
-            <h4>数据结构模板：</h4>
-            <pre class="json-code" style="max-height: 300px; overflow-y: auto">{{
-              formatJson(previewData.schemaJson)
-            }}</pre>
-          </div>
-
-          <div v-if="previewData.defaultDataJson" class="preview-default" style="margin-top: 20px">
-            <h4>默认数据：</h4>
-            <pre class="json-code" style="max-height: 200px; overflow-y: auto">{{
-              formatJson(previewData.defaultDataJson)
-            }}</pre>
-          </div>
+    <a-modal v-model:open="showPreviewModal" :mask-closable="true" title="预设详情" width="80%" :style="{ maxWidth: '800px' }">
+      <div v-if="previewData" class="preview-content">
+        <div class="preview-info">
+          <a-descriptions :column="2" bordered>
+            <a-descriptions-item label="预设名称">{{ previewData.name }}</a-descriptions-item>
+            <a-descriptions-item label="显示名称">{{
+              previewData.displayName
+            }}</a-descriptions-item>
+            <a-descriptions-item label="分类">
+              <a-tag :color="previewData.category === 'system' ? 'blue' : 'green'">
+                {{ previewData.category === 'system' ? '系统' : '自定义' }}
+              </a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item label="版本">{{ previewData.version }}</a-descriptions-item>
+            <a-descriptions-item label="状态">
+              <a-tag :color="previewData.isEnabled === 1 ? 'green' : 'red'">
+                {{ previewData.isEnabled === 1 ? '启用' : '禁用' }}
+              </a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item label="排序权重">{{ previewData.sort }}</a-descriptions-item>
+            <a-descriptions-item label="描述" :span="2">{{
+              previewData.description || '无'
+            }}</a-descriptions-item>
+          </a-descriptions>
         </div>
-      </n-card>
-    </n-modal>
+
+        <div class="preview-schema" style="margin-top: 20px">
+          <h4>数据结构模板：</h4>
+          <pre class="json-code" style="max-height: 300px; overflow-y: auto">{{
+            formatJson(previewData.schemaJson)
+          }}</pre>
+        </div>
+
+        <div v-if="previewData.defaultDataJson" class="preview-default" style="margin-top: 20px">
+          <h4>默认数据：</h4>
+          <pre class="json-code" style="max-height: 200px; overflow-y: auto">{{
+            formatJson(previewData.defaultDataJson)
+          }}</pre>
+        </div>
+      </div>
+    </a-modal>
 
     <!-- 删除确认弹窗 -->
-    <n-modal v-model:show="showDeleteModal" :mask-closable="false">
-      <n-card
-        style="width: 400px"
-        title="确认删除"
-        :bordered="false"
-        size="huge"
-        role="dialog"
-        aria-modal="true"
-      >
-        <div class="delete-content">
-          <div class="delete-icon">
-            <n-icon size="48" color="#d03050">
-              <TrashOutline />
-            </n-icon>
-          </div>
-          <p class="delete-message">
-            确定要删除变量预设
-            <strong>"{{ deletingPreset?.displayName || deletingPreset?.name }}"</strong> 吗？
-          </p>
-          <p class="delete-warning"> 删除后将解除与所有模板的关联关系，此操作不可撤销。 </p>
+    <a-modal v-model:open="showDeleteModal" :mask-closable="false" title="确认删除" width="400px">
+      <div class="delete-content">
+        <div class="delete-icon">
+          <TrashOutline style="font-size: 48px; color: #d03050" />
         </div>
+        <p class="delete-message">
+          确定要删除变量预设
+          <strong>"{{ deletingPreset?.displayName || deletingPreset?.name }}"</strong> 吗？
+        </p>
+        <p class="delete-warning"> 删除后将解除与所有模板的关联关系，此操作不可撤销。 </p>
+      </div>
 
-        <template #footer>
-          <div class="modal-footer">
-            <n-button @click="showDeleteModal = false">取消</n-button>
-            <n-button type="error" @click="confirmDelete" :loading="deleting"> 确认删除 </n-button>
-          </div>
-        </template>
-      </n-card>
-    </n-modal>
+      <template #footer>
+        <div class="modal-footer">
+          <a-button @click="showDeleteModal = false">取消</a-button>
+          <a-button danger @click="confirmDelete" :loading="deleting"> 确认删除 </a-button>
+        </div>
+      </template>
+    </a-modal>
   </div>
 </template>
 
@@ -293,7 +234,7 @@
   import { ref, reactive, h } from 'vue';
   import { useRouter } from 'vue-router';
   import { BasicTable, TableAction } from '@/components/Table';
-  import { NButton, NIcon, NTag, useMessage, NDescriptions, NDescriptionsItem } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import {
     AddOutline,
     CloseOutline,
@@ -304,7 +245,7 @@
     EyeOutline,
     ToggleOutline,
     DocumentTextOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
   import {
     listVarPresets,
     addVarPreset,
@@ -315,7 +256,6 @@
   } from '@/api/varPreset';
   import { columns as baseColumns } from './columns';
 
-  const message = useMessage();
   const router = useRouter();
   const actionRef = ref();
 
@@ -573,7 +513,7 @@
     formData.sort = 0;
     formData.version = '1.0';
     formData.isEnabled = true;
-    formRef.value?.restoreValidation();
+    formRef.value?.resetFields();
   };
 
   // 提交表单

@@ -2,11 +2,11 @@
   <div class="icon-selector">
     <div class="icon-selector-header">
       <div class="header-top">
-        <n-input v-model:value="searchText" placeholder="搜索图标..." clearable size="small">
+        <a-input v-model:value="searchText" placeholder="搜索图标..." allow-clear size="small">
           <template #prefix>
-            <n-icon><SearchOutline /></n-icon>
+            <SearchOutline style="font-size: 14px" />
           </template>
-        </n-input>
+        </a-input>
       </div>
       <div class="header-info">
         <span class="icon-count">共 {{ allIcons.length }} 个图标</span>
@@ -31,15 +31,15 @@
     </div>
 
     <div v-if="filteredIcons.length === 0" class="no-results">
-      <n-empty description="未找到匹配的图标" />
+      <a-empty description="未找到匹配的图标" />
     </div>
   </div>
 </template>
 
 <script setup>
   import { ref, computed, onMounted, markRaw } from 'vue';
-  import { SearchOutline } from '@vicons/ionicons5';
-  import * as IonIcons from '@vicons/ionicons5';
+  import { SearchOutline } from '@/icons/ionicons5';
+  import * as IonIcons from '@/icons/ionicons5';
 
   // 响应式数据
   const searchText = ref('');

@@ -3,12 +3,12 @@
     <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-left">
-        <n-button text @click="goBack" class="back-button">
+        <a-button type="link" @click="goBack" class="back-button">
           <template #icon>
-            <n-icon><ArrowBackOutline /></n-icon>
+            <ArrowBackOutline />
           </template>
           返回
-        </n-button>
+        </a-button>
         <div class="title-info">
           <h1>数据结构设计</h1>
           <div
@@ -17,7 +17,7 @@
               presetInfo && (presetInfo.displayName || presetInfo.name || presetInfo.description)
             "
           >
-            <n-tag type="info" size="small">{{ presetInfo.displayName || presetInfo.name }}</n-tag>
+            <a-tag color="blue">{{ presetInfo.displayName || presetInfo.name }}</a-tag>
             <span v-if="presetInfo.description" class="preset-desc">{{
               presetInfo.description
             }}</span>
@@ -25,12 +25,12 @@
         </div>
       </div>
       <div class="header-actions">
-        <n-button @click="handleSave" :loading="saving" type="primary">
+        <a-button @click="handleSave" :loading="saving" type="primary">
           <template #icon>
-            <n-icon><SaveOutline /></n-icon>
+            <SaveOutline />
           </template>
           保存
-        </n-button>
+        </a-button>
       </div>
     </div>
 
@@ -38,9 +38,14 @@
     <div class="editor-container">
       <SimpleVarPresetEditor v-if="presetInfo" v-model="schemaJson" :key="presetInfo.id" />
       <div v-else class="loading-container">
-        <n-spin size="large">
-          <template #description> 加载预设信息中... </template>
-        </n-spin>
+        <a-spin size="large">
+          <template #indicator>
+            <div style="text-align: center">
+              <a-spin />
+              <div style="margin-top: 8px">加载预设信息中...</div>
+            </div>
+          </template>
+        </a-spin>
       </div>
     </div>
   </div>
@@ -49,15 +54,13 @@
 <script setup>
   import { ref, onMounted, onUnmounted, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
-  import { NButton, NIcon, NTag, NSpin, useMessage } from 'naive-ui';
-  import { ArrowBackOutline, SaveOutline } from '@vicons/ionicons5';
+  import { message } from 'ant-design-vue';
+  import { ArrowBackOutline, SaveOutline } from '@/icons/ionicons5';
   import { getVarPresetDetail, editVarPreset } from '@/api/varPreset';
   import SimpleVarPresetEditor from '@/components/SimpleVarPresetEditor.vue';
 
   const route = useRoute();
   const router = useRouter();
-  const message = useMessage();
-
   // 数据状态
   const presetInfo = ref(null);
   const schemaJson = ref('');

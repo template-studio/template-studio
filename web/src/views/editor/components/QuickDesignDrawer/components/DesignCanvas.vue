@@ -1,23 +1,19 @@
 <template>
   <div class="design-canvas">
     <div class="canvas-header">
-      <n-text strong>变量</n-text>
+      <strong>变量</strong>
     </div>
     <div class="canvas-area" @drop="handleDrop" @dragover.prevent @dragenter.prevent>
       <!-- 空状态 -->
       <div v-if="components.length === 0" class="empty-canvas">
-        <n-empty description="暂无组件" size="large">
-          <template #icon>
-            <n-icon size="64" color="#ccc">
-              <svg viewBox="0 0 24 24" width="64" height="64">
-                <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-              </svg>
-            </n-icon>
+        <a-empty description="暂无组件">
+          <template #image>
+            <svg viewBox="0 0 24 24" width="64" height="64" style="color: #ccc">
+              <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+            </svg>
           </template>
-          <template #extra>
-            <n-text depth="3"> 从左侧拖拽组件到画布，或点击组件添加 </n-text>
-          </template>
-        </n-empty>
+          <span style="color: #999"> 从左侧拖拽组件到画布，或点击组件添加 </span>
+        </a-empty>
       </div>
 
       <!-- 组件列表 -->
@@ -42,24 +38,36 @@
     </div>
 
     <!-- 右键菜单 -->
-    <n-dropdown
-      placement="bottom-start"
-      trigger="manual"
-      :x="contextMenuX"
-      :y="contextMenuY"
-      :options="contextMenuOptions"
-      :show="showContextMenu"
-      :show-arrow="true"
-      @clickoutside="showContextMenu = false"
-      @select="handleContextMenuSelect"
-    />
+    <div
+      v-if="showContextMenu"
+      class="context-menu-overlay"
+      @click="showContextMenu = false"
+      @contextmenu.prevent="showContextMenu = false"
+    >
+      <div
+        class="context-menu"
+        :style="{ left: contextMenuX + 'px', top: contextMenuY + 'px' }"
+        @click.stop
+      >
+        <div
+          v-if="contextMenuComponent?.schema?.type === 'object' || contextMenuComponent?.schema?.type === 'object_arr'"
+          class="context-menu-item"
+          @click="handleContextMenuSelect('enter')"
+        >
+          <EnterOutline style="font-size: 14px; margin-right: 8px" />
+          进入内部编辑
+        </div>
+        <div class="context-menu-item context-menu-item-danger" @click="handleContextMenuSelect('delete')">
+          🗑️ 删除
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-  import { ref, computed, h } from 'vue';
-  import { NText, NEmpty, NIcon, NDropdown } from 'naive-ui';
-  import { EnterOutline } from '@vicons/ionicons5';
+  import { ref, computed } from 'vue';
+  import { EnterOutline } from '@/icons/ionicons5';
   import CanvasComponent from './canvas/CanvasComponent.vue';
 
   /**
@@ -107,32 +115,6 @@
   const contextMenuX = ref(0);
   const contextMenuY = ref(0);
   const contextMenuComponent = ref(null);
-
-  // 右键菜单选项
-  const contextMenuOptions = computed(() => {
-    if (!contextMenuComponent.value) return [];
-
-    const schema = contextMenuComponent.value.schema;
-    const isComplex = schema.type === 'object' || schema.type === 'object_arr';
-
-    const options = [
-      {
-        label: '删除',
-        key: 'delete',
-        icon: () => h('span', '🗑️'),
-      },
-    ];
-
-    if (isComplex) {
-      options.unshift({
-        label: '进入内部编辑',
-        key: 'enter',
-        icon: () => h(NIcon, null, { default: () => h(EnterOutline) }),
-      });
-    }
-
-    return options;
-  });
 
   // 方法
   const isComponentExpanded = (componentId) => {
@@ -232,5 +214,47 @@
   .canvas-components {
     display: flex;
     flex-direction: column;
+  }
+
+  .context-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+  }
+
+  .context-menu {
+    position: fixed;
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    padding: 4px 0;
+    min-width: 140px;
+    z-index: 1001;
+  }
+
+  .context-menu-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #333;
+    transition: background 0.2s;
+  }
+
+  .context-menu-item:hover {
+    background: #f5f5f5;
+  }
+
+  .context-menu-item-danger {
+    color: #ff4d4f;
+  }
+
+  .context-menu-item-danger:hover {
+    background: #fff1f0;
   }
 </style>

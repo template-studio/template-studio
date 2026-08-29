@@ -88,76 +88,63 @@
           <p class="form-subtitle">{{ isRegister ? '填写以下信息，开始使用 Template Studio' : '登录您的 Template Studio 账号' }}</p>
         </div>
 
-        <n-form
+        <a-form
           ref="formRef"
-          label-placement="left"
-          size="large"
           :model="formInline"
           :rules="currentRules"
           class="auth-form"
+          size="large"
         >
-          <n-form-item path="username">
-            <n-input
+          <a-form-item name="username">
+            <a-input
               v-model:value="formInline.username"
               placeholder="用户名"
             >
               <template #prefix>
-                <n-icon size="18" color="#94a3b8">
-                  <PersonOutline />
-                </n-icon>
+                <PersonOutline style="color: #94a3b8; font-size: 18px" />
               </template>
-            </n-input>
-          </n-form-item>
+            </a-input>
+          </a-form-item>
 
-          <n-form-item v-if="isRegister" path="email">
-            <n-input
+          <a-form-item v-if="isRegister" name="email">
+            <a-input
               v-model:value="formInline.email"
               placeholder="邮箱（选填）"
             >
               <template #prefix>
-                <n-icon size="18" color="#94a3b8">
-                  <MailOutline />
-                </n-icon>
+                <MailOutline style="color: #94a3b8; font-size: 18px" />
               </template>
-            </n-input>
-          </n-form-item>
+            </a-input>
+          </a-form-item>
 
-          <n-form-item path="password">
-            <n-input
+          <a-form-item name="password">
+            <a-input-password
               v-model:value="formInline.password"
-              type="password"
-              showPasswordOn="click"
               placeholder="密码"
             >
               <template #prefix>
-                <n-icon size="18" color="#94a3b8">
-                  <LockClosedOutline />
-                </n-icon>
+                <LockClosedOutline style="color: #94a3b8; font-size: 18px" />
               </template>
-            </n-input>
-          </n-form-item>
+            </a-input-password>
+          </a-form-item>
 
-          <n-form-item v-if="isRegister" path="confirmPassword">
-            <n-input
+          <a-form-item v-if="isRegister" name="confirmPassword">
+            <a-input-password
               v-model:value="formInline.confirmPassword"
-              type="password"
-              showPasswordOn="click"
               placeholder="确认密码"
             >
               <template #prefix>
-                <n-icon size="18" color="#94a3b8">
-                  <LockClosedOutline />
-                </n-icon>
+                <LockClosedOutline style="color: #94a3b8; font-size: 18px" />
               </template>
-            </n-input>
-          </n-form-item>
+            </a-input-password>
+          </a-form-item>
 
           <div v-if="!isRegister" class="form-options">
-            <n-checkbox v-model:checked="autoLogin">记住登录</n-checkbox>
+            <a-checkbox v-model:checked="autoLogin">记住登录</a-checkbox>
             <a href="javascript:" class="forgot-link" @click="showForgot = true">忘记密码</a>
           </div>
 
-          <n-button
+          <a-button
             type="primary"
             @click="handleSubmit"
             size="large"
@@ -166,36 +153,25 @@
             class="submit-btn"
           >
             {{ isRegister ? '创建账号' : '登录' }}
-          </n-button>
-        </n-form>
+          </a-button>
+        </a-form>
 
         <!-- 忘记密码弹窗 -->
-        <n-modal v-model:show="showForgot" :mask-closable="true">
-          <n-card style="width: 420px" title="忘记密码" :bordered="false" size="huge" role="dialog">
-            <template #header-extra>
-              <n-button quaternary circle @click="showForgot = false">
-                <template #icon><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></template>
-              </n-button>
-            </template>
-            <n-alert v-if="forgotSent" type="success" style="margin-bottom: 16px">
-              如果该邮箱已注册，重置邮件已发送。请检查收件箱。
-            </n-alert>
-            <template v-else>
-              <p style="color: #64748b; font-size: 14px; margin: 0 0 16px">请输入注册时使用的邮箱，我们将发送密码重置链接。</p>
-              <n-input v-model:value="forgotEmail" placeholder="注册邮箱" size="large">
-                <template #prefix>
-                  <n-icon size="18" color="#94a3b8"><MailOutline /></n-icon>
-                </template>
-              </n-input>
-            </template>
-            <template #footer>
-              <div style="display: flex; gap: 12px; justify-content: flex-end">
-                <n-button @click="showForgot = false">关闭</n-button>
-                <n-button v-if="!forgotSent" type="primary" :loading="forgotLoading" :disabled="!forgotEmail" @click="handleForgot">发送重置邮件</n-button>
-              </div>
-            </template>
-          </n-card>
-        </n-modal>
+        <a-modal v-model:open="showForgot" title="忘记密码" :mask-closable="true" :width="420" :footer="null">
+          <a-alert v-if="forgotSent" type="success" style="margin-bottom: 16px" message="如果该邮箱已注册，重置邮件已发送。请检查收件箱。" />
+          <template v-else>
+            <p style="color: #64748b; font-size: 14px; margin: 0 0 16px">请输入注册时使用的邮箱，我们将发送密码重置链接。</p>
+            <a-input v-model:value="forgotEmail" placeholder="注册邮箱" size="large">
+              <template #prefix>
+                <MailOutline style="color: #94a3b8; font-size: 18px" />
+              </template>
+            </a-input>
+          </template>
+          <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px">
+            <a-button @click="showForgot = false">关闭</a-button>
+            <a-button v-if="!forgotSent" type="primary" :loading="forgotLoading" :disabled="!forgotEmail" @click="handleForgot">发送重置邮件</a-button>
+          </div>
+        </a-modal>
       </div>
     </div>
   </div>
@@ -205,13 +181,13 @@
 import { reactive, ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@/store/modules/user';
-import { useMessage } from 'naive-ui';
+import { message } from 'ant-design-vue';
 import { ResultEnum } from '@/enums/httpEnum';
 import {
   PersonOutline,
   LockClosedOutline,
   MailOutline,
-} from '@vicons/ionicons5';
+} from '@/icons/ionicons5';
 import { PageEnum } from '@/enums/pageEnum';
 import { register } from '@/api/system/user';
 import { forgotPassword } from '@/api/system/password';
@@ -222,7 +198,6 @@ interface FormState {
 }
 
 const formRef = ref();
-const message = useMessage();
 const loading = ref(false);
 const autoLogin = ref(true);
 const isRegister = ref(false);
@@ -244,24 +219,25 @@ const formInline = reactive({
 });
 
 const loginRules = {
-  username: { required: true, message: '请输入用户名', trigger: 'blur' },
-  password: { required: true, message: '请输入密码', trigger: 'blur' },
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 };
 
 const registerRules = {
-  username: { required: true, message: '请输入用户名', trigger: 'blur' },
-  password: { required: true, message: '请输入密码', trigger: 'blur' },
-  confirmPassword: {
-    required: true,
-    message: '请确认密码',
-    trigger: 'blur',
-    validator: (_rule, value) => {
-      if (value !== formInline.password) {
-        return new Error('两次输入的密码不一致');
-      }
-      return true;
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  confirmPassword: [
+    { required: true, message: '请确认密码', trigger: 'blur' },
+    {
+      validator: (_rule, value) => {
+        if (value !== formInline.password) {
+          return Promise.reject('两次输入的密码不一致');
+        }
+        return Promise.resolve();
+      },
+      trigger: 'blur',
     },
-  },
+  ],
 };
 
 const currentRules = computed(() => isRegister.value ? registerRules : loginRules);
@@ -283,7 +259,7 @@ function switchMode(register: boolean) {
   isRegister.value = register;
   showForgot.value = false;
   forgotSent.value = false;
-  formRef.value?.restoreValidation();
+  formRef.value?.resetFields();
 }
 
 onMounted(() => {
@@ -296,51 +272,51 @@ onMounted(() => {
   }, 300);
 });
 
-const handleSubmit = (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
-  formRef.value.validate(async (errors) => {
-    if (errors) {
-      message.error('请填写完整信息');
-      return;
-    }
+  try {
+    await formRef.value.validate();
+  } catch {
+    message.error('请填写完整信息');
+    return;
+  }
 
-    const { username, password, email } = formInline;
+  const { username, password, email } = formInline;
 
-    if (isRegister.value) {
-      loading.value = true;
-      try {
-        const { code, message: msg } = await register({ username, password, email: email || undefined });
-        if (code == ResultEnum.SUCCESS) {
-          message.success('注册成功');
-          await userStore.login({ username, password });
-          router.replace('/');
-        } else {
-          message.info(msg || '注册失败');
-        }
-      } finally {
-        loading.value = false;
-      }
-      return;
-    }
-
+  if (isRegister.value) {
     loading.value = true;
     try {
-      const { code, message: msg, result } = await userStore.login({ username, password });
-      message.destroyAll();
+      const { code, message: msg } = await register({ username, password, email: email || undefined });
       if (code == ResultEnum.SUCCESS) {
-        const roles: string[] = result?.roles || [];
-        const isAdmin = roles.some((r) => ['super_admin', 'admin'].includes(r));
-        const defaultPath = isAdmin ? '/admin/dashboard' : '/';
-        const toPath = decodeURIComponent((route.query?.redirect || defaultPath) as string);
-        message.success('登录成功');
-        router.replace(toPath);
+        message.success('注册成功');
+        await userStore.login({ username, password });
+        router.replace('/');
       } else {
-        message.info(msg || '登录失败');
+        message.info(msg || '注册失败');
       }
     } finally {
       loading.value = false;
     }
-  });
+    return;
+  }
+
+  loading.value = true;
+  try {
+    const { code, message: msg, result } = await userStore.login({ username, password });
+    message.destroy();
+    if (code == ResultEnum.SUCCESS) {
+      const roles: string[] = result?.roles || [];
+      const isAdmin = roles.some((r) => ['super_admin', 'admin'].includes(r));
+      const defaultPath = isAdmin ? '/admin/dashboard' : '/';
+      const toPath = decodeURIComponent((route.query?.redirect || defaultPath) as string);
+      message.success('登录成功');
+      router.replace(toPath);
+    } else {
+      message.info(msg || '登录失败');
+    }
+  } finally {
+    loading.value = false;
+  }
 };
 </script>
 
@@ -647,7 +623,7 @@ const handleSubmit = (e) => {
     margin-bottom: 28px;
   }
 
-  .auth-form :deep(.n-input__input-el) {
+  .auth-form :deep(.ant-input) {
     height: 46px;
   }
 

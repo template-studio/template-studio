@@ -15,46 +15,43 @@
       <div class="component-header">
         <div class="component-title">
           <!-- 展开/折叠按钮（所有容器组件都显示） -->
-          <n-icon
+          <span
             v-if="isContainer"
-            size="14"
-            style="margin-right: 4px; cursor: pointer; transition: transform 0.2s"
+            style="margin-right: 4px; cursor: pointer; transition: transform 0.2s; font-size: 14px"
             :style="{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }"
             @click.stop="$emit('toggle-expand', component.id)"
           >
             <ChevronForwardOutline />
-          </n-icon>
+          </span>
 
-          <n-icon size="16" :color="displayInfo.color">
+          <span :style="{ fontSize: '16px', color: displayInfo.color }">
             <TextOutline />
-          </n-icon>
+          </span>
           <span>{{ component.schema.title || component.fieldName }}</span>
-          <n-tag size="small" :type="tagType" style="margin-left: 8px">
+          <a-tag :color="tagColor" style="margin-left: 8px">
             {{ displayInfo.label }}
-          </n-tag>
+          </a-tag>
         </div>
         <div class="component-actions">
-          <n-button size="tiny" quaternary type="error" @click.stop="$emit('remove', component)">
-            <template #icon>
-              <n-icon><TrashOutline /></n-icon>
-            </template>
-          </n-button>
+          <a-button size="small" danger @click.stop="$emit('remove', component)">
+            <template #icon><TrashOutline /></template>
+          </a-button>
         </div>
       </div>
 
       <div class="component-preview">
-        <n-text depth="3" style="font-size: 12px"> 字段名: {{ component.fieldName }} </n-text>
-        <n-text v-if="component.schema.required" type="error" style="font-size: 12px">
+        <span style="color: #999; font-size: 12px"> 字段名: {{ component.fieldName }} </span>
+        <span v-if="component.schema.required" style="color: #ff4d4f; font-size: 12px">
           必填
-        </n-text>
+        </span>
         <!-- 容器组件：显示子字段数量和标识 -->
-        <n-tag v-if="isContainer" size="small" type="info" style="margin-left: 8px">
+        <a-tag v-if="isContainer" color="blue" style="margin-left: 8px">
           {{ childrenCount }} 个字段
-        </n-tag>
+        </a-tag>
         <!-- 如果是复杂组件且有子字段，添加特殊标识 -->
-        <n-tag v-if="hasNestedFields" size="small" type="warning" style="margin-left: 4px">
+        <a-tag v-if="hasNestedFields" color="orange" style="margin-left: 4px">
           含嵌套
-        </n-tag>
+        </a-tag>
       </div>
     </div>
 
@@ -72,9 +69,8 @@
 
 <script setup>
   import { computed } from 'vue';
-  import { NIcon, NButton, NTag, NText } from 'naive-ui';
-  import { ChevronForwardOutline, TrashOutline, TextOutline } from '@vicons/ionicons5';
-  import { getComponentDisplayInfo, getTypeTagType } from '../../utils/componentTemplates';
+  import { ChevronForwardOutline, TrashOutline, TextOutline } from '@/icons/ionicons5';
+  import { getComponentDisplayInfo } from '../../utils/componentTemplates';
   import ContainerChildren from './ContainerChildren.vue';
 
   /**
@@ -135,8 +131,19 @@
     return getComponentDisplayInfo(props.component.type);
   });
 
-  const tagType = computed(() => {
-    return getTypeTagType(props.component.type);
+  const tagColor = computed(() => {
+    const colorMap = {
+      string: 'blue',
+      integer: 'green',
+      number: 'cyan',
+      boolean: 'orange',
+      enum: 'purple',
+      secret: 'red',
+      object: 'magenta',
+      array: 'default',
+      object_arr: 'geekblue',
+    };
+    return colorMap[props.component.type] || 'default';
   });
 
   const childrenCount = computed(() => {

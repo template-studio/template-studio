@@ -1,138 +1,126 @@
 <template>
   <div class="dashboard">
-    <n-spin :show="loading">
+    <a-spin :spinning="loading">
       <!-- 基础统计卡片 -->
-      <n-grid :cols="4" :x-gap="20" :y-gap="20">
-        <n-gi>
-          <n-card>
-            <n-statistic label="模板总数" :value="overview.totalTemplates">
+      <a-row :gutter="[20, 20]">
+        <a-col :span="6">
+          <a-card>
+            <a-statistic title="模板总数" :value="overview.totalTemplates">
               <template #prefix>
-                <n-icon color="#18a058">
-                  <DocumentTextOutline />
-                </n-icon>
+                <DocumentTextOutline style="color: #18a058" />
               </template>
-            </n-statistic>
-          </n-card>
-        </n-gi>
-        <n-gi>
-          <n-card>
-            <n-statistic label="分类数量" :value="overview.totalCategories">
+            </a-statistic>
+          </a-card>
+        </a-col>
+        <a-col :span="6">
+          <a-card>
+            <a-statistic title="分类数量" :value="overview.totalCategories">
               <template #prefix>
-                <n-icon color="#2080f0">
-                  <LayersOutline />
-                </n-icon>
+                <LayersOutline style="color: #2080f0" />
               </template>
-            </n-statistic>
-          </n-card>
-        </n-gi>
-        <n-gi>
-          <n-card>
-            <n-statistic label="语言支持" :value="overview.totalLanguages">
+            </a-statistic>
+          </a-card>
+        </a-col>
+        <a-col :span="6">
+          <a-card>
+            <a-statistic title="语言支持" :value="overview.totalLanguages">
               <template #prefix>
-                <n-icon color="#f0a020">
-                  <LanguageOutline />
-                </n-icon>
+                <LanguageOutline style="color: #f0a020" />
               </template>
-            </n-statistic>
-          </n-card>
-        </n-gi>
-        <n-gi>
-          <n-card>
-            <n-statistic label="文件总数" :value="overview.totalFiles">
+            </a-statistic>
+          </a-card>
+        </a-col>
+        <a-col :span="6">
+          <a-card>
+            <a-statistic title="文件总数" :value="overview.totalFiles">
               <template #prefix>
-                <n-icon color="#d03050">
-                  <FolderOutline />
-                </n-icon>
+                <FolderOutline style="color: #d03050" />
               </template>
-            </n-statistic>
-          </n-card>
-        </n-gi>
-      </n-grid>
+            </a-statistic>
+          </a-card>
+        </a-col>
+      </a-row>
 
       <!-- 图表区域 -->
-      <n-grid :cols="1" :y-gap="20" class="charts-section">
+      <div class="charts-section">
         <!-- 分类分析 -->
-        <n-gi>
-          <n-card title="分类详细分析">
-            <n-grid :cols="2" :x-gap="20">
-              <n-gi>
-                <div class="chart-container">
-                  <h3>分类分布</h3>
-                  <v-chart class="chart" :option="categoryChartOption" />
-                </div>
-              </n-gi>
-              <n-gi>
-                <div class="category-table">
-                  <h3>分类统计表</h3>
-                  <n-data-table
-                    :columns="categoryColumns"
-                    :data="categoryDistribution"
-                    :pagination="{ pageSize: 5 }"
-                    size="small"
-                  />
-                </div>
-              </n-gi>
-            </n-grid>
-          </n-card>
-        </n-gi>
+        <a-card title="分类详细分析" style="margin-bottom: 20px">
+          <a-row :gutter="20">
+            <a-col :span="12">
+              <div class="chart-container">
+                <h3>分类分布</h3>
+                <v-chart class="chart" :option="categoryChartOption" />
+              </div>
+            </a-col>
+            <a-col :span="12">
+              <div class="category-table">
+                <h3>分类统计表</h3>
+                <a-table
+                  :columns="categoryColumns"
+                  :data-source="categoryDistribution"
+                  :pagination="{ pageSize: 5 }"
+                  size="small"
+                  row-key="categoryName"
+                />
+              </div>
+            </a-col>
+          </a-row>
+        </a-card>
 
         <!-- 语言流行度分析 -->
-        <n-gi>
-          <n-card title="语言流行度分析">
-            <n-grid :cols="2" :x-gap="20">
-              <n-gi>
-                <div class="chart-container">
-                  <h3>语言使用分布</h3>
-                  <v-chart class="chart" :option="languageChartOption" />
-                </div>
-              </n-gi>
-              <n-gi>
-                <div class="language-table">
-                  <h3>语言统计表</h3>
-                  <n-data-table
-                    :columns="languageColumns"
-                    :data="languagePopularity"
-                    :pagination="{ pageSize: 5 }"
-                    size="small"
-                  />
-                </div>
-              </n-gi>
-            </n-grid>
-          </n-card>
-        </n-gi>
+        <a-card title="语言流行度分析" style="margin-bottom: 20px">
+          <a-row :gutter="20">
+            <a-col :span="12">
+              <div class="chart-container">
+                <h3>语言使用分布</h3>
+                <v-chart class="chart" :option="languageChartOption" />
+              </div>
+            </a-col>
+            <a-col :span="12">
+              <div class="language-table">
+                <h3>语言统计表</h3>
+                <a-table
+                  :columns="languageColumns"
+                  :data-source="languagePopularity"
+                  :pagination="{ pageSize: 5 }"
+                  size="small"
+                  row-key="languageName"
+                />
+              </div>
+            </a-col>
+          </a-row>
+        </a-card>
 
         <!-- 复杂度和趋势分析 -->
-        <n-gi>
-          <n-card title="模板复杂度和使用趋势">
-            <n-grid :cols="3" :x-gap="20">
-              <n-gi>
-                <div class="chart-container">
-                  <h3>模板复杂度分析</h3>
-                  <v-chart class="chart" :option="complexityChartOption" />
-                </div>
-              </n-gi>
-              <n-gi>
-                <div class="chart-container">
-                  <h3>创建趋势</h3>
-                  <v-chart class="chart" :option="trendsChartOption" />
-                </div>
-              </n-gi>
-              <n-gi>
-                <div class="trends-control">
-                  <h3>趋势范围</h3>
-                  <n-select
-                    v-model:value="trendsRange"
-                    :options="trendsRangeOptions"
-                    @update:value="onTrendsRangeChange"
-                    class="trends-select"
-                  />
-                </div>
-              </n-gi>
-            </n-grid>
-          </n-card>
-        </n-gi>
-      </n-grid>
-    </n-spin>
+        <a-card title="模板复杂度和使用趋势">
+          <a-row :gutter="20">
+            <a-col :span="8">
+              <div class="chart-container">
+                <h3>模板复杂度分析</h3>
+                <v-chart class="chart" :option="complexityChartOption" />
+              </div>
+            </a-col>
+            <a-col :span="8">
+              <div class="chart-container">
+                <h3>创建趋势</h3>
+                <v-chart class="chart" :option="trendsChartOption" />
+              </div>
+            </a-col>
+            <a-col :span="8">
+              <div class="trends-control">
+                <h3>趋势范围</h3>
+                <a-select
+                  v-model:value="trendsRange"
+                  :options="trendsRangeOptions"
+                  @change="onTrendsRangeChange"
+                  class="trends-select"
+                />
+              </div>
+            </a-col>
+          </a-row>
+        </a-card>
+      </div>
+    </a-spin>
   </div>
 </template>
 
@@ -149,13 +137,12 @@
   } from 'echarts/components';
   import { CanvasRenderer } from 'echarts/renderers';
   import VChart from 'vue-echarts';
-  import { NGrid, NGi, NCard, NStatistic, NIcon, NSpin, NDataTable, NSelect } from 'naive-ui';
   import {
     DocumentTextOutline,
     LayersOutline,
     LanguageOutline,
     FolderOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
   import {
     getOverview,
     getCategoryDistribution,
@@ -180,22 +167,24 @@
 
   // 表格列配置
   const categoryColumns = [
-    { title: '分类名称', key: 'categoryName' },
-    { title: '模板数量', key: 'templateCount' },
+    { title: '分类名称', dataIndex: 'categoryName', key: 'categoryName' },
+    { title: '模板数量', dataIndex: 'templateCount', key: 'templateCount' },
     {
       title: '占比',
+      dataIndex: 'percentage',
       key: 'percentage',
-      render: (row) => h('span', {}, `${row.percentage}%`),
+      customRender: ({ text }) => h('span', {}, `${text}%`),
     },
   ];
 
   const languageColumns = [
-    { title: '语言名称', key: 'languageName' },
-    { title: '模板数量', key: 'templateCount' },
+    { title: '语言名称', dataIndex: 'languageName', key: 'languageName' },
+    { title: '模板数量', dataIndex: 'templateCount', key: 'templateCount' },
     {
       title: '占比',
+      dataIndex: 'percentage',
       key: 'percentage',
-      render: (row) => h('span', {}, `${row.percentage}%`),
+      customRender: ({ text }) => h('span', {}, `${text}%`),
     },
   ];
 

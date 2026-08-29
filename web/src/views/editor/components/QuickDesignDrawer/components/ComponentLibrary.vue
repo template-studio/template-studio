@@ -1,7 +1,7 @@
 <template>
   <div class="component-library-panel">
     <div class="panel-header">
-      <n-text strong>组件</n-text>
+      <strong>组件</strong>
     </div>
     <div class="component-list">
       <div v-for="category in categories" :key="category.id" class="component-category">
@@ -16,9 +16,7 @@
             @click="handleClick(component)"
           >
             <div class="component-icon" :style="{ color: component.color }">
-              <n-icon size="24">
-                <component :is="component.icon" />
-              </n-icon>
+              <component :is="component.icon" style="font-size: 24px" />
             </div>
             <div class="component-info">
               <div class="component-name">{{ component.name }}</div>
@@ -32,8 +30,6 @@
 </template>
 
 <script setup>
-  import { NText, NIcon } from 'naive-ui';
-
   /**
    * ComponentLibrary 组件
    * 负责显示可拖拽的组件列表

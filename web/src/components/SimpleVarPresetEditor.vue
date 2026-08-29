@@ -14,36 +14,54 @@
           <div v-if="treeData.length === 0" class="empty-tree" @contextmenu="onTreeAreaContextMenu">
             <p>暂无数据，右键添加根字段开始创建</p>
           </div>
-          <n-tree
+          <a-tree
             v-if="treeData.length > 0"
-            :data="treeDataComputed"
+            :tree-data="treeDataForAnt"
             :selected-keys="selectedNode ? [selectedNode.key] : []"
-            :render-label="renderLabel"
-            :node-props="nodeProps"
-            :render-switcher-icon="renderSwitcherIcon"
-            @update:selected-keys="onSelectNode"
-            @update:expanded-keys="updateExpanded"
+            :expanded-keys="Array.from(expandedKeys)"
+            @select="onSelectNode"
+            @expand="updateExpanded"
             draggable
             @dragstart="onDragStart"
-            @drag-enter="onDragEnter"
-            @drag-leave="onDragLeave"
-            @drag-over="onDragOver"
+            @dragenter="onDragEnter"
+            @dragleave="onDragLeave"
+            @dragover="onDragOver"
             @drop="onDrop"
-          />
+            @rightClick="onRightClick"
+          >
+            <template #title="{ key, title, hasChildren, description }">
+              <div style="display: flex; align-items: center; width: 100%;">
+                <span style="font-weight: 500;">{{ title }}</span>
+                <span v-if="description" style="font-size: 12px; color: #999; margin-left: 8px; font-style: italic;">{{ description }}</span>
+              </div>
+            </template>
+          </a-tree>
         </div>
 
         <!-- 右键菜单 -->
-        <n-dropdown
-          to="body"
-          trigger="manual"
-          :show="showDropdown"
-          :options="dropdownOptions"
-          :x="dropdownX"
-          :y="dropdownY"
-          @select="handleDropdownSelect"
-          @clickoutside="handleDropdownClickoutside"
-          class="tree-dropdown-menu"
-        />
+        <teleport to="body">
+          <div
+            v-if="showDropdown"
+            class="context-menu-overlay"
+            @click="handleDropdownClickoutside"
+            @contextmenu.prevent
+          >
+            <div
+              class="context-menu"
+              :style="{ left: dropdownX + 'px', top: dropdownY + 'px' }"
+            >
+              <a-menu @click="({key}) => handleDropdownSelect(key)">
+                <template v-for="opt in dropdownOptions" :key="opt.key || opt.type">
+                  <a-menu-divider v-if="opt.type === 'divider'" />
+                  <a-menu-item v-else :key="opt.key">
+                    <span v-if="opt.icon" style="margin-right: 8px"><component :is="opt.icon" /></span>
+                    {{ opt.label }}
+                  </a-menu-item>
+                </template>
+              </a-menu>
+            </div>
+          </div>
+        </teleport>
       </div>
 
       <!-- 左侧拖拽分隔线 -->
@@ -54,92 +72,90 @@
         <div class="detail-header">
           <h4>{{ selectedNode ? '编辑节点' : '选择节点' }}</h4>
           <div class="detail-actions" v-if="selectedNode">
-            <n-button size="small" @click="saveCurrentNode" type="primary" :loading="nodeSaving">
+            <a-button size="small" @click="saveCurrentNode" type="primary" :loading="nodeSaving">
               <template #icon>
-                <n-icon><SaveOutline /></n-icon>
+                <SaveOutline />
               </template>
               保存
-            </n-button>
+            </a-button>
           </div>
         </div>
         <div class="detail-content">
           <div v-if="!selectedNode" class="empty-detail">
-            <n-empty size="medium" description="请从左侧选择一个节点进行编辑">
-              <template #icon>
-                <n-icon size="48" :component="DocumentTextOutline" />
+            <a-empty description="请从左侧选择一个节点进行编辑">
+              <template #image>
+                <DocumentTextOutline style="font-size: 48px; color: #ccc" />
               </template>
-            </n-empty>
+            </a-empty>
           </div>
           <div v-else class="node-form">
-            <n-form
+            <a-form
               ref="detailFormRef"
               :model="nodeForm"
               :rules="nodeFormRules"
-              label-placement="top"
+              layout="vertical"
             >
-              <n-grid :cols="2" :x-gap="16">
-                <n-grid-item>
-                  <n-form-item label="字段名" path="key">
-                    <n-input v-model:value="nodeForm.key" placeholder="请输入字段名" />
-                  </n-form-item>
-                </n-grid-item>
-                <n-grid-item>
-                  <n-form-item label="显示名称" path="displayName">
-                    <n-input v-model:value="nodeForm.displayName" placeholder="显示名称（可选）" />
-                  </n-form-item>
-                </n-grid-item>
-              </n-grid>
+              <a-row :gutter="16">
+                <a-col :span="12">
+                  <a-form-item label="字段名" name="key">
+                    <a-input v-model:value="nodeForm.key" placeholder="请输入字段名" />
+                  </a-form-item>
+                </a-col>
+                <a-col :span="12">
+                  <a-form-item label="显示名称" name="displayName">
+                    <a-input v-model:value="nodeForm.displayName" placeholder="显示名称（可选）" />
+                  </a-form-item>
+                </a-col>
+              </a-row>
 
-              <n-form-item
+              <a-form-item
                 v-if="selectedNode && selectedNode.path && selectedNode.path.length === 1"
                 label="分类"
-                path="category"
+                name="category"
               >
-                <n-select
+                <a-select
                   v-model:value="nodeForm.category"
                   placeholder="输入或选择分类（仅一级字段）"
                   :options="categoryOptions"
-                  filterable
-                  tag
-                  clearable
-                  @create="handleCreateCategory"
+                  show-search
+                  allow-clear
+                  @change="handleCreateCategory"
                 />
-              </n-form-item>
+              </a-form-item>
 
-              <n-form-item label="描述" path="description">
-                <n-input
+              <a-form-item label="描述" name="description">
+                <a-textarea
                   v-model:value="nodeForm.description"
-                  type="textarea"
                   placeholder="字段描述（可选）"
                   :rows="2"
                 />
-              </n-form-item>
+              </a-form-item>
 
-              <n-grid :cols="2" :x-gap="16">
-                <n-grid-item>
-                  <n-form-item label="示例值" path="example">
-                    <n-input v-model:value="nodeForm.example" placeholder="示例值（如：张三）" />
-                  </n-form-item>
-                </n-grid-item>
-                <n-grid-item>
-                  <n-form-item label="插入文本" path="insertText">
-                    <n-input
+              <a-row :gutter="16">
+                <a-col :span="12">
+                  <a-form-item label="示例值" name="example">
+                    <a-input v-model:value="nodeForm.example" placeholder="示例值（如：张三）" />
+                  </a-form-item>
+                </a-col>
+                <a-col :span="12">
+                  <a-form-item label="插入文本" name="insertText">
+                    <a-input
                       v-model:value="nodeForm.insertText"
                       placeholder="自动生成（基于字段名）"
                       readonly
                       style="background-color: #f5f5f5"
                     />
-                  </n-form-item>
-                </n-grid-item>
-              </n-grid>
+                  </a-form-item>
+                </a-col>
+              </a-row>
 
-              <n-form-item label="包含子字段" path="hasChildren">
-                <n-switch v-model:value="nodeForm.hasChildren" />
+              <a-form-item label="包含子字段" name="hasChildren">
+                <a-switch v-model:checked="nodeForm.hasChildren" />
                 <span style="margin-left: 8px; color: #666; font-size: 12px">
                   {{ nodeForm.hasChildren ? '该字段可以包含子字段' : '该字段为普通字段' }}
                 </span>
-              </n-form-item>
-            </n-form>
+              </a-form-item>
+            </a-form>
           </div>
         </div>
       </div>
@@ -152,36 +168,36 @@
         <div class="editor-header">
           <h4>JSON 预览</h4>
           <div class="editor-actions">
-            <n-button size="small" @click="importJson" quaternary>
+            <a-button size="small" @click="importJson" type="text">
               <template #icon>
-                <n-icon><CloudUploadOutline /></n-icon>
+                <CloudUploadOutline />
               </template>
               导入文件
-            </n-button>
-            <n-button size="small" @click="exportJson" quaternary>
+            </a-button>
+            <a-button size="small" @click="exportJson" type="text">
               <template #icon>
-                <n-icon><CloudDownloadOutline /></n-icon>
+                <CloudDownloadOutline />
               </template>
               导出文件
-            </n-button>
-            <n-button size="small" @click="copyJson" quaternary>
+            </a-button>
+            <a-button size="small" @click="copyJson" type="text">
               <template #icon>
-                <n-icon><CopyOutline /></n-icon>
+                <CopyOutline />
               </template>
               复制
-            </n-button>
-            <n-button size="small" @click="formatJson" quaternary>
+            </a-button>
+            <a-button size="small" @click="formatJson" type="text">
               <template #icon>
-                <n-icon><CodeOutline /></n-icon>
+                <CodeOutline />
               </template>
               格式化
-            </n-button>
-            <n-button size="small" @click="syncFromJson" quaternary>
+            </a-button>
+            <a-button size="small" @click="syncFromJson" type="text">
               <template #icon>
-                <n-icon><SyncOutline /></n-icon>
+                <SyncOutline />
               </template>
               同步到树
-            </n-button>
+            </a-button>
           </div>
         </div>
         <div class="editor-content">
@@ -196,127 +212,97 @@
     </div>
 
     <!-- 节点编辑弹窗 -->
-    <n-modal v-model:show="showNodeModal" :mask-closable="false">
-      <n-card style="width: 500px" :title="nodeModalTitle" :bordered="false" size="huge">
-        <template #header-extra>
-          <n-button quaternary circle @click="closeNodeModal">
-            <template #icon>
-              <n-icon><CloseOutline /></n-icon>
-            </template>
-          </n-button>
-        </template>
+    <a-modal
+      v-model:open="showNodeModal"
+      :title="nodeModalTitle"
+      :mask-closable="false"
+      :width="500"
+      :footer="null"
+      @cancel="closeNodeModal"
+    >
+      <a-form ref="nodeFormRef" :model="nodeForm" :rules="nodeFormRules" layout="vertical">
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="字段名" name="key">
+              <a-input v-model:value="nodeForm.key" placeholder="请输入字段名" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="显示名称" name="displayName">
+              <a-input v-model:value="nodeForm.displayName" placeholder="显示名称（可选）" />
+            </a-form-item>
+          </a-col>
+        </a-row>
 
-        <n-form ref="nodeFormRef" :model="nodeForm" :rules="nodeFormRules" label-placement="top">
-          <n-grid :cols="2" :x-gap="16">
-            <n-grid-item>
-              <n-form-item label="字段名" path="key">
-                <n-input v-model:value="nodeForm.key" placeholder="请输入字段名" />
-              </n-form-item>
-            </n-grid-item>
-            <n-grid-item>
-              <n-form-item label="显示名称" path="displayName">
-                <n-input v-model:value="nodeForm.displayName" placeholder="显示名称（可选）" />
-              </n-form-item>
-            </n-grid-item>
-          </n-grid>
+        <a-form-item v-if="isRootLevel" label="分类" name="category">
+          <a-select
+            v-model:value="nodeForm.category"
+            placeholder="输入或选择分类（仅一级字段）"
+            :options="categoryOptions"
+            show-search
+            allow-clear
+            @change="handleCreateCategory"
+          />
+        </a-form-item>
 
-          <n-form-item v-if="isRootLevel" label="分类" path="category">
-            <n-select
-              v-model:value="nodeForm.category"
-              placeholder="输入或选择分类（仅一级字段）"
-              :options="categoryOptions"
-              filterable
-              tag
-              clearable
-              @create="handleCreateCategory"
-            />
-          </n-form-item>
+        <a-form-item label="描述" name="description">
+          <a-textarea
+            v-model:value="nodeForm.description"
+            placeholder="字段描述（可选）"
+            :rows="2"
+          />
+        </a-form-item>
 
-          <n-form-item label="描述" path="description">
-            <n-input
-              v-model:value="nodeForm.description"
-              type="textarea"
-              placeholder="字段描述（可选）"
-              :rows="2"
-            />
-          </n-form-item>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="示例值" name="example">
+              <a-input v-model:value="nodeForm.example" placeholder="示例值（如：张三）" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="插入文本" name="insertText">
+              <a-input
+                v-model:value="nodeForm.insertText"
+                placeholder="自动生成（基于字段名）"
+                readonly
+                style="background-color: #f5f5f5"
+              />
+            </a-form-item>
+          </a-col>
+        </a-row>
 
-          <n-grid :cols="2" :x-gap="16">
-            <n-grid-item>
-              <n-form-item label="示例值" path="example">
-                <n-input v-model:value="nodeForm.example" placeholder="示例值（如：张三）" />
-              </n-form-item>
-            </n-grid-item>
-            <n-grid-item>
-              <n-form-item label="插入文本" path="insertText">
-                <n-input
-                  v-model:value="nodeForm.insertText"
-                  placeholder="自动生成（基于字段名）"
-                  readonly
-                  style="background-color: #f5f5f5"
-                />
-              </n-form-item>
-            </n-grid-item>
-          </n-grid>
+        <a-form-item label="包含子字段" name="hasChildren">
+          <a-switch v-model:checked="nodeForm.hasChildren" />
+          <span style="margin-left: 8px; color: #666; font-size: 12px">
+            {{ nodeForm.hasChildren ? '该字段可以包含子字段' : '该字段为普通字段' }}
+          </span>
+        </a-form-item>
+      </a-form>
 
-          <n-form-item label="包含子字段" path="hasChildren">
-            <n-switch v-model:value="nodeForm.hasChildren" />
-            <span style="margin-left: 8px; color: #666; font-size: 12px">
-              {{ nodeForm.hasChildren ? '该字段可以包含子字段' : '该字段为普通字段' }}
-            </span>
-          </n-form-item>
-        </n-form>
-
-        <template #footer>
-          <div class="modal-footer">
-            <n-button @click="closeNodeModal">取消</n-button>
-            <n-button type="primary" @click="saveNode" :loading="nodeSaving">
-              {{ editingNode ? '更新' : '添加' }}
-            </n-button>
-          </div>
-        </template>
-      </n-card>
-    </n-modal>
+      <div class="modal-footer">
+        <a-button @click="closeNodeModal">取消</a-button>
+        <a-button type="primary" @click="saveNode" :loading="nodeSaving">
+          {{ editingNode ? '更新' : '添加' }}
+        </a-button>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
   import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, h } from 'vue';
-  import {
-    NButton,
-    NIcon,
-    NModal,
-    NCard,
-    NForm,
-    NFormItem,
-    NInput,
-    NInputNumber,
-    NSelect,
-    NSwitch,
-    NTag,
-    NEmpty,
-    NTree,
-    NDropdown,
-    NGrid,
-    NGridItem,
-    useMessage,
-  } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import {
     AddOutline,
-    CloseOutline,
-    CreateOutline,
     TrashOutline,
     CodeOutline,
     SyncOutline,
     SaveOutline,
     DocumentTextOutline,
-    ChevronForwardOutline,
     CopyOutline,
-    CutOutline,
-    ClipboardOutline,
     CloudUploadOutline,
     CloudDownloadOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
   import { EditorView, basicSetup } from 'codemirror';
   import { EditorState } from '@codemirror/state';
   import { json } from '@codemirror/lang-json';
@@ -333,7 +319,6 @@
   });
 
   const emit = defineEmits(['update:modelValue']);
-  const message = useMessage();
 
   // 编辑器相关
   const editorContainer = ref(null);
@@ -458,144 +443,42 @@
     }));
   };
 
-  // 转换为NTree格式的计算属性
-  const treeDataComputed = computed(() => {
-    return convertToNTreeFormat(treeData.value);
+  // 转换为 Ant Design Vue a-tree 格式的计算属性
+  const treeDataForAnt = computed(() => {
+    return convertToAntTreeFormat(treeData.value);
   });
 
-  // 转换树数据为NTree格式
-  const convertToNTreeFormat = (nodes) => {
+  // 转换树数据为 Ant Design Vue a-tree 格式
+  const convertToAntTreeFormat = (nodes) => {
     if (!Array.isArray(nodes)) return [];
 
     return nodes
       .map((node) => {
-        // 确保使用路径作为唯一key
         if (!node || typeof node !== 'object') return null;
 
         try {
           const nodeKey =
             node.path?.join('.') || node.key || `node_${Math.random().toString(36).substr(2, 9)}`;
-          const isExpanded = expandedKeys.value.has(nodeKey);
 
           const result = {
-            label: node.displayName || node.label || node.key || 'Untitled',
+            title: node.displayName || node.label || node.key || 'Untitled',
             key: nodeKey,
             isLeaf: !node.children || node.children.length === 0,
             hasChildren: !!(node.children && node.children.length > 0),
             description: node.description || '',
             path: node.path || [],
-            prefix: () => {
-              try {
-                return getFieldIcon(node);
-              } catch (e) {
-                console.warn('Error in getFieldIcon:', e);
-                return null;
-              }
-            },
-            suffix: () => {
-              try {
-                return getNodeSuffix(node);
-              } catch (e) {
-                console.warn('Error in getNodeSuffix:', e);
-                return null;
-              }
-            },
-            children: node.children ? convertToNTreeFormat(node.children) : [],
-            class: getDragClass(nodeKey),
+            category: node.category || '',
+            example: node.example || '',
+            children: node.children ? convertToAntTreeFormat(node.children) : [],
           };
 
           return result;
         } catch (error) {
-          console.error('Error converting node to NTree format:', error, node);
+          console.error('Error converting node to tree format:', error, node);
           return null;
         }
       })
       .filter((node) => node !== null);
-  };
-
-  // 获取字段图标
-  const getFieldIcon = (node) => {
-    if (node.children !== undefined) {
-      if (node.children && node.children.length > 0) {
-        // 有子字段的容器节点显示文件夹图标
-        return h(NIcon, { size: 16, color: '#1890ff' }, { default: () => h(DocumentTextOutline) });
-      } else {
-        // 空的容器节点显示空文件夹图标
-        return h(NIcon, { size: 16, color: '#52c41a' }, { default: () => h(ClipboardOutline) });
-      }
-    } else {
-      // 不允许子字段的普通字段显示字段图标
-      return h(NIcon, { size: 16, color: '#722ed1' }, { default: () => h(CreateOutline) });
-    }
-  };
-
-  // 获取节点后缀
-  const getNodeSuffix = (node) => {
-    const tags = [];
-
-    // 显示分类标签（仅一级字段）
-    if (node.category && node.path && node.path.length === 1) {
-      let categoryLabel = node.category;
-      try {
-        if (categoryOptions.value && Array.isArray(categoryOptions.value)) {
-          const categoryOption = categoryOptions.value.find(
-            (opt) => opt && opt.value === node.category
-          );
-          categoryLabel = categoryOption?.label || node.category;
-        }
-      } catch (e) {
-        console.warn('Error finding category option:', e);
-      }
-
-      tags.push(
-        h(
-          NTag,
-          {
-            size: 'tiny',
-            type: 'primary',
-            style: { fontSize: '10px', marginRight: '4px' },
-          },
-          { default: () => categoryLabel }
-        )
-      );
-    }
-
-    // 显示可扩展标识
-    if (node.children !== undefined && (!node.children || node.children.length === 0)) {
-      tags.push(
-        h(
-          NTag,
-          {
-            size: 'tiny',
-            type: 'info',
-            style: { fontSize: '10px', marginRight: '4px' },
-          },
-          { default: () => '可扩展' }
-        )
-      );
-    }
-
-    // 显示示例值
-    if (node.example) {
-      tags.push(
-        h(
-          'span',
-          {
-            style: {
-              fontSize: '11px',
-              color: '#999',
-              fontStyle: 'italic',
-              marginLeft: '8px',
-            },
-          },
-          `例: ${node.example}`
-        )
-      );
-    }
-
-    return tags.length > 0
-      ? h('span', { style: { display: 'flex', alignItems: 'center' } }, tags)
-      : null;
   };
 
   // 获取拖拽类名
@@ -781,7 +664,7 @@
   };
 
   // 树形交互方法
-  const onSelectNode = (keys) => {
+  const onSelectNode = (keys, info) => {
     if (keys && keys.length > 0) {
       const nodeKey = keys[0];
       const node = findNodeByKey(treeData.value, nodeKey);
@@ -795,35 +678,16 @@
     expandedKeys.value = new Set(keys);
   };
 
-  const renderLabel = ({ option }) => {
-    return option.label;
-  };
-
-  const renderSwitcherIcon = () => {
-    return h(NIcon, null, { default: () => h(ChevronForwardOutline) });
-  };
-
-  const nodeProps = ({ option }) => {
-    return {
-      onContextmenu(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        dropdownNode.value = option;
-        setupContextMenu(option);
-        showDropdown.value = true;
-        dropdownX.value = e.clientX;
-        dropdownY.value = e.clientY;
-      },
-      onDblclick(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        // 双击选中节点
-        const node = findNodeByKey(treeData.value, option.key);
-        if (node) {
-          handleNodeSelect(node);
-        }
-      },
-    };
+  // 右键菜单处理（Ant Design Vue 的 rightClick 事件）
+  const onRightClick = ({ event, node }) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const treeDataNode = findNodeByKey(treeData.value, node.key);
+    dropdownNode.value = node;
+    setupContextMenu(node);
+    showDropdown.value = true;
+    dropdownX.value = event.clientX;
+    dropdownY.value = event.clientY;
   };
 
   // 查找节点
@@ -844,9 +708,6 @@
 
   // 设置右键菜单
   const setupContextMenu = (node) => {
-    const canAddChildren =
-      !node.children || node.children.length === 0 || (node.children && node.children.length > 0);
-
     // 检查节点是否允许子字段
     const nodeData = findNodeByKey(treeData.value, node.key);
     const allowChildren = !nodeData || nodeData.children !== undefined;
@@ -858,18 +719,18 @@
       menuOptions.push({
         label: '添加子字段',
         key: 'addChild',
-        icon: () => h(NIcon, null, { default: () => h(AddOutline) }),
+        icon: () => h(AddOutline, { style: { fontSize: '16px' } }),
       });
       menuOptions.push({ type: 'divider', key: 'divider1' });
     }
 
     menuOptions.push(
-      { label: '复制', key: 'copy', icon: () => h(NIcon, null, { default: () => h(CopyOutline) }) },
+      { label: '复制', key: 'copy', icon: () => h(CopyOutline, { style: { fontSize: '16px' } }) },
       { type: 'divider', key: 'divider2' },
       {
         label: '删除',
         key: 'delete',
-        icon: () => h(NIcon, null, { default: () => h(TrashOutline) }),
+        icon: () => h(TrashOutline, { style: { fontSize: '16px' } }),
       }
     );
 
@@ -885,7 +746,7 @@
       {
         label: '添加根字段',
         key: 'addRoot',
-        icon: () => h(NIcon, null, { default: () => h(AddOutline) }),
+        icon: () => h(AddOutline, { style: { fontSize: '16px' } }),
       },
     ];
     showDropdown.value = true;
@@ -1164,7 +1025,7 @@
       console.log('Form validation result:', error); // 调试日志
 
       if (error && typeof error === 'object' && !error.message) {
-        // 处理NaiveUI表单验证结果
+        // 处理表单验证结果（校验失败时 antd Form 会 reject 一个对象）
         if (error.warnings === undefined) {
           // 验证成功的情况
           console.log('Form validation passed, but caught as error - continuing execution');
@@ -2066,56 +1927,67 @@
   }
 
   /* 树形结构样式 */
-  .tree-dropdown-menu {
-    z-index: 2147483647 !important;
+  /* 右键菜单 */
+  .context-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+  }
+
+  .context-menu {
+    position: fixed;
+    z-index: 10000;
+    min-width: 160px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+    padding: 4px 0;
+  }
+
+  .context-menu :deep(.ant-menu) {
+    border-right: none;
+    box-shadow: none;
   }
 
   /* 拖拽样式 */
-  :deep(.n-tree-node.dragging) {
+  :deep(.ant-tree-treenode.dragging) {
     opacity: 0.5;
     background: rgba(24, 144, 255, 0.1);
   }
 
-  :deep(.n-tree-node.drag-over) {
+  :deep(.ant-tree-treenode.drag-over) {
     background: rgba(24, 144, 255, 0.2);
     border: 2px dashed #1890ff;
     border-radius: 4px;
   }
 
-  :deep(.n-tree-node[draggable='true']) {
+  :deep(.ant-tree-treenode[draggable='true']) {
     cursor: grab;
   }
 
-  :deep(.n-tree-node[draggable='true']:active) {
+  :deep(.ant-tree-treenode[draggable='true']:active) {
     cursor: grabbing;
   }
 
   /* 树节点样式优化 */
-  :deep(.n-tree-node-content) {
+  :deep(.ant-tree-node-content-wrapper) {
     padding: 4px 8px;
     border-radius: 4px;
     transition: all 0.2s ease;
   }
 
-  :deep(.n-tree-node-content:hover) {
+  :deep(.ant-tree-node-content-wrapper:hover) {
     background: #f5f5f5;
   }
 
-  :deep(.n-tree-node--selected .n-tree-node-content) {
-    background: #e6f7ff;
-    border: 1px solid #91d5ff;
-  }
-
-  :deep(.n-tree-node--selected .n-tree-node-content:hover) {
+  :deep(.ant-tree-treenode-selected .ant-tree-node-content-wrapper) {
     background: #e6f7ff;
   }
 
-  /* 类型图标样式 */
-  :deep(.n-tree-node-content__prefix) {
-    margin-right: 6px;
-  }
-
-  :deep(.n-tree-node-content__suffix) {
-    margin-left: 6px;
+  :deep(.ant-tree-treenode-selected .ant-tree-node-content-wrapper:hover) {
+    background: #e6f7ff;
   }
 </style>

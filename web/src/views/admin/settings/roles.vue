@@ -2,73 +2,72 @@
   <div class="role-management">
     <div class="page-header">
       <h3>角色管理</h3>
-      <n-button type="primary" @click="openCreate">新增角色</n-button>
+      <a-button type="primary" @click="openCreate">新增角色</a-button>
     </div>
 
-    <n-data-table
+    <a-table
       :columns="columns"
-      :data="roles"
+      :data-source="roles"
       :loading="loading"
       :pagination="false"
       bordered
+      row-key="id"
     />
 
     <!-- 新增/编辑弹窗 -->
-    <n-modal
-      v-model:show="showModal"
+    <a-modal
+      v-model:open="showModal"
       :title="editingRole ? '编辑角色' : '新增角色'"
-      preset="card"
-      style="width: 500px"
+      width="500px"
     >
-      <n-form :model="formData" label-placement="left" label-width="80">
-        <n-form-item v-if="!editingRole" label="角色标识" path="name">
-          <n-input v-model:value="formData.name" placeholder="如 admin, viewer" />
-        </n-form-item>
-        <n-form-item label="角色名称" path="display_name">
-          <n-input v-model:value="formData.display_name" placeholder="如 管理员" />
-        </n-form-item>
-        <n-form-item label="描述" path="description">
-          <n-input v-model:value="formData.description" type="textarea" placeholder="角色描述" />
-        </n-form-item>
-      </n-form>
-      <template #action>
-        <n-button @click="showModal = false">取消</n-button>
-        <n-button type="primary" :loading="submitting" @click="handleSubmit">确定</n-button>
+      <a-form :model="formData" layout="horizontal" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
+        <a-form-item v-if="!editingRole" label="角色标识" name="name">
+          <a-input v-model:value="formData.name" placeholder="如 admin, viewer" />
+        </a-form-item>
+        <a-form-item label="角色名称" name="display_name">
+          <a-input v-model:value="formData.display_name" placeholder="如 管理员" />
+        </a-form-item>
+        <a-form-item label="描述" name="description">
+          <a-textarea v-model:value="formData.description" placeholder="角色描述" />
+        </a-form-item>
+      </a-form>
+      <template #footer>
+        <a-button @click="showModal = false">取消</a-button>
+        <a-button type="primary" :loading="submitting" @click="handleSubmit">确定</a-button>
       </template>
-    </n-modal>
+    </a-modal>
 
     <!-- 权限分配弹窗 -->
-    <n-modal
-      v-model:show="showPermModal"
+    <a-modal
+      v-model:open="showPermModal"
       title="分配权限"
-      preset="card"
-      style="width: 500px"
+      width="500px"
     >
-      <n-checkbox-group v-model:value="selectedPermissions">
-        <n-space vertical>
-          <n-checkbox
+      <a-checkbox-group v-model:value="selectedPermissions">
+        <a-space direction="vertical">
+          <a-checkbox
             v-for="perm in permissions"
             :key="perm.id"
             :value="perm.id"
-            :label="perm.display_name"
-          />
-        </n-space>
-      </n-checkbox-group>
-      <template #action>
-        <n-button @click="showPermModal = false">取消</n-button>
-        <n-button type="primary" :loading="submitting" @click="handleAssignPerms">确定</n-button>
+          >
+            {{ perm.display_name }}
+          </a-checkbox>
+        </a-space>
+      </a-checkbox-group>
+      <template #footer>
+        <a-button @click="showPermModal = false">取消</a-button>
+        <a-button type="primary" :loading="submitting" @click="handleAssignPerms">确定</a-button>
       </template>
-    </n-modal>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, h } from 'vue';
-import { NButton, NSpace, NTag, useMessage } from 'naive-ui';
+import { Button, Space, Tag, message } from 'ant-design-vue';
 import { getRoleList, createRole, updateRole, deleteRole, getRolePermissions, assignPermissions } from '@/api/system/role';
 import { getPermissionList } from '@/api/system/permission';
 
-const message = useMessage();
 const loading = ref(false);
 const roles = ref([]);
 const permissions = ref<any[]>([]);
@@ -86,34 +85,36 @@ const formData = reactive({
 });
 
 const columns = [
-  { title: 'ID', key: 'id', width: 60 },
-  { title: '角色标识', key: 'name', width: 120 },
-  { title: '角色名称', key: 'display_name', width: 120 },
-  { title: '描述', key: 'description', ellipsis: true },
+  { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
+  { title: '角色标识', dataIndex: 'name', key: 'name', width: 120 },
+  { title: '角色名称', dataIndex: 'display_name', key: 'display_name', width: 120 },
+  { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
   {
     title: '状态',
+    dataIndex: 'status',
     key: 'status',
     width: 80,
-    render: (row: any) =>
-      h(NTag, { type: row.status === 1 ? 'success' : 'error', size: 'small' }, () =>
-        row.status === 1 ? '启用' : '禁用'
+    customRender: ({ record }: any) =>
+      h(Tag, { color: record.status === 1 ? 'green' : 'red' }, () =>
+        record.status === 1 ? '启用' : '禁用'
       ),
   },
   {
     title: '操作',
+    dataIndex: 'actions',
     key: 'actions',
     width: 200,
-    render: (row: any) =>
-      h(NSpace, null, () => [
-        h(NButton, { text: true, type: 'primary', onClick: () => handleEdit(row) }, () => '编辑'),
+    customRender: ({ record }: any) =>
+      h(Space, null, () => [
+        h(Button, { type: 'link', size: 'small', onClick: () => handleEdit(record) }, () => '编辑'),
         h(
-          NButton,
-          { text: true, type: 'info', onClick: () => handleOpenPerms(row) },
+          Button,
+          { type: 'link', size: 'small', onClick: () => handleOpenPerms(record) },
           () => '权限'
         ),
         h(
-          NButton,
-          { text: true, type: 'error', onClick: () => handleDelete(row) },
+          Button,
+          { type: 'link', size: 'small', danger: true, onClick: () => handleDelete(record) },
           () => '删除'
         ),
       ]),

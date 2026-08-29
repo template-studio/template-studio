@@ -1,51 +1,47 @@
 <template>
-  <n-spin :show="loading">
-    <n-alert type="info" style="margin-bottom: 20px">
-      配置 SMTP 邮件服务后，用户可以通过"忘记密码"功能自助重置密码。
-    </n-alert>
-    <n-form label-placement="left" :label-width="120">
-      <n-form-item label="SMTP 服务器">
-        <n-input v-model:value="form.host" placeholder="smtp.example.com" />
-      </n-form-item>
-      <n-form-item label="端口">
-        <n-input-number v-model:value="form.port" :min="1" :max="65535" placeholder="465" style="width: 200px" />
-      </n-form-item>
-      <n-form-item label="使用 TLS">
-        <n-switch v-model:value="form.useTls" />
-      </n-form-item>
-      <n-form-item label="用户名">
-        <n-input v-model:value="form.username" placeholder="noreply@example.com" />
-      </n-form-item>
-      <n-form-item label="密码">
-        <n-input v-model:value="form.password" type="password" show-password-on="click" placeholder="SMTP 授权码或密码" />
-      </n-form-item>
-      <n-form-item label="发件人地址">
-        <n-input v-model:value="form.sender" placeholder="Template Studio <noreply@example.com>" />
-      </n-form-item>
+  <a-spin :spinning="loading">
+    <a-alert type="info" style="margin-bottom: 20px" message="配置 SMTP 邮件服务后，用户可以通过'忘记密码'功能自助重置密码。" show-icon />
+    <a-form layout="horizontal" :label-col="{ span: 4 }" :wrapper-col="{ span: 20 }">
+      <a-form-item label="SMTP 服务器">
+        <a-input v-model:value="form.host" placeholder="smtp.example.com" />
+      </a-form-item>
+      <a-form-item label="端口">
+        <a-input-number v-model:value="form.port" :min="1" :max="65535" placeholder="465" style="width: 200px" />
+      </a-form-item>
+      <a-form-item label="使用 TLS">
+        <a-switch v-model:checked="form.useTls" />
+      </a-form-item>
+      <a-form-item label="用户名">
+        <a-input v-model:value="form.username" placeholder="noreply@example.com" />
+      </a-form-item>
+      <a-form-item label="密码">
+        <a-input-password v-model:value="form.password" placeholder="SMTP 授权码或密码" />
+      </a-form-item>
+      <a-form-item label="发件人地址">
+        <a-input v-model:value="form.sender" placeholder="Template Studio <noreply@example.com>" />
+      </a-form-item>
 
-      <n-divider />
-      <n-form-item label="测试收件邮箱">
+      <a-divider />
+      <a-form-item label="测试收件邮箱">
         <div style="display: flex; gap: 8px; width: 100%">
-          <n-input v-model:value="testEmail" placeholder="输入邮箱测试 SMTP 连通性" style="flex: 1" />
-          <n-button :loading="testing" @click="handleTest" :disabled="!form.host">发送测试</n-button>
+          <a-input v-model:value="testEmail" placeholder="输入邮箱测试 SMTP 连通性" style="flex: 1" />
+          <a-button :loading="testing" @click="handleTest" :disabled="!form.host">发送测试</a-button>
         </div>
-      </n-form-item>
-      <n-divider />
+      </a-form-item>
+      <a-divider />
 
-      <n-form-item>
-        <n-button type="primary" :loading="saving" @click="handleSave">保存设置</n-button>
-      </n-form-item>
-    </n-form>
-  </n-spin>
+      <a-form-item :wrapper-col="{ offset: 4, span: 20 }">
+        <a-button type="primary" :loading="saving" @click="handleSave">保存设置</a-button>
+      </a-form-item>
+    </a-form>
+  </a-spin>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
-import { useMessage } from 'naive-ui';
 import { getSettings, batchUpdateSettings } from '@/api/system/settings';
+import { message } from 'ant-design-vue';
 import request from '@/utils/request';
-
-const message = useMessage();
 const loading = ref(false);
 const saving = ref(false);
 const testing = ref(false);

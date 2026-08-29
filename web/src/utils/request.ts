@@ -1,10 +1,8 @@
 import axios from 'axios';
 import qs from 'qs';
-import { createDiscreteApi } from 'naive-ui';
+import { message } from 'ant-design-vue';
 import { storage } from '@/utils/Storage';
 import { ACCESS_TOKEN } from '@/store/mutation-types';
-
-const { message } = createDiscreteApi(['message']);
 
 function getApiBaseUrl() {
   // 1. 优先使用显式配置的环境变量

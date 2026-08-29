@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { store } from '@/store';
-import { ACCESS_TOKEN, CURRENT_USER, IS_SCREENLOCKED } from '@/store/mutation-types';
+import { ACCESS_TOKEN, CURRENT_USER } from '@/store/mutation-types';
 import { ResultEnum } from '@/enums/httpEnum';
 
 import { getUserInfo as getUserInfoApi, login } from '@/api/system/user';
@@ -79,7 +79,6 @@ export const useUserStore = defineStore({
       if (code === ResultEnum.SUCCESS) {
         const ex = 7 * 24 * 60 * 60;
         storage.set(ACCESS_TOKEN, result.token, ex);
-        storage.set(IS_SCREENLOCKED, false);
         this.setToken(result.token);
         if (result.roles) {
           this.setRoles(result.roles);

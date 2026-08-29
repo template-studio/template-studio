@@ -1,6 +1,6 @@
 <template>
   <div class="analytics">
-    <n-spin :show="loading">
+    <a-spin :spinning="loading">
       <!-- 页面标题 -->
       <div class="page-header">
         <h1>统计分析</h1>
@@ -8,146 +8,132 @@
       </div>
 
       <!-- 质量指标 -->
-      <n-card title="质量指标" class="quality-metrics">
-        <n-grid :cols="4" :x-gap="20" :y-gap="20">
-          <n-gi>
-            <n-statistic label="推荐模板" :value="overview.featuredTemplates">
+      <a-card title="质量指标" class="quality-metrics">
+        <a-row :gutter="[20, 20]">
+          <a-col :span="6">
+            <a-statistic title="推荐模板" :value="overview.featuredTemplates">
               <template #prefix>
-                <n-icon color="#f0a020">
-                  <StarOutline />
-                </n-icon>
+                <StarOutline style="color: #f0a020" />
               </template>
               <template #suffix>
                 <span class="metric-suffix">/ {{ overview.totalTemplates }}</span>
               </template>
-            </n-statistic>
-          </n-gi>
-          <n-gi>
-            <n-statistic label="包含变量的模板" :value="overview.templatesWithVariables">
+            </a-statistic>
+          </a-col>
+          <a-col :span="6">
+            <a-statistic title="包含变量的模板" :value="overview.templatesWithVariables">
               <template #prefix>
-                <n-icon color="#722ed1">
-                  <CodeOutline />
-                </n-icon>
+                <CodeOutline style="color: #722ed1" />
               </template>
               <template #suffix>
                 <span class="metric-suffix">/ {{ overview.totalTemplates }}</span>
               </template>
-            </n-statistic>
-          </n-gi>
-          <n-gi>
-            <n-statistic label="包含描述的模板" :value="overview.templatesWithDescription">
+            </a-statistic>
+          </a-col>
+          <a-col :span="6">
+            <a-statistic title="包含描述的模板" :value="overview.templatesWithDescription">
               <template #prefix>
-                <n-icon color="#52c41a">
-                  <DocumentOutline />
-                </n-icon>
+                <DocumentOutline style="color: #52c41a" />
               </template>
               <template #suffix>
                 <span class="metric-suffix">/ {{ overview.totalTemplates }}</span>
               </template>
-            </n-statistic>
-          </n-gi>
-          <n-gi>
-            <n-statistic label="平均文件数" :value="overview.avgFilesPerTemplate">
+            </a-statistic>
+          </a-col>
+          <a-col :span="6">
+            <a-statistic title="平均文件数" :value="overview.avgFilesPerTemplate">
               <template #prefix>
-                <n-icon color="#1890ff">
-                  <FolderOutline />
-                </n-icon>
+                <FolderOutline style="color: #1890ff" />
               </template>
               <template #suffix>
                 <span class="metric-suffix">/ 模板</span>
               </template>
-            </n-statistic>
-          </n-gi>
-        </n-grid>
-      </n-card>
+            </a-statistic>
+          </a-col>
+        </a-row>
+      </a-card>
 
       <!-- 详细图表分析 -->
-      <n-grid :cols="1" :y-gap="20" class="detailed-charts">
+      <div class="detailed-charts">
         <!-- 分类分析 -->
-        <n-gi>
-          <n-card title="分类详细分析">
-            <n-grid :cols="2" :x-gap="20">
-              <n-gi>
-                <div class="chart-container">
-                  <h3>分类分布</h3>
-                  <v-chart class="chart" :option="categoryChartOption" />
-                </div>
-              </n-gi>
-              <n-gi>
-                <div class="category-table">
-                  <h3>分类统计表</h3>
-                  <n-table :data="categoryDistribution" :columns="categoryColumns" />
-                </div>
-              </n-gi>
-            </n-grid>
-          </n-card>
-        </n-gi>
+        <a-card title="分类详细分析" style="margin-bottom: 20px">
+          <a-row :gutter="20">
+            <a-col :span="12">
+              <div class="chart-container">
+                <h3>分类分布</h3>
+                <v-chart class="chart" :option="categoryChartOption" />
+              </div>
+            </a-col>
+            <a-col :span="12">
+              <div class="category-table">
+                <h3>分类统计表</h3>
+                <a-table :data-source="categoryDistribution" :columns="categoryColumns" :pagination="false" row-key="categoryName" />
+              </div>
+            </a-col>
+          </a-row>
+        </a-card>
 
         <!-- 语言流行度分析 -->
-        <n-gi>
-          <n-card title="语言流行度分析">
-            <n-grid :cols="2" :x-gap="20">
-              <n-gi>
-                <div class="chart-container">
-                  <h3>语言使用分布</h3>
-                  <v-chart class="chart" :option="languageChartOption" />
-                </div>
-              </n-gi>
-              <n-gi>
-                <div class="language-table">
-                  <h3>语言统计表</h3>
-                  <n-table :data="languagePopularity" :columns="languageColumns" />
-                </div>
-              </n-gi>
-            </n-grid>
-          </n-card>
-        </n-gi>
+        <a-card title="语言流行度分析" style="margin-bottom: 20px">
+          <a-row :gutter="20">
+            <a-col :span="12">
+              <div class="chart-container">
+                <h3>语言使用分布</h3>
+                <v-chart class="chart" :option="languageChartOption" />
+              </div>
+            </a-col>
+            <a-col :span="12">
+              <div class="language-table">
+                <h3>语言统计表</h3>
+                <a-table :data-source="languagePopularity" :columns="languageColumns" :pagination="false" row-key="languageName" />
+              </div>
+            </a-col>
+          </a-row>
+        </a-card>
 
         <!-- 复杂度和趋势分析 -->
-        <n-gi>
-          <n-card title="模板复杂度和使用趋势">
-            <n-grid :cols="2" :x-gap="20">
-              <n-gi>
-                <div class="chart-container">
-                  <h3>模板复杂度分析</h3>
-                  <v-chart class="chart" :option="complexityChartOption" />
-                </div>
-              </n-gi>
-              <n-gi>
-                <div class="chart-container">
-                  <h3>创建趋势 (30天)</h3>
-                  <v-chart class="chart" :option="trendsChartOption" />
-                </div>
-              </n-gi>
-            </n-grid>
-          </n-card>
-        </n-gi>
-      </n-grid>
+        <a-card title="模板复杂度和使用趋势">
+          <a-row :gutter="20">
+            <a-col :span="12">
+              <div class="chart-container">
+                <h3>模板复杂度分析</h3>
+                <v-chart class="chart" :option="complexityChartOption" />
+              </div>
+            </a-col>
+            <a-col :span="12">
+              <div class="chart-container">
+                <h3>创建趋势 (30天)</h3>
+                <v-chart class="chart" :option="trendsChartOption" />
+              </div>
+            </a-col>
+          </a-row>
+        </a-card>
+      </div>
 
       <!-- 操作区域 -->
-      <n-card title="数据操作" class="actions-section">
-        <n-space>
-          <n-button type="primary" @click="refreshData">
+      <a-card title="数据操作" class="actions-section">
+        <a-space>
+          <a-button type="primary" @click="refreshData">
             <template #icon>
-              <n-icon><RefreshOutline /></n-icon>
+              <RefreshOutline />
             </template>
             刷新数据
-          </n-button>
-          <n-button @click="exportData">
+          </a-button>
+          <a-button @click="exportData">
             <template #icon>
-              <n-icon><DownloadOutline /></n-icon>
+              <DownloadOutline />
             </template>
             导出报告
-          </n-button>
-          <n-select
+          </a-button>
+          <a-select
             v-model:value="trendsRange"
             :options="trendsRangeOptions"
             style="width: 120px"
-            @update:value="onTrendsRangeChange"
+            @change="onTrendsRangeChange"
           />
-        </n-space>
-      </n-card>
-    </n-spin>
+        </a-space>
+      </a-card>
+    </a-spin>
   </div>
 </template>
 
@@ -163,19 +149,7 @@
   } from 'echarts/components';
   import { CanvasRenderer } from 'echarts/renderers';
   import VChart from 'vue-echarts';
-  import {
-    NCard,
-    NGrid,
-    NGi,
-    NSpin,
-    NStatistic,
-    NIcon,
-    NTable,
-    NSpace,
-    NButton,
-    NSelect,
-    useMessage,
-  } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import {
     StarOutline,
     CodeOutline,
@@ -183,7 +157,7 @@
     FolderOutline,
     RefreshOutline,
     DownloadOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
   import {
     getOverview,
     getCategoryDistribution,
@@ -203,8 +177,6 @@
     TitleComponent,
     CanvasRenderer,
   ]);
-
-  const message = useMessage();
 
   // 数据状态
   const loading = ref(true);
@@ -234,22 +206,24 @@
 
   // 表格列配置
   const categoryColumns = [
-    { title: '分类名称', key: 'categoryName' },
-    { title: '模板数量', key: 'templateCount' },
+    { title: '分类名称', dataIndex: 'categoryName', key: 'categoryName' },
+    { title: '模板数量', dataIndex: 'templateCount', key: 'templateCount' },
     {
       title: '占比',
+      dataIndex: 'percentage',
       key: 'percentage',
-      render: (row) => h('span', {}, `${row.percentage}%`),
+      customRender: ({ text }) => h('span', {}, `${text}%`),
     },
   ];
 
   const languageColumns = [
-    { title: '语言名称', key: 'languageName' },
-    { title: '模板数量', key: 'templateCount' },
+    { title: '语言名称', dataIndex: 'languageName', key: 'languageName' },
+    { title: '模板数量', dataIndex: 'templateCount', key: 'templateCount' },
     {
       title: '占比',
+      dataIndex: 'percentage',
       key: 'percentage',
-      render: (row) => h('span', {}, `${row.percentage}%`),
+      customRender: ({ text }) => h('span', {}, `${text}%`),
     },
   ];
 

@@ -10,38 +10,33 @@
       </div>
       <div class="preview-meta">
         <!-- 引擎标识 -->
-        <n-tooltip trigger="hover" v-if="renderServiceReady">
-          <template #trigger>
-            <span class="engine-tag" :class="{ wasm: isUsingWasm }">
-              {{ isUsingWasm ? 'WASM' : 'Cloud' }}
-            </span>
-          </template>
-          {{ isUsingWasm ? '本地 WASM 引擎渲染（支持离线）' : '后端服务渲染' }}
-        </n-tooltip>
+        <a-tooltip v-if="renderServiceReady">
+          <template #title>{{ isUsingWasm ? '本地 WASM 引擎渲染（支持离线）' : '后端服务渲染' }}</template>
+          <span class="engine-tag" :class="{ wasm: isUsingWasm }">
+            {{ isUsingWasm ? 'WASM' : 'Cloud' }}
+          </span>
+        </a-tooltip>
         <!-- 渲染耗时 -->
         <span v-if="renderStats" class="render-time"> {{ renderStats.duration }}ms </span>
       </div>
       <div class="preview-actions">
-        <n-button size="small" @click="copyContent" v-if="!isCollapsed">
+        <a-button size="small" @click="copyContent" v-if="!isCollapsed">
           <template #icon>
-            <n-icon><Copy /></n-icon>
+            <Copy />
           </template>
           复制
-        </n-button>
-        <n-button
+        </a-button>
+        <a-button
           size="small"
-          quaternary
           @click="toggleCollapse"
           class="collapse-btn"
           :class="{ collapsed: isCollapsed }"
         >
           <template #icon>
-            <n-icon>
-              <ChevronForward v-if="!isCollapsed" />
-              <ChevronBack v-else />
-            </n-icon>
+            <ChevronForward v-if="!isCollapsed" />
+            <ChevronBack v-else />
           </template>
-        </n-button>
+        </a-button>
       </div>
     </div>
 
@@ -49,9 +44,7 @@
       <!-- 错误显示区域 -->
       <div v-if="renderError" class="error-display">
         <div class="error-header">
-          <n-icon size="18" color="#ff4757">
-            <AlertCircle />
-          </n-icon>
+          <AlertCircle style="font-size: 18px; color: #ff4757" />
           <span class="error-title">模板渲染错误</span>
         </div>
         <div class="error-body">
@@ -85,8 +78,8 @@
 
 <script setup>
   import { ref, computed, watch, onMounted, nextTick } from 'vue';
-  import { NButton, NIcon, NTooltip, useMessage } from 'naive-ui';
-  import { Copy, ChevronForward, ChevronBack, AlertCircle } from '@vicons/ionicons5';
+  import { message } from 'ant-design-vue';
+  import { Copy, ChevronForward, ChevronBack, AlertCircle } from '@/icons/ionicons5';
   import {
     EditorView,
     highlightActiveLine,
@@ -136,8 +129,6 @@
       default: '',
     },
   });
-
-  const message = useMessage();
 
   const previewEditorRef = ref(null);
   let previewEditor = null;

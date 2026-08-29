@@ -1,5 +1,4 @@
 import { h } from 'vue';
-import { NSwitch } from 'naive-ui';
 import { BasicColumn } from '@/components/Table';
 
 export interface CategoryData {
@@ -14,40 +13,45 @@ export interface CategoryData {
 export const columns: BasicColumn<CategoryData>[] = [
   {
     title: 'ID',
+    dataIndex: 'id',
     key: 'id',
     width: 80,
   },
   {
     title: '分类名称',
+    dataIndex: 'name',
     key: 'name',
     width: 150,
-    render(row) {
-      return h('span', { class: 'category-name' }, row.name);
+    customRender({ record }) {
+      return h('span', { class: 'category-name' }, record.name);
     },
   },
   {
     title: '描述',
+    dataIndex: 'description',
     key: 'description',
     width: 200,
     ellipsis: {
       tooltip: true,
     },
-    render(row) {
-      return row.description || h('span', { class: 'text-placeholder' }, '暂无描述');
+    customRender({ record }) {
+      return record.description || h('span', { class: 'text-placeholder' }, '暂无描述');
     },
   },
   {
     title: '排序',
+    dataIndex: 'sort',
     key: 'sort',
     width: 100,
     sorter: (a, b) => a.sort - b.sort,
   },
   {
     title: '创建时间',
+    dataIndex: 'created_at',
     key: 'created_at',
     width: 180,
-    render(row) {
-      return formatDate(row.created_at);
+    customRender({ record }) {
+      return formatDate(record.created_at);
     },
   },
 ];

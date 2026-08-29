@@ -1,50 +1,46 @@
 <template>
-  <n-layout class="layout" :position="fixedMenu" has-sider>
-    <n-layout-sider
+  <a-layout class="layout" has-sider>
+    <a-layout-sider
       v-if="
         !isMobile && isMixMenuNoneSub && (navMode === 'vertical' || navMode === 'horizontal-mix')
       "
-      show-trigger="bar"
-      @collapse="collapsed = true"
-      :position="fixedMenu"
-      @expand="collapsed = false"
-      :collapsed="collapsed"
-      collapse-mode="width"
+      v-model:collapsed="collapsed"
       :collapsed-width="64"
       :width="leftMenuWidth"
-      :native-scrollbar="false"
-      :inverted="inverted"
+      :class="{ 'layout-sider-dark': inverted }"
       class="layout-sider"
     >
-      <Logo :collapsed="collapsed" />
+      <Logo :collapsed="collapsed" :dark="inverted" />
       <AsideMenu v-model:collapsed="collapsed" v-model:location="getMenuLocation" />
-    </n-layout-sider>
+    </a-layout-sider>
 
-    <n-drawer
-      v-model:show="showSideDrawer"
+    <a-drawer
+      v-model:open="showSideDrawer"
       :width="menuWidth"
-      :placement="'left'"
+      placement="left"
       class="layout-side-drawer"
+      :closable="false"
     >
-      <n-layout-sider
-        :position="fixedMenu"
+      <a-layout-sider
         :collapsed="false"
         :width="menuWidth"
-        :native-scrollbar="false"
-        :inverted="inverted"
+        :class="{ 'layout-sider-dark': inverted }"
         class="layout-sider"
       >
-        <Logo :collapsed="collapsed" />
+        <Logo :collapsed="collapsed" :dark="inverted" />
         <AsideMenu v-model:location="getMenuLocation" />
-      </n-layout-sider>
-    </n-drawer>
+      </a-layout-sider>
+    </a-drawer>
 
-    <n-layout :inverted="inverted">
-      <n-layout-header :inverted="getHeaderInverted" :position="fixedHeader">
+    <a-layout :style="{ marginLeft: leftMenuWidth + 'px' }">
+      <a-layout-header
+        :class="{ 'layout-header-fixed': fixedHeader === 'absolute' }"
+        :style="{ paddingLeft: fixedHeader === 'absolute' ? leftMenuWidth + 'px' : '0' }"
+      >
         <PageHeader v-model:collapsed="collapsed" :inverted="inverted" />
-      </n-layout-header>
+      </a-layout-header>
 
-      <n-layout-content
+      <a-layout-content
         class="layout-content"
         :class="{ 'layout-default-background': getDarkTheme === false }"
       >
@@ -67,14 +63,10 @@
             <MainView />
           </div>
         </div>
-        <!--1.15废弃，没啥用，占用操作空间-->
-        <!--        <NLayoutFooter v-if="getShowFooter">-->
-        <!--          <PageFooter />-->
-        <!--        </NLayoutFooter>-->
-      </n-layout-content>
-      <n-back-top :right="100" />
-    </n-layout>
-  </n-layout>
+      </a-layout-content>
+      <a-back-top />
+    </a-layout>
+  </a-layout>
 </template>
 
 <script lang="ts" setup>
@@ -212,19 +204,19 @@
     .layout-sider {
       min-height: 100vh;
       box-shadow: 2px 0 8px 0 rgb(29 35 41 / 5%);
-      position: relative;
-      z-index: 13;
-      transition: all 0.2s ease-in-out;
-    }
-
-    .layout-sider-fix {
       position: fixed;
       top: 0;
       left: 0;
+      z-index: 13;
+      transition: all 0.2s ease-in-out;
+
+      &-dark {
+        background: #001529;
+      }
     }
 
     .ant-layout {
-      overflow: hidden;
+      overflow: visible;
     }
 
     .layout-right-fix {
@@ -236,14 +228,19 @@
 
     .layout-content {
       flex: auto;
-      min-height: 100vh;
+      height: 100vh;
+      overflow: auto;
     }
 
-    .n-layout-header.n-layout-header--absolute-positioned {
+    .layout-header-fixed {
+      position: fixed;
+      top: 0;
+      right: 0;
       z-index: 11;
+      width: 100%;
     }
 
-    .n-layout-footer {
+    .ant-layout-footer {
       background: none;
     }
   }

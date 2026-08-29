@@ -3,7 +3,7 @@
  * 负责组件的增删改查、Schema转换、容器组件管理等核心业务逻辑
  */
 import { ref, computed } from 'vue'
-import { useMessage } from 'naive-ui'
+import { message } from 'ant-design-vue'
 import {
   generateFieldName,
   generateDefaultSchema,
@@ -12,7 +12,6 @@ import {
 } from '../utils/componentTemplates'
 
 export function useComponentManager(schemaStore) {
-  const message = useMessage()
 
   // ========== 状态 ==========
 

@@ -1,8 +1,60 @@
 import type { PropType } from 'vue';
-import { NUpload } from 'naive-ui';
 
 export const basicProps = {
-  ...NUpload.props,
+  // Ant Design Vue Upload props
+  action: {
+    type: String,
+    default: undefined,
+  },
+  headers: {
+    type: Object as PropType<Record<string, string>>,
+    default: undefined,
+  },
+  name: {
+    type: String,
+    default: 'file',
+  },
+  data: {
+    type: [Object, Function] as PropType<Record<string, any> | ((file: any) => Record<string, any>)>,
+    default: undefined,
+  },
+  multiple: {
+    type: Boolean,
+    default: false,
+  },
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
+  method: {
+    type: String as PropType<'POST' | 'PUT' | 'PATCH' | 'post' | 'put' | 'patch'>,
+    default: 'POST',
+  },
+  listType: {
+    type: String as PropType<'text' | 'picture' | 'picture-card'>,
+    default: 'picture-card',
+  },
+  showUploadList: {
+    type: [Boolean, Object] as PropType<boolean | object>,
+    default: false,
+  },
+  customRequest: {
+    type: Function as PropType<(options: any) => void>,
+    default: undefined,
+  },
+  withCredentials: {
+    type: Boolean,
+    default: false,
+  },
+  directory: {
+    type: Boolean,
+    default: false,
+  },
+  beforeUpload: {
+    type: Function as PropType<(file: File, fileList: File[]) => boolean | Promise<boolean>>,
+    default: undefined,
+  },
+  // 自定义属性
   accept: {
     type: String,
     default: '.jpg,.png,.jpeg,.svg,.gif',

@@ -1,5 +1,5 @@
 import { h } from 'vue';
-import { NTag } from 'naive-ui';
+import { Tag } from 'ant-design-vue';
 import { BasicColumn } from '@/components/Table';
 
 export interface LanguageData {
@@ -17,57 +17,62 @@ export interface LanguageData {
 export const columns: BasicColumn<LanguageData>[] = [
   {
     title: 'ID',
+    dataIndex: 'id',
     key: 'id',
     width: 80,
   },
   {
     title: '语言名称',
+    dataIndex: 'name',
     key: 'name',
     width: 150,
-    render(row) {
-      return h('span', { class: 'language-name' }, row.name);
+    customRender({ record }) {
+      return h('span', { class: 'language-name' }, record.name);
     },
   },
   {
     title: '显示名称',
+    dataIndex: 'displayName',
     key: 'displayName',
     width: 150,
-    render(row) {
+    customRender({ record }) {
       return h(
         'span',
         { class: 'language-display-name' },
-        row.displayName || row.display_name || row.name
+        record.displayName || record.display_name || record.name
       );
     },
   },
   {
     title: '语言代码',
+    dataIndex: 'code',
     key: 'code',
     width: 100,
-    render(row) {
+    customRender({ record }) {
       return h(
-        NTag,
+        Tag,
         {
-          type: 'info',
-          size: 'small',
+          color: 'blue',
           style: { fontFamily: 'monospace' },
         },
-        { default: () => row.code }
+        { default: () => record.code }
       );
     },
   },
   {
     title: '排序',
+    dataIndex: 'sort',
     key: 'sort',
     width: 100,
     sorter: (a, b) => (a.sort || 0) - (b.sort || 0),
   },
   {
     title: '创建时间',
+    dataIndex: 'created_at',
     key: 'created_at',
     width: 180,
-    render(row) {
-      return formatDate(row.created_at);
+    customRender({ record }) {
+      return formatDate(record.created_at);
     },
   },
 ];

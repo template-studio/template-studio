@@ -3,9 +3,7 @@
     <div class="variables-content">
       <!-- 加载中 -->
       <div v-if="loading" class="loading-container">
-        <n-spin size="large">
-          <template #description>正在加载模板变量…</template>
-        </n-spin>
+        <a-spin size="large" tip="正在加载模板变量…" />
       </div>
 
       <!-- 表单 -->
@@ -16,10 +14,7 @@
             <p class="form-desc">请填写以下信息来配置您的项目</p>
           </div>
           <div class="mode-tabs">
-            <n-tabs v-model:value="currentMode" type="segment" size="small">
-              <n-tab-pane name="normal" tab="普通模式" />
-              <n-tab-pane name="advanced" tab="高级模式" />
-            </n-tabs>
+            <a-segmented v-model:value="currentMode" :options="[{ label: '普通模式', value: 'normal' }, { label: '高级模式', value: 'advanced' }]" />
           </div>
         </div>
 
@@ -27,7 +22,7 @@
         <div v-if="currentMode === 'normal'" class="normal-mode">
           <div v-if="customVariables.length" class="variable-section">
             <h3 class="section-title">
-              <n-icon><CodeSlash /></n-icon>
+              <CodeSlash style="font-size: 16px" />
               自定义变量
               <span class="section-subtitle">({{ customVariables.length }})</span>
             </h3>
@@ -47,14 +42,14 @@
                 </label>
 
                 <!-- 字符串 -->
-                <n-input
+                <a-input
                   v-if="v.type === 'string'"
                   v-model:value="formData[v.name]"
                   :placeholder="v.desc || '请输入字符串'"
                 />
 
                 <!-- 数字 -->
-                <n-input-number
+                <a-input-number
                   v-else-if="v.type === 'number'"
                   v-model:value="formData[v.name]"
                   :placeholder="v.desc || '请输入数字'"
@@ -62,26 +57,25 @@
                 />
 
                 <!-- 布尔 -->
-                <n-switch v-else-if="v.type === 'boolean'" v-model:value="formData[v.name]" />
+                <a-switch v-else-if="v.type === 'boolean'" v-model:checked="formData[v.name]" />
 
                 <!-- 列表 -->
                 <div v-else-if="v.type === 'list'" class="list-box">
-                  <n-dynamic-tags
+                  <a-select
                     :key="`list-${v.name}`"
                     v-model:value="formData[v.name]"
+                    mode="tags"
                     :placeholder="v.desc || '按回车添加'"
-                    :max="10"
-                    @create="(label) => createTag(v.name, label)"
+                    :max-tag-count="10"
                   />
                 </div>
 
                 <!-- 对象 / 对象数组 -->
-                <n-input
+                <a-textarea
                   v-else
                   v-model:value="formData[v.name]"
-                  type="textarea"
                   :placeholder="v.desc || '请输入 JSON'"
-                  :autosize="{ minRows: 3, maxRows: 6 }"
+                  :auto-size="{ minRows: 3, maxRows: 6 }"
                 />
               </div>
             </div>
@@ -94,9 +88,9 @@
             <div class="editor-header">
               <span>JSON 编辑器</span>
               <div class="actions">
-                <n-button size="small" quaternary @click="formatJson">格式化</n-button>
-                <n-button size="small" type="info" quaternary @click="syncFromNormal"
-                  >同步普通模式</n-button
+                <a-button size="small" @click="formatJson">格式化</a-button>
+                <a-button size="small" @click="syncFromNormal"
+                  >同步普通模式</a-button
                 >
               </div>
             </div>
@@ -112,26 +106,15 @@
 
     <!-- 底部 -->
     <div class="step-actions">
-      <n-button @click="$emit('prev')">上一步</n-button>
-      <n-button type="primary" :disabled="!valid" @click="handleNext">下一步</n-button>
+      <a-button @click="$emit('prev')">上一步</a-button>
+      <a-button type="primary" :disabled="!valid" @click="handleNext">下一步</a-button>
     </div>
   </div>
 </template>
 
 <script setup>
   import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
-  import {
-    NSpin,
-    NTabs,
-    NTabPane,
-    NInput,
-    NInputNumber,
-    NSwitch,
-    NDynamicTags,
-    NButton,
-    NIcon,
-  } from 'naive-ui';
-  import { CodeSlash } from '@vicons/ionicons5';
+  import { CodeSlash } from '@/icons/ionicons5';
   import { EditorView } from '@codemirror/view';
   import { EditorState } from '@codemirror/state';
   import { json } from '@codemirror/lang-json';
@@ -428,29 +411,6 @@
   .form-desc {
     color: #64748b;
     font-size: 14px;
-  }
-  .mode-tabs :deep(.n-tabs-nav) {
-    background: #f1f5f9;
-    border-radius: 6px;
-    padding: 4px;
-  }
-  .mode-tabs :deep(.n-tabs-tab) {
-    border-radius: 4px;
-    margin: 0 2px;
-    min-width: 80px;
-    justify-content: center;
-  }
-  .mode-tabs :deep(.n-tabs-tab:not(.n-tabs-tab--active)) {
-    background: transparent;
-    color: #64748b;
-  }
-  .mode-tabs :deep(.n-tabs-tab.n-tabs-tab--active) {
-    background: #fff;
-    color: var(--client-theme-color);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  }
-  .mode-tabs :deep(.n-tabs-tab:hover) {
-    background: rgba(255, 255, 255, 0.8);
   }
   .variable-section {
     margin-bottom: 24px;

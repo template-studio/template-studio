@@ -1,11 +1,11 @@
 <template>
-  <n-drawer
-    v-model:show="drawerVisible"
+  <a-drawer
+    v-model:open="drawerVisible"
     :width="'100%'"
     placement="right"
-    :trap-focus="false"
-    :block-scroll="false"
-    :native-scrollbar="false"
+    :closable="false"
+    :body-style="{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }"
+    :mask="false"
   >
     <div class="drawer-container">
       <!-- Header -->
@@ -44,37 +44,34 @@
               <div class="canvas-wrapper">
                 <!-- 面包屑导航 -->
                 <div v-if="navigationPath.length > 0" class="breadcrumb-nav">
-                  <n-breadcrumb>
-                    <n-breadcrumb-item @click="handleNavigateToRoot">
-                      <template #separator>
-                        <n-icon size="12"><ChevronForwardOutline /></n-icon>
-                      </template>
+                  <a-breadcrumb>
+                    <a-breadcrumb-item @click="handleNavigateToRoot" style="cursor: pointer">
                       变量（根层级）
-                    </n-breadcrumb-item>
-                    <n-breadcrumb-item
+                    </a-breadcrumb-item>
+                    <a-breadcrumb-item
                       v-for="(item, index) in navigationPath"
                       :key="item.id"
                       @click="handleNavigateToLevel(index)"
+                      style="cursor: pointer"
                     >
-                      <template #separator>
-                        <n-icon size="12"><ChevronForwardOutline /></n-icon>
-                      </template>
                       {{ item.fieldName || item.title }}（第{{ index + 1 }}层）
-                    </n-breadcrumb-item>
-                  </n-breadcrumb>
+                    </a-breadcrumb-item>
+                  </a-breadcrumb>
                   <!-- 层级提示 -->
-                  <n-text
+                  <span
                     v-if="navigationPath.length >= WARNING_LEVEL"
-                    :type="navigationPath.length >= MAX_NESTING_LEVEL ? 'error' : 'warning'"
-                    depth="3"
-                    style="margin-left: 12px; font-size: 12px"
+                    :style="{
+                      marginLeft: '12px',
+                      fontSize: '12px',
+                      color: navigationPath.length >= MAX_NESTING_LEVEL ? '#ff4d4f' : '#faad14'
+                    }"
                   >
                     {{
                       navigationPath.length >= MAX_NESTING_LEVEL
                         ? '已达最大层级'
                         : `${navigationPath.length + 1}/${MAX_NESTING_LEVEL}层`
                     }}
-                  </n-text>
+                  </span>
                 </div>
 
                 <DesignCanvas
@@ -155,7 +152,7 @@
           >
             <div class="form-preview-container">
               <div class="preview-header">
-                <n-text strong>表单预览</n-text>
+                <strong>表单预览</strong>
               </div>
               <div class="preview-content">
                 <FormPreview
@@ -189,14 +186,13 @@
         @remove-components="handleRemoveUnusedComponents"
       />
     </div>
-  </n-drawer>
+  </a-drawer>
 </template>
 
 <script setup>
   import { ref, computed, watch, onMounted, provide, readonly, toRef, nextTick } from 'vue';
-  import { NDrawer, NText, NBreadcrumb, NBreadcrumbItem, NIcon } from 'naive-ui';
-  import { useMessage } from 'naive-ui';
-  import { ChevronForwardOutline } from '@vicons/ionicons5';
+  import { message } from 'ant-design-vue';
+  import { ChevronForwardOutline } from '@/icons/ionicons5';
   import { useSchemaStore } from './composables/useSchemaStore';
   import { useComponentManager } from './composables/useComponentManager';
   import {
@@ -228,8 +224,6 @@
 
   // Emits
   const emit = defineEmits(['update:show', 'save', 'test-data-updated']);
-
-  const message = useMessage();
 
   // ========== 状态管理 ==========
 
@@ -1365,7 +1359,7 @@
   }
 
   /* Drawer 样式 - 确保独立滚动 */
-  :deep(.n-drawer-body) {
+  :deep(.ant-drawer-body) {
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
@@ -1470,16 +1464,16 @@
     gap: 8px;
   }
 
-  .breadcrumb-nav :deep(.n-breadcrumb) {
+  .breadcrumb-nav :deep(.ant-breadcrumb) {
     flex: 1;
   }
 
-  .breadcrumb-nav :deep(.n-breadcrumb-item) {
+  .breadcrumb-nav :deep(.ant-breadcrumb-link) {
     cursor: pointer;
     font-size: 13px;
   }
 
-  .breadcrumb-nav :deep(.n-breadcrumb-item:hover) {
+  .breadcrumb-nav :deep(.ant-breadcrumb-link:hover) {
     color: #18a058;
   }
 
@@ -1512,19 +1506,15 @@
 
 <style>
   /* 强制禁止页面级滚动 */
-  .n-drawer {
+  .ant-drawer {
     overflow: hidden !important;
   }
 
-  .n-drawer-container {
+  .ant-drawer-content-wrapper {
     overflow: hidden !important;
   }
 
-  .n-drawer-content-wrapper {
-    overflow: hidden !important;
-  }
-
-  .n-drawer-body {
+  .ant-drawer-body {
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;

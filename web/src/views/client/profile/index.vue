@@ -44,18 +44,17 @@
             <!-- 个人简介 -->
             <div class="bio-section">
               <label class="bio-label">个人简介</label>
-              <n-input
+              <a-textarea
                 v-model:value="bioText"
-                type="textarea"
                 placeholder="介绍一下自己吧..."
                 :maxlength="200"
                 show-count
                 :rows="3"
               />
-              <n-button type="primary" size="small" style="margin-top: 12px" @click="handleSaveBio" :loading="bioSaving">保存简介</n-button>
+              <a-button type="primary" size="small" style="margin-top: 12px" @click="handleSaveBio" :loading="bioSaving">保存简介</a-button>
             </div>
 
-            <n-divider />
+            <a-divider />
 
             <div class="info-grid">
               <div class="info-card">
@@ -94,24 +93,24 @@
               <h2>修改密码</h2>
               <p class="panel-desc">定期更换密码有助于保护账号安全</p>
             </div>
-            <n-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" label-placement="top" class="password-form">
+            <a-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" layout="vertical" class="password-form">
               <div class="form-grid">
-                <n-form-item label="当前密码" path="oldPassword">
-                  <n-input v-model:value="passwordForm.oldPassword" type="password" showPasswordOn="click" placeholder="请输入当前密码" />
-                </n-form-item>
-                <n-form-item label="新密码" path="newPassword">
-                  <n-input v-model:value="passwordForm.newPassword" type="password" showPasswordOn="click" placeholder="请输入新密码（至少6位）" />
-                </n-form-item>
-                <n-form-item label="确认新密码" path="confirmPassword">
-                  <n-input v-model:value="passwordForm.confirmPassword" type="password" showPasswordOn="click" placeholder="请再次输入新密码" />
-                </n-form-item>
+                <a-form-item label="当前密码" name="oldPassword">
+                  <a-input-password v-model:value="passwordForm.oldPassword" placeholder="请输入当前密码" />
+                </a-form-item>
+                <a-form-item label="新密码" name="newPassword">
+                  <a-input-password v-model:value="passwordForm.newPassword" placeholder="请输入新密码（至少6位）" />
+                </a-form-item>
+                <a-form-item label="确认新密码" name="confirmPassword">
+                  <a-input-password v-model:value="passwordForm.confirmPassword" placeholder="请再次输入新密码" />
+                </a-form-item>
               </div>
               <div class="form-actions">
-                <n-button type="primary" @click="handleChangePassword" :loading="passwordLoading">
+                <a-button type="primary" @click="handleChangePassword" :loading="passwordLoading">
                   保存修改
-                </n-button>
+                </a-button>
               </div>
-            </n-form>
+            </a-form>
           </div>
 
           <!-- 外观设置 -->
@@ -210,9 +209,9 @@
                   <h2>令牌管理</h2>
                   <p class="panel-desc">用于 CLI、桌面端等第三方工具对接 API</p>
                 </div>
-                <n-button type="primary" @click="showCreateToken = true">
+                <a-button type="primary" @click="showCreateToken = true">
                   创建令牌
-                </n-button>
+                </a-button>
               </div>
             </div>
 
@@ -238,31 +237,31 @@
                     <span v-for="scope in parseScopes(token.scopes)" :key="scope" class="scope-tag">{{ scopeLabelMap[scope] || scope }}</span>
                   </div>
                 </div>
-                <n-button size="small" type="error" ghost @click="handleDeleteToken(token.id)">删除</n-button>
+                <a-button size="small" danger @click="handleDeleteToken(token.id)">删除</a-button>
               </div>
             </div>
 
             <!-- 创建令牌弹窗 -->
-            <n-modal v-model:show="showCreateToken" preset="dialog" title="创建新令牌" :show-icon="false" style="width: 480px">
-              <n-form label-placement="top">
-                <n-form-item label="令牌名称">
-                  <n-input v-model:value="newTokenName" placeholder="如：CLI 工具、VS Code 插件" />
-                </n-form-item>
-                <n-form-item label="过期时间">
-                  <n-select
+            <a-modal v-model:open="showCreateToken" title="创建新令牌" :width="480" :footer="null">
+              <a-form layout="vertical">
+                <a-form-item label="令牌名称">
+                  <a-input v-model:value="newTokenName" placeholder="如：CLI 工具、VS Code 插件" />
+                </a-form-item>
+                <a-form-item label="过期时间">
+                  <a-select
                     v-model:value="newTokenExpiry"
                     :options="expiryOptions"
                     placeholder="选择过期时间"
                   />
-                </n-form-item>
-                <n-form-item label="权限范围">
-                  <n-checkbox-group v-model:value="newTokenScopes">
-                    <n-space item-style="display: flex;">
-                      <n-checkbox v-for="opt in scopeOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-                    </n-space>
-                  </n-checkbox-group>
-                </n-form-item>
-              </n-form>
+                </a-form-item>
+                <a-form-item label="权限范围">
+                  <a-checkbox-group v-model:value="newTokenScopes">
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                      <a-checkbox v-for="opt in scopeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</a-checkbox>
+                    </div>
+                  </a-checkbox-group>
+                </a-form-item>
+              </a-form>
               <div v-if="createdToken" class="token-created">
                 <div class="token-created-warning">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -270,15 +269,15 @@
                 </div>
                 <div class="token-created-value">
                   <code>{{ createdToken }}</code>
-                  <n-button size="tiny" quaternary @click="copyToken">复制</n-button>
+                  <a-button size="small" type="link" @click="copyToken">复制</a-button>
                 </div>
               </div>
-              <template #action>
-                <n-button v-if="!createdToken" @click="showCreateToken = false">取消</n-button>
-                <n-button v-if="!createdToken" type="primary" @click="handleCreateToken" :loading="createTokenLoading" :disabled="!newTokenName.trim()">创建</n-button>
-                <n-button v-else @click="closeCreateModal">完成</n-button>
-              </template>
-            </n-modal>
+              <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px">
+                <a-button v-if="!createdToken" @click="showCreateToken = false">取消</a-button>
+                <a-button v-if="!createdToken" type="primary" @click="handleCreateToken" :loading="createTokenLoading" :disabled="!newTokenName.trim()">创建</a-button>
+                <a-button v-else @click="closeCreateModal">完成</a-button>
+              </div>
+            </a-modal>
           </div>
         </div>
       </div>
@@ -288,7 +287,7 @@
 
 <script setup>
   import { ref, computed, reactive, onMounted, watch } from 'vue';
-  import { useMessage } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import { useUserStore } from '@/store/modules/user';
   import { changePassword, createPat, listPats, deletePat, updateProfile, uploadAvatar } from '@/api/system/user';
   import {
@@ -298,7 +297,6 @@
   } from '@/utils/clientTheme';
 
   const userStore = useUserStore();
-  const message = useMessage();
 
   const activeTab = ref('info');
   const currentTheme = ref(getClientTheme());
@@ -460,43 +458,46 @@
   });
 
   const passwordRules = {
-    oldPassword: { required: true, message: '请输入当前密码', trigger: 'blur' },
+    oldPassword: [{ required: true, message: '请输入当前密码', trigger: 'blur' }],
     newPassword: [
       { required: true, message: '请输入新密码', trigger: 'blur' },
       { min: 6, message: '密码至少6位', trigger: 'blur' },
     ],
-    confirmPassword: {
-      required: true,
-      message: '请确认新密码',
-      trigger: 'blur',
-      validator: (_rule, value) => {
-        if (value && value !== passwordForm.newPassword) {
-          return new Error('两次输入的密码不一致');
-        }
-        return true;
+    confirmPassword: [
+      { required: true, message: '请确认新密码', trigger: 'blur' },
+      {
+        validator: (_rule, value) => {
+          if (value && value !== passwordForm.newPassword) {
+            return Promise.reject('两次输入的密码不一致');
+          }
+          return Promise.resolve();
+        },
+        trigger: 'blur',
       },
-    },
+    ],
   };
 
-  const handleChangePassword = () => {
-    passwordFormRef.value?.validate(async (errors) => {
-      if (errors) return;
-      passwordLoading.value = true;
-      try {
-        await changePassword({
-          oldPassword: passwordForm.oldPassword,
-          newPassword: passwordForm.newPassword,
-        });
-        message.success('密码修改成功');
-        passwordForm.oldPassword = '';
-        passwordForm.newPassword = '';
-        passwordForm.confirmPassword = '';
-      } catch (e) {
-        message.error('密码修改失败');
-      } finally {
-        passwordLoading.value = false;
-      }
-    });
+  const handleChangePassword = async () => {
+    try {
+      await passwordFormRef.value?.validate();
+    } catch {
+      return;
+    }
+    passwordLoading.value = true;
+    try {
+      await changePassword({
+        oldPassword: passwordForm.oldPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      message.success('密码修改成功');
+      passwordForm.oldPassword = '';
+      passwordForm.newPassword = '';
+      passwordForm.confirmPassword = '';
+    } catch (e) {
+      message.error('密码修改失败');
+    } finally {
+      passwordLoading.value = false;
+    }
   };
 
   // ===== 令牌管理 =====

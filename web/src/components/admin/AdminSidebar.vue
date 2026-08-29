@@ -1,14 +1,11 @@
 <template>
-  <n-layout-sider
-    bordered
-    collapse-mode="width"
+  <a-layout-sider
     :collapsed="collapsed"
     :collapsed-width="64"
     :width="240"
-    :native-scrollbar="false"
-    show-trigger
-    @collapse="$emit('update:collapsed', true)"
-    @expand="$emit('update:collapsed', false)"
+    collapsible
+    :trigger="null"
+    @collapse="(val) => $emit('update:collapsed', val)"
     class="admin-sidebar"
   >
     <!-- Logo区域 -->
@@ -91,22 +88,22 @@
     </div>
 
     <!-- 菜单 -->
-    <n-menu
-      :collapsed="collapsed"
-      :collapsed-width="64"
-      :collapsed-icon-size="20"
-      :options="menuOptions"
-      :value="activeKey"
-      @update:value="handleMenuSelect"
+    <a-menu
+      mode="inline"
+      :inline-collapsed="collapsed"
+      :items="menuOptions"
+      :selectedKeys="[activeKey]"
+      :openKeys="openKeys"
+      @update:openKeys="openKeys = $event"
+      @click="handleMenuClick"
       class="sidebar-menu"
     />
-  </n-layout-sider>
+  </a-layout-sider>
 </template>
 
 <script setup>
   import { ref, computed, h } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
-  import { NLayoutSider, NMenu, NIcon } from 'naive-ui';
   import {
     GridOutline,
     LayersOutline,
@@ -114,7 +111,7 @@
     LanguageOutline,
     ServerOutline,
     OptionsOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
 
   const props = defineProps({
     collapsed: {
@@ -129,9 +126,10 @@
   const router = useRouter();
 
   const activeKey = ref(route.name || 'admin-dashboard');
+  const openKeys = ref(['admin-basic-data']);
 
   function renderIcon(icon) {
-    return () => h(NIcon, null, { default: () => h(icon) });
+    return () => h(icon);
   }
 
   const menuOptions = [
@@ -169,7 +167,7 @@
     },
   ];
 
-  function handleMenuSelect(key) {
+  function handleMenuClick({ key }) {
     activeKey.value = key;
     router.push({ name: key });
   }
@@ -189,11 +187,11 @@
     overflow: hidden !important;
   }
 
-  :deep(.n-layout-sider) {
+  :deep(.ant-layout-sider) {
     overflow: hidden !important;
   }
 
-  :deep(.n-layout-sider__children) {
+  :deep(.ant-layout-sider-children) {
     overflow: hidden !important;
     height: 100vh;
   }
@@ -388,22 +386,22 @@
     padding: 8px 0;
   }
 
-  :deep(.n-menu-item) {
+  :deep(.ant-menu-item) {
     margin: 0 8px 4px 8px;
     border-radius: 6px;
   }
 
-  :deep(.n-menu-item:hover) {
+  :deep(.ant-menu-item:hover) {
     background: rgba(24, 160, 88, 0.1);
   }
 
-  :deep(.n-menu-item--selected) {
+  :deep(.ant-menu-item-selected) {
     background: rgba(24, 160, 88, 0.15);
     color: #18a058;
     font-weight: 600;
   }
 
-  :deep(.n-menu-item--selected .n-menu-item-content__icon) {
+  :deep(.ant-menu-item-selected .ant-menu-item-icon) {
     color: #18a058;
   }
 </style>

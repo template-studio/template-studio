@@ -5,14 +5,12 @@
       <template v-if="props.title">
         <div class="table-toolbar-left-title">
           {{ props.title }}
-          <n-tooltip trigger="hover" v-if="props.titleTooltip">
-            <template #trigger>
-              <n-icon size="18" class="ml-1 text-gray-400 cursor-pointer">
-                <QuestionCircleOutlined />
-              </n-icon>
+          <a-tooltip trigger="hover" v-if="props.titleTooltip">
+            <template #title>
+              {{ props.titleTooltip }}
             </template>
-            {{ props.titleTooltip }}
-          </n-tooltip>
+            <QuestionCircleOutlined class="ml-1 text-gray-400 cursor-pointer" style="font-size: 18px" />
+          </a-tooltip>
         </div>
       </template>
       <slot name="tableTitle"></slot>
@@ -23,70 +21,67 @@
       <slot name="toolbar"></slot>
 
       <!--斑马纹-->
-      <n-tooltip trigger="hover">
-        <template #trigger>
-          <div class="mr-2 table-toolbar-right-icon">
-            <n-switch v-model:value="isStriped" @update:value="setStriped" />
-          </div>
+      <a-tooltip trigger="hover">
+        <template #title>
+          <span>表格斑马纹</span>
         </template>
-        <span>表格斑马纹</span>
-      </n-tooltip>
-      <n-divider vertical />
+        <div class="mr-2 table-toolbar-right-icon">
+          <a-switch v-model:checked="isStriped" @change="setStriped" />
+        </div>
+      </a-tooltip>
+      <a-divider type="vertical" />
 
       <!--刷新-->
-      <n-tooltip trigger="hover">
-        <template #trigger>
-          <div class="table-toolbar-right-icon" @click="reload">
-            <n-icon size="18">
-              <ReloadOutlined />
-            </n-icon>
-          </div>
+      <a-tooltip trigger="hover">
+        <template #title>
+          <span>刷新</span>
         </template>
-        <span>刷新</span>
-      </n-tooltip>
+        <div class="table-toolbar-right-icon" @click="reload">
+          <ReloadOutlined style="font-size: 18px" />
+        </div>
+      </a-tooltip>
 
       <!--密度-->
-      <n-tooltip trigger="hover">
-        <template #trigger>
-          <div class="table-toolbar-right-icon">
-            <n-dropdown
-              @select="densitySelect"
-              trigger="click"
-              :options="densityOptions"
-              v-model:value="tableSize"
-            >
-              <n-icon size="18">
-                <ColumnHeightOutlined />
-              </n-icon>
-            </n-dropdown>
-          </div>
+      <a-tooltip trigger="hover">
+        <template #title>
+          <span>密度</span>
         </template>
-        <span>密度</span>
-      </n-tooltip>
+        <div class="table-toolbar-right-icon">
+          <a-dropdown :trigger="['click']" @select="densitySelect">
+            <ColumnHeightOutlined style="font-size: 18px" />
+            <template #overlay>
+              <a-menu @click="densitySelect" :selectedKeys="[tableSize]">
+                <a-menu-item key="small">紧凑</a-menu-item>
+                <a-menu-item key="middle">默认</a-menu-item>
+                <a-menu-item key="large">宽松</a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+        </div>
+      </a-tooltip>
 
       <!--表格设置单独抽离成组件-->
       <ColumnSetting />
     </div>
   </div>
   <div class="s-table">
-    <n-data-table
+    <a-table
       ref="tableElRef"
       v-bind="getBindValues"
       :striped="isStriped"
       :pagination="pagination"
-      @update:page="updatePage"
-      @update:page-size="updatePageSize"
+      @change="handleTableChange"
     >
       <template #[item]="data" v-for="item in Object.keys($slots)" :key="item">
         <slot :name="item" v-bind="data"></slot>
       </template>
-    </n-data-table>
+    </a-table>
   </div>
 </template>
 
 <script lang="ts" setup>
   import { ref, unref, toRaw, computed, onMounted, nextTick } from 'vue';
-  import { ReloadOutlined, ColumnHeightOutlined, QuestionCircleOutlined } from '@vicons/antd';
+  import { ReloadOutlined, ColumnHeightOutlined, QuestionCircleOutlined } from '@ant-design/icons-vue';
   import { createTableContext } from './hooks/useTableContext';
 
   import ColumnSetting from './components/settings/ColumnSetting.vue';
@@ -103,24 +98,6 @@
   import { getViewportOffset } from '@/utils/domUtils';
   import { useWindowSizeFn } from '@/hooks/event/useWindowSizeFn';
   import { isBoolean } from '@/utils/is';
-
-  const densityOptions = [
-    {
-      type: 'menu',
-      label: '紧凑',
-      key: 'small',
-    },
-    {
-      type: 'menu',
-      label: '默认',
-      key: 'medium',
-    },
-    {
-      type: 'menu',
-      label: '宽松',
-      key: 'large',
-    },
-  ];
 
   const emit = defineEmits([
     'fetch-success',
@@ -145,7 +122,7 @@
     return { ...props, ...unref(innerPropsRef) } as BasicTableProps;
   });
 
-  const tableSize = ref(unref(getProps as any).size || 'medium');
+  const tableSize = ref(unref(getProps as any).size || 'middle');
 
   const { getLoading, setLoading } = useLoading(getProps);
 
@@ -165,21 +142,16 @@
   const { getPageColumns, setColumns, getColumns, getCacheColumns, setCacheColumnsField } =
     useColumns(getProps);
 
-  //页码切换
-  function updatePage(page) {
-    setPagination({ page: page });
-    reload();
-  }
-
-  //分页数量切换
-  function updatePageSize(size) {
-    setPagination({ page: 1, pageSize: size });
+  //Ant Design Vue 的 @change 事件，page 和 pageSize 都通过这个事件处理
+  function handleTableChange(pag: any) {
+    const { current, pageSize } = pag;
+    setPagination({ current, pageSize, page: current });
     reload();
   }
 
   //密度切换
-  function densitySelect(e) {
-    tableSize.value = e;
+  function densitySelect(e: any) {
+    tableSize.value = e.key || e;
   }
 
   //获取表格大小
@@ -188,22 +160,38 @@
   //组装表格信息
   const getBindValues = computed(() => {
     const tableData = unref(getDataSourceRef);
-    const maxHeight = tableData.length ? `${unref(deviceHeight)}px` : 'auto';
+    const maxHeight = tableData.length ? `${unref(deviceHeight)}px` : undefined;
     return {
       ...unref(getProps),
       loading: unref(getLoading),
       columns: toRaw(unref(getPageColumns)),
       rowKey: unref(getRowKey),
-      data: tableData,
+      dataSource: tableData,
       size: unref(getTableSize),
-      remote: true,
-      'max-height': maxHeight,
-      title: '', // 重置为空 避免绑定到 table 上面
+      scroll: maxHeight ? { y: maxHeight } : undefined,
+      title: undefined, // 重置为空 避免绑定到 table 上面
     };
   });
 
   //获取分页信息
-  const pagination = computed(() => toRaw(unref(getPaginationInfo)));
+  const pagination = computed(() => {
+    const paginationInfo = toRaw(unref(getPaginationInfo));
+    if (isBoolean(paginationInfo)) {
+      return paginationInfo;
+    }
+    // 转换为 Ant Design Vue 的分页格式
+    return {
+      current: paginationInfo.current || paginationInfo.page || 1,
+      pageSize: paginationInfo.pageSize || 10,
+      total: paginationInfo.total || paginationInfo.itemCount || 0,
+      pageSizeOptions: paginationInfo.pageSizeOptions || paginationInfo.pageSizes,
+      showSizeChanger: paginationInfo.showSizeChanger ?? paginationInfo.showSizePicker ?? true,
+      showQuickJumper: paginationInfo.showQuickJumper ?? true,
+      showTotal: paginationInfo.showTotal || paginationInfo.prefix
+        ? (total: number) => `共 ${total} 条`
+        : undefined,
+    };
+  });
 
   function setProps(props: Partial<BasicTableProps>) {
     innerPropsRef.value = { ...unref(innerPropsRef), ...props };
@@ -234,13 +222,13 @@
     if (!table) return;
     if (!unref(getCanResize)) return;
     const tableEl: any = table?.$el;
-    const headEl = tableEl.querySelector('.n-data-table-thead ');
+    const headEl = tableEl.querySelector('.ant-table-thead');
     const { bottomIncludeBody } = getViewportOffset(headEl);
     const headerH = 64;
     let paginationH = 2;
     let marginH = 24;
     if (!isBoolean(unref(pagination))) {
-      paginationEl = tableEl.querySelector('.n-data-table__pagination') as HTMLElement;
+      paginationEl = tableEl.querySelector('.ant-table-pagination') as HTMLElement;
       if (paginationEl) {
         const offsetHeight = paginationEl.offsetHeight;
         paginationH += offsetHeight || 0;

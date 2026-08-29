@@ -2,10 +2,10 @@
   <div class="condition-builder" v-if="localValue">
     <!-- 根条件类型选择 -->
     <div class="condition-type-selector">
-      <n-select
+      <a-select
         v-model:value="localValue.type"
         :options="conditionTypeOptions"
-        @update:value="handleTypeChange"
+        @change="handleTypeChange"
         placeholder="请选择条件类型"
         :get-popup-container="getPopupContainer"
       />
@@ -15,11 +15,11 @@
     <template v-if="localValue.type === 'if'">
       <div class="condition-row">
         <span class="condition-label">变量</span>
-        <n-select
+        <a-select
           v-model:value="localValue.variable"
           :options="variables"
           placeholder="选择变量"
-          filterable
+          show-search
           :disabled="variables.length === 0"
         />
         <span v-if="variables.length === 0" class="empty-hint">暂无可选变量</span>
@@ -27,7 +27,7 @@
 
       <div class="condition-row">
         <span class="condition-label">操作符</span>
-        <n-select
+        <a-select
           v-model:value="localValue.operator"
           :options="operatorOptions"
           placeholder="选择操作符"
@@ -36,7 +36,7 @@
 
       <div class="condition-row">
         <span class="condition-label">值</span>
-        <n-input v-model:value="localValue.value" placeholder="输入比较值" clearable />
+        <a-input v-model:value="localValue.value" placeholder="输入比较值" allow-clear />
       </div>
 
       <!-- 快捷条件按钮 -->
@@ -45,14 +45,14 @@
 
         <!-- 布尔类型变量 -->
         <template v-if="selectedVariableType === 'boolean' || selectedVariableType === '布尔值'">
-          <n-space :size="8">
-            <n-button size="small" type="primary" @click="setQuickCondition('eq', true)">
+          <a-space :size="8">
+            <a-button size="small" type="primary" @click="setQuickCondition('eq', true)">
               等于 true
-            </n-button>
-            <n-button size="small" @click="setQuickCondition('eq', false)"> 等于 false </n-button>
-            <n-button size="small" @click="setQuickCondition('ne', true)"> 不等于 true </n-button>
-            <n-button size="small" @click="setQuickCondition('ne', false)"> 不等于 false </n-button>
-          </n-space>
+            </a-button>
+            <a-button size="small" @click="setQuickCondition('eq', false)"> 等于 false </a-button>
+            <a-button size="small" @click="setQuickCondition('ne', true)"> 不等于 true </a-button>
+            <a-button size="small" @click="setQuickCondition('ne', false)"> 不等于 false </a-button>
+          </a-space>
         </template>
 
         <!-- 数字类型变量 -->
@@ -64,25 +64,25 @@
             selectedVariableType === '整数'
           "
         >
-          <n-space :size="8">
-            <n-button size="small" type="primary" @click="setQuickCondition('eq', 0)">
+          <a-space :size="8">
+            <a-button size="small" type="primary" @click="setQuickCondition('eq', 0)">
               等于 0
-            </n-button>
-            <n-button size="small" @click="setQuickCondition('gt', 0)"> 大于 0 </n-button>
-            <n-button size="small" @click="setQuickCondition('gte', 1)"> 大于等于 1 </n-button>
-            <n-button size="small" @click="setQuickCondition('ne', 0)"> 不等于 0 </n-button>
-          </n-space>
+            </a-button>
+            <a-button size="small" @click="setQuickCondition('gt', 0)"> 大于 0 </a-button>
+            <a-button size="small" @click="setQuickCondition('gte', 1)"> 大于等于 1 </a-button>
+            <a-button size="small" @click="setQuickCondition('ne', 0)"> 不等于 0 </a-button>
+          </a-space>
         </template>
 
         <!-- 字符串类型变量 -->
         <template v-else>
-          <n-space :size="8">
-            <n-button size="small" @click="setQuickCondition('ne', '')"> 不为空 </n-button>
-            <n-button size="small" @click="setQuickCondition('eq', 'true')"> 等于 "true" </n-button>
-            <n-button size="small" @click="setQuickCondition('eq', 'false')">
+          <a-space :size="8">
+            <a-button size="small" @click="setQuickCondition('ne', '')"> 不为空 </a-button>
+            <a-button size="small" @click="setQuickCondition('eq', 'true')"> 等于 "true" </a-button>
+            <a-button size="small" @click="setQuickCondition('eq', 'false')">
               等于 "false"
-            </n-button>
-          </n-space>
+            </a-button>
+          </a-space>
         </template>
       </div>
     </template>
@@ -97,20 +97,16 @@
         >
           <div class="condition-header">
             <span class="condition-index">条件 {{ index + 1 }}</span>
-            <n-button size="small" type="error" quaternary @click="removeCondition(index)">
-              <template #icon
-                ><n-icon><close-icon /></n-icon
-              ></template>
-            </n-button>
+            <a-button size="small" danger @click="removeCondition(index)">
+              <template #icon><close-icon /></template>
+            </a-button>
           </div>
           <condition-builder v-model="localValue.conditions[index]" :variables="variables" />
         </div>
-        <n-button size="small" dashed block @click="addCondition">
-          <template #icon
-            ><n-icon><plus-icon /></n-icon
-          ></template>
+        <a-button size="small" block @click="addCondition" style="border-style: dashed">
+          <template #icon><plus-icon /></template>
           添加条件
-        </n-button>
+        </a-button>
       </div>
     </template>
 
@@ -125,11 +121,11 @@
     <template v-else-if="localValue.type === 'switch'">
       <div class="condition-row">
         <span class="condition-label">变量</span>
-        <n-select
+        <a-select
           v-model:value="localValue.variable"
           :options="variables"
           placeholder="选择变量"
-          filterable
+          show-search
         />
       </div>
 
@@ -137,22 +133,18 @@
         <div v-for="(caseItem, index) in localValue.cases" :key="index" class="switch-case">
           <div class="case-header">
             <span>分支 {{ index + 1 }}</span>
-            <n-button size="small" type="error" quaternary @click="removeCase(index)">
-              <template #icon
-                ><n-icon><close-icon /></n-icon
-              ></template>
-            </n-button>
+            <a-button size="small" danger @click="removeCase(index)">
+              <template #icon><close-icon /></template>
+            </a-button>
           </div>
           <div class="case-value">
-            <n-input v-model:value="caseItem.value" placeholder="匹配值" />
+            <a-input v-model:value="caseItem.value" placeholder="匹配值" />
           </div>
         </div>
-        <n-button size="small" dashed block @click="addCase">
-          <template #icon
-            ><n-icon><plus-icon /></n-icon
-          ></template>
+        <a-button size="small" block @click="addCase" style="border-style: dashed">
+          <template #icon><plus-icon /></template>
           添加分支
-        </n-button>
+        </a-button>
       </div>
     </template>
   </div>
@@ -160,8 +152,7 @@
 
 <script setup>
   import { ref, watch, computed } from 'vue';
-  import { NSelect, NInput, NButton, NIcon, NSpace } from 'naive-ui';
-  import { Add as PlusIcon, Close as CloseIcon } from '@vicons/ionicons5';
+  import { Add as PlusIcon, Close as CloseIcon } from '@/icons/ionicons5';
   import { ConditionTypes, Operators, ConditionTypeLabels, OperatorLabels } from '@/api/conditions';
 
   const props = defineProps({
@@ -387,7 +378,7 @@
     font-weight: 500;
   }
 
-  .quick-conditions :deep(.n-button) {
+  .quick-conditions :deep(.ant-btn) {
     font-size: 12px;
     padding: 4px 12px;
     height: auto;

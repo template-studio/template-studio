@@ -6,29 +6,33 @@
         <div class="tree-header">
           <h4>数据结构</h4>
           <div class="tree-actions">
-            <n-button size="small" type="primary" @click="addRootNode">
+            <a-button size="small" type="primary" @click="addRootNode">
               <template #icon>
-                <n-icon><AddOutline /></n-icon>
+                <AddOutline />
               </template>
               添加根节点
-            </n-button>
-            <n-button size="small" @click="expandAll" quaternary>展开全部</n-button>
-            <n-button size="small" @click="collapseAll" quaternary>收起全部</n-button>
+            </a-button>
+            <a-button size="small" @click="expandAll" type="text">展开全部</a-button>
+            <a-button size="small" @click="collapseAll" type="text">收起全部</a-button>
           </div>
         </div>
         <div class="tree-content">
-          <n-tree
-            :data="treeData"
-            :render-prefix="renderPrefix"
-            :render-suffix="renderSuffix"
-            :render-label="renderLabel"
-            block-line
-            show-irrelevant-nodes
-            expand-on-click
-            selectable
-            @update:selected-keys="handleNodeSelect"
+          <a-tree
+            :tree-data="treeDataForAnt"
+            :selected-keys="selectedKeys"
+            @select="handleNodeSelect"
             ref="treeRef"
-          />
+          >
+            <template #title="{ key, title, nodeType, description, expanded }">
+              <div class="tree-node-label">
+                <span class="node-name">{{ title }}</span>
+                <span class="node-type" :style="{ color: typeColorMap[nodeType] || '#666' }">
+                  [{{ nodeType }}]
+                </span>
+                <span v-if="description" class="node-desc"> - {{ description }}</span>
+              </div>
+            </template>
+          </a-tree>
         </div>
       </div>
 
@@ -37,24 +41,24 @@
         <div class="editor-header">
           <h4>JSON 预览</h4>
           <div class="editor-actions">
-            <n-button size="small" @click="formatJson" quaternary>
+            <a-button size="small" @click="formatJson" type="text">
               <template #icon>
-                <n-icon><CodeOutline /></n-icon>
+                <CodeOutline />
               </template>
               格式化
-            </n-button>
-            <n-button size="small" @click="validateJson" quaternary>
+            </a-button>
+            <a-button size="small" @click="validateJson" type="text">
               <template #icon>
-                <n-icon><CheckmarkOutline /></n-icon>
+                <CheckmarkOutline />
               </template>
               验证
-            </n-button>
-            <n-button size="small" @click="syncFromJson" quaternary>
+            </a-button>
+            <a-button size="small" @click="syncFromJson" type="text">
               <template #icon>
-                <n-icon><SyncOutline /></n-icon>
+                <SyncOutline />
               </template>
               同步到树
-            </n-button>
+            </a-button>
           </div>
         </div>
         <div class="editor-content" ref="editorContainer"></div>
@@ -71,108 +75,84 @@
     </div>
 
     <!-- 节点编辑弹窗 -->
-    <n-modal v-model:show="showNodeModal" :mask-closable="false">
-      <n-card style="width: 500px" :title="nodeModalTitle" :bordered="false" size="huge">
-        <template #header-extra>
-          <n-button quaternary circle @click="closeNodeModal">
-            <template #icon>
-              <n-icon><CloseOutline /></n-icon>
-            </template>
-          </n-button>
-        </template>
+    <a-modal
+      v-model:open="showNodeModal"
+      :title="nodeModalTitle"
+      :mask-closable="false"
+      :width="500"
+      :footer="null"
+      @cancel="closeNodeModal"
+    >
+      <a-form ref="nodeFormRef" :model="nodeForm" :rules="nodeFormRules" layout="vertical">
+        <a-form-item label="字段名" name="key">
+          <a-input v-model:value="nodeForm.key" placeholder="请输入字段名" />
+        </a-form-item>
 
-        <n-form ref="nodeFormRef" :model="nodeForm" :rules="nodeFormRules" label-placement="top">
-          <n-form-item label="字段名" path="key">
-            <n-input v-model:value="nodeForm.key" placeholder="请输入字段名" />
-          </n-form-item>
+        <a-form-item label="数据类型" name="type">
+          <a-select
+            v-model:value="nodeForm.type"
+            placeholder="选择数据类型"
+            :options="typeOptions"
+            @change="handleTypeChange"
+          />
+        </a-form-item>
 
-          <n-form-item label="数据类型" path="type">
-            <n-select
-              v-model:value="nodeForm.type"
-              placeholder="选择数据类型"
-              :options="typeOptions"
-              @update:value="handleTypeChange"
-            />
-          </n-form-item>
+        <a-form-item label="描述" name="description">
+          <a-textarea
+            v-model:value="nodeForm.description"
+            placeholder="字段描述"
+            :rows="2"
+          />
+        </a-form-item>
 
-          <n-form-item label="描述" path="description">
-            <n-input
-              v-model:value="nodeForm.description"
-              type="textarea"
-              placeholder="字段描述"
-              :rows="2"
-            />
-          </n-form-item>
+        <a-form-item v-if="nodeForm.type === 'string'" label="默认值" name="defaultValue">
+          <a-input v-model:value="nodeForm.defaultValue" placeholder="默认字符串值" />
+        </a-form-item>
 
-          <n-form-item v-if="nodeForm.type === 'string'" label="默认值" path="defaultValue">
-            <n-input v-model:value="nodeForm.defaultValue" placeholder="默认字符串值" />
-          </n-form-item>
+        <a-form-item v-if="nodeForm.type === 'number'" label="默认值" name="defaultValue">
+          <a-input-number
+            v-model:value="nodeForm.defaultValue"
+            placeholder="默认数值"
+            style="width: 100%"
+          />
+        </a-form-item>
 
-          <n-form-item v-if="nodeForm.type === 'number'" label="默认值" path="defaultValue">
-            <n-input-number
-              v-model:value="nodeForm.defaultValue"
-              placeholder="默认数值"
-              style="width: 100%"
-            />
-          </n-form-item>
+        <a-form-item v-if="nodeForm.type === 'boolean'" label="默认值" name="defaultValue">
+          <a-switch v-model:checked="nodeForm.defaultValue" />
+        </a-form-item>
 
-          <n-form-item v-if="nodeForm.type === 'boolean'" label="默认值" path="defaultValue">
-            <n-switch v-model:value="nodeForm.defaultValue" />
-          </n-form-item>
+        <a-form-item v-if="nodeForm.type === 'array'" label="数组元素类型" name="itemType">
+          <a-select
+            v-model:value="nodeForm.itemType"
+            placeholder="选择数组元素类型"
+            :options="typeOptions.filter((t) => t.value !== 'array')"
+          />
+        </a-form-item>
 
-          <n-form-item v-if="nodeForm.type === 'array'" label="数组元素类型" path="itemType">
-            <n-select
-              v-model:value="nodeForm.itemType"
-              placeholder="选择数组元素类型"
-              :options="typeOptions.filter((t) => t.value !== 'array')"
-            />
-          </n-form-item>
+        <a-form-item label="是否必填" name="required">
+          <a-switch v-model:checked="nodeForm.required" />
+        </a-form-item>
+      </a-form>
 
-          <n-form-item label="是否必填" path="required">
-            <n-switch v-model:value="nodeForm.required" />
-          </n-form-item>
-        </n-form>
-
-        <template #footer>
-          <div class="modal-footer">
-            <n-button @click="closeNodeModal">取消</n-button>
-            <n-button type="primary" @click="saveNode" :loading="nodeSaving">
-              {{ editingNode ? '更新' : '添加' }}
-            </n-button>
-          </div>
-        </template>
-      </n-card>
-    </n-modal>
+      <div class="modal-footer">
+        <a-button @click="closeNodeModal">取消</a-button>
+        <a-button type="primary" @click="saveNode" :loading="nodeSaving">
+          {{ editingNode ? '更新' : '添加' }}
+        </a-button>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
   import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch, h } from 'vue';
-  import {
-    NButton,
-    NIcon,
-    NTree,
-    NModal,
-    NCard,
-    NForm,
-    NFormItem,
-    NInput,
-    NInputNumber,
-    NSelect,
-    NSwitch,
-    useMessage,
-  } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import {
     AddOutline,
-    CloseOutline,
-    CreateOutline,
-    TrashOutline,
     CodeOutline,
     CheckmarkOutline,
     SyncOutline,
-    ChevronDownOutline,
-    ChevronForwardOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
   import { EditorView, basicSetup } from 'codemirror';
   import { EditorState } from '@codemirror/state';
   import { json } from '@codemirror/lang-json';
@@ -190,8 +170,6 @@
 
   const emit = defineEmits(['update:modelValue']);
 
-  const message = useMessage();
-
   // 编辑器相关
   const editorContainer = ref(null);
   const treeRef = ref(null);
@@ -199,7 +177,36 @@
 
   // 数据状态
   const treeData = ref([]);
+  const selectedKeys = ref([]);
   const jsonValid = ref(true);
+
+  // 类型颜色映射
+  const typeColorMap = {
+    string: '#52c41a',
+    number: '#1890ff',
+    boolean: '#722ed1',
+    object: '#fa8c16',
+    array: '#eb2f96',
+  };
+
+  // 转换为 Ant Design Vue a-tree 格式的计算属性
+  const treeDataForAnt = computed(() => {
+    return convertToAntTree(treeData.value);
+  });
+
+  const convertToAntTree = (nodes) => {
+    if (!Array.isArray(nodes)) return [];
+    return nodes.map((node) => ({
+      title: node.label,
+      key: node.key || node.path?.join('.'),
+      nodeType: node.nodeType,
+      description: node.description,
+      value: node.value,
+      path: node.path,
+      required: node.required,
+      children: node.children ? convertToAntTree(node.children) : undefined,
+    }));
+  };
   const editorInfo = reactive({
     line: 1,
     col: 1,
@@ -372,97 +379,6 @@
     });
 
     return result;
-  };
-
-  // 树节点渲染
-  const renderPrefix = ({ node }) => {
-    if (node.children && node.children.length > 0) {
-      return h(
-        NIcon,
-        { size: 16 },
-        {
-          default: () => h(node.expanded ? ChevronDownOutline : ChevronForwardOutline),
-        }
-      );
-    }
-    return null;
-  };
-
-  const renderLabel = ({ node }) => {
-    const typeColor = {
-      string: '#52c41a',
-      number: '#1890ff',
-      boolean: '#722ed1',
-      object: '#fa8c16',
-      array: '#eb2f96',
-    };
-
-    return h('div', { class: 'tree-node-label' }, [
-      h('span', { class: 'node-name' }, node.label),
-      h(
-        'span',
-        {
-          class: 'node-type',
-          style: { color: typeColor[node.nodeType] || '#666' },
-        },
-        `[${node.nodeType}]`
-      ),
-      node.description && h('span', { class: 'node-desc' }, ` - ${node.description}`),
-    ]);
-  };
-
-  const renderSuffix = ({ node }) => {
-    if (props.readonly) return null;
-
-    return h('div', { class: 'tree-node-actions' }, [
-      h(
-        NButton,
-        {
-          size: 'tiny',
-          type: 'primary',
-          secondary: true,
-          onClick: (e) => {
-            e.stopPropagation();
-            addChildNode(node);
-          },
-        },
-        {
-          icon: () => h(NIcon, { size: 14 }, { default: () => h(AddOutline) }),
-        }
-      ),
-      h(
-        NButton,
-        {
-          size: 'tiny',
-          type: 'info',
-          secondary: true,
-          style: { marginLeft: '4px' },
-          onClick: (e) => {
-            e.stopPropagation();
-            editNode(node);
-          },
-        },
-        {
-          icon: () => h(NIcon, { size: 14 }, { default: () => h(CreateOutline) }),
-        }
-      ),
-      h(
-        NButton,
-        {
-          size: 'tiny',
-          type: 'error',
-          secondary: true,
-          style: { marginLeft: '4px' },
-          onClick: (e) => {
-            e.stopPropagation();
-            deleteNode(node);
-          },
-        },
-        {
-          icon: () => h(NIcon, { size: 14 }, { default: () => h(TrashOutline) }),
-        }
-      ),
-    ]);
   };
 
   // 节点操作
@@ -704,18 +620,18 @@
   };
 
   const expandAll = () => {
-    // 这里需要根据 naive-ui 的 API 来实现
+    // 展开全部树节点
     message.info('展开全部功能开发中');
   };
 
   const collapseAll = () => {
-    // 这里需要根据 naive-ui 的 API 来实现
+    // 收起全部树节点
     message.info('收起全部功能开发中');
   };
 
-  const handleNodeSelect = (selectedKeys) => {
-    // 处理节点选择
-    console.log('Selected nodes:', selectedKeys);
+  const handleNodeSelect = (keys, info) => {
+    selectedKeys.value = keys;
+    console.log('Selected nodes:', keys);
   };
 
   // 监听 modelValue 变化
@@ -862,7 +778,7 @@
     transition: opacity 0.2s;
   }
 
-  :deep(.n-tree-node:hover) .tree-node-actions {
+  :deep(.ant-tree-treenode:hover) .tree-node-actions {
     opacity: 1;
   }
 

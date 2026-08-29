@@ -19,13 +19,12 @@
       <p class="template-description">{{ template.description }}</p>
 
       <div class="template-languages">
-        <n-tag
+        <a-tag
           v-for="lang in template.languages"
           :key="lang.id"
-          size="small"
         >
           {{ getLanguageName(lang.languageId) }}
-        </n-tag>
+        </a-tag>
       </div>
 
       <div class="card-footer">
@@ -47,7 +46,7 @@
 
 <script setup>
   import { computed } from 'vue';
-  import { NTag } from 'naive-ui';
+  import { Tag } from 'ant-design-vue';
   import { useRouter } from 'vue-router';
   import { useLanguageStore } from '@/store/modules/languageStore';
   import { storeToRefs } from 'pinia';
@@ -389,7 +388,7 @@ app.init()`;
   margin-bottom: 14px;
 }
 
-.template-languages :deep(.n-tag) {
+.template-languages :deep(.ant-tag) {
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
   color: #475569;
@@ -397,9 +396,10 @@ app.init()`;
   padding: 2px 8px;
   border-radius: 4px;
   transition: all 0.2s ease;
+  margin-inline-end: 0;
 }
 
-.template-card:hover .template-languages :deep(.n-tag) {
+.template-card:hover .template-languages :deep(.ant-tag) {
   background: var(--client-theme-bg-light);
   border-color: var(--client-theme-border-light);
   color: var(--client-theme-dark);

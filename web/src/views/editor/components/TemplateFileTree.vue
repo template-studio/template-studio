@@ -7,22 +7,18 @@
     <div class="explorer-title">
       <span class="title-text">模板资源</span>
       <div class="title-actions">
-        <n-tooltip trigger="hover" :delay="500">
-          <template #trigger>
-            <button class="action-icon" @click="handleExport">
-              <n-icon size="16"><DownloadOutline /></n-icon>
-            </button>
-          </template>
-          下载模板
-        </n-tooltip>
-        <n-tooltip trigger="hover" :delay="500">
-          <template #trigger>
-            <button class="action-icon" @click="emit('show-releases')">
-              <n-icon size="16"><GitBranchOutline /></n-icon>
-            </button>
-          </template>
-          版本管理
-        </n-tooltip>
+        <a-tooltip>
+          <template #title>下载模板</template>
+          <button class="action-icon" @click="handleExport">
+            <DownloadOutline style="font-size: 16px" />
+          </button>
+        </a-tooltip>
+        <a-tooltip>
+          <template #title>版本管理</template>
+          <button class="action-icon" @click="emit('show-releases')">
+            <GitBranchOutline style="font-size: 16px" />
+          </button>
+        </a-tooltip>
       </div>
     </div>
     <div
@@ -34,21 +30,50 @@
       @dragenter.capture="onContainerDragEnter"
       @click="onContainerClick"
     >
-      <NTree
-        :data="treeDataComputed"
+      <a-tree
+        :tree-data="treeDataComputed"
         :selected-keys="[currentFile]"
-        :render-label="renderLabel"
-        :node-props="nodeProps"
-        :render-switcher-icon="renderSwitcherIcon"
-        @update:selected-keys="onSelectFile"
-        @update:expanded-keys="updatePrefixWithExpanded"
+        :field-names="{ key: 'key', title: 'label', children: 'children' }"
+        @select="onSelectFile"
+        @expand="updatePrefixWithExpanded"
+        @right-click="onNodeRightClick"
         draggable
         @dragstart="onDragStart"
-        @drag-enter="onDragEnter"
-        @drag-leave="onDragLeave"
-        @drag-over="onDragOver"
+        @dragenter="onDragEnter"
+        @dragleave="onDragLeave"
+        @dragover="onDragOver"
         @drop="onDrop"
-      />
+      >
+        <template #title="option">
+          <span v-if="option.isEditing" class="edit-node-container">
+            <input
+              class="vscode-tree-input"
+              :value="newName"
+              autofocus
+              style="flex: 1; min-width: 100px; padding: 2px 6px; border: 1px solid #22c55e; border-radius: 4px; outline: none; font-size: 13px;"
+              @input="newName = $event.target.value"
+              @keydown.enter.prevent="confirmAddNode"
+              @keydown.escape.prevent="cancelAddNode"
+              @blur="setTimeout(() => { if (editingNode || renamingNode) confirmAddNode() }, 100)"
+            />
+            <button class="edit-confirm-btn" @click.stop="confirmAddNode" title="确认 (Enter)">✓</button>
+            <button class="edit-cancel-btn" @click.stop="cancelAddNode" title="取消 (Esc)">✗</button>
+          </span>
+          <span v-else style="display: flex; align-items: center; gap: 4px;">
+            {{ option.fileName || option.label }}
+            <span v-if="option.hasCondition" style="font-size: 14px; margin-left: 4px; color: #22c55e; font-weight: bold;" :title="'文件生成条件：\n' + (option.conditionSummary || '已设置条件') + '\n点击右键菜单可编辑条件'">⚡</span>
+          </span>
+        </template>
+        <template #switcherIcon="{ expanded }">
+          <ChevronForward v-if="!expanded" style="font-size: 14px" />
+          <ChevronDown v-else style="font-size: 14px" />
+        </template>
+        <template #icon="{ data }">
+          <FolderOpenOutline v-if="data.isDirectory && expandedKeys.has(String(data.key))" style="font-size: 14px" />
+          <Folder v-else-if="data.isDirectory" style="font-size: 14px" />
+          <FileTrayFullOutline v-else style="font-size: 14px" />
+        </template>
+      </a-tree>
       <div
         v-if="!treeData || treeData.length === 0"
         style="
@@ -70,26 +95,25 @@
         @drop.prevent="onRootZoneDrop"
       >
         <div class="root-drop-zone-content">
-          <n-icon size="16">
-            <svg viewBox="0 0 24 24">
-              <path fill="currentColor" d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
-            </svg>
-          </n-icon>
+          <svg viewBox="0 0 24 24" style="width: 16px; height: 16px">
+            <path fill="currentColor" d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
+          </svg>
           <span>拖放文件到此处移动到根目录</span>
         </div>
       </div>
     </div>
-    <n-dropdown
-      to="body"
-      trigger="manual"
-      :show="showDropdown"
-      :options="dropdownOptions"
-      :x="dropdownX"
-      :y="dropdownY"
-      @select="handleDropdownSelect"
-      @clickoutside="handleDropdownClickoutside"
-      class="tree-dropdown-menu"
-    />
+    <!-- 自定义右键菜单 -->
+    <div v-if="showDropdown" class="context-menu-overlay" @click="showDropdown = false" @contextmenu.prevent="showDropdown = false">
+      <div class="context-menu" :style="{ left: dropdownX + 'px', top: dropdownY + 'px' }">
+        <template v-for="item in dropdownOptions" :key="item.key">
+          <div v-if="item.type === 'divider'" class="context-menu-divider"></div>
+          <div v-else class="context-menu-item" @click="handleDropdownSelect(item.key)">
+            <component v-if="item.icon" :is="item.icon" style="font-size: 14px; margin-right: 8px" />
+            {{ item.label }}
+          </div>
+        </template>
+      </div>
+    </div>
     <input
       type="file"
       ref="fileInput"
@@ -115,9 +139,10 @@
 
 <script setup>
   import { ref, watch, h, computed, onMounted, onUnmounted } from 'vue';
-  import { NTree, NTooltip, useMessage, NIcon } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import {
     ChevronForward,
+    ChevronDown,
     FileTrayFullOutline,
     Folder,
     FolderOpenOutline,
@@ -125,7 +150,7 @@
     CreateOutline as Edit,
     DownloadOutline,
     GitBranchOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
   import { exportTemplate } from '@/api/templates';
   import { useRoute } from 'vue-router';
 
@@ -163,18 +188,18 @@
     {
       label: '新增文件',
       key: 'addFile',
-      icon: () => h(NIcon, null, { default: () => h(FileTrayFullOutline) }),
+      icon: FileTrayFullOutline,
     },
     {
       label: '新增文件夹',
       key: 'addFolder',
-      icon: () => h(NIcon, null, { default: () => h(Folder) }),
+      icon: Folder,
     },
     { type: 'divider', key: 'divider1' },
     {
       label: '删除节点',
       key: 'deleteNode',
-      icon: () => h(NIcon, null, { default: () => h(Trash) }),
+      icon: Trash,
     },
   ]);
   const dropdownX = ref(0);
@@ -184,7 +209,6 @@
   const editingNode = ref(null);
   const newName = ref('');
   const renamingNode = ref(null);
-  const message = useMessage();
   const fileInput = ref(null);
   const codeFileInput = ref(null);
   const localTreeData = ref(JSON.parse(JSON.stringify(props.treeData)));
@@ -251,7 +275,7 @@
   function handleGlobalClick(event) {
     // 检查是否点击在输入框外
     const inputElement = event.target.closest('.vscode-tree-input');
-    const isTreeNode = event.target.closest('.n-tree-node');
+    const isTreeNode = event.target.closest('.ant-tree-treenode');
 
     // 如果有正在编辑的节点，且点击在输入框外，则确认编辑
     if ((editingNode.value || renamingNode.value) && !inputElement) {
@@ -284,10 +308,10 @@
 
   // 计算属性，确保展开状态变化时重新渲染
   const treeDataComputed = computed(() => {
-    return treeToNaive(localTreeData.value);
+    return convertToAntTree(localTreeData.value);
   });
 
-  function treeToNaive(tree) {
+  function convertToAntTree(tree) {
     if (!Array.isArray(tree)) return [];
     // 排序逻辑：目录在前，文件在后，同类型按名称排序
     const customSort = (a, b) => {
@@ -303,7 +327,6 @@
     const sorted = [...tree].sort(customSort);
     return sorted.map((node) => {
       const nodeKey = node.key || node.id;
-      const isExpanded = expandedKeys.value.has(String(nodeKey));
 
       return {
         label: node.isEditing === true ? undefined : node.fileName || node.label,
@@ -315,13 +338,7 @@
         isDirectory: node.isDirectory === 1,
         hasCondition: node.hasCondition,
         generateCondition: node.generateCondition,
-        prefix: node.isDirectory
-          ? () =>
-              h(NIcon, null, {
-                default: () => h(isExpanded ? FolderOpenOutline : Folder),
-              })
-          : () => h(NIcon, null, { default: () => h(FileTrayFullOutline) }),
-        children: node.children ? treeToNaive(node.children) : [],
+        children: node.children ? convertToAntTree(node.children) : [],
         // 添加拖拽状态的类名
         class: getDragClass(nodeKey),
       };
@@ -411,36 +428,27 @@
             {
               label: '重命名',
               key: 'renameNode',
-              icon: () => h(NIcon, null, { default: () => h(Edit) }),
+              icon: Edit,
             },
             isInSubdirectory ? { type: 'divider', key: 'divider0' } : null,
             isInSubdirectory
               ? {
                   label: '移动到根目录',
                   key: 'moveToRoot',
-                  icon: () =>
-                    h(NIcon, null, {
-                      default: () =>
-                        h('svg', { viewBox: '0 0 24 24' }, [
-                          h('path', {
-                            fill: 'currentColor',
-                            d: 'M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V6h5.17l2 2H20v10z',
-                          }),
-                        ]),
-                    }),
+                  icon: Folder,
                 }
               : null,
             { type: 'divider', key: 'divider1' },
             {
               label: '设置生成条件',
               key: 'setCondition',
-              icon: () => h(NIcon, null, { default: () => h(Edit) }),
+              icon: Edit,
             },
             { type: 'divider', key: 'divider2' },
             {
               label: '删除节点',
               key: 'deleteNode',
-              icon: () => h(NIcon, null, { default: () => h(Trash) }),
+              icon: Trash,
             },
           ].filter(Boolean);
         } else {
@@ -448,52 +456,43 @@
             {
               label: '新增文件',
               key: 'addFile',
-              icon: () => h(NIcon, null, { default: () => h(FileTrayFullOutline) }),
+              icon: FileTrayFullOutline,
             },
             {
               label: '新增文件夹',
               key: 'addFolder',
-              icon: () => h(NIcon, null, { default: () => h(Folder) }),
+              icon: Folder,
             },
             { type: 'divider', key: 'divider1' },
             {
               label: '上传文件',
               key: 'uploadCodeFile',
-              icon: () => h(NIcon, null, { default: () => h(FileTrayFullOutline) }),
+              icon: FileTrayFullOutline,
             },
             {
               label: '重命名',
               key: 'renameNode',
-              icon: () => h(NIcon, null, { default: () => h(Edit) }),
+              icon: Edit,
             },
             isInSubdirectory ? { type: 'divider', key: 'divider2' } : null,
             isInSubdirectory
               ? {
                   label: '移动到根目录',
                   key: 'moveToRoot',
-                  icon: () =>
-                    h(NIcon, null, {
-                      default: () =>
-                        h('svg', { viewBox: '0 0 24 24' }, [
-                          h('path', {
-                            fill: 'currentColor',
-                            d: 'M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V6h5.17l2 2H20v10z',
-                          }),
-                        ]),
-                    }),
+                  icon: Folder,
                 }
               : null,
             { type: 'divider', key: 'divider3' },
             {
               label: '设置生成条件',
               key: 'setCondition',
-              icon: () => h(NIcon, null, { default: () => h(Edit) }),
+              icon: Edit,
             },
             { type: 'divider', key: 'divider4' },
             {
               label: '删除节点',
               key: 'deleteNode',
-              icon: () => h(NIcon, null, { default: () => h(Trash) }),
+              icon: Trash,
             },
           ].filter(Boolean);
         }
@@ -502,6 +501,101 @@
         dropdownY.value = e.clientY;
       },
     };
+  }
+
+  // Ant Design Vue Tree 右键点击事件处理
+  function onNodeRightClick(info) {
+    const { event, node } = info;
+    event.preventDefault();
+    event.stopPropagation();
+
+    // 从 localTreeData 中查找原始节点数据
+    const originalNode = findNodeByKey(localTreeData.value, node.key);
+    dropdownNode.value = originalNode || node;
+
+    // 检查是否在子目录中（有父路径）
+    const nodeData = originalNode || node;
+    const isInSubdirectory = nodeData.filePath && (nodeData.filePath.includes('/') || nodeData.filePath.includes('\\'));
+
+    const isLeaf = nodeData.isLeaf || nodeData.isDirectory === 0;
+
+    if (isLeaf) {
+      dropdownOptions.value = [
+        {
+          label: '重命名',
+          key: 'renameNode',
+          icon: Edit,
+        },
+        isInSubdirectory ? { type: 'divider', key: 'divider0' } : null,
+        isInSubdirectory
+          ? {
+              label: '移动到根目录',
+              key: 'moveToRoot',
+              icon: Folder,
+            }
+          : null,
+        { type: 'divider', key: 'divider1' },
+        {
+          label: '设置生成条件',
+          key: 'setCondition',
+          icon: Edit,
+        },
+        { type: 'divider', key: 'divider2' },
+        {
+          label: '删除节点',
+          key: 'deleteNode',
+          icon: Trash,
+        },
+      ].filter(Boolean);
+    } else {
+      dropdownOptions.value = [
+        {
+          label: '新增文件',
+          key: 'addFile',
+          icon: FileTrayFullOutline,
+        },
+        {
+          label: '新增文件夹',
+          key: 'addFolder',
+          icon: Folder,
+        },
+        { type: 'divider', key: 'divider1' },
+        {
+          label: '上传文件',
+          key: 'uploadCodeFile',
+          icon: FileTrayFullOutline,
+        },
+        {
+          label: '重命名',
+          key: 'renameNode',
+          icon: Edit,
+        },
+        isInSubdirectory ? { type: 'divider', key: 'divider2' } : null,
+        isInSubdirectory
+          ? {
+              label: '移动到根目录',
+              key: 'moveToRoot',
+              icon: Folder,
+            }
+          : null,
+        { type: 'divider', key: 'divider3' },
+        {
+          label: '设置生成条件',
+          key: 'setCondition',
+          icon: Edit,
+        },
+        { type: 'divider', key: 'divider4' },
+        {
+          label: '删除节点',
+          key: 'deleteNode',
+          icon: Trash,
+        },
+      ].filter(Boolean);
+    }
+
+    showDropdown.value = true;
+    dropdownX.value = event.clientX;
+    dropdownY.value = event.clientY;
   }
 
   // 设置全局拖拽监听
@@ -715,7 +809,7 @@
       ) {
         // 检查鼠标位置的元素
         const elementAtPoint = document.elementFromPoint(clientX, clientY);
-        const treeNode = elementAtPoint?.closest('.n-tree-node');
+        const treeNode = elementAtPoint?.closest('.ant-tree-treenode');
 
         console.log(
           '🎯 checkRootAreaFromEvent - elementAtPoint:',
@@ -935,7 +1029,7 @@
   function onContainerDragOver(event) {
     // 只有在非树节点区域才处理，用于支持拖拽到根目录
     const elementAtPoint = document.elementFromPoint(event.clientX, event.clientY);
-    const treeNode = elementAtPoint?.closest('.n-tree-node');
+    const treeNode = elementAtPoint?.closest('.ant-tree-treenode');
     const rootZone = elementAtPoint?.closest('.root-drop-zone');
 
     // 如果不在树节点上，也不在根目录拖放区域上，但有拖拽的节点，则视为根目录区域
@@ -949,7 +1043,7 @@
   function onContainerDrop(event) {
     // 检查是否是释放在非树节点区域（即根目录区域）
     const elementAtPoint = document.elementFromPoint(event.clientX, event.clientY);
-    const treeNode = elementAtPoint?.closest('.n-tree-node');
+    const treeNode = elementAtPoint?.closest('.ant-tree-treenode');
     const rootZone = elementAtPoint?.closest('.root-drop-zone');
 
     // 如果不在树节点上，且不在根目录拖放区域上，且我们有正在拖拽的节点
@@ -971,7 +1065,7 @@
   }
 
   function onTreeAreaContextMenu(event) {
-    if (event.target.closest('.n-tree')) return;
+    if (event.target.closest('.ant-tree')) return;
     event.preventDefault();
     event.stopPropagation();
     dropdownNode.value = null;
@@ -979,23 +1073,23 @@
       {
         label: '新增文件',
         key: 'addFile',
-        icon: () => h(NIcon, null, { default: () => h(FileTrayFullOutline) }),
+        icon: FileTrayFullOutline,
       },
       {
         label: '新增文件夹',
         key: 'addFolder',
-        icon: () => h(NIcon, null, { default: () => h(Folder) }),
+        icon: Folder,
       },
       { type: 'divider', key: 'divider1' },
       {
         label: '上传ZIP包',
         key: 'uploadZip',
-        icon: () => h(NIcon, null, { default: () => h(Folder) }),
+        icon: Folder,
       },
       {
         label: '上传文件',
         key: 'uploadCodeFile',
-        icon: () => h(NIcon, null, { default: () => h(FileTrayFullOutline) }),
+        icon: FileTrayFullOutline,
       },
     ];
     showDropdown.value = true;
@@ -1298,165 +1392,6 @@
     target.value = '';
   }
 
-  function renderLabel({ option }) {
-    if (option.isEditing === true) {
-      const isRenaming =
-        renamingNode.value &&
-        String(option.id || option.key) === String(renamingNode.value.id || renamingNode.value.key);
-      const placeholder = isRenaming ? '' : '';
-
-      return h(
-        'div',
-        {
-          class: 'edit-node-container',
-          style: {
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            flex: '1',
-          },
-        },
-        [
-          h('input', {
-            class: 'vscode-tree-input',
-            value: newName.value,
-            autofocus: true,
-            placeholder: placeholder,
-            style: {
-              flex: '1',
-              minWidth: '100px',
-              padding: '2px 6px',
-              border: '1px solid #22c55e',
-              borderRadius: '4px',
-              outline: 'none',
-              fontSize: '13px',
-            },
-            onInput: (e) => (newName.value = e.target.value),
-            onKeydown: (e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                confirmAddNode();
-              }
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                cancelAddNode();
-              }
-            },
-            onBlur: () => {
-              // 延迟执行，避免与点击事件冲突
-              setTimeout(() => {
-                if (editingNode.value || renamingNode.value) {
-                  confirmAddNode();
-                }
-              }, 100);
-            },
-          }),
-          // 确认图标（勾）
-          h(
-            'button',
-            {
-              class: 'edit-confirm-btn',
-              style: {
-                background: '#22c55e',
-                border: 'none',
-                borderRadius: '4px',
-                color: 'white',
-                cursor: 'pointer',
-                padding: '2px 6px',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: '20px',
-                height: '20px',
-              },
-              onClick: (e) => {
-                e.stopPropagation();
-                confirmAddNode();
-              },
-              title: '确认 (Enter)',
-            },
-            '✓'
-          ),
-          // 取消图标（叉）
-          h(
-            'button',
-            {
-              class: 'edit-cancel-btn',
-              style: {
-                background: '#ef4444',
-                border: 'none',
-                borderRadius: '2px',
-                color: 'white',
-                cursor: 'pointer',
-                padding: '2px 6px',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: '20px',
-                height: '20px',
-              },
-              onClick: (e) => {
-                e.stopPropagation();
-                cancelAddNode();
-              },
-              title: '取消 (Esc)',
-            },
-            '✗'
-          ),
-        ]
-      );
-    }
-
-    // 非编辑状态，正常显示文件名和条件指示器
-    const labelContent = [option.fileName || option.label];
-
-    // 添加条件指示器（对文件和文件夹都显示）
-    const conditionIndicator = renderConditionIndicator(option);
-    if (conditionIndicator) {
-      labelContent.push(conditionIndicator);
-    }
-
-    return h(
-      'span',
-      {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-        },
-      },
-      labelContent
-    );
-  }
-  const renderSwitcherIcon = () => h(NIcon, null, { default: () => h(ChevronForward) });
-
-  // 渲染条件指示器
-  function renderConditionIndicator(node) {
-    // 只检查新系统的 hasCondition 标记
-    if (!node.hasCondition) return null;
-
-    const iconStyle = {
-      fontSize: '14px',
-      marginLeft: '4px',
-      color: '#22c55e',
-      fontWeight: 'bold',
-    };
-
-    const title = `文件生成条件：\n${
-      node.conditionSummary || '已设置条件'
-    }\n点击右键菜单可编辑条件`;
-
-    return h(
-      'span',
-      {
-        style: iconStyle,
-        title: title,
-      },
-      '⚡'
-    );
-  }
 
   // 处理导出模板
   function handleExport() {
@@ -1569,8 +1504,45 @@
     scrollbar-width: thin;
     scrollbar-color: #c1c1c1 #f1f1f1;
   }
-  .tree-dropdown-menu {
-    z-index: 2147483647 !important;
+  /* 自定义右键菜单样式 */
+  .context-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+  }
+
+  .context-menu {
+    position: fixed;
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    min-width: 160px;
+    padding: 4px 0;
+    z-index: 10000;
+  }
+
+  .context-menu-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #333;
+    transition: background 0.15s;
+  }
+
+  .context-menu-item:hover {
+    background: #f5f5f5;
+  }
+
+  .context-menu-divider {
+    height: 1px;
+    background: #e8e8e8;
+    margin: 4px 0;
   }
 
   /* VSCode 风格的文件树输入框样式 */
@@ -1687,18 +1659,18 @@
   }
 
   /* 拖拽移动样式 */
-  :deep(.n-tree-node.dragging) {
+  :deep(.ant-tree-treenode.dragging) {
     opacity: 0.5;
     background: rgba(34, 197, 94, 0.08);
   }
 
-  :deep(.n-tree-node.drag-over) {
+  :deep(.ant-tree-treenode.drag-over) {
     background: rgba(34, 197, 94, 0.12);
     border: 2px dashed var(--editor-accent, #22c55e);
     border-radius: 4px;
   }
 
-  :deep(.n-tree-node.drag-over .n-tree-node-content) {
+  :deep(.ant-tree-treenode.drag-over .ant-tree-node-content-wrapper) {
     background: rgba(34, 197, 94, 0.08);
   }
 
@@ -1707,11 +1679,11 @@
     user-select: none;
   }
 
-  :deep(.n-tree-node[draggable='true']) {
+  :deep(.ant-tree-treenode[draggable='true']) {
     cursor: grab;
   }
 
-  :deep(.n-tree-node[draggable='true']:active) {
+  :deep(.ant-tree-treenode[draggable='true']:active) {
     cursor: grabbing;
   }
 

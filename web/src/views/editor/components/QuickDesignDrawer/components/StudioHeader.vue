@@ -1,86 +1,80 @@
 <template>
   <div class="drawer-header">
     <div class="header-left">
-      <n-icon size="18" color="#666">
+      <span style="font-size: 18px; color: #666">
         <CodeOutline />
-      </n-icon>
+      </span>
       <span class="header-title">Variable Studio</span>
     </div>
     <div class="header-actions">
       <!-- 编辑模式切换 -->
-      <n-space :size="4" style="margin-right: 16px">
-        <n-button
+      <a-space :size="4" style="margin-right: 16px">
+        <a-button
           size="small"
-          :type="editMode === 'design' ? 'default' : 'default'"
-          :ghost="editMode === 'design'"
+          :type="editMode === 'design' ? 'primary' : 'default'"
           @click="handleEditModeChange('design')"
         >
           设计
-        </n-button>
-        <n-button
+        </a-button>
+        <a-button
           size="small"
-          :type="editMode === 'tree' ? 'default' : 'default'"
-          :ghost="editMode === 'tree'"
+          :type="editMode === 'tree' ? 'primary' : 'default'"
           @click="handleEditModeChange('tree')"
         >
           变量树
-        </n-button>
-      </n-space>
+        </a-button>
+      </a-space>
 
       <!-- 显示开关 -->
-      <n-space :size="4" style="margin-right: 16px">
-        <n-button
+      <a-space :size="4" style="margin-right: 16px">
+        <a-button
           size="small"
-          :type="showDesign ? 'default' : 'default'"
-          :ghost="showDesign"
+          :type="showDesign ? 'primary' : 'default'"
           @click="handleToggleDesign"
         >
           左栏
-        </n-button>
-        <n-button
+        </a-button>
+        <a-button
           size="small"
-          :type="showSchema ? 'default' : 'default'"
-          :ghost="showSchema"
+          :type="showSchema ? 'primary' : 'default'"
           @click="handleToggleSchema"
         >
           Schema
-        </n-button>
-        <n-button
+        </a-button>
+        <a-button
           size="small"
-          :type="showForm ? 'default' : 'default'"
-          :ghost="showForm"
+          :type="showForm ? 'primary' : 'default'"
           @click="handleToggleForm"
         >
           表单
-        </n-button>
-      </n-space>
+        </a-button>
+      </a-space>
 
       <!-- 工具按钮 -->
-      <n-space :size="4">
-        <n-button size="small" quaternary @click="handleRefresh" title="清除缓存并刷新变量">
+      <a-space :size="4">
+        <a-button size="small" @click="handleRefresh" title="清除缓存并刷新变量">
           <template #icon>
-            <n-icon><RefreshOutline /></n-icon>
+            <RefreshOutline />
           </template>
           刷新
-        </n-button>
-        <n-button size="small" quaternary @click="handleShowTestData"> 测试数据 </n-button>
-        <n-button size="small" quaternary @click="handleShowVariableAnalysis"> 分析变量 </n-button>
-        <n-button size="small" quaternary @click="handleSave" :loading="saving"> 保存 </n-button>
-      </n-space>
+        </a-button>
+        <a-button size="small" @click="handleShowTestData"> 测试数据 </a-button>
+        <a-button size="small" @click="handleShowVariableAnalysis"> 分析变量 </a-button>
+        <a-button size="small" type="primary" :loading="saving" @click="handleSave"> 保存 </a-button>
+      </a-space>
 
       <!-- 关闭按钮 -->
-      <n-button text size="small" @click="handleClose" class="close-button">
+      <a-button type="link" size="small" @click="handleClose" class="close-button">
         <template #icon>
-          <n-icon><CloseOutline /></n-icon>
+          <CloseOutline />
         </template>
-      </n-button>
+      </a-button>
     </div>
   </div>
 </template>
 
 <script setup>
-  import { NIcon, NButton, NSpace } from 'naive-ui';
-  import { CloseOutline, CodeOutline, RefreshOutline } from '@vicons/ionicons5';
+  import { CloseOutline, CodeOutline, RefreshOutline } from '@/icons/ionicons5';
 
   /**
    * StudioHeader 组件

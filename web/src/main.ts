@@ -1,7 +1,7 @@
 import './styles/tailwind.css';
 import './styles/index.less';
 import { createApp } from 'vue';
-import { setupNaiveDiscreteApi, setupNaive, setupDirectives } from '@/plugins';
+import { setupAntdDiscreteApi, setupAntd, setupDirectives } from '@/plugins';
 import App from './App.vue';
 import router, { setupRouter } from './router';
 import { setupStore } from '@/store';
@@ -12,11 +12,11 @@ async function bootstrap() {
   // 挂载状态管理
   setupStore(app);
 
-  // 注册全局常用的 naive-ui 组件
-  setupNaive(app);
+  // 注册全局 Ant Design Vue 组件
+  setupAntd(app);
 
-  // 挂载 naive-ui 脱离上下文的 Api
-  setupNaiveDiscreteApi();
+  // 挂载 Ant Design Vue 脱离上下文的 Api
+  setupAntdDiscreteApi();
 
   // 注册全局自定义组件
   //setupCustomComponents();
@@ -33,11 +33,6 @@ async function bootstrap() {
   // 路由准备就绪后挂载 APP 实例
   // https://router.vuejs.org/api/interfaces/router.html#isready
   await router.isReady();
-
-  // https://www.naiveui.com/en-US/os-theme/docs/style-conflict#About-Tailwind's-Preflight-Style-Override
-  const meta = document.createElement('meta');
-  meta.name = 'naive-ui-style';
-  document.head.appendChild(meta);
 
   app.mount('#app', true);
 }

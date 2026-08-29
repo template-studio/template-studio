@@ -3,28 +3,22 @@
     <!-- 头部：标题 + 操作按钮 -->
     <div class="sidebar-header">
       <div class="header-left">
-        <n-icon size="18" color="#722ed1">
-          <AppsOutline />
-        </n-icon>
+        <AppsOutline style="font-size: 18px; color: #722ed1" />
         <span class="header-title">变量</span>
       </div>
       <div class="header-actions">
-        <n-tooltip trigger="hover" :delay="500">
-          <template #trigger>
-            <button class="action-icon" @click="emit('show-quick-design')">
-              <n-icon size="16"><ConstructOutline /></n-icon>
-            </button>
-          </template>
-          Variable Studio
-        </n-tooltip>
-        <n-tooltip trigger="hover" :delay="500">
-          <template #trigger>
-            <button class="action-icon" @click="emit('show-test-data')">
-              <n-icon size="16"><FlaskOutline /></n-icon>
-            </button>
-          </template>
-          测试数据
-        </n-tooltip>
+        <a-tooltip>
+          <template #title>Variable Studio</template>
+          <button class="action-icon" @click="emit('show-quick-design')">
+            <ConstructOutline style="font-size: 16px" />
+          </button>
+        </a-tooltip>
+        <a-tooltip>
+          <template #title>测试数据</template>
+          <button class="action-icon" @click="emit('show-test-data')">
+            <FlaskOutline style="font-size: 16px" />
+          </button>
+        </a-tooltip>
       </div>
     </div>
 
@@ -39,9 +33,7 @@
           @click="activeTab = tab.key"
           :title="tab.label"
         >
-          <n-icon size="16">
-            <component :is="tab.icon" />
-          </n-icon>
+          <component :is="tab.icon" style="font-size: 16px" />
           <span class="tab-label">{{ tab.label }}</span>
           <span v-if="tab.isPreset" class="tab-badge">订阅</span>
         </div>
@@ -69,9 +61,7 @@
               @mouseleave="handleHideFunctionDetail"
             >
               <div class="variable-info">
-                <n-icon size="16" color="#64748b">
-                  <CodeSlash />
-                </n-icon>
+                <CodeSlash style="font-size: 16px; color: #64748b" />
                 <span class="variable-name">{{ syntax.display_name || syntax.name }}</span>
               </div>
             </div>
@@ -82,7 +72,7 @@
       <!-- 内置函数 Tab -->
       <div v-show="activeTab === 'functions'" class="tab-pane">
         <div v-if="loadingFunctions" class="loading-state">
-          <n-spin size="small" />
+          <a-spin size="small" />
           <span style="margin-left: 8px">加载函数中...</span>
         </div>
         <div v-else>
@@ -105,9 +95,7 @@
                 @mouseleave="handleHideFunctionDetail"
               >
                 <div class="variable-info">
-                  <n-icon size="16" color="#52c41a">
-                    <ConstructOutline />
-                  </n-icon>
+                  <ConstructOutline style="font-size: 16px; color: #52c41a" />
                   <span class="variable-name">{{ func.display_name || func.name }}</span>
                 </div>
               </div>
@@ -136,12 +124,10 @@
               :title="`${variable.name} - ${variable.label}`"
             >
               <div class="variable-info">
-                <n-icon size="16" color="#2f54eb">
-                  <BuildOutline />
-                </n-icon>
+                <BuildOutline style="font-size: 16px; color: #2f54eb" />
                 <span class="variable-name">{{ variable.label }}</span>
               </div>
-              <n-tag size="small" type="info">快速</n-tag>
+              <a-tag color="blue" size="small">快速</a-tag>
             </div>
           </div>
         </div>
@@ -150,7 +136,7 @@
       <!-- 用户变量 Tab -->
       <div v-show="activeTab === 'custom'" class="tab-pane">
         <div v-if="loadingVariableDefinitions" class="loading-state">
-          <n-spin size="small" />
+          <a-spin size="small" />
           <span style="margin-left: 8px">加载变量定义中...</span>
         </div>
 
@@ -171,14 +157,12 @@
                 )})${variable.description ? ' - ' + variable.description : ''}`"
               >
                 <div class="variable-info">
-                  <n-icon size="16" :color="getVariableTypeColor(variable.variableType)">
-                    <component :is="getVariableTypeIcon(variable.variableType)" />
-                  </n-icon>
+                  <component :is="getVariableTypeIcon(variable.variableType)" :style="{ fontSize: '16px', color: getVariableTypeColor(variable.variableType) }" />
                   <span class="variable-name">{{ variable.displayName || variable.name }}</span>
                 </div>
-                <n-tag size="small" :type="getVariableTypeTagType(variable.variableType)">
+                <a-tag size="small" :color="getVariableTypeAntColor(variable.variableType)">
                   {{ getVariableTypeLabel(variable.variableType) }}
-                </n-tag>
+                </a-tag>
               </div>
             </div>
           </div>
@@ -195,17 +179,15 @@
       <!-- 订阅管理 Tab -->
       <div v-show="activeTab === 'subscription_manager'" class="tab-pane">
         <div v-if="loadingPresets" class="loading-state">
-          <n-spin size="small" />
+          <a-spin size="small" />
           <span style="margin-left: 8px">加载中...</span>
         </div>
 
         <div v-else>
           <div v-if="subscribedPresets.length === 0" class="empty-state">
-            <n-empty description="暂无订阅的预设变量" size="small">
-              <template #extra>
-                <n-button size="small" @click="showSubscribeModal = true">立即订阅</n-button>
-              </template>
-            </n-empty>
+            <a-empty description="暂无订阅的预设变量">
+              <a-button size="small" type="primary" @click="showSubscribeModal = true">立即订阅</a-button>
+            </a-empty>
           </div>
 
           <div v-else>
@@ -221,29 +203,26 @@
                   class="variable-item preset-subscription-item"
                 >
                   <div class="variable-info" @click="activeTab = `preset_${preset.presetId}`">
-                    <n-icon size="16" color="#722ed1">
-                      <AppsOutline />
-                    </n-icon>
+                    <AppsOutline style="font-size: 16px; color: #722ed1" />
                     <span class="variable-name">{{ preset.presetName }}</span>
                   </div>
-                  <n-button
-                    size="tiny"
-                    quaternary
-                    type="error"
+                  <a-button
+                    size="small"
+                    danger
                     @click="handleUnsubscribePreset(preset)"
                     :loading="preset.unsubscribing"
                   >
                     取消订阅
-                  </n-button>
+                  </a-button>
                 </div>
               </div>
               <div class="subscribe-tip">
-                <n-button size="small" type="primary" @click="showSubscribeModal = true" block>
+                <a-button size="small" type="primary" @click="showSubscribeModal = true" block>
                   <template #icon>
-                    <n-icon><AddOutline /></n-icon>
+                    <AddOutline />
                   </template>
                   订阅
-                </n-button>
+                </a-button>
               </div>
             </div>
           </div>
@@ -254,7 +233,7 @@
       <template v-for="preset in subscribedPresets" :key="`pane_${preset.presetId}`">
         <div v-show="activeTab === `preset_${preset.presetId}`" class="tab-pane">
           <div v-if="loadingPresets" class="loading-state">
-            <n-spin size="small" />
+            <a-spin size="small" />
             <span style="margin-left: 8px">加载预设变量中...</span>
           </div>
 
@@ -276,12 +255,10 @@
                 }`"
               >
                 <div class="variable-info">
-                  <n-icon size="16" color="#9254de">
-                    <ExtensionPuzzleOutline />
-                  </n-icon>
+                  <ExtensionPuzzleOutline style="font-size: 16px; color: #9254de" />
                   <span class="variable-name">{{ variable.displayName }}</span>
                 </div>
-                <n-tag size="small" type="info">{{ variable.type }}</n-tag>
+                <a-tag size="small" color="blue">{{ variable.type }}</a-tag>
               </div>
             </div>
           </div>
@@ -398,102 +375,77 @@
     </div>
 
     <!-- 订阅预设变量弹窗 -->
-    <n-modal v-model:show="showSubscribeModal" :mask-closable="false">
-      <n-card style="width: 800px" title="订阅" :bordered="false" size="huge">
-        <template #header-extra>
-          <n-button quaternary circle @click="showSubscribeModal = false">
-            <template #icon>
-              <n-icon><CloseOutline /></n-icon>
-            </template>
-          </n-button>
-        </template>
+    <a-modal v-model:open="showSubscribeModal" title="订阅" :mask-closable="false" :width="800" :footer="null">
+      <!-- 搜索栏 -->
+      <div class="search-bar">
+        <a-input
+          v-model:value="searchKeyword"
+          placeholder="搜索预设变量..."
+          allow-clear
+          @change="searchPresets"
+        >
+          <template #prefix>
+            <SearchOutline />
+          </template>
+        </a-input>
+      </div>
 
-        <!-- 搜索栏 -->
-        <div class="search-bar">
-          <n-input
-            v-model:value="searchKeyword"
-            placeholder="搜索预设变量..."
-            clearable
-            @update:value="searchPresets"
-          >
-            <template #prefix>
-              <n-icon><SearchOutline /></n-icon>
-            </template>
-          </n-input>
-        </div>
+      <!-- 可用预设变量列表 -->
+      <a-spin :spinning="presetsLoading">
+        <div class="available-presets">
+          <a-empty v-if="availablePresets.length === 0" description="暂无可用的预设变量" />
 
-        <!-- 可用预设变量列表 -->
-        <n-spin :show="presetsLoading">
-          <div class="available-presets">
-            <n-empty v-if="availablePresets.length === 0" description="暂无可用的预设变量" />
-
-            <div v-else class="presets-list">
-              <div class="preset-item-modal" v-for="preset in availablePresets" :key="preset.id">
-                <div class="preset-content">
-                  <n-checkbox
-                    :checked="isPresetSelected(preset.id)"
-                    @update:checked="togglePreset(preset, $event)"
-                  >
-                    <div class="preset-info-modal">
-                      <div class="preset-name">{{ preset.name }}</div>
-                      <div class="preset-description" v-if="preset.description">
-                        {{ preset.description }}
-                      </div>
+          <div v-else class="presets-list">
+            <div class="preset-item-modal" v-for="preset in availablePresets" :key="preset.id">
+              <div class="preset-content">
+                <a-checkbox
+                  :checked="isPresetSelected(preset.id)"
+                  @change="togglePreset(preset, $event.target.checked)"
+                >
+                  <div class="preset-info-modal">
+                    <div class="preset-name">{{ preset.name }}</div>
+                    <div class="preset-description" v-if="preset.description">
+                      {{ preset.description }}
                     </div>
-                  </n-checkbox>
-                </div>
+                  </div>
+                </a-checkbox>
               </div>
             </div>
           </div>
-        </n-spin>
-
-        <!-- 分页 -->
-        <div class="pagination" v-if="totalPresets > pageSize">
-          <n-pagination
-            v-model:page="currentPage"
-            :page-size="pageSize"
-            :item-count="totalPresets"
-            @update:page="loadAvailablePresets"
-            show-size-picker
-            :page-sizes="[10, 20, 30]"
-            @update:page-size="handlePageSizeChange"
-          />
         </div>
+      </a-spin>
 
-        <template #footer>
-          <div class="modal-footer">
-            <n-button @click="showSubscribeModal = false">取消</n-button>
-            <n-button
-              type="primary"
-              @click="confirmSubscribe"
-              :loading="subscribing"
-              :disabled="selectedPresets.length === 0"
-            >
-              订阅 ({{ selectedPresets.length }})
-            </n-button>
-          </div>
-        </template>
-      </n-card>
-    </n-modal>
+      <!-- 分页 -->
+      <div class="pagination" v-if="totalPresets > pageSize">
+        <a-pagination
+          v-model:current="currentPage"
+          :page-size="pageSize"
+          :total="totalPresets"
+          @change="loadAvailablePresets"
+          show-size-changer
+          :page-size-options="['10', '20', '30']"
+          @showSizeChange="handlePageSizeChange"
+        />
+      </div>
+
+      <div class="modal-footer">
+        <a-button @click="showSubscribeModal = false">取消</a-button>
+        <a-button
+          type="primary"
+          @click="confirmSubscribe"
+          :loading="subscribing"
+          :disabled="selectedPresets.length === 0"
+        >
+          订阅 ({{ selectedPresets.length }})
+        </a-button>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
   import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-  import {
-    NSpin,
-    NButton,
-    NTag,
-    NEmpty,
-    NIcon,
-    NModal,
-    NCard,
-    NInput,
-    NCheckbox,
-    NPagination,
-    NTooltip,
-    useMessage,
-  } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import {
     CloseOutline,
     AppsOutline,
@@ -512,7 +464,7 @@
     Settings,
     AddOutline,
     FlaskOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
   import { getTemplateExpose } from '@/api/templateExpose';
   import {
     getSubscribedPresets,
@@ -568,7 +520,6 @@
   const loadingVariableDefinitions = ref(false);
 
   // 预设变量相关状态
-  const message = useMessage();
   const subscribedPresets = ref([]);
   const loadingPresets = ref(false);
 
@@ -818,6 +769,22 @@
       object_arr: 'warning',
     };
     return typeMap[type] || 'default';
+  };
+
+  // 获取变量标签颜色（ant-design-vue）
+  const getVariableTypeAntColor = (type) => {
+    const colorMap = {
+      string: 'blue',
+      text: 'blue',
+      number: 'green',
+      integer: 'green',
+      boolean: 'orange',
+      array: 'default',
+      list: 'default',
+      object: 'red',
+      object_arr: 'purple',
+    };
+    return colorMap[type] || 'default';
   };
 
   // 事件处理

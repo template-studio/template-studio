@@ -1,16 +1,15 @@
 <template>
-  <NMenu
-    :options="menus"
-    :inverted="inverted"
-    :mode="mode"
-    :collapsed="collapsed"
-    :collapsed-width="64"
-    :collapsed-icon-size="20"
-    :indent="24"
-    :expanded-keys="openKeys"
-    :value="getSelectedKeys"
-    @update:value="clickMenuItem"
-    @update:expanded-keys="menuExpanded"
+  <a-menu
+    :items="menus"
+    :theme="inverted ? 'dark' : 'light'"
+    :mode="menuMode"
+    :inline-collapsed="collapsed"
+    :inline-collapsed-width="64"
+    :inline-indent="24"
+    :open-keys="openKeys"
+    :selected-keys="selectedKeysList"
+    @click="handleMenuClick"
+    @openChange="menuExpanded"
   />
 </template>
 
@@ -74,6 +73,16 @@
           : unref(headerMenuSelectKey);
       });
 
+      // ant-design-vue a-menu expects selectedKeys as an array
+      const selectedKeysList = computed(() => {
+        return [unref(getSelectedKeys)];
+      });
+
+      // Map naive-ui mode to ant-design-vue mode: 'vertical' -> 'inline', 'horizontal' -> 'horizontal'
+      const menuMode = computed(() => {
+        return props.mode === 'vertical' ? 'inline' : 'horizontal';
+      });
+
       // 监听分割菜单
       watch(
         () => settingStore.menuSetting.mixMenu,
@@ -130,6 +139,11 @@
         emit('clickMenuItem' as any, key);
       }
 
+      // ant-design-vue @click handler receives { item, key, keyPath }
+      function handleMenuClick({ key }: { key: string }) {
+        clickMenuItem(key);
+      }
+
       //展开菜单
       function menuExpanded(openKeys: string[]) {
         if (!openKeys) return;
@@ -161,7 +175,10 @@
         selectedKeys,
         headerMenuSelectKey,
         getSelectedKeys,
+        selectedKeysList,
+        menuMode,
         clickMenuItem,
+        handleMenuClick,
         menuExpanded,
       };
     },

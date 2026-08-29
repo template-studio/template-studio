@@ -1,583 +1,527 @@
 <template>
-  <n-drawer
-    v-model:show="visible"
+  <a-drawer
+    v-model:open="visible"
+    title="高级设置"
     :width="'80vw'"
     placement="right"
-    to="body"
+    :body-style="{ padding: '0' }"
     class="advanced-drawer"
   >
-    <n-card title="高级设置" :bordered="false" size="small">
-      <template #header-extra>
-        <n-button quaternary circle @click="visible = false">
-          <template #icon>
-            <n-icon
-              ><svg viewBox="0 0 24 24" width="20" height="20">
-                <path
-                  fill="currentColor"
-                  d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7A1 1 0 0 0 5.7 7.11L10.59 12l-4.89 4.89a1 1 0 1 0 1.41 1.41L12 13.41l4.89 4.89a1 1 0 0 0 1.41-1.41L13.41 12l4.89-4.89a1 1 0 0 0 0-1.4z"
-                /></svg
-            ></n-icon>
-          </template>
-        </n-button>
-      </template>
-
-      <div class="drawer-content">
-        <n-tabs
-          v-model:value="activeTab"
-          type="line"
-          placement="left"
-          tab-style="min-width: 120px;"
-        >
-          <!-- 编辑器设置 -->
-          <n-tab-pane name="editor-settings" tab="编辑器设置">
-            <n-scrollbar style="max-height: calc(100vh - 180px)">
-              <div class="tab-content">
-                <!-- 编辑器卡片 -->
-                <n-card title="编辑器" :bordered="true" class="settings-card">
-                  <div class="setting-item">
-                    <div class="setting-label">
-                      <span>自动保存</span>
-                      <span class="setting-description">文件修改后自动保存</span>
-                    </div>
-                    <div class="setting-control">
-                      <n-switch v-model:value="localSettings.autoSave.enabled" />
-                    </div>
+    <div class="drawer-content">
+      <a-tabs
+        v-model:activeKey="activeTab"
+        tab-position="left"
+        :tab-bar-style="{ minWidth: '120px' }"
+      >
+        <!-- 编辑器设置 -->
+        <a-tab-pane key="editor-settings" tab="编辑器设置">
+          <div class="tab-content-scroll">
+            <div class="tab-content">
+              <!-- 编辑器卡片 -->
+              <a-card title="编辑器" :bordered="true" class="settings-card">
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>自动保存</span>
+                    <span class="setting-description">文件修改后自动保存</span>
                   </div>
-
-                  <div v-if="localSettings.autoSave.enabled" class="setting-item">
-                    <div class="setting-label">
-                      <span>自动保存间隔</span>
-                      <span class="setting-description">自动保存的时间间隔（秒）</span>
-                    </div>
-                    <div class="setting-control">
-                      <n-input-number
-                        v-model:value="localSettings.autoSave.interval"
-                        :min="5"
-                        :max="300"
-                        :step="5"
-                        style="width: 120px"
-                        placeholder="30"
-                      />
-                      <span style="margin-left: 8px; color: #666">秒</span>
-                    </div>
+                  <div class="setting-control">
+                    <a-switch v-model:checked="localSettings.autoSave.enabled" />
                   </div>
-
-                  <div class="setting-item">
-                    <div class="setting-label">
-                      <span>字体大小</span>
-                      <span class="setting-description">编辑器字体大小</span>
-                    </div>
-                    <div class="setting-control">
-                      <n-input-number
-                        v-model:value="localSettings.editor.fontSize"
-                        :min="10"
-                        :max="24"
-                        style="width: 120px"
-                        placeholder="14"
-                      />
-                      <span style="margin-left: 8px; color: #666">px</span>
-                    </div>
-                  </div>
-
-                  <div class="setting-item">
-                    <div class="setting-label">
-                      <span>显示行号</span>
-                      <span class="setting-description">在编辑器中显示行号</span>
-                    </div>
-                    <div class="setting-control">
-                      <n-switch v-model:value="localSettings.editor.lineNumbers" />
-                    </div>
-                  </div>
-
-                  <div class="setting-item">
-                    <div class="setting-label">
-                      <span>自动换行</span>
-                      <span class="setting-description">长行自动换行显示</span>
-                    </div>
-                    <div class="setting-control">
-                      <n-switch v-model:value="localSettings.editor.wordWrap" />
-                    </div>
-                  </div>
-                </n-card>
-
-                <!-- 界面卡片 -->
-                <n-card title="界面" :bordered="true" class="settings-card">
-                  <div class="setting-item">
-                    <div class="setting-label">
-                      <span>主题</span>
-                      <span class="setting-description">选择编辑器主题</span>
-                    </div>
-                    <div class="setting-control">
-                      <n-select
-                        v-model:value="localSettings.interface.theme"
-                        :options="themeOptions"
-                        style="width: 150px"
-                      />
-                    </div>
-                  </div>
-
-                  <div class="setting-item">
-                    <div class="setting-label">
-                      <span>启动时恢复面板布局</span>
-                      <span class="setting-description">记住并恢复面板的大小和位置</span>
-                    </div>
-                    <div class="setting-control">
-                      <n-switch v-model:value="localSettings.interface.restoreLayout" />
-                    </div>
-                  </div>
-                </n-card>
-
-                <!-- 预览卡片 -->
-                <n-card title="预览" :bordered="true" class="settings-card">
-                  <div class="setting-item">
-                    <div class="setting-label">
-                      <span>实时预览</span>
-                      <span class="setting-description">编辑时自动更新预览</span>
-                    </div>
-                    <div class="setting-control">
-                      <n-switch v-model:value="localSettings.preview.realtime" />
-                    </div>
-                  </div>
-
-                  <div v-if="localSettings.preview.realtime" class="setting-item">
-                    <div class="setting-label">
-                      <span>预览延迟</span>
-                      <span class="setting-description">输入停止后延迟更新预览（毫秒）</span>
-                    </div>
-                    <div class="setting-control">
-                      <n-input-number
-                        v-model:value="localSettings.preview.debounceDelay"
-                        :min="100"
-                        :max="5000"
-                        :step="100"
-                        style="width: 120px"
-                        placeholder="500"
-                      />
-                      <span style="margin-left: 8px; color: #666">ms</span>
-                    </div>
-                  </div>
-                </n-card>
-
-                <!-- 操作按钮 -->
-                <div class="settings-actions">
-                  <n-button @click="resetToDefaults"> 恢复默认 </n-button>
-                  <n-button type="primary" @click="handleSave"> 保存设置 </n-button>
                 </div>
-              </div>
-            </n-scrollbar>
-          </n-tab-pane>
 
-          <!-- 引擎管理 -->
-          <n-tab-pane name="engine" tab="引擎管理">
-            <n-scrollbar style="max-height: calc(100vh - 180px)">
-              <div class="tab-content">
-                <!-- 引擎状态卡片 -->
-                <n-card title="引擎状态" :bordered="true" class="settings-card">
-                  <div class="setting-item">
-                    <div class="setting-label">
-                      <span>当前引擎</span>
-                      <span class="setting-description">正在使用的渲染引擎</span>
-                    </div>
-                    <div class="setting-control">
-                      <n-tag :type="engineState.isUsingWasm ? 'success' : 'info'" size="large">
-                        {{ engineState.currentEngine || '未初始化' }}
-                        <template v-if="engineState.isUsingWasm"> (离线可用)</template>
-                      </n-tag>
-                    </div>
+                <div v-if="localSettings.autoSave.enabled" class="setting-item">
+                  <div class="setting-label">
+                    <span>自动保存间隔</span>
+                    <span class="setting-description">自动保存的时间间隔（秒）</span>
                   </div>
-
-                  <div class="setting-item">
-                    <div class="setting-label">
-                      <span>引擎版本</span>
-                      <span class="setting-description">当前引擎的版本号</span>
-                    </div>
-                    <div class="setting-control">
-                      <n-text>{{ engineState.version || '-' }}</n-text>
-                    </div>
+                  <div class="setting-control">
+                    <a-input-number
+                      v-model:value="localSettings.autoSave.interval"
+                      :min="5"
+                      :max="300"
+                      :step="5"
+                      style="width: 120px"
+                      placeholder="30"
+                    />
+                    <span style="margin-left: 8px; color: #666">秒</span>
                   </div>
-
-                  <div class="setting-item">
-                    <div class="setting-label">
-                      <span>初始化状态</span>
-                      <span class="setting-description">引擎是否已准备就绪</span>
-                    </div>
-                    <div class="setting-control">
-                      <n-tag v-if="engineState.isLoading" type="warning">
-                        <template #icon>
-                          <n-icon
-                            ><svg viewBox="0 0 24 24" width="14" height="14">
-                              <path
-                                fill="currentColor"
-                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"
-                              /></svg
-                          ></n-icon>
-                        </template>
-                        加载中...
-                      </n-tag>
-                      <n-tag v-else-if="engineState.isReady" type="success">已就绪</n-tag>
-                      <n-tag v-else type="error">未初始化</n-tag>
-                    </div>
-                  </div>
-
-                  <div v-if="engineState.error" class="setting-item">
-                    <div class="setting-label">
-                      <span style="color: #d03050">错误信息</span>
-                      <span class="setting-description" style="color: #d03050">{{
-                        engineState.error
-                      }}</span>
-                    </div>
-                  </div>
-                </n-card>
-
-                <!-- 引擎切换卡片 -->
-                <n-card title="引擎切换" :bordered="true" class="settings-card">
-                  <div class="setting-item">
-                    <div class="setting-label">
-                      <span>选择引擎</span>
-                      <span class="setting-description"
-                        >WASM 引擎支持离线渲染，后端引擎需要网络连接</span
-                      >
-                    </div>
-                    <div class="setting-control">
-                      <n-radio-group
-                        v-model:value="selectedEngine"
-                        :disabled="engineState.isLoading"
-                        @update:value="handleEngineSwitch"
-                      >
-                        <n-space>
-                          <n-radio value="wasm">
-                            <n-space align="center" :size="6">
-                              <span>WASM 引擎</span>
-                              <n-tag v-if="engineState.wasmReady" type="success" size="small"
-                                >可用</n-tag
-                              >
-                              <n-tag v-else type="warning" size="small">不可用</n-tag>
-                            </n-space>
-                          </n-radio>
-                          <n-radio value="backend">
-                            <n-space align="center" :size="6">
-                              <span>后端引擎</span>
-                              <n-tag v-if="engineState.backendReady" type="success" size="small"
-                                >可用</n-tag
-                              >
-                              <n-tag v-else type="warning" size="small">不可用</n-tag>
-                            </n-space>
-                          </n-radio>
-                        </n-space>
-                      </n-radio-group>
-                    </div>
-                  </div>
-                </n-card>
-
-                <!-- 引擎信息卡片 -->
-                <n-card title="引擎详情" :bordered="true" class="settings-card">
-                  <n-spin :show="engineState.isLoadingInfo">
-                    <div v-if="engineInfo" class="engine-info">
-                      <div class="info-row">
-                        <span class="info-label">版本号：</span>
-                        <span class="info-value">{{ engineInfo.version || '-' }}</span>
-                      </div>
-                      <div class="info-row">
-                        <span class="info-label">构建时间：</span>
-                        <span class="info-value">{{ engineInfo.buildTime || '-' }}</span>
-                      </div>
-                      <div v-if="engineInfo.filters?.length" class="info-row">
-                        <span class="info-label">内置过滤器：</span>
-                        <div class="info-tags">
-                          <n-tag
-                            v-for="filter in engineInfo.filters"
-                            :key="filter"
-                            size="small"
-                            style="margin: 2px"
-                          >
-                            {{ filter }}
-                          </n-tag>
-                        </div>
-                      </div>
-                      <div v-if="engineInfo.functions?.length" class="info-row">
-                        <span class="info-label">内置函数：</span>
-                        <div class="info-tags">
-                          <n-tag
-                            v-for="func in engineInfo.functions"
-                            :key="func"
-                            size="small"
-                            type="info"
-                            style="margin: 2px"
-                          >
-                            {{ func }}
-                          </n-tag>
-                        </div>
-                      </div>
-                    </div>
-                    <n-empty v-else description="暂无引擎信息" />
-                  </n-spin>
-                </n-card>
-
-                <!-- 操作按钮 -->
-                <div class="settings-actions">
-                  <n-button @click="refreshEngineStatus" :loading="engineState.isLoading">
-                    刷新状态
-                  </n-button>
-                  <n-button @click="handleClearCache" :disabled="!engineState.isUsingWasm">
-                    清除缓存
-                  </n-button>
-                  <n-button
-                    type="primary"
-                    @click="refreshEngineInfo"
-                    :loading="engineState.isLoadingInfo"
-                  >
-                    获取引擎信息
-                  </n-button>
                 </div>
-              </div>
-            </n-scrollbar>
-          </n-tab-pane>
 
-          <!-- 备份与恢复 -->
-          <n-tab-pane name="backup" tab="备份与恢复">
-            <n-scrollbar style="max-height: calc(100vh - 180px)">
-              <div class="tab-content">
-                <!-- 备份操作卡片 -->
-                <n-card title="创建备份" :bordered="true" class="settings-card">
-                  <div class="setting-item">
-                    <div class="setting-label">
-                      <span>导出模板备份</span>
-                      <span class="setting-description">
-                        将当前模板完整导出为 .tsbk 备份文件，包含文件、变量定义、测试数据和文件条件
-                      </span>
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>字体大小</span>
+                    <span class="setting-description">编辑器字体大小</span>
+                  </div>
+                  <div class="setting-control">
+                    <a-input-number
+                      v-model:value="localSettings.editor.fontSize"
+                      :min="10"
+                      :max="24"
+                      style="width: 120px"
+                      placeholder="14"
+                    />
+                    <span style="margin-left: 8px; color: #666">px</span>
+                  </div>
+                </div>
+
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>显示行号</span>
+                    <span class="setting-description">在编辑器中显示行号</span>
+                  </div>
+                  <div class="setting-control">
+                    <a-switch v-model:checked="localSettings.editor.lineNumbers" />
+                  </div>
+                </div>
+
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>自动换行</span>
+                    <span class="setting-description">长行自动换行显示</span>
+                  </div>
+                  <div class="setting-control">
+                    <a-switch v-model:checked="localSettings.editor.wordWrap" />
+                  </div>
+                </div>
+              </a-card>
+
+              <!-- 界面卡片 -->
+              <a-card title="界面" :bordered="true" class="settings-card">
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>主题</span>
+                    <span class="setting-description">选择编辑器主题</span>
+                  </div>
+                  <div class="setting-control">
+                    <a-select
+                      v-model:value="localSettings.interface.theme"
+                      :options="themeOptions"
+                      style="width: 150px"
+                    />
+                  </div>
+                </div>
+
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>启动时恢复面板布局</span>
+                    <span class="setting-description">记住并恢复面板的大小和位置</span>
+                  </div>
+                  <div class="setting-control">
+                    <a-switch v-model:checked="localSettings.interface.restoreLayout" />
+                  </div>
+                </div>
+              </a-card>
+
+              <!-- 预览卡片 -->
+              <a-card title="预览" :bordered="true" class="settings-card">
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>实时预览</span>
+                    <span class="setting-description">编辑时自动更新预览</span>
+                  </div>
+                  <div class="setting-control">
+                    <a-switch v-model:checked="localSettings.preview.realtime" />
+                  </div>
+                </div>
+
+                <div v-if="localSettings.preview.realtime" class="setting-item">
+                  <div class="setting-label">
+                    <span>预览延迟</span>
+                    <span class="setting-description">输入停止后延迟更新预览（毫秒）</span>
+                  </div>
+                  <div class="setting-control">
+                    <a-input-number
+                      v-model:value="localSettings.preview.debounceDelay"
+                      :min="100"
+                      :max="5000"
+                      :step="100"
+                      style="width: 120px"
+                      placeholder="500"
+                    />
+                    <span style="margin-left: 8px; color: #666">ms</span>
+                  </div>
+                </div>
+              </a-card>
+            </div>
+          </div>
+        </a-tab-pane>
+
+        <!-- 引擎管理 -->
+        <a-tab-pane key="engine" tab="引擎管理">
+          <div class="tab-content-scroll">
+            <div class="tab-content">
+              <!-- 引擎状态卡片 -->
+              <a-card title="引擎状态" :bordered="true" class="settings-card">
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>当前引擎</span>
+                    <span class="setting-description">正在使用的渲染引擎</span>
+                  </div>
+                  <div class="setting-control">
+                    <a-tag :color="engineState.isUsingWasm ? 'success' : 'processing'" style="font-size: 14px; padding: 4px 12px">
+                      {{ engineState.currentEngine || '未初始化' }}
+                      <template v-if="engineState.isUsingWasm"> (离线可用)</template>
+                    </a-tag>
+                  </div>
+                </div>
+
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>引擎版本</span>
+                    <span class="setting-description">当前引擎的版本号</span>
+                  </div>
+                  <div class="setting-control">
+                    <span>{{ engineState.version || '-' }}</span>
+                  </div>
+                </div>
+
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>初始化状态</span>
+                    <span class="setting-description">引擎是否已准备就绪</span>
+                  </div>
+                  <div class="setting-control">
+                    <a-tag v-if="engineState.isLoading" color="warning">
+                      <template #icon>
+                        <svg viewBox="0 0 24 24" width="14" height="14" style="margin-right: 4px">
+                          <path
+                            fill="currentColor"
+                            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"
+                          />
+                        </svg>
+                      </template>
+                      加载中...
+                    </a-tag>
+                    <a-tag v-else-if="engineState.isReady" color="success">已就绪</a-tag>
+                    <a-tag v-else color="error">未初始化</a-tag>
+                  </div>
+                </div>
+
+                <div v-if="engineState.error" class="setting-item">
+                  <div class="setting-label">
+                    <span style="color: #d03050">错误信息</span>
+                    <span class="setting-description" style="color: #d03050">{{
+                      engineState.error
+                    }}</span>
+                  </div>
+                </div>
+              </a-card>
+
+              <!-- 引擎切换卡片 -->
+              <a-card title="引擎切换" :bordered="true" class="settings-card">
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>选择引擎</span>
+                    <span class="setting-description"
+                      >WASM 引擎支持离线渲染，后端引擎需要网络连接</span
+                    >
+                  </div>
+                  <div class="setting-control">
+                    <a-radio-group
+                      v-model:value="selectedEngine"
+                      :disabled="engineState.isLoading"
+                      @change="(e) => handleEngineSwitch(e.target.value)"
+                    >
+                      <a-space>
+                        <a-radio value="wasm">
+                          <a-space align="center" :size="6">
+                            <span>WASM 引擎</span>
+                            <a-tag v-if="engineState.wasmReady" color="success" size="small"
+                              >可用</a-tag
+                            >
+                            <a-tag v-else color="warning" size="small">不可用</a-tag>
+                          </a-space>
+                        </a-radio>
+                        <a-radio value="backend">
+                          <a-space align="center" :size="6">
+                            <span>后端引擎</span>
+                            <a-tag v-if="engineState.backendReady" color="success" size="small"
+                              >可用</a-tag
+                            >
+                            <a-tag v-else color="warning" size="small">不可用</a-tag>
+                          </a-space>
+                        </a-radio>
+                      </a-space>
+                    </a-radio-group>
+                  </div>
+                </div>
+              </a-card>
+
+              <!-- 引擎信息卡片 -->
+              <a-card title="引擎详情" :bordered="true" class="settings-card">
+                <a-spin :spinning="engineState.isLoadingInfo">
+                  <div v-if="engineInfo" class="engine-info">
+                    <div class="info-row">
+                      <span class="info-label">版本号：</span>
+                      <span class="info-value">{{ engineInfo.version || '-' }}</span>
                     </div>
-                    <div class="setting-control">
-                      <n-button
-                        type="primary"
-                        :loading="backupState.isCreating"
-                        :disabled="!templateId"
-                        @click="handleCreateBackup"
-                      >
-                        <template #icon>
-                          <n-icon>
-                            <svg viewBox="0 0 24 24" width="18" height="18">
-                              <path
-                                fill="currentColor"
-                                d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"
-                              />
-                            </svg>
-                          </n-icon>
-                        </template>
-                        创建备份
-                      </n-button>
+                    <div class="info-row">
+                      <span class="info-label">构建时间：</span>
+                      <span class="info-value">{{ engineInfo.buildTime || '-' }}</span>
+                    </div>
+                    <div v-if="engineInfo.filters?.length" class="info-row">
+                      <span class="info-label">内置过滤器：</span>
+                      <div class="info-tags">
+                        <a-tag
+                          v-for="filter in engineInfo.filters"
+                          :key="filter"
+                          size="small"
+                          style="margin: 2px"
+                        >
+                          {{ filter }}
+                        </a-tag>
+                      </div>
+                    </div>
+                    <div v-if="engineInfo.functions?.length" class="info-row">
+                      <span class="info-label">内置函数：</span>
+                      <div class="info-tags">
+                        <a-tag
+                          v-for="func in engineInfo.functions"
+                          :key="func"
+                          size="small"
+                          color="processing"
+                          style="margin: 2px"
+                        >
+                          {{ func }}
+                        </a-tag>
+                      </div>
                     </div>
                   </div>
+                  <a-empty v-else description="暂无引擎信息" />
+                </a-spin>
+              </a-card>
+            </div>
+          </div>
+        </a-tab-pane>
 
-                  <n-progress
-                    v-if="backupState.isCreating && backupState.progress > 0"
-                    type="line"
-                    :percentage="backupState.progress"
-                    :status="backupState.progressStatus"
-                    :show-indicator="true"
+        <!-- 备份与恢复 -->
+        <a-tab-pane key="backup" tab="备份与恢复">
+          <div class="tab-content-scroll">
+            <div class="tab-content">
+              <!-- 备份操作卡片 -->
+              <a-card title="创建备份" :bordered="true" class="settings-card">
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>导出模板备份</span>
+                    <span class="setting-description">
+                      将当前模板完整导出为 .tsbk 备份文件，包含文件、变量定义、测试数据和文件条件
+                    </span>
+                  </div>
+                  <div class="setting-control">
+                    <a-button
+                      type="primary"
+                      :loading="backupState.isCreating"
+                      :disabled="!templateId"
+                      @click="handleCreateBackup"
+                    >
+                      <template #icon>
+                        <svg viewBox="0 0 24 24" width="18" height="18">
+                          <path
+                            fill="currentColor"
+                            d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"
+                          />
+                        </svg>
+                      </template>
+                      创建备份
+                    </a-button>
+                  </div>
+                </div>
+
+                <a-progress
+                  v-if="backupState.isCreating && backupState.progress > 0"
+                  :percent="backupState.progress / 100"
+                  :status="backupState.progressStatus"
+                  style="margin-top: 16px"
+                >
+                  <template #format="{ percent }">
+                    {{ backupState.progressMessage || `${Math.round(percent * 100)}%` }}
+                  </template>
+                </a-progress>
+              </a-card>
+
+              <!-- 恢复操作卡片 -->
+              <a-card title="恢复备份" :bordered="true" class="settings-card">
+                <div class="setting-item">
+                  <div class="setting-label">
+                    <span>导入备份文件</span>
+                    <span class="setting-description">
+                      从 .tsbk 备份文件恢复模板，将覆盖当前模板的所有内容
+                    </span>
+                  </div>
+                  <div class="setting-control">
+                    <a-upload
+                      :custom-request="handleBackupFileSelect"
+                      :show-upload-list="false"
+                      accept=".tsbk"
+                      :disabled="!templateId"
+                    >
+                      <a-button :disabled="!templateId">
+                        <template #icon>
+                          <svg viewBox="0 0 24 24" width="18" height="18">
+                            <path
+                              fill="currentColor"
+                              d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6-.67l2.59 2.58L17 12.5l-5-5-5 5 1.41 1.41L11 11.33V21h2v-9.67z"
+                            />
+                          </svg>
+                        </template>
+                        选择备份文件
+                      </a-button>
+                    </a-upload>
+                  </div>
+                </div>
+
+                <!-- 备份预览 -->
+                <div v-if="backupState.preview" class="backup-preview">
+                  <a-divider style="margin: 16px 0" />
+                  <a-descriptions label-placement="left" :column="2" bordered size="small">
+                    <a-descriptions-item label="模板名称">
+                      {{ backupState.preview.templateName }}
+                    </a-descriptions-item>
+                    <a-descriptions-item label="文件数量">
+                      {{ backupState.preview.fileCount }} 个
+                    </a-descriptions-item>
+                    <a-descriptions-item label="备份时间">
+                      {{ formatBackupTime(backupState.preview.manifest.createdAt) }}
+                    </a-descriptions-item>
+                    <a-descriptions-item label="校验状态">
+                      <a-tag
+                        :color="backupState.preview.checksumValid ? 'success' : 'error'"
+                        size="small"
+                      >
+                        {{ backupState.preview.checksumValid ? '校验通过' : '校验失败' }}
+                      </a-tag>
+                    </a-descriptions-item>
+                    <a-descriptions-item label="包含变量">
+                      <a-tag
+                        :color="backupState.preview.hasVariables ? 'success' : 'default'"
+                        size="small"
+                      >
+                        {{ backupState.preview.hasVariables ? '是' : '否' }}
+                      </a-tag>
+                    </a-descriptions-item>
+                    <a-descriptions-item label="包含测试数据">
+                      <a-tag
+                        :color="backupState.preview.hasTestData ? 'success' : 'default'"
+                        size="small"
+                      >
+                        {{ backupState.preview.hasTestData ? '是' : '否' }}
+                      </a-tag>
+                    </a-descriptions-item>
+                  </a-descriptions>
+
+                  <a-alert type="warning" style="margin-top: 16px" message="警告">
+                    <template #description>
+                      恢复备份将覆盖当前模板的所有内容，此操作不可撤销。请确认备份文件来源可信。
+                    </template>
+                  </a-alert>
+
+                  <a-progress
+                    v-if="backupState.isRestoring && backupState.restoreProgress > 0"
+                    :percent="backupState.restoreProgress / 100"
+                    :status="backupState.restoreStatus"
                     style="margin-top: 16px"
                   >
-                    <template #default="{ percentage }">
-                      {{ backupState.progressMessage || `${percentage}%` }}
+                    <template #format="{ percent }">
+                      {{ backupState.restoreMessage || `${Math.round(percent * 100)}%` }}
                     </template>
-                  </n-progress>
-                </n-card>
+                  </a-progress>
 
-                <!-- 恢复操作卡片 -->
-                <n-card title="恢复备份" :bordered="true" class="settings-card">
-                  <div class="setting-item">
-                    <div class="setting-label">
-                      <span>导入备份文件</span>
-                      <span class="setting-description">
-                        从 .tsbk 备份文件恢复模板，将覆盖当前模板的所有内容
-                      </span>
-                    </div>
-                    <div class="setting-control">
-                      <n-upload
-                        :custom-request="handleBackupFileSelect"
-                        :show-file-list="false"
-                        accept=".tsbk"
-                        :disabled="!templateId"
-                      >
-                        <n-button :disabled="!templateId">
-                          <template #icon>
-                            <n-icon>
-                              <svg viewBox="0 0 24 24" width="18" height="18">
-                                <path
-                                  fill="currentColor"
-                                  d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6-.67l2.59 2.58L17 12.5l-5-5-5 5 1.41 1.41L11 11.33V21h2v-9.67z"
-                                />
-                              </svg>
-                            </n-icon>
-                          </template>
-                          选择备份文件
-                        </n-button>
-                      </n-upload>
-                    </div>
-                  </div>
-
-                  <!-- 备份预览 -->
-                  <div v-if="backupState.preview" class="backup-preview">
-                    <n-divider style="margin: 16px 0" />
-                    <n-descriptions label-placement="left" :column="2" bordered size="small">
-                      <n-descriptions-item label="模板名称">
-                        {{ backupState.preview.templateName }}
-                      </n-descriptions-item>
-                      <n-descriptions-item label="文件数量">
-                        {{ backupState.preview.fileCount }} 个
-                      </n-descriptions-item>
-                      <n-descriptions-item label="备份时间">
-                        {{ formatBackupTime(backupState.preview.manifest.createdAt) }}
-                      </n-descriptions-item>
-                      <n-descriptions-item label="校验状态">
-                        <n-tag
-                          :type="backupState.preview.checksumValid ? 'success' : 'error'"
-                          size="small"
-                        >
-                          {{ backupState.preview.checksumValid ? '校验通过' : '校验失败' }}
-                        </n-tag>
-                      </n-descriptions-item>
-                      <n-descriptions-item label="包含变量">
-                        <n-tag
-                          :type="backupState.preview.hasVariables ? 'success' : 'default'"
-                          size="small"
-                        >
-                          {{ backupState.preview.hasVariables ? '是' : '否' }}
-                        </n-tag>
-                      </n-descriptions-item>
-                      <n-descriptions-item label="包含测试数据">
-                        <n-tag
-                          :type="backupState.preview.hasTestData ? 'success' : 'default'"
-                          size="small"
-                        >
-                          {{ backupState.preview.hasTestData ? '是' : '否' }}
-                        </n-tag>
-                      </n-descriptions-item>
-                    </n-descriptions>
-
-                    <n-alert type="warning" style="margin-top: 16px" title="警告">
-                      恢复备份将覆盖当前模板的所有内容，此操作不可撤销。请确认备份文件来源可信。
-                    </n-alert>
-
-                    <n-progress
-                      v-if="backupState.isRestoring && backupState.restoreProgress > 0"
-                      type="line"
-                      :percentage="backupState.restoreProgress"
-                      :status="backupState.restoreStatus"
-                      :show-indicator="true"
-                      style="margin-top: 16px"
+                  <div style="margin-top: 16px; display: flex; gap: 12px">
+                    <a-button
+                      danger
+                      :loading="backupState.isRestoring"
+                      :disabled="!backupState.preview.checksumValid"
+                      @click="handleRestoreBackup"
                     >
-                      <template #default="{ percentage }">
-                        {{ backupState.restoreMessage || `${percentage}%` }}
-                      </template>
-                    </n-progress>
-
-                    <div style="margin-top: 16px; display: flex; gap: 12px">
-                      <n-button
-                        type="error"
-                        :loading="backupState.isRestoring"
-                        :disabled="!backupState.preview.checksumValid"
-                        @click="handleRestoreBackup"
-                      >
-                        确认恢复
-                      </n-button>
-                      <n-button @click="clearBackupPreview"> 取消 </n-button>
-                    </div>
+                      确认恢复
+                    </a-button>
+                    <a-button @click="clearBackupPreview"> 取消 </a-button>
                   </div>
-                </n-card>
+                </div>
+              </a-card>
 
-                <!-- 恢复结果 -->
-                <n-card
-                  v-if="backupState.restoreResult"
-                  title="恢复结果"
-                  :bordered="true"
-                  class="settings-card"
+              <!-- 恢复结果 -->
+              <a-card
+                v-if="backupState.restoreResult"
+                title="恢复结果"
+                :bordered="true"
+                class="settings-card"
+              >
+                <a-result
+                  :status="backupState.restoreResult.success ? 'success' : 'error'"
+                  :title="backupState.restoreResult.success ? '恢复成功' : '恢复失败'"
+                  :sub-title="backupState.restoreResult.error || '模板已成功从备份恢复'"
                 >
-                  <n-result
-                    :status="backupState.restoreResult.success ? 'success' : 'error'"
-                    :title="backupState.restoreResult.success ? '恢复成功' : '恢复失败'"
-                    :description="backupState.restoreResult.error || '模板已成功从备份恢复'"
-                  >
-                    <template v-if="backupState.restoreResult.stats" #footer>
-                      <n-descriptions label-placement="left" :column="2" size="small">
-                        <n-descriptions-item label="文件恢复">
-                          {{ backupState.restoreResult.stats.filesRestored }} 个
-                        </n-descriptions-item>
-                        <n-descriptions-item label="变量恢复">
-                          {{ backupState.restoreResult.stats.variablesRestored }} 个
-                        </n-descriptions-item>
-                        <n-descriptions-item label="条件恢复">
-                          {{ backupState.restoreResult.stats.conditionsRestored }} 个
-                        </n-descriptions-item>
-                        <n-descriptions-item label="测试数据">
-                          {{
-                            backupState.restoreResult.stats.testDataRestored ? '已恢复' : '未恢复'
-                          }}
-                        </n-descriptions-item>
-                      </n-descriptions>
-                    </template>
-                  </n-result>
-                  <div style="margin-top: 16px">
-                    <n-button @click="clearRestoreResult"> 关闭 </n-button>
-                  </div>
-                </n-card>
+                  <template v-if="backupState.restoreResult.stats" #extra>
+                    <a-descriptions label-placement="left" :column="2" size="small">
+                      <a-descriptions-item label="文件恢复">
+                        {{ backupState.restoreResult.stats.filesRestored }} 个
+                      </a-descriptions-item>
+                      <a-descriptions-item label="变量恢复">
+                        {{ backupState.restoreResult.stats.variablesRestored }} 个
+                      </a-descriptions-item>
+                      <a-descriptions-item label="条件恢复">
+                        {{ backupState.restoreResult.stats.conditionsRestored }} 个
+                      </a-descriptions-item>
+                      <a-descriptions-item label="测试数据">
+                        {{
+                          backupState.restoreResult.stats.testDataRestored ? '已恢复' : '未恢复'
+                        }}
+                      </a-descriptions-item>
+                    </a-descriptions>
+                  </template>
+                </a-result>
+                <div style="margin-top: 16px">
+                  <a-button @click="clearRestoreResult"> 关闭 </a-button>
+                </div>
+              </a-card>
 
-                <!-- 备份格式说明 -->
-                <n-card title="关于 .tsbk 格式" :bordered="true" class="settings-card">
-                  <n-collapse>
-                    <n-collapse-item title="备份文件结构" name="structure">
-                      <n-code language="text" :code="backupFormatInfo" />
-                    </n-collapse-item>
-                    <n-collapse-item title="安全说明" name="security">
-                      <n-text>
-                        备份文件使用 SHA256 校验和防止篡改。如果校验失败，系统将拒绝恢复备份。
-                        请确保备份文件来自可信来源。
-                      </n-text>
-                    </n-collapse-item>
-                  </n-collapse>
-                </n-card>
-              </div>
-            </n-scrollbar>
-          </n-tab-pane>
-        </n-tabs>
+              <!-- 备份格式说明 -->
+              <a-card title="关于 .tsbk 格式" :bordered="true" class="settings-card">
+                <a-collapse>
+                  <a-collapse-panel key="structure" header="备份文件结构">
+                    <pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; margin: 0; font-size: 13px">{{ backupFormatInfo }}</pre>
+                  </a-collapse-panel>
+                  <a-collapse-panel key="security" header="安全说明">
+                    <span>
+                      备份文件使用 SHA256 校验和防止篡改。如果校验失败，系统将拒绝恢复备份。
+                      请确保备份文件来自可信来源。
+                    </span>
+                  </a-collapse-panel>
+                </a-collapse>
+              </a-card>
+            </div>
+          </div>
+        </a-tab-pane>
+      </a-tabs>
+    </div>
+
+    <!-- 底部按钮区域 -->
+    <template #footer>
+      <div class="drawer-footer">
+        <template v-if="activeTab === 'editor-settings'">
+          <a-button @click="resetToDefaults">恢复默认</a-button>
+          <a-button type="primary" @click="handleSave">保存设置</a-button>
+        </template>
+        <template v-else-if="activeTab === 'engine'">
+          <a-button @click="refreshEngineStatus" :loading="engineState.isLoading">
+            刷新状态
+          </a-button>
+          <a-button @click="handleClearCache" :disabled="!engineState.isUsingWasm">
+            清除缓存
+          </a-button>
+          <a-button type="primary" @click="refreshEngineInfo" :loading="engineState.isLoadingInfo">
+            获取引擎信息
+          </a-button>
+        </template>
       </div>
-    </n-card>
-  </n-drawer>
+    </template>
+  </a-drawer>
 </template>
 
 <script setup lang="ts">
   import { ref, watch, computed, reactive } from 'vue';
-  import {
-    NDrawer,
-    NCard,
-    NButton,
-    NIcon,
-    NTabs,
-    NTabPane,
-    NScrollbar,
-    NSwitch,
-    NInputNumber,
-    NSelect,
-    NEmpty,
-    NTag,
-    NText,
-    NRadioGroup,
-    NRadio,
-    NSpace,
-    NSpin,
-    NProgress,
-    NUpload,
-    NDescriptions,
-    NDescriptionsItem,
-    NDivider,
-    NAlert,
-    NResult,
-    NCollapse,
-    NCollapseItem,
-    NCode,
-    useMessage,
-    useDialog,
-    type UploadCustomRequestOptions,
-  } from 'naive-ui';
+  import { message, Modal } from 'ant-design-vue';
   import { useRenderService } from '@/composables/useRenderService';
   import {
     createBackup,
@@ -604,8 +548,6 @@
   });
 
   const emit = defineEmits(['update:show', 'save-settings', 'backup-complete', 'restore-complete']);
-  const message = useMessage();
-  const dialog = useDialog();
 
   const visible = ref(props.show);
   const activeTab = ref('editor-settings');
@@ -722,8 +664,8 @@
   }
 
   // 选择备份文件 - 调用后端 API 预览
-  async function handleBackupFileSelect({ file }: UploadCustomRequestOptions) {
-    const selectedFile = file.file;
+  async function handleBackupFileSelect({ file }: { file: any }) {
+    const selectedFile = file.originFileObj || file;
     if (!selectedFile) return;
 
     // 验证文件扩展名
@@ -771,12 +713,12 @@
     }
 
     // 确认对话框
-    dialog.warning({
+    Modal.confirm({
       title: '确认恢复',
       content: '恢复备份将覆盖当前模板的所有内容，此操作不可撤销。确定要继续吗？',
-      positiveText: '确定恢复',
-      negativeText: '取消',
-      onPositiveClick: async () => {
+      okText: '确定恢复',
+      cancelText: '取消',
+      onOk: async () => {
         backupState.isRestoring = true;
 
         try {
@@ -968,34 +910,56 @@
 
 <style scoped>
   /* 抽屉基础样式 */
-  .advanced-drawer :deep(.n-drawer-body) {
+  .advanced-drawer :deep(.ant-drawer-body) {
     padding: 0;
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  }
-
-  .advanced-drawer :deep(.n-card-header) {
-    padding: 16px 20px;
-    border-bottom: 1px solid #e2e8f0;
-    background: #fff;
-  }
-
-  .advanced-drawer :deep(.n-card__content) {
-    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   .drawer-content {
     display: flex;
     min-height: 400px;
+    height: 100%;
+    width: 100%;
   }
 
   /* Tab 样式优化 */
-  .advanced-drawer :deep(.n-tabs-nav) {
+  .advanced-drawer .ant-tabs {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+  }
+
+  .advanced-drawer :deep(.ant-tabs-nav) {
     background: #fff;
     border-right: 1px solid #e2e8f0;
     padding: 12px 0;
+    flex-shrink: 0;
+    height: 100%;
   }
 
-  .advanced-drawer :deep(.n-tabs-tab) {
+  :deep(.ant-tabs-content-holder) {
+    flex: 1 !important;
+    min-width: 0;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  :deep(.ant-tabs-content) {
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  :deep(.ant-tabs-tabpane) {
+    width: 100%;
+    height: 100%;
+    overflow: auto !important;
+  }
+
+  .advanced-drawer :deep(.ant-tabs-tab) {
     padding: 12px 20px !important;
     margin: 4px 8px;
     border-radius: 8px;
@@ -1004,25 +968,31 @@
     color: #64748b;
   }
 
-  .advanced-drawer :deep(.n-tabs-tab:hover) {
+  .advanced-drawer :deep(.ant-tabs-tab:hover) {
     background: #f1f5f9;
     color: #334155;
   }
 
-  .advanced-drawer :deep(.n-tabs-tab--active) {
+  .advanced-drawer :deep(.ant-tabs-tab-active) {
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     color: #fff !important;
     font-weight: 500;
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   }
 
-  .advanced-drawer :deep(.n-tabs-bar) {
+  .advanced-drawer :deep(.ant-tabs-ink-bar) {
     display: none;
+  }
+
+  .tab-content-scroll {
+    height: 100%;
+    overflow-y: scroll;
   }
 
   .tab-content {
     padding: 24px;
-    max-width: 900px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   /* 设置卡片 - 现代风格 */
@@ -1045,22 +1015,20 @@
     margin-bottom: 0;
   }
 
-  .settings-card :deep(.n-card-header) {
+  .settings-card :deep(.ant-card-head) {
     padding: 16px 20px;
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
     border-bottom: 1px solid #e2e8f0;
+    min-height: auto;
   }
 
-  .settings-card :deep(.n-card-header .n-card-header__main) {
+  .settings-card :deep(.ant-card-head-title) {
     font-size: 15px;
     font-weight: 600;
     color: #1e293b;
-    display: flex;
-    align-items: center;
-    gap: 8px;
   }
 
-  .settings-card :deep(.n-card__content) {
+  .settings-card :deep(.ant-card-body) {
     padding: 0;
   }
 
@@ -1111,17 +1079,14 @@
     gap: 8px;
   }
 
-  /* 操作按钮区域 */
-  .settings-actions {
+  /* 底部按钮区域 */
+  .drawer-footer {
     display: flex;
     justify-content: flex-end;
     gap: 12px;
-    padding: 20px 24px;
+    padding: 12px 24px;
+    border-top: 1px solid #e2e8f0;
     background: #fff;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    margin-top: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
 
   /* 引擎管理样式 */
@@ -1166,7 +1131,7 @@
     gap: 6px;
   }
 
-  .info-tags .n-tag {
+  .info-tags :deep(.ant-tag) {
     border-radius: 4px;
     font-size: 11px;
   }
@@ -1180,17 +1145,13 @@
     border: 1px solid #e2e8f0;
   }
 
-  .backup-preview :deep(.n-descriptions) {
+  .backup-preview :deep(.ant-descriptions) {
     background: #fff;
     border-radius: 8px;
     overflow: hidden;
   }
 
-  .backup-preview :deep(.n-descriptions-table-wrapper) {
-    border-radius: 8px;
-  }
-
-  .backup-preview :deep(.n-alert) {
+  .backup-preview :deep(.ant-alert) {
     border-radius: 8px;
   }
 
@@ -1214,7 +1175,7 @@
 
   /* 暗色模式支持 */
   @media (prefers-color-scheme: dark) {
-    .advanced-drawer :deep(.n-drawer-body) {
+    .advanced-drawer :deep(.ant-drawer-body) {
       background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     }
 

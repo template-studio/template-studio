@@ -27,12 +27,16 @@ export function usePagination(refProps: ComputedRef<BasicTableProps>) {
       return false;
     }
     return {
-      page: 1, //当前页
+      current: 1, //当前页 (Ant Design Vue)
+      page: 1, //当前页 (内部兼容)
       pageSize: DEFAULTPAGESIZE, //分页大小
-      pageSizes: PAGESIZES, // 每页条数
-      showSizePicker: true,
+      pageSizeOptions: PAGESIZES, // 每页条数 (Ant Design Vue)
+      pageSizes: PAGESIZES, // 每页条数 (内部兼容)
+      showSizeChanger: true, // (Ant Design Vue)
+      showSizePicker: true, // (内部兼容)
       showQuickJumper: true,
-      prefix: (pagingInfo) => `共 ${pagingInfo.itemCount} 条`, // 不需要可以通过 pagination 重置或者删除
+      showTotal: (total: number) => `共 ${total} 条`, // (Ant Design Vue)
+      prefix: (pagingInfo: any) => `共 ${pagingInfo.itemCount} 条`, // (内部兼容)
       ...(isBoolean(pagination) ? {} : pagination),
       ...unref(configRef),
     };
@@ -40,10 +44,25 @@ export function usePagination(refProps: ComputedRef<BasicTableProps>) {
 
   function setPagination(info: Partial<PaginationProps>) {
     const paginationInfo = unref(getPaginationInfo);
-    configRef.value = {
+    const newInfo = {
       ...(!isBoolean(paginationInfo) ? paginationInfo : {}),
       ...info,
     };
+    // 同步 page/current
+    if (info.page !== undefined) {
+      newInfo.current = info.page;
+    }
+    if (info.current !== undefined) {
+      newInfo.page = info.current;
+    }
+    // 同步 itemCount/total
+    if (info.itemCount !== undefined) {
+      newInfo.total = info.itemCount;
+    }
+    if (info.total !== undefined) {
+      newInfo.itemCount = info.total;
+    }
+    configRef.value = newInfo;
   }
 
   function getPagination() {

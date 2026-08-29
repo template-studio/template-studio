@@ -1,6 +1,6 @@
 import { RouteRecordRaw } from 'vue-router';
 import { Layout } from '@/router/constant';
-import { ExclamationCircleOutlined } from '@vicons/antd';
+import { ExclamationCircleOutlined } from '@ant-design/icons-vue';
 import { renderIcon } from '@/utils/index';
 
 const routes: Array<RouteRecordRaw> = [

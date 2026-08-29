@@ -1,137 +1,126 @@
 <template>
   <div class="property-panel" :class="{ 'property-panel-tree': mode === 'tree' }">
     <div class="panel-header">
-      <n-text strong>属性</n-text>
+      <strong>属性</strong>
     </div>
     <div class="property-content">
       <!-- 未选中状态 -->
       <div v-if="!component" class="no-selection">
-        <n-empty description="请选择一个组件" size="small" />
+        <a-empty description="请选择一个组件" :image-style="{ height: '40px' }" />
       </div>
 
       <!-- 选中状态：显示属性编辑表单 -->
-      <n-form v-else ref="formRef" :model="component.schema" label-placement="top" size="small">
-        <n-form-item label="字段类型" path="type">
-          <n-select
+      <a-form v-else ref="formRef" :model="component.schema" layout="vertical" size="small">
+        <a-form-item label="字段类型" name="type">
+          <a-select
             :key="`type-${component?.id || 'none'}-${component?.type || 'unknown'}`"
             :value="component.type"
             :options="typeOptions"
-            @update:value="handleTypeChange"
+            @change="handleTypeChange"
           />
-        </n-form-item>
+        </a-form-item>
 
-        <n-form-item
+        <a-form-item
           label="字段名"
-          path="fieldName"
-          :rule="{ required: true, message: '请输入字段名' }"
+          name="fieldName"
+          :rules="[{ required: true, message: '请输入字段名' }]"
         >
-          <n-input
+          <a-input
             :value="component.fieldName"
             placeholder="字段名（英文，如：username）"
-            @update:value="(value) => handleFieldNameUpdate(value)"
+            @change="(e) => handleFieldNameUpdate(e.target.value)"
           />
-        </n-form-item>
+        </a-form-item>
 
-        <n-form-item label="标题" path="title" :rule="{ required: true, message: '请输入标题' }">
-          <n-input
+        <a-form-item label="标题" name="title" :rules="[{ required: true, message: '请输入标题' }]">
+          <a-input
             :value="component.schema.title"
             placeholder="用户友好的显示名称"
-            @update:value="(value) => handleSchemaUpdate('title', value)"
+            @change="(e) => handleSchemaUpdate('title', e.target.value)"
           />
-        </n-form-item>
+        </a-form-item>
 
-        <n-form-item label="描述" path="description">
-          <n-input
+        <a-form-item label="描述" name="description">
+          <a-textarea
             :value="component.schema.description"
-            type="textarea"
             placeholder="字段说明"
             :rows="2"
-            @update:value="(value) => handleSchemaUpdate('description', value)"
+            @change="(e) => handleSchemaUpdate('description', e.target.value)"
           />
-        </n-form-item>
+        </a-form-item>
 
-        <n-form-item label="占位符" path="placeholder">
-          <n-input
+        <a-form-item label="占位符" name="placeholder">
+          <a-input
             :value="component.schema.placeholder"
             placeholder="输入框占位符文本"
-            @update:value="(value) => handleSchemaUpdate('placeholder', value)"
+            @change="(e) => handleSchemaUpdate('placeholder', e.target.value)"
           />
-        </n-form-item>
+        </a-form-item>
 
-        <n-form-item label="必填" path="required">
-          <n-switch
-            :value="component.schema.required"
-            @update:value="(value) => handleSchemaUpdate('required', value)"
+        <a-form-item label="必填" name="required">
+          <a-switch
+            :checked="component.schema.required"
+            @change="(checked) => handleSchemaUpdate('required', checked)"
           />
-        </n-form-item>
+        </a-form-item>
 
-        <n-form-item label="默认值" path="default">
-          <n-input
+        <a-form-item label="默认值" name="default">
+          <a-input
             :value="component.schema.default"
             placeholder="默认值"
-            @update:value="(value) => handleSchemaUpdate('default', value)"
+            @change="(e) => handleSchemaUpdate('default', e.target.value)"
           />
-        </n-form-item>
+        </a-form-item>
 
         <!-- 枚举类型特殊处理 -->
         <template v-if="component.type === 'enum'">
-          <n-form-item label="枚举值" path="enum">
-            <n-dynamic-tags
-              :value="component.schema.enum"
-              @update:value="(value) => handleSchemaUpdate('enum', value)"
+          <a-form-item label="枚举值" name="enum">
+            <a-select
+              mode="tags"
+              :value="component.schema.enum || []"
+              placeholder="输入枚举值后回车"
+              @change="(value) => handleSchemaUpdate('enum', value)"
             />
-          </n-form-item>
+          </a-form-item>
         </template>
 
         <!-- 数字类型特殊处理 -->
         <template v-if="component.type === 'integer' || component.type === 'number'">
-          <n-form-item label="最小值" path="minimum">
-            <n-input-number
+          <a-form-item label="最小值" name="minimum">
+            <a-input-number
               :value="component.schema.minimum"
               placeholder="无限制"
-              clearable
-              @update:value="(value) => handleSchemaUpdate('minimum', value)"
+              style="width: 100%"
+              @change="(value) => handleSchemaUpdate('minimum', value)"
             />
-          </n-form-item>
-          <n-form-item label="最大值" path="maximum">
-            <n-input-number
+          </a-form-item>
+          <a-form-item label="最大值" name="maximum">
+            <a-input-number
               :value="component.schema.maximum"
               placeholder="无限制"
-              clearable
-              @update:value="(value) => handleSchemaUpdate('maximum', value)"
+              style="width: 100%"
+              @change="(value) => handleSchemaUpdate('maximum', value)"
             />
-          </n-form-item>
+          </a-form-item>
         </template>
 
         <!-- 数组类型特殊处理 -->
         <template v-if="component.type === 'array'">
-          <n-form-item label="元素类型" path="itemType">
-            <n-select
+          <a-form-item label="元素类型" name="itemType">
+            <a-select
               :value="component.schema.items?.type || 'string'"
               :options="elementTypeOptions"
-              @update:value="handleItemTypeUpdate"
+              @change="handleItemTypeUpdate"
             />
-          </n-form-item>
+          </a-form-item>
         </template>
-      </n-form>
+      </a-form>
     </div>
   </div>
 </template>
 
 <script setup>
   import { ref, nextTick } from 'vue';
-  import {
-    NText,
-    NEmpty,
-    NForm,
-    NFormItem,
-    NInput,
-    NSwitch,
-    NInputNumber,
-    NDynamicTags,
-    NSelect,
-    NButton,
-  } from 'naive-ui';
 
   /**
    * PropertyPanel 组件

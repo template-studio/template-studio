@@ -1,47 +1,41 @@
 <template>
   <div class="languages-manage">
-    <n-flex vertical>
-      <n-card :bordered="false">
-        <n-form inline :label-width="80" :model="searchForm">
-          <n-form-item label="关键词">
-            <n-input
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <a-card :bordered="false">
+        <a-form layout="inline" :model="searchForm">
+          <a-form-item label="关键词">
+            <a-input
               v-model:value="searchForm.name"
               placeholder="输入语言名称或代码进行搜索"
-              clearable
+              allow-clear
               style="width: 240px"
               @keyup.enter="handleSearch"
             >
               <template #prefix>
-                <n-icon>
-                  <SearchOutline />
-                </n-icon>
+                <SearchOutline />
               </template>
-            </n-input>
-          </n-form-item>
-          <n-form-item>
-            <n-space>
-              <n-button type="primary" @click="handleSearch">
+            </a-input>
+          </a-form-item>
+          <a-form-item>
+            <a-space>
+              <a-button type="primary" @click="handleSearch">
                 <template #icon>
-                  <n-icon>
-                    <SearchOutline />
-                  </n-icon>
+                  <SearchOutline />
                 </template>
                 搜索
-              </n-button>
-              <n-button @click="handleReset">
+              </a-button>
+              <a-button @click="handleReset">
                 <template #icon>
-                  <n-icon>
-                    <RefreshOutline />
-                  </n-icon>
+                  <RefreshOutline />
                 </template>
                 重置
-              </n-button>
-            </n-space>
-          </n-form-item>
-        </n-form>
-      </n-card>
+              </a-button>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </a-card>
 
-      <n-card :bordered="false">
+      <a-card :bordered="false">
         <BasicTable
           ref="actionRef"
           :columns="columns"
@@ -51,133 +45,98 @@
           :scroll-x="1200"
         >
           <template #tableTitle>
-            <n-button type="primary" @click="handleAdd">
+            <a-button type="primary" @click="handleAdd">
               <template #icon>
-                <n-icon>
-                  <AddOutline />
-                </n-icon>
+                <AddOutline />
               </template>
               新建语言
-            </n-button>
+            </a-button>
           </template>
         </BasicTable>
-      </n-card>
-    </n-flex>
+      </a-card>
+    </div>
 
     <!-- 添加/编辑语言弹窗 -->
-    <n-modal v-model:show="showAddModal" :mask-closable="false">
-      <n-card
-        style="width: 500px"
-        :title="editingLanguage ? '编辑语言' : '添加语言'"
-        :bordered="false"
-        size="huge"
-        role="dialog"
-        aria-modal="true"
-      >
-        <template #header-extra>
-          <n-button quaternary circle @click="closeModal">
-            <template #icon>
-              <n-icon>
-                <CloseOutline />
-              </n-icon>
-            </template>
-          </n-button>
-        </template>
+    <a-modal v-model:open="showAddModal" :mask-closable="false" :title="editingLanguage ? '编辑语言' : '添加语言'" width="500px">
+      <a-form ref="formRef" :model="formData" :rules="formRules" layout="vertical">
+        <a-form-item label="语言名称" name="name">
+          <a-input
+            v-model:value="formData.name"
+            placeholder="请输入语言名称（如：JavaScript）"
+            :maxlength="50"
+            show-count
+          />
+        </a-form-item>
 
-        <n-form ref="formRef" :model="formData" :rules="formRules" label-placement="top">
-          <n-form-item label="语言名称" path="name">
-            <n-input
-              v-model:value="formData.name"
-              placeholder="请输入语言名称（如：JavaScript）"
-              :maxlength="50"
-              show-count
-            />
-          </n-form-item>
+        <a-form-item label="显示名称" name="displayName">
+          <a-input
+            v-model:value="formData.displayName"
+            placeholder="请输入显示名称（如：JavaScript）"
+            :maxlength="50"
+            show-count
+          />
+        </a-form-item>
 
-          <n-form-item label="显示名称" path="displayName">
-            <n-input
-              v-model:value="formData.displayName"
-              placeholder="请输入显示名称（如：JavaScript）"
-              :maxlength="50"
-              show-count
-            />
-          </n-form-item>
+        <a-form-item label="语言代码" name="code">
+          <a-input
+            v-model:value="formData.code"
+            placeholder="请输入语言代码（如：js）"
+            :maxlength="20"
+            show-count
+          />
+        </a-form-item>
 
-          <n-form-item label="语言代码" path="code">
-            <n-input
-              v-model:value="formData.code"
-              placeholder="请输入语言代码（如：js）"
-              :maxlength="20"
-              show-count
-            />
-          </n-form-item>
+        <a-form-item label="排序" name="sort">
+          <a-input-number
+            v-model:value="formData.sort"
+            placeholder="排序值，数字越小越靠前"
+            :min="0"
+            :max="9999"
+            style="width: 100%"
+          />
+        </a-form-item>
 
-          <n-form-item label="排序" path="sort">
-            <n-input-number
-              v-model:value="formData.sort"
-              placeholder="排序值，数字越小越靠前"
-              :min="0"
-              :max="9999"
-              style="width: 100%"
-            />
-          </n-form-item>
+        <a-form-item label="热门语言" name="isPopular">
+          <a-switch v-model:checked="formData.isPopular" :checked-value="1" :unchecked-value="0" checked-children="是" un-checked-children="否" />
+        </a-form-item>
+      </a-form>
 
-          <n-form-item label="热门语言" path="isPopular">
-            <n-switch v-model:value="formData.isPopular" :checked-value="1" :unchecked-value="0">
-              <template #checked>是</template>
-              <template #unchecked>否</template>
-            </n-switch>
-          </n-form-item>
-        </n-form>
-
-        <template #footer>
-          <div class="modal-footer">
-            <n-button @click="closeModal">取消</n-button>
-            <n-button type="primary" @click="handleSubmit" :loading="submitting">
-              {{ editingLanguage ? '更新' : '添加' }}
-            </n-button>
-          </div>
-        </template>
-      </n-card>
-    </n-modal>
+      <template #footer>
+        <div class="modal-footer">
+          <a-button @click="closeModal">取消</a-button>
+          <a-button type="primary" @click="handleSubmit" :loading="submitting">
+            {{ editingLanguage ? '更新' : '添加' }}
+          </a-button>
+        </div>
+      </template>
+    </a-modal>
 
     <!-- 删除确认弹窗 -->
-    <n-modal v-model:show="showDeleteModal" :mask-closable="false">
-      <n-card
-        style="width: 400px"
-        title="确认删除"
-        :bordered="false"
-        size="huge"
-        role="dialog"
-        aria-modal="true"
-      >
-        <div class="delete-content">
-          <div class="delete-icon">
-            <n-icon size="48" color="#d03050">
-              <TrashOutline />
-            </n-icon>
-          </div>
-          <p class="delete-message">
-            确定要删除语言 <strong>"{{ deletingLanguage?.name }}"</strong> 吗？
-          </p>
-          <p class="delete-warning"> 此操作不可撤销，删除后相关模板的语言信息可能会受到影响。 </p>
+    <a-modal v-model:open="showDeleteModal" :mask-closable="false" title="确认删除" width="400px">
+      <div class="delete-content">
+        <div class="delete-icon">
+          <TrashOutline style="font-size: 48px; color: #d03050" />
         </div>
+        <p class="delete-message">
+          确定要删除语言 <strong>"{{ deletingLanguage?.name }}"</strong> 吗？
+        </p>
+        <p class="delete-warning"> 此操作不可撤销，删除后相关模板的语言信息可能会受到影响。 </p>
+      </div>
 
-        <template #footer>
-          <div class="modal-footer">
-            <n-button @click="showDeleteModal = false">取消</n-button>
-            <n-button type="error" @click="confirmDelete" :loading="deleting"> 确认删除 </n-button>
-          </div>
-        </template>
-      </n-card>
-    </n-modal>
+      <template #footer>
+        <div class="modal-footer">
+          <a-button @click="showDeleteModal = false">取消</a-button>
+          <a-button danger @click="confirmDelete" :loading="deleting"> 确认删除 </a-button>
+        </div>
+      </template>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
   import { ref, reactive, h } from 'vue';
   import { BasicTable, TableAction } from '@/components/Table';
-  import { NButton, NIcon, useMessage } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import {
     AddOutline,
     CloseOutline,
@@ -185,11 +144,10 @@
     CreateOutline,
     SearchOutline,
     RefreshOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
   import { listLanguages, addLanguage, editLanguage, deleteLanguage } from '@/api/languages';
   import { columns as baseColumns } from './columns';
 
-  const message = useMessage();
   const actionRef = ref();
 
   // 数据状态
@@ -354,7 +312,7 @@
     formData.code = '';
     formData.sort = 0;
     formData.isPopular = 0;
-    formRef.value?.restoreValidation();
+    formRef.value?.resetFields();
   };
 
   // 提交表单

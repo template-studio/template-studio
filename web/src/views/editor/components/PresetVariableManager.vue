@@ -8,28 +8,24 @@
         <p v-if="!compact" class="description">从预设变量库中订阅变量到当前模板</p>
       </div>
       <div class="header-right">
-        <n-button
+        <a-button
           :type="compact ? 'default' : 'primary'"
-          :size="compact ? 'small' : 'medium'"
+          :size="compact ? 'small' : 'middle'"
           @click="showSubscribeModal = true"
           :loading="loading"
         >
-          <template #icon>
-            <n-icon><AddOutline /></n-icon>
-          </template>
+          <template #icon><AddOutline /></template>
           {{ compact ? '订阅' : '订阅预设变量' }}
-        </n-button>
+        </a-button>
       </div>
     </div>
 
     <!-- 已订阅的预设变量列表 -->
-    <n-spin :show="loading">
+    <a-spin :spinning="loading">
       <div class="subscribed-list">
-        <n-empty v-if="subscribedList.length === 0" description="暂无订阅的预设变量">
-          <template #extra>
-            <n-button size="small" @click="showSubscribeModal = true">立即订阅</n-button>
-          </template>
-        </n-empty>
+        <a-empty v-if="subscribedList.length === 0" description="暂无订阅的预设变量">
+          <a-button size="small" @click="showSubscribeModal = true">立即订阅</a-button>
+        </a-empty>
 
         <div v-else>
           <div class="preset-group" v-for="preset in subscribedList" :key="preset.id">
@@ -40,14 +36,14 @@
                 <span class="variable-count">({{ preset.variables?.length || 0 }} 个变量)</span>
               </div>
               <div class="preset-actions">
-                <n-popconfirm @positive-click="unsubscribe(preset)">
-                  <template #trigger>
-                    <n-button size="tiny" quaternary type="error" :loading="preset.unsubscribing">
-                      取消订阅
-                    </n-button>
-                  </template>
-                  确定要取消订阅这个预设变量包吗？
-                </n-popconfirm>
+                <a-popconfirm
+                  title="确定要取消订阅这个预设变量包吗？"
+                  @confirm="unsubscribe(preset)"
+                >
+                  <a-button size="small" danger :loading="preset.unsubscribing">
+                    取消订阅
+                  </a-button>
+                </a-popconfirm>
               </div>
             </div>
 
@@ -60,9 +56,9 @@
                     <span class="variable-type">{{ variable.type }}</span>
                   </div>
                   <div class="variable-copy">
-                    <n-button size="tiny" quaternary @click="copyVariablePath(variable.path)">
+                    <a-button size="small" @click="copyVariablePath(variable.path)">
                       复制
-                    </n-button>
+                    </a-button>
                   </div>
                 </div>
                 <div class="variable-content">
@@ -82,105 +78,87 @@
           </div>
         </div>
       </div>
-    </n-spin>
+    </a-spin>
 
     <!-- 订阅预设变量弹窗 -->
-    <n-modal v-model:show="showSubscribeModal" :mask-closable="false">
-      <n-card style="width: 800px" title="订阅预设变量" :bordered="false" size="huge">
-        <template #header-extra>
-          <n-button quaternary circle @click="showSubscribeModal = false">
-            <template #icon>
-              <n-icon><CloseOutline /></n-icon>
-            </template>
-          </n-button>
-        </template>
+    <a-modal
+      v-model:open="showSubscribeModal"
+      title="订阅预设变量"
+      :width="800"
+      :mask-closable="false"
+      :footer="null"
+    >
+      <!-- 搜索栏 -->
+      <div class="search-bar">
+        <a-input
+          v-model:value="searchKeyword"
+          placeholder="搜索预设变量..."
+          allow-clear
+          @change="searchPresets"
+        >
+          <template #prefix><SearchOutline /></template>
+        </a-input>
+      </div>
 
-        <!-- 搜索栏 -->
-        <div class="search-bar">
-          <n-input
-            v-model:value="searchKeyword"
-            placeholder="搜索预设变量..."
-            clearable
-            @update:value="searchPresets"
-          >
-            <template #prefix>
-              <n-icon><SearchOutline /></n-icon>
-            </template>
-          </n-input>
-        </div>
+      <!-- 可用预设变量列表 -->
+      <a-spin :spinning="presetsLoading">
+        <div class="available-presets">
+          <a-empty v-if="availablePresets.length === 0" description="暂无可用的预设变量" />
 
-        <!-- 可用预设变量列表 -->
-        <n-spin :show="presetsLoading">
-          <div class="available-presets">
-            <n-empty v-if="availablePresets.length === 0" description="暂无可用的预设变量" />
-
-            <div v-else class="presets-list">
-              <div class="preset-item" v-for="preset in availablePresets" :key="preset.id">
-                <div class="preset-content">
-                  <n-checkbox
-                    :checked="isPresetSelected(preset.id)"
-                    @update:checked="togglePreset(preset, $event)"
-                  >
-                    <div class="preset-info">
-                      <div class="preset-name">{{ preset.name }}</div>
-                      <div class="preset-description" v-if="preset.description">
-                        {{ preset.description }}
-                      </div>
+          <div v-else class="presets-list">
+            <div class="preset-item" v-for="preset in availablePresets" :key="preset.id">
+              <div class="preset-content">
+                <a-checkbox
+                  :checked="isPresetSelected(preset.id)"
+                  @change="(e) => togglePreset(preset, e.target.checked)"
+                >
+                  <div class="preset-info">
+                    <div class="preset-name">{{ preset.name }}</div>
+                    <div class="preset-description" v-if="preset.description">
+                      {{ preset.description }}
                     </div>
-                  </n-checkbox>
-                </div>
+                  </div>
+                </a-checkbox>
               </div>
             </div>
           </div>
-        </n-spin>
-
-        <!-- 分页 -->
-        <div class="pagination" v-if="totalPresets > pageSize">
-          <n-pagination
-            v-model:page="currentPage"
-            :page-size="pageSize"
-            :item-count="totalPresets"
-            @update:page="loadAvailablePresets"
-            show-size-picker
-            :page-sizes="[10, 20, 30]"
-            @update:page-size="handlePageSizeChange"
-          />
         </div>
+      </a-spin>
 
-        <template #footer>
-          <div class="modal-footer">
-            <n-button @click="showSubscribeModal = false">取消</n-button>
-            <n-button
-              type="primary"
-              @click="confirmSubscribe"
-              :loading="subscribing"
-              :disabled="selectedPresets.length === 0"
-            >
-              订阅选中的预设 ({{ selectedPresets.length }})
-            </n-button>
-          </div>
-        </template>
-      </n-card>
-    </n-modal>
+      <!-- 分页 -->
+      <div class="pagination" v-if="totalPresets > pageSize">
+        <a-pagination
+          v-model:current="currentPage"
+          :page-size="pageSize"
+          :total="totalPresets"
+          :page-size-options="['10', '20', '30']"
+          show-size-changer
+          @change="(page) => loadAvailablePresets(page)"
+          @showSizeChange="(current, size) => handlePageSizeChange(size)"
+        />
+      </div>
+
+      <template #footer>
+        <div class="modal-footer">
+          <a-button @click="showSubscribeModal = false">取消</a-button>
+          <a-button
+            type="primary"
+            @click="confirmSubscribe"
+            :loading="subscribing"
+            :disabled="selectedPresets.length === 0"
+          >
+            订阅选中的预设 ({{ selectedPresets.length }})
+          </a-button>
+        </div>
+      </template>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
-  import { ref, reactive, onMounted, computed, watch } from 'vue';
-  import {
-    NButton,
-    NIcon,
-    NModal,
-    NCard,
-    NInput,
-    NEmpty,
-    NCheckbox,
-    NPagination,
-    NPopconfirm,
-    NSpin,
-    useMessage,
-  } from 'naive-ui';
-  import { AddOutline, CloseOutline, SearchOutline } from '@vicons/ionicons5';
+  import { ref, onMounted, watch } from 'vue';
+  import { message } from 'ant-design-vue';
+  import { AddOutline, CloseOutline, SearchOutline } from '@/icons/ionicons5';
   import {
     subscribePreset,
     getSubscribedPresets,
@@ -198,8 +176,6 @@
       default: false,
     },
   });
-
-  const message = useMessage();
 
   // 数据状态
   const loading = ref(false);
@@ -282,12 +258,10 @@
 
   const togglePreset = (preset, checked) => {
     if (checked) {
-      // 添加选中的预设变量
       if (!selectedPresets.value.includes(preset.id)) {
         selectedPresets.value.push(preset.id);
       }
     } else {
-      // 移除选中的预设变量
       const index = selectedPresets.value.indexOf(preset.id);
       if (index > -1) {
         selectedPresets.value.splice(index, 1);
@@ -349,17 +323,14 @@
   });
 
   // 监听弹窗打开，加载可用预设变量
-  const watchSubscribeModal = () => {
+  watch(() => showSubscribeModal.value, () => {
     if (showSubscribeModal.value) {
       selectedPresets.value = [];
       currentPage.value = 1;
       searchKeyword.value = '';
       loadAvailablePresets();
     }
-  };
-
-  // 监听弹窗状态
-  watch(() => showSubscribeModal.value, watchSubscribeModal);
+  });
 </script>
 
 <style scoped>
@@ -523,11 +494,7 @@
     gap: 12px;
   }
 
-  /* 紧凑模式样式 - 针对在变量面板中的使用 */
-  .compact-mode .preset-variable-manager {
-    padding: 8px;
-  }
-
+  /* 紧凑模式样式 */
   .compact-mode .manager-header {
     margin-bottom: 12px;
   }
@@ -551,13 +518,13 @@
     font-size: 13px;
   }
 
-  .compact-mode .item-actions .n-button {
+  .compact-mode .item-actions :deep(.ant-btn) {
     padding: 2px 6px;
     font-size: 11px;
     height: 24px;
   }
 
-  .compact-mode .item-actions .n-switch {
+  .compact-mode .item-actions :deep(.ant-switch) {
     transform: scale(0.85);
   }
 
@@ -572,12 +539,12 @@
     font-size: 11px;
   }
 
-  .compact-mode .n-tag {
+  .compact-mode :deep(.ant-tag) {
     font-size: 10px;
     padding: 2px 6px;
   }
 
-  .compact-mode .header-right .n-button {
+  .compact-mode .header-right :deep(.ant-btn) {
     padding: 4px 8px;
     font-size: 12px;
     height: 28px;

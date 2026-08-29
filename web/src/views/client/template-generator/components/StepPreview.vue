@@ -6,29 +6,29 @@
         <span class="template-name">{{ templateInfo?.name }}</span>
       </div>
       <div class="header-actions">
-        <n-button size="small" @click="$emit('prev')">
+        <a-button size="small" @click="$emit('prev')">
           <template #icon>
-            <n-icon><ArrowBack /></n-icon>
+            <ArrowBack />
           </template>
           返回配置
-        </n-button>
-        <n-button
+        </a-button>
+        <a-button
           v-if="props.templateInfo?.templateType === 'basic'"
           size="small"
           @click="copyToClipboard"
           style="margin-right: 8px"
         >
           <template #icon>
-            <n-icon><CopyOutline /></n-icon>
+            <CopyOutline />
           </template>
           复制
-        </n-button>
-        <n-button type="primary" size="small" @click="generateProject">
+        </a-button>
+        <a-button type="primary" size="small" @click="generateProject">
           <template #icon>
-            <n-icon><Download /></n-icon>
+            <Download />
           </template>
           下载
-        </n-button>
+        </a-button>
       </div>
     </div>
 
@@ -40,22 +40,25 @@
         </div>
         <div class="explorer-content">
           <div v-if="loading" class="loading-container">
-            <n-spin size="small">
-              <template #description> 加载中... </template>
-            </n-spin>
+            <a-spin size="small">
+              <template #indicator><span style="font-size: 12px">加载中...</span></template>
+            </a-spin>
           </div>
           <div v-else-if="treeData.length === 0" class="empty-container">
             <div class="empty-text">暂无文件</div>
           </div>
           <div v-else class="file-tree">
-            <NTree
-              :data="treeDataComputed"
+            <a-tree
+              :tree-data="treeDataComputed"
               :selected-keys="[currentFile]"
-              :render-label="renderLabel"
-              :render-switcher-icon="renderSwitcherIcon"
-              @update:selected-keys="onSelectFile"
-              @update:expanded-keys="updateExpandedKeys"
-            />
+              :expanded-keys="[...expandedKeys]"
+              @select="onSelectFile"
+              @expand="updateExpandedKeys"
+            >
+              <template #switcherIcon="{ expanded }">
+                <ChevronForward :style="{ transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }" />
+              </template>
+            </a-tree>
           </div>
         </div>
       </div>
@@ -65,9 +68,7 @@
         <div class="preview-content">
           <div v-if="!currentFile" class="no-file-selected">
             <div class="no-file-icon">
-              <n-icon size="48" color="#ccc">
-                <Document />
-              </n-icon>
+              <Document style="font-size: 48px; color: #ccc" />
             </div>
             <div class="no-file-text">请选择左侧文件进行预览</div>
           </div>
@@ -90,19 +91,18 @@
 </template>
 
 <script setup>
-  import { ref, onMounted, computed, h, watch, nextTick, onBeforeUnmount } from 'vue';
-  import { useMessage, NIcon, NTree, NSelect, NTag, NButton, NSpin } from 'naive-ui';
+  import { ref, onMounted, computed, watch, nextTick, onBeforeUnmount } from 'vue';
+  import { message } from 'ant-design-vue';
   import {
     ArrowBack,
     Download,
-    Close,
     Document,
     Folder,
     FolderOpenOutline,
     FileTrayFullOutline,
     ChevronForward,
     CopyOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
   import { generateFileTree, generateZip } from '@/api/templateFiles';
   import { getTemplateExpose } from '@/api/templateExpose';
 
@@ -147,8 +147,6 @@
   });
 
   const emit = defineEmits(['prev', 'next']);
-
-  const message = useMessage();
 
   // 文件树数据
   const treeData = ref([]);
@@ -214,21 +212,19 @@
   // 展开状态
   const expandedKeys = ref(new Set());
 
-  // 转换树数据为NTree格式
+  // 转换树数据为ant-design-vue a-tree格式
   const treeDataComputed = computed(() => {
-    return treeToNaive(treeData.value);
+    return treeToAntd(treeData.value);
   });
 
-  function treeToNaive(tree) {
+  function treeToAntd(tree) {
     if (!Array.isArray(tree)) return [];
 
     // 排序逻辑：目录在前，文件在后，同类型按名称排序
     const customSort = (a, b) => {
-      // 首先按目录/文件排序：目录在前，文件在后
       if ((b.isDirectory || 0) - (a.isDirectory || 0) !== 0) {
         return (b.isDirectory || 0) - (a.isDirectory || 0);
       }
-      // 同类型按名称排序
       const nameA = (a.fileName || a.label || '').toLowerCase();
       const nameB = (b.fileName || b.label || '').toLowerCase();
       return nameA.localeCompare(nameB);
@@ -239,30 +235,18 @@
     return sorted.map((node) => {
       const nodeKey = node.key || node.id;
       const isExpanded = expandedKeys.value.has(String(nodeKey));
-
-      // 获取显示名称：直接使用fileName，后端已提供正确的文件名
-      const getDisplayName = (node) => {
-        return node.fileName || node.name || '';
-      };
+      const getDisplayName = (n) => n.fileName || n.name || '';
 
       return {
-        label: getDisplayName(node),
+        title: getDisplayName(node),
         key: nodeKey,
-        isLeaf: node.isDirectory !== 1, // 目录永远不是叶子节点，文件永远是叶子节点
+        isLeaf: node.isDirectory !== 1,
         filePath: node.filePath,
         fileName: node.fileName,
-        prefix: () =>
-          h(NIcon, null, {
-            default: () =>
-              h(
-                node.isDirectory === 1
-                  ? isExpanded
-                    ? FolderOpenOutline
-                    : Folder
-                  : FileTrayFullOutline
-              ),
-          }),
-        children: node.children ? treeToNaive(node.children) : [],
+        icon: node.isDirectory === 1
+          ? (isExpanded ? FolderOpenOutline : Folder)
+          : FileTrayFullOutline,
+        children: node.children ? treeToAntd(node.children) : [],
       };
     });
   }
@@ -750,14 +734,6 @@
     expandedKeys.value = new Set(keys);
   };
 
-  // 渲染标签
-  const renderLabel = ({ option }) => {
-    return option.label;
-  };
-
-  // 渲染切换图标 - 使用默认的展开/折叠箭头
-  const renderSwitcherIcon = () => h(NIcon, null, { default: () => h(ChevronForward) });
-
   // 复制到剪贴板
   const copyToClipboard = async () => {
     if (!currentFileContent.value) {
@@ -800,10 +776,10 @@
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      message.destroyAll();
+      message.destroy();
       message.success('项目生成成功！');
     } catch (error) {
-      message.destroyAll();
+      message.destroy();
       console.error('生成项目失败:', error);
       message.error('生成项目失败，请重试');
     }

@@ -2,64 +2,60 @@
   <div class="user-management">
     <div class="page-header">
       <h3>用户管理</h3>
-      <n-button type="primary" @click="showCreateModal = true">新增用户</n-button>
+      <a-button type="primary" @click="showCreateModal = true">新增用户</a-button>
     </div>
 
-    <n-data-table
+    <a-table
       :columns="columns"
-      :data="users"
+      :data-source="users"
       :loading="loading"
       :pagination="false"
       bordered
+      row-key="id"
     />
 
     <!-- 新增/编辑弹窗 -->
-    <n-modal
-      v-model:show="showModal"
+    <a-modal
+      v-model:open="showModal"
       :title="editingUser ? '编辑用户' : '新增用户'"
-      preset="card"
-      style="width: 500px"
+      width="500px"
     >
-      <n-form ref="formRef" :model="formData" label-placement="left" label-width="80">
-        <n-form-item v-if="!editingUser" label="用户名" path="username">
-          <n-input v-model:value="formData.username" placeholder="请输入用户名" />
-        </n-form-item>
-        <n-form-item v-if="!editingUser" label="密码" path="password">
-          <n-input v-model:value="formData.password" type="password" placeholder="请输入密码" />
-        </n-form-item>
-        <n-form-item label="邮箱" path="email">
-          <n-input v-model:value="formData.email" placeholder="请输入邮箱" />
-        </n-form-item>
-        <n-form-item label="状态" path="status">
-          <n-switch v-model:value="formData.statusBool" :checked-value="1" :unchecked-value="0">
-            <template #checked>启用</template>
-            <template #unchecked>禁用</template>
-          </n-switch>
-        </n-form-item>
-        <n-form-item label="角色" path="role_ids">
-          <n-select
+      <a-form :model="formData" layout="horizontal" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
+        <a-form-item v-if="!editingUser" label="用户名" name="username">
+          <a-input v-model:value="formData.username" placeholder="请输入用户名" />
+        </a-form-item>
+        <a-form-item v-if="!editingUser" label="密码" name="password">
+          <a-input-password v-model:value="formData.password" placeholder="请输入密码" />
+        </a-form-item>
+        <a-form-item label="邮箱" name="email">
+          <a-input v-model:value="formData.email" placeholder="请输入邮箱" />
+        </a-form-item>
+        <a-form-item label="状态" name="status">
+          <a-switch v-model:checked="formData.statusBool" :checked-value="1" :unchecked-value="0" checked-children="启用" un-checked-children="禁用" />
+        </a-form-item>
+        <a-form-item label="角色" name="role_ids">
+          <a-select
             v-model:value="formData.role_ids"
             :options="roleOptions"
-            multiple
+            mode="multiple"
             placeholder="请选择角色"
           />
-        </n-form-item>
-      </n-form>
-      <template #action>
-        <n-button @click="showModal = false">取消</n-button>
-        <n-button type="primary" :loading="submitting" @click="handleSubmit">确定</n-button>
+        </a-form-item>
+      </a-form>
+      <template #footer>
+        <a-button @click="showModal = false">取消</a-button>
+        <a-button type="primary" :loading="submitting" @click="handleSubmit">确定</a-button>
       </template>
-    </n-modal>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, h, watch } from 'vue';
-import { NButton, NSpace, NTag, useMessage } from 'naive-ui';
+import { Button, Space, Tag, message } from 'ant-design-vue';
 import { getUserList, createUser, updateUser, deleteUser } from '@/api/admin/user';
 import { getRoleList } from '@/api/system/role';
 
-const message = useMessage();
 const loading = ref(false);
 const users = ref([]);
 const roles = ref([]);
@@ -79,34 +75,37 @@ const formData = reactive({
 const roleOptions = ref<{ label: string; value: number }[]>([]);
 
 const columns = [
-  { title: 'ID', key: 'id', width: 60 },
-  { title: '用户名', key: 'username', width: 120 },
-  { title: '邮箱', key: 'email', width: 200 },
+  { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
+  { title: '用户名', dataIndex: 'username', key: 'username', width: 120 },
+  { title: '邮箱', dataIndex: 'email', key: 'email', width: 200 },
   {
     title: '状态',
+    dataIndex: 'status',
     key: 'status',
     width: 80,
-    render: (row: any) =>
-      h(NTag, { type: row.status === 1 ? 'success' : 'error', size: 'small' }, () =>
-        row.status === 1 ? '启用' : '禁用'
+    customRender: ({ record }: any) =>
+      h(Tag, { color: record.status === 1 ? 'green' : 'red' }, () =>
+        record.status === 1 ? '启用' : '禁用'
       ),
   },
   {
     title: '最后登录',
+    dataIndex: 'last_login_at',
     key: 'last_login_at',
     width: 180,
-    render: (row: any) => row.last_login_at || '从未登录',
+    customRender: ({ record }: any) => record.last_login_at || '从未登录',
   },
   {
     title: '操作',
+    dataIndex: 'actions',
     key: 'actions',
     width: 160,
-    render: (row: any) =>
-      h(NSpace, null, () => [
-        h(NButton, { text: true, type: 'primary', onClick: () => handleEdit(row) }, () => '编辑'),
+    customRender: ({ record }: any) =>
+      h(Space, null, () => [
+        h(Button, { type: 'link', size: 'small', onClick: () => handleEdit(record) }, () => '编辑'),
         h(
-          NButton,
-          { text: true, type: 'error', onClick: () => handleDelete(row) },
+          Button,
+          { type: 'link', size: 'small', danger: true, onClick: () => handleDelete(record) },
           () => '删除'
         ),
       ]),

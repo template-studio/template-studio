@@ -1,94 +1,110 @@
 <template>
-  <n-form-item :required="fieldSchema.required">
+  <a-form-item :required="fieldSchema.required">
     <template #label>
-      <n-tooltip v-if="fieldSchema.description" placement="right" trigger="hover">
-        <template #trigger>
-          <span>{{ fieldSchema.title || fieldName }}</span>
+      <a-tooltip v-if="fieldSchema.description" placement="right">
+        <template #title>
+          <span>{{ fieldSchema.description }}</span>
         </template>
-        <span>{{ fieldSchema.description }}</span>
-      </n-tooltip>
+        <span>{{ fieldSchema.title || fieldName }}</span>
+      </a-tooltip>
       <span v-else>{{ fieldSchema.title || fieldName }}</span>
     </template>
 
     <!-- 字符串类型 -->
     <template v-if="fieldSchema.type === 'string'">
-      <n-input
+      <a-input
         :value="modelValue"
         :placeholder="
           fieldSchema.placeholder ||
           fieldSchema.description ||
           `请输入${fieldSchema.title || fieldName}`
         "
-        @update:value="$emit('update:modelValue', $event)"
+        @change="$emit('update:modelValue', $event.target.value)"
       />
     </template>
 
     <!-- 整数类型 -->
     <template v-else-if="fieldSchema.type === 'integer'">
-      <n-input-number
+      <a-input-number
         :value="modelValue"
         :min="fieldSchema.minimum"
         :max="fieldSchema.maximum"
         :placeholder="fieldSchema.placeholder || undefined"
         style="width: 100%"
-        @update:value="$emit('update:modelValue', $event)"
+        @change="$emit('update:modelValue', $event)"
       />
     </template>
 
     <!-- 浮点数类型 -->
     <template v-else-if="fieldSchema.type === 'number'">
-      <n-input-number
+      <a-input-number
         :value="modelValue"
         :min="fieldSchema.minimum"
         :max="fieldSchema.maximum"
         :precision="2"
         :placeholder="fieldSchema.placeholder || undefined"
         style="width: 100%"
-        @update:value="$emit('update:modelValue', $event)"
+        @change="$emit('update:modelValue', $event)"
       />
     </template>
 
     <!-- 布尔类型 -->
     <template v-else-if="fieldSchema.type === 'boolean'">
-      <n-switch :value="modelValue" @update:value="$emit('update:modelValue', $event)" />
+      <a-switch :checked="modelValue" @change="$emit('update:modelValue', $event)" />
     </template>
 
     <!-- 枚举类型 -->
     <template v-else-if="fieldSchema.type === 'enum'">
-      <n-select
+      <a-select
         :value="modelValue"
         :options="enumOptions"
         :placeholder="fieldSchema.placeholder || `请选择${fieldSchema.title || fieldName}`"
         style="width: 100%"
-        @update:value="$emit('update:modelValue', $event)"
+        @change="$emit('update:modelValue', $event)"
       />
     </template>
 
     <!-- 密码类型 -->
     <template v-else-if="fieldSchema.type === 'secret'">
-      <n-input
+      <a-input-password
         :value="modelValue"
-        type="password"
-        show-password-on="click"
         :placeholder="fieldSchema.placeholder || `请输入${fieldSchema.title || fieldName}`"
-        @update:value="$emit('update:modelValue', $event)"
+        @change="$emit('update:modelValue', $event.target.value)"
       />
     </template>
 
     <!-- 简单数组类型 -->
     <template v-else-if="fieldSchema.type === 'array'">
-      <n-dynamic-tags
-        :value="modelValue || []"
-        @update:value="$emit('update:modelValue', $event)"
-      />
+      <div class="dynamic-tags">
+        <a-tag
+          v-for="(tag, index) in (modelValue || [])"
+          :key="index"
+          closable
+          @close="handleRemoveTag(index)"
+        >
+          {{ tag }}
+        </a-tag>
+        <a-input
+          v-if="showTagInput"
+          ref="tagInputRef"
+          size="small"
+          style="width: 100px"
+          @blur="handleTagInputConfirm"
+          @keyup.enter="handleTagInputConfirm"
+          v-model:value="newTagValue"
+        />
+        <a-tag v-else @click="showTagInput = true" style="border-style: dashed; cursor: pointer">
+          + 添加
+        </a-tag>
+      </div>
     </template>
 
     <!-- 对象类型 -->
     <div v-else-if="fieldSchema.type === 'object'" class="nested-object">
-      <n-collapse v-if="hasProperties">
-        <n-collapse-item :title="fieldSchema.title || fieldName" name="nested">
-          <template #header-extra>
-            <n-tag size="small" type="info" style="margin-left: 8px"> 对象 </n-tag>
+      <a-collapse v-if="hasProperties">
+        <a-collapse-panel :header="fieldSchema.title || fieldName" key="nested">
+          <template #extra>
+            <a-tag color="blue" style="margin-left: 8px"> 对象 </a-tag>
           </template>
           <div class="nested-fields">
             <FormField
@@ -100,30 +116,28 @@
               @update:model-value="handleNestedChange(subFieldName, $event)"
             />
           </div>
-        </n-collapse-item>
-      </n-collapse>
-      <n-empty v-else description="暂无子字段" size="small" />
+        </a-collapse-panel>
+      </a-collapse>
+      <a-empty v-else description="暂无子字段" />
     </div>
 
     <!-- 对象数组类型 -->
     <div v-else-if="fieldSchema.type === 'object_arr'" class="object-array">
       <div v-if="!modelValue || modelValue.length === 0" class="empty-array">
-        <n-empty description="暂无数据" size="small">
-          <template #extra>
-            <n-button size="small" @click="handleAddObject"> 添加对象 </n-button>
-          </template>
-        </n-empty>
+        <a-empty description="暂无数据">
+          <a-button size="small" @click="handleAddObject"> 添加对象 </a-button>
+        </a-empty>
       </div>
       <div v-else class="array-items">
         <div v-for="(item, index) in modelValue" :key="index" class="array-item">
           <div class="item-header">
-            <n-text strong>项目 {{ index + 1 }}</n-text>
-            <n-button size="tiny" type="error" quaternary @click="handleRemoveObject(index)">
+            <strong>项目 {{ index + 1 }}</strong>
+            <a-button size="small" danger @click="handleRemoveObject(index)">
               删除
-            </n-button>
+            </a-button>
           </div>
-          <n-collapse>
-            <n-collapse-item name="item">
+          <a-collapse>
+            <a-collapse-panel key="item">
               <div class="nested-fields">
                 <FormField
                   v-for="(subFieldSchema, subFieldName) in fieldSchema.items.properties"
@@ -134,32 +148,19 @@
                   @update:model-value="handleArrayItemChange(index, subFieldName, $event)"
                 />
               </div>
-            </n-collapse-item>
-          </n-collapse>
+            </a-collapse-panel>
+          </a-collapse>
         </div>
-        <n-button size="small" dashed block @click="handleAddObject"> 添加对象 </n-button>
+        <a-button size="small" block @click="handleAddObject" style="border-style: dashed">
+          添加对象
+        </a-button>
       </div>
     </div>
-  </n-form-item>
+  </a-form-item>
 </template>
 
 <script setup>
-  import { computed } from 'vue';
-  import {
-    NFormItem,
-    NInput,
-    NInputNumber,
-    NSwitch,
-    NSelect,
-    NDynamicTags,
-    NCollapse,
-    NCollapseItem,
-    NButton,
-    NEmpty,
-    NText,
-    NTag,
-    NTooltip,
-  } from 'naive-ui';
+  import { computed, ref, nextTick } from 'vue';
 
   const props = defineProps({
     fieldName: {
@@ -177,6 +178,11 @@
   });
 
   const emit = defineEmits(['update:modelValue']);
+
+  // 动态标签相关
+  const showTagInput = ref(false);
+  const newTagValue = ref('');
+  const tagInputRef = ref(null);
 
   // 枚举选项
   const enumOptions = computed(() => {
@@ -259,6 +265,22 @@
     newArray.splice(index, 1);
     emit('update:modelValue', newArray);
   };
+
+  // 动态标签操作
+  const handleRemoveTag = (index) => {
+    const newTags = [...(props.modelValue || [])];
+    newTags.splice(index, 1);
+    emit('update:modelValue', newTags);
+  };
+
+  const handleTagInputConfirm = () => {
+    if (newTagValue.value) {
+      const newTags = [...(props.modelValue || []), newTagValue.value];
+      emit('update:modelValue', newTags);
+    }
+    showTagInput.value = false;
+    newTagValue.value = '';
+  };
 </script>
 
 <style scoped>
@@ -272,7 +294,7 @@
     border-radius: 4px;
   }
 
-  .nested-fields :deep(.n-form-item) {
+  .nested-fields :deep(.ant-form-item) {
     padding: 0 16px;
   }
 
@@ -305,5 +327,12 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 8px;
+  }
+
+  .dynamic-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
   }
 </style>

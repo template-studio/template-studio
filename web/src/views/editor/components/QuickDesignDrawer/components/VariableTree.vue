@@ -1,103 +1,126 @@
 <template>
   <div class="tree-panel">
     <div class="panel-header">
-      <n-text strong>变量树</n-text>
+      <strong>变量树</strong>
     </div>
     <div class="tree-content" @contextmenu="onTreeAreaContextMenu">
-      <n-tree
+      <a-tree
         v-if="treeData.length > 0"
-        :data="treeData"
+        :tree-data="treeData"
         :selected-keys="selectedKeys"
         :expanded-keys="expandedKeys"
-        key-field="id"
-        label-field="label"
-        children-field="children"
-        :node-props="nodeProps"
-        :render-switcher-icon="renderSwitcherIcon"
-        :render-label="renderLabel"
+        :field-names="{ key: 'id', title: 'label', children: 'children' }"
         selectable
-        block-line
-        @update:selected-keys="handleSelect"
-        @update:expanded-keys="handleExpand"
+        block-node
+        show-icon
+        @select="handleSelect"
+        @expand="handleExpand"
+        @rightclick="onNodeRightClick"
       >
-        <template #suffix="{ option }">
-          <div class="node-actions" @click.stop>
-            <n-dropdown
-              :options="getNodeMenuOptions(option)"
-              @select="(key) => handleNodeAction(key, option)"
-              trigger="click"
-              placement="bottom-end"
-            >
-              <n-button size="tiny" quaternary circle>
-                <template #icon>
-                  <n-icon><EllipsisHorizontalOutline /></n-icon>
+        <template #title="{ dataRef }">
+          <div class="tree-node-content" style="display: flex; align-items: center; justify-content: space-between; width: 100%">
+            <div style="display: flex; align-items: center; gap: 4px">
+              <template v-if="dataRef.isEditing">
+                <input
+                  class="vscode-tree-input"
+                  :placeholder="renamingNode && renamingNode.id === dataRef.id ? '重命名变量' : '输入变量名'"
+                  :value="newVariableName"
+                  @input="newVariableName = $event.target.value"
+                  @click.stop
+                  @keydown.enter.prevent="confirmEditVariable"
+                  @keydown.escape.prevent="cancelEdit"
+                  @focus="$event.target.select()"
+                />
+              </template>
+              <template v-else>
+                <span class="tree-node-label">{{ dataRef.label }}</span>
+              </template>
+            </div>
+            <div class="node-actions" @click.stop>
+              <a-dropdown :trigger="['click']" placement="bottomRight">
+                <a-button size="small" type="text" style="padding: 0 4px">
+                  <EllipsisHorizontalOutline />
+                </a-button>
+                <template #overlay>
+                  <a-menu @click="({ key }) => handleNodeAction(key, dataRef)">
+                    <a-menu-item v-if="dataRef.type === 'object' || dataRef.type === 'object_arr'" key="add-child">
+                      <AddOutline style="margin-right: 8px" />
+                      添加子变量
+                    </a-menu-item>
+                    <a-menu-item key="rename">
+                      <CreateOutline style="margin-right: 8px" />
+                      重命名变量
+                    </a-menu-item>
+                    <a-menu-item key="delete" danger>
+                      <TrashOutline style="margin-right: 8px" />
+                      删除变量
+                    </a-menu-item>
+                  </a-menu>
                 </template>
-              </n-button>
-            </n-dropdown>
+              </a-dropdown>
+            </div>
           </div>
         </template>
-      </n-tree>
-      <n-empty v-else description="暂无变量，右键添加变量" />
+        <template #icon>
+          <FolderOutline style="font-size: 14px" />
+        </template>
+      </a-tree>
+      <a-empty v-else description="暂无变量，右键添加变量" />
 
       <!-- 右键上下文菜单 -->
-      <n-dropdown
-        to="body"
-        trigger="manual"
-        :x="contextMenuX"
-        :y="contextMenuY"
-        :options="contextMenuOptions"
-        :show="showContextMenuFlag"
-        @select="handleContextMenuAction"
-        @clickoutside="hideContextMenu"
-        placement="bottom-start"
-      />
+      <div
+        v-if="showContextMenuFlag"
+        class="context-menu-overlay"
+        @click="hideContextMenu"
+        @contextmenu.prevent="hideContextMenu"
+      >
+        <div
+          class="context-menu"
+          :style="{ left: contextMenuX + 'px', top: contextMenuY + 'px' }"
+          @click.stop
+        >
+          <div
+            v-for="option in contextMenuOptions"
+            :key="option.key"
+            class="context-menu-item"
+            :class="{ 'context-menu-item-danger': option.key === 'delete' }"
+            @click="handleContextMenuAction(option.key)"
+          >
+            <component :is="option.icon" style="font-size: 14px; margin-right: 8px" v-if="option.icon" />
+            {{ option.label }}
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 删除确认对话框 -->
-    <n-modal v-model:show="showDeleteConfirmModal" :mask-closable="false">
-      <n-card style="width: 400px" title="确认删除" :bordered="false" size="huge">
-        <template #header-extra>
-          <n-button quaternary circle @click="showDeleteConfirmModal = false">
-            <template #icon>
-              <n-icon><CloseOutline /></n-icon>
-            </template>
-          </n-button>
-        </template>
-
-        <div>
-          <p
-            >确定要删除变量 <strong>{{ deletingNode?.label }}</strong> 吗？</p
-          >
-          <n-text depth="3" v-if="deletingNode?.hasChildren">
-            此变量包含子变量，删除后所有子变量也会被删除。
-          </n-text>
+    <a-modal
+      v-model:open="showDeleteConfirmModal"
+      title="确认删除"
+      :width="400"
+      :mask-closable="false"
+      @cancel="showDeleteConfirmModal = false"
+    >
+      <div>
+        <p>
+          确定要删除变量 <strong>{{ deletingNode?.label }}</strong> 吗？
+        </p>
+        <span style="color: #999" v-if="deletingNode?.hasChildren">
+          此变量包含子变量，删除后所有子变量也会被删除。
+        </span>
+      </div>
+      <template #footer>
+        <div style="display: flex; justify-content: flex-end; gap: 12px">
+          <a-button @click="showDeleteConfirmModal = false">取消</a-button>
+          <a-button danger @click="confirmDelete">确定删除</a-button>
         </div>
-
-        <template #footer>
-          <div style="display: flex; justify-content: flex-end; gap: 12px">
-            <n-button @click="showDeleteConfirmModal = false">取消</n-button>
-            <n-button type="error" @click="confirmDelete">确定删除</n-button>
-          </div>
-        </template>
-      </n-card>
-    </n-modal>
+      </template>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
-  import { computed, ref, h, nextTick, onMounted, onUnmounted } from 'vue';
-  import {
-    NText,
-    NTree,
-    NEmpty,
-    NButton,
-    NIcon,
-    NDropdown,
-    NModal,
-    NCard,
-    NSpace,
-    NTag,
-  } from 'naive-ui';
+  import { computed, ref, h, onMounted, onUnmounted } from 'vue';
   import {
     TextOutline,
     EllipsisHorizontalOutline,
@@ -115,7 +138,7 @@
     TrashOutline,
     CreateOutline,
     PlayOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
 
   /**
    * VariableTree 组件
@@ -176,7 +199,6 @@
   const componentToTreeNode = (component, parentPath = '') => {
     const currentPath = parentPath ? `${parentPath}.${component.id}` : component.id;
     const hasChildren = component.children && component.children.length > 0;
-    const isRenaming = renamingNode.value && renamingNode.value.id === component.id;
 
     // object 和 object_arr 类型永远不是叶子节点（可以添加子变量）
     const isContainerType = component.type === 'object' || component.type === 'object_arr';
@@ -188,7 +210,7 @@
       type: component.type,
       schema: component.schema,
       path: currentPath,
-      isLeaf: !isContainerType && !hasChildren, // 容器类型永远不是叶子
+      isLeaf: !isContainerType && !hasChildren,
       isEditing: false,
       hasChildren: hasChildren,
       children: [],
@@ -224,7 +246,6 @@
   const insertEditingNodeToTree = (treeData, editingNode) => {
     const createEditingNode = () => {
       const nodeType = editingNode.type || 'string';
-      // 容器类型（object, object_arr）永远不是叶子节点
       const isContainerType = nodeType === 'object' || nodeType === 'object_arr';
 
       const node = {
@@ -232,7 +253,7 @@
         label: newVariableName.value || '',
         type: nodeType,
         path: editingNode.id,
-        isLeaf: !isContainerType, // 容器类型不是叶子
+        isLeaf: !isContainerType,
         isEditing: true,
         hasChildren: false,
         children: [],
@@ -240,13 +261,11 @@
       return node;
     };
 
-    // 如果是根节点编辑
     if (editingNode.isRoot || !editingNode.parentId) {
       treeData.unshift(createEditingNode());
       return true;
     }
 
-    // 否则查找父节点并插入
     const findAndInsert = (nodes) => {
       for (const node of nodes) {
         if (node.id === editingNode.parentId) {
@@ -284,122 +303,40 @@
     updateNode(treeData);
   };
 
-  // ==================== 节点属性配置 ====================
-  const nodeProps = ({ option }) => {
-    return {
-      onContextmenu(e) {
-        e.preventDefault();
-        e.stopPropagation();
+  // ==================== 节点右键处理 ====================
+  const onNodeRightClick = ({ event, node }) => {
+    event.preventDefault();
+    event.stopPropagation();
 
-        contextMenuOptions.value = getNodeMenuOptions(option);
-        contextMenuTarget.value = option;
-        contextMenuX.value = e.clientX;
-        contextMenuY.value = e.clientY;
-        showContextMenuFlag.value = true;
-      },
-    };
-  };
-
-  // ==================== 图标渲染 ====================
-  /**
-   * 获取变量类型图标
-   */
-  const getVariableIconComponent = (type) => {
-    const iconMap = {
-      string: TextOutline,
-      integer: CalculatorOutline,
-      number: RadioButtonOn,
-      boolean: ToggleOutline,
-      enum: ListOutline,
-      secret: LockClosedOutline,
-      object: FolderOutline,
-      array: CodeSlashOutline,
-      object_arr: AppsOutline,
-    };
-    return iconMap[type] || TextOutline;
-  };
-
-  /**
-   * 渲染展开/收起图标
-   */
-  const renderSwitcherIcon = () => h(NIcon, null, { default: () => h(ChevronForward) });
-
-  /**
-   * 渲染标签（支持内联编辑）
-   */
-  const renderLabel = ({ option }) => {
-    if (option.isEditing === true) {
-      const isRenaming = renamingNode.value && renamingNode.value.id === option.id;
-      const placeholder = isRenaming ? '重命名变量' : '输入变量名';
-
-      // 创建 input 元素，使用 onInput 和 onVnodeMounted 实现双向绑定
-      const inputEl = h('input', {
-        class: 'vscode-tree-input',
-        placeholder: placeholder,
-        // 阻止点击冒泡，避免触发节点选择
-        onClick: (e) => {
-          e.stopPropagation();
-        },
-        // 使用 onInput 事件监听输入
-        onInput: (e) => {
-          newVariableName.value = e.target.value;
-        },
-        // 按键事件
-        onKeydown: (e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            confirmEditVariable();
-          } else if (e.key === 'Escape') {
-            e.preventDefault();
-            cancelEdit();
-          }
-        },
-        // 使用 DOM 更新后的生命周期钩子设置初始值和聚焦
-        onVnodeMounted: (vnode) => {
-          const input = vnode.el;
-          if (input) {
-            input.value = newVariableName.value;
-            input.focus();
-            input.select();
-          }
-        },
-      });
-
-      return inputEl;
-    }
-
-    // 正常显示标签 - 使用 span 包裹，不阻止点击事件
-    return h('span', { class: 'tree-node-label' }, option.label);
+    contextMenuOptions.value = getNodeMenuOptions(node.dataRef);
+    contextMenuTarget.value = node.dataRef;
+    contextMenuX.value = event.clientX;
+    contextMenuY.value = event.clientY;
+    showContextMenuFlag.value = true;
   };
 
   // ==================== 菜单选项 ====================
-  /**
-   * 获取节点菜单选项
-   */
   const getNodeMenuOptions = (option) => {
     const menuOptions = [];
 
-    // 对象类型和对象数组类型都可以添加子属性
     if (option.type === 'object' || option.type === 'object_arr') {
       menuOptions.push({
         label: '添加子变量',
         key: 'add-child',
-        icon: () => h(NIcon, null, { default: () => h(AddOutline) }),
+        icon: AddOutline,
       });
     }
 
-    // 重命名变量
     menuOptions.push({
       label: '重命名变量',
       key: 'rename',
-      icon: () => h(NIcon, null, { default: () => h(CreateOutline) }),
+      icon: CreateOutline,
     });
 
-    // 删除变量
     menuOptions.push({
       label: '删除变量',
       key: 'delete',
-      icon: () => h(NIcon, null, { default: () => h(TrashOutline) }),
+      icon: TrashOutline,
     });
 
     return menuOptions;
@@ -407,42 +344,22 @@
 
   // ==================== 事件处理 ====================
 
-  /**
-   * 处理节点选择
-   */
-  const handleSelect = (keys) => {
-    // 如果正在编辑中且点击的是编辑节点，不处理
-    if (
-      (editingNode.value || renamingNode.value) &&
-      keys.length > 0 &&
-      (keys[0].startsWith('__new__') || keys[0] === editingNode.value?.id)
-    ) {
-      return;
-    }
-
-    // 如果正在编辑但点击的是其他节点，先取消编辑状态
+  const handleSelect = (keys, { node }) => {
     if (editingNode.value || renamingNode.value) {
       cancelEdit();
     }
 
     if (keys && keys.length > 0) {
-      const selectedId = keys[0];
-      emit('update:selectedComponentId', selectedId);
+      emit('update:selectedComponentId', keys[0]);
     } else {
       emit('update:selectedComponentId', null);
     }
   };
 
-  /**
-   * 处理节点展开/折叠
-   */
   const handleExpand = (keys) => {
     emit('update:expandedKeys', keys);
   };
 
-  /**
-   * 处理节点操作
-   */
   const handleNodeAction = (key, option) => {
     switch (key) {
       case 'add-child':
@@ -457,47 +374,35 @@
     }
   };
 
-  /**
-   * 树区域右键菜单处理
-   */
   const onTreeAreaContextMenu = (event) => {
-    // 检查是否点击在树节点上
-    if (event.target.closest('.n-tree-node')) return;
+    if (event.target.closest('.ant-tree-treenode')) return;
 
     event.preventDefault();
     event.stopPropagation();
 
-    // 设置空白区域的右键菜单选项
     contextMenuOptions.value = [
       {
         label: '添加变量',
         key: 'add-variable',
-        icon: () => h(NIcon, null, { default: () => h(AddOutline) }),
+        icon: AddOutline,
       },
     ];
 
-    contextMenuTarget.value = null; // 标记为空白区域
+    contextMenuTarget.value = null;
     contextMenuX.value = event.clientX;
     contextMenuY.value = event.clientY;
     showContextMenuFlag.value = true;
   };
 
-  /**
-   * 处理右键菜单操作
-   */
   const handleContextMenuAction = (key) => {
     if (contextMenuTarget.value) {
       handleNodeAction(key, contextMenuTarget.value);
     } else {
-      // 空白区域的右键菜单操作
       handleEmptyAreaAction(key);
     }
     hideContextMenu();
   };
 
-  /**
-   * 空白区域右键菜单处理
-   */
   const handleEmptyAreaAction = (key) => {
     switch (key) {
       case 'add-variable':
@@ -506,21 +411,13 @@
     }
   };
 
-  /**
-   * 隐藏右键菜单
-   */
   const hideContextMenu = () => {
     showContextMenuFlag.value = false;
     contextMenuTarget.value = null;
   };
 
   // ==================== 变量操作 ====================
-  /**
-   * 开始添加变量（根变量或子变量）
-   * @param {String} parentId - 父节点ID，空字符串表示根变量
-   */
   const startAddVariable = (parentId) => {
-    // 取消任何现有的编辑状态
     cancelEdit();
 
     const tempId = `__new__${parentId || 'root'}_${Date.now()}`;
@@ -528,21 +425,16 @@
       id: tempId,
       parentId: parentId,
       isRoot: !parentId,
-      type: 'string', // 默认字符串类型
+      type: 'string',
     };
     newVariableName.value = '';
 
-    // 如果是子变量，展开父级
     if (parentId && !props.expandedKeys.includes(parentId)) {
       emit('update:expandedKeys', [...props.expandedKeys, parentId]);
     }
   };
 
-  /**
-   * 开始重命名变量
-   */
   const startRenameVariable = (option) => {
-    // 取消任何现有的编辑状态
     cancelEdit();
 
     renamingNode.value = {
@@ -553,9 +445,6 @@
     newVariableName.value = option.fieldName;
   };
 
-  /**
-   * 开始删除变量
-   */
   const startDeleteVariable = (option) => {
     deletingNode.value = {
       id: option.id,
@@ -565,15 +454,11 @@
     showDeleteConfirmModal.value = true;
   };
 
-  /**
-   * 确认删除变量
-   */
   const confirmDelete = () => {
     if (!deletingNode.value) return;
 
     emit('delete-variable', deletingNode.value.id);
 
-    // 清除选择（如果删除的是当前选中的变量）
     if (selectedKeys.value.includes(deletingNode.value.id)) {
       emit('update:selectedComponentId', null);
     }
@@ -582,16 +467,12 @@
     deletingNode.value = null;
   };
 
-  /**
-   * 确认编辑变量（添加或重命名）
-   */
   const confirmEditVariable = () => {
     if (!newVariableName.value.trim()) {
       console.warn('请输入变量名');
       return;
     }
 
-    // 验证变量名格式
     if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(newVariableName.value)) {
       console.error('变量名只能包含字母、数字和下划线，且不能以数字开头');
       return;
@@ -599,12 +480,10 @@
 
     const variableName = newVariableName.value.trim();
 
-    // 处理重命名逻辑
     if (renamingNode.value) {
       const oldId = renamingNode.value.id;
       const oldName = renamingNode.value.oldName;
 
-      // 如果名称没有改变，直接返回
       if (oldName === variableName) {
         cancelEdit();
         return;
@@ -615,46 +494,32 @@
         newName: variableName,
       });
 
-      // 清除重命名状态
       renamingNode.value = null;
       newVariableName.value = '';
-
       return;
     }
 
-    // 处理新增变量逻辑
-    if (!editingNode.value) {
-      return;
-    }
+    if (!editingNode.value) return;
 
     if (editingNode.value.isRoot) {
-      // 添加根变量
       emit('add-variable', {
         parentId: null,
         fieldName: variableName,
         type: editingNode.value.type || 'string',
       });
-
-      // 清除编辑状态
       editingNode.value = null;
       newVariableName.value = '';
     } else {
-      // 添加子变量
       emit('add-variable', {
         parentId: editingNode.value.parentId,
         fieldName: variableName,
         type: editingNode.value.type || 'string',
       });
-
-      // 清除编辑状态
       editingNode.value = null;
       newVariableName.value = '';
     }
   };
 
-  /**
-   * 取消编辑
-   */
   const cancelEdit = () => {
     if (editingNode.value || renamingNode.value) {
       editingNode.value = null;
@@ -663,16 +528,12 @@
     }
   };
 
-  /**
-   * 全局点击处理（自动确认编辑）
-   */
   const handleGlobalClick = (event) => {
     const inputElement = event.target.closest('.vscode-tree-input');
-    const dropdownElement = event.target.closest('.n-dropdown-menu');
-    const modalElement = event.target.closest('.n-modal');
+    const menuElement = event.target.closest('.ant-dropdown-menu');
+    const modalElement = event.target.closest('.ant-modal');
 
-    // 如果点击的是输入框、下拉菜单或模态框，不处理
-    if (inputElement || dropdownElement || modalElement) return;
+    if (inputElement || menuElement || modalElement) return;
 
     if (editingNode.value || renamingNode.value) {
       confirmEditVariable();
@@ -712,11 +573,6 @@
     flex-shrink: 0;
   }
 
-  .panel-header :deep(.n-button) {
-    height: 28px;
-    width: 28px;
-  }
-
   .tree-content {
     flex: 1;
     padding: 16px;
@@ -734,7 +590,7 @@
     margin-left: 8px;
   }
 
-  .n-tree-node:hover .node-actions {
+  .ant-tree-treenode:hover .node-actions {
     opacity: 1;
   }
 
@@ -768,9 +624,46 @@
     user-select: none;
   }
 
-  /* 右键菜单样式 */
-  :deep(.n-dropdown-menu) {
-    max-height: 300px;
-    overflow-y: auto;
+  /* 右键菜单 */
+  .context-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+  }
+
+  .context-menu {
+    position: fixed;
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    padding: 4px 0;
+    min-width: 140px;
+    z-index: 1001;
+  }
+
+  .context-menu-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #333;
+    transition: background 0.2s;
+  }
+
+  .context-menu-item:hover {
+    background: #f5f5f5;
+  }
+
+  .context-menu-item-danger {
+    color: #ff4d4f;
+  }
+
+  .context-menu-item-danger:hover {
+    background: #fff1f0;
   }
 </style>

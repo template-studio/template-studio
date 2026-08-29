@@ -12,7 +12,7 @@
         @click="$emit('toggle-file-tree')"
         title="文件树"
       >
-        <n-icon size="16"><FolderOpenOutline /></n-icon>
+        <FolderOpenOutline style="font-size: 16px" />
         <span class="toggle-text">文件树</span>
       </button>
       <!-- 变量侧边栏切换按钮 - 只在基础模板时隐藏 -->
@@ -23,7 +23,7 @@
         @click="$emit('toggle-variable-sidebar')"
         title="变量面板"
       >
-        <n-icon size="16"><VariablesOutline /></n-icon>
+        <VariablesOutline style="font-size: 16px" />
         <span class="toggle-text">变量</span>
       </button>
       <div v-if="currentFileName" class="file-status">
@@ -32,43 +32,36 @@
       </div>
     </div>
     <div class="header-actions">
-      <n-tooltip trigger="hover" :delay="400">
-        <template #trigger>
-          <button class="action-icon" @click="$emit('show-advanced')">
-            <n-icon size="18"><SettingsOutline /></n-icon>
-          </button>
-        </template>
-        高级设置
-      </n-tooltip>
-      <n-tooltip trigger="hover" :delay="400">
-        <template #trigger>
-          <button class="action-icon" @click="$emit('full-render')">
-            <n-icon size="18"><PlayOutline /></n-icon>
-          </button>
-        </template>
-        全量渲染
-      </n-tooltip>
-      <n-tooltip trigger="hover" :delay="400">
-        <template #trigger>
-          <button class="action-icon action-close" @click="$emit('close-edit')">
-            <n-icon size="18"><CloseOutline /></n-icon>
-          </button>
-        </template>
-        关闭编辑器
-      </n-tooltip>
+      <a-tooltip>
+        <template #title>高级设置</template>
+        <button class="action-icon" @click="$emit('show-advanced')">
+          <SettingsOutline style="font-size: 18px" />
+        </button>
+      </a-tooltip>
+      <a-tooltip>
+        <template #title>全量渲染</template>
+        <button class="action-icon" @click="$emit('full-render')">
+          <PlayOutline style="font-size: 18px" />
+        </button>
+      </a-tooltip>
+      <a-tooltip>
+        <template #title>关闭编辑器</template>
+        <button class="action-icon action-close" @click="$emit('close-edit')">
+          <CloseOutline style="font-size: 18px" />
+        </button>
+      </a-tooltip>
     </div>
   </div>
 </template>
 
 <script setup>
   import { h } from 'vue';
-  import { NIcon, NTooltip } from 'naive-ui';
   import {
     FolderOpenOutline,
     SettingsOutline,
     PlayOutline,
     CloseOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
 
   const VariablesOutline = () =>
     h(

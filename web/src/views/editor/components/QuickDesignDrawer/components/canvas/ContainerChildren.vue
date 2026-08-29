@@ -1,9 +1,9 @@
 <template>
   <div class="container-children">
     <div class="children-header">
-      <n-text depth="3" style="font-size: 11px">
+      <span style="color: #999; font-size: 11px">
         {{ isNested ? '子字段' : '子字段（右键复杂组件可进入内部编辑）' }}
-      </n-text>
+      </span>
     </div>
 
     <!-- 子字段列表 -->
@@ -17,45 +17,37 @@
       >
         <div class="child-header">
           <div class="child-title">
-            <n-icon
-              size="14"
-              :color="getComponentDisplayInfo(child.type || child.schema?.type).color"
-            >
+            <span :style="{ fontSize: '14px', color: getComponentDisplayInfo(child.type || child.schema?.type).color }">
               <TextOutline />
-            </n-icon>
+            </span>
             <span>{{ child.schema.title || child.fieldName }}</span>
-            <n-tag size="tiny" :type="getTypeTagType(child.type)" style="margin-left: 4px">
+            <a-tag :color="getTagColor(child.type)" style="margin-left: 4px">
               {{ getComponentDisplayInfo(child.type || child.schema?.type).label }}
-            </n-tag>
+            </a-tag>
             <!-- 如果是嵌套的复杂组件，显示标识 -->
-            <n-tag
+            <a-tag
               v-if="isNested && isComplexChild(child)"
-              size="tiny"
-              type="warning"
+              color="orange"
               style="margin-left: 4px"
             >
               含嵌套
-            </n-tag>
+            </a-tag>
           </div>
-          <n-button
-            size="tiny"
-            quaternary
-            type="error"
+          <a-button
+            size="small"
+            danger
             @click.stop="$emit('remove-child', child.id)"
           >
-            <template #icon>
-              <n-icon size="12"><TrashOutline /></n-icon>
-            </template>
-          </n-button>
+            <template #icon><TrashOutline /></template>
+          </a-button>
         </div>
       </div>
     </div>
 
     <!-- 空状态 -->
     <div v-else class="children-empty">
-      <n-empty
+      <a-empty
         :description="isNested ? '暂无子字段，从左侧拖拽添加' : '暂无子字段，右键父组件进入添加'"
-        size="small"
       />
     </div>
   </div>
@@ -63,9 +55,8 @@
 
 <script setup>
   import { computed } from 'vue';
-  import { NIcon, NButton, NTag, NText, NEmpty } from 'naive-ui';
-  import { TrashOutline, TextOutline, ChevronForwardOutline } from '@vicons/ionicons5';
-  import { getComponentDisplayInfo, getTypeTagType } from '../../utils/componentTemplates';
+  import { TrashOutline, TextOutline } from '@/icons/ionicons5';
+  import { getComponentDisplayInfo } from '../../utils/componentTemplates';
 
   /**
    * ContainerChildren 组件
@@ -123,6 +114,22 @@
   const isComplexChild = (child) => {
     const type = child.type || child.schema?.type;
     return type === 'object' || type === 'object_arr';
+  };
+
+  // 获取标签颜色
+  const getTagColor = (type) => {
+    const colorMap = {
+      string: 'blue',
+      integer: 'green',
+      number: 'cyan',
+      boolean: 'orange',
+      enum: 'purple',
+      secret: 'red',
+      object: 'magenta',
+      array: 'default',
+      object_arr: 'geekblue',
+    };
+    return colorMap[type] || 'default';
   };
 
   // 右键菜单处理

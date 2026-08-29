@@ -1,27 +1,23 @@
 <template>
   <div class="breadcrumb-container">
-    <n-breadcrumb class="admin-breadcrumb">
-      <n-breadcrumb-item
+    <a-breadcrumb class="admin-breadcrumb">
+      <a-breadcrumb-item
         v-for="(item, index) in breadcrumbItems"
         :key="`breadcrumb-${index}-${item.title}`"
-        :clickable="item.clickable"
         @click="item.clickable ? handleBreadcrumbClick(item) : null"
+        :style="{ cursor: item.clickable ? 'pointer' : 'default' }"
       >
-        <template #icon v-if="item.icon">
-          <n-icon>
-            <component :is="item.icon" />
-          </n-icon>
-        </template>
+        <component v-if="item.icon" :is="item.icon" style="margin-right: 4px" />
         {{ item.title }}
-      </n-breadcrumb-item>
-    </n-breadcrumb>
+      </a-breadcrumb-item>
+    </a-breadcrumb>
   </div>
 </template>
 
 <script setup>
   import { computed } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
-  import { NBreadcrumb, NBreadcrumbItem, NIcon } from 'naive-ui';
+  // ant-design-vue components are globally registered
   import {
     GridOutline,
     DocumentTextOutline,
@@ -34,7 +30,7 @@
     LockClosedOutline,
     PricetagOutline,
     OptionsOutline,
-  } from '@vicons/ionicons5';
+  } from '@/icons/ionicons5';
 
   const route = useRoute();
   const router = useRouter();
@@ -187,21 +183,17 @@
     font-size: 14px;
   }
 
-  :deep(.n-breadcrumb-item:not(:last-child) .n-breadcrumb-item__link) {
+  :deep(.ant-breadcrumb-link) {
     color: #666;
     transition: color 0.2s ease;
   }
 
-  :deep(.n-breadcrumb-item:not(:last-child) .n-breadcrumb-item__link:hover) {
+  :deep(.ant-breadcrumb a:hover) {
     color: #18a058;
   }
 
-  :deep(.n-breadcrumb-item:last-child .n-breadcrumb-item__link) {
+  :deep(.ant-breadcrumb li:last-child .ant-breadcrumb-link) {
     color: #333;
     font-weight: 500;
-  }
-
-  :deep(.n-breadcrumb-item__icon) {
-    margin-right: 4px;
   }
 </style>

@@ -40,7 +40,7 @@ const footerLinks = ref<FooterLink[]>([
   { label: '友情链接', url: '#' },
 ]);
 const copyright = ref('© 2025 Template Studio');
-const poweredBy = ref('基于 Rust & Vue3 构建 | Powered by Naive UI & Vite');
+const poweredBy = ref('基于 Rust & Vue3 构建 | Powered by Ant Design Vue & Vite');
 const feedbackEmail = ref('feedback@templateStudio.com');
 const supportEmail = ref('support@templateStudio.com');
 

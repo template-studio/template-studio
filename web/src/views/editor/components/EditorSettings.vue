@@ -1,16 +1,14 @@
 <template>
   <!-- 设置面板弹框 -->
-  <n-modal v-model:show="modalVisible" preset="card" style="width: 600px" :mask-closable="false">
-    <template #header>
+  <a-modal v-model:open="modalVisible" title="编辑器设置" style="width: 600px" :mask-closable="false" :footer="null">
+    <template #title>
       <div class="settings-header">
-        <n-icon size="20" style="margin-right: 8px">
-          <svg viewBox="0 0 24 24">
-            <path
-              fill="currentColor"
-              d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.82,11.69,4.82,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"
-            />
-          </svg>
-        </n-icon>
+        <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; margin-right: 8px">
+          <path
+            fill="currentColor"
+            d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.82,11.69,4.82,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"
+          />
+        </svg>
         <span class="modal-title">编辑器设置</span>
       </div>
     </template>
@@ -25,9 +23,7 @@
           :class="{ active: activeCategory === category.key }"
           @click="activeCategory = category.key"
         >
-          <n-icon size="16" style="margin-right: 8px">
-            <component :is="category.icon" />
-          </n-icon>
+          <component :is="category.icon" style="font-size: 16px; margin-right: 8px" />
           {{ category.label }}
         </div>
       </div>
@@ -44,7 +40,7 @@
               <span class="setting-description">文件修改后自动保存</span>
             </div>
             <div class="setting-control">
-              <n-switch v-model:value="localSettings.autoSave.enabled" />
+              <a-switch v-model:checked="localSettings.autoSave.enabled" />
             </div>
           </div>
 
@@ -54,7 +50,7 @@
               <span class="setting-description">自动保存的时间间隔（秒）</span>
             </div>
             <div class="setting-control">
-              <n-input-number
+              <a-input-number
                 v-model:value="localSettings.autoSave.interval"
                 :min="5"
                 :max="300"
@@ -72,7 +68,7 @@
               <span class="setting-description">编辑器字体大小</span>
             </div>
             <div class="setting-control">
-              <n-input-number
+              <a-input-number
                 v-model:value="localSettings.editor.fontSize"
                 :min="10"
                 :max="24"
@@ -89,7 +85,7 @@
               <span class="setting-description">在编辑器中显示行号</span>
             </div>
             <div class="setting-control">
-              <n-switch v-model:value="localSettings.editor.lineNumbers" />
+              <a-switch v-model:checked="localSettings.editor.lineNumbers" />
             </div>
           </div>
 
@@ -99,7 +95,7 @@
               <span class="setting-description">长行自动换行显示</span>
             </div>
             <div class="setting-control">
-              <n-switch v-model:value="localSettings.editor.wordWrap" />
+              <a-switch v-model:checked="localSettings.editor.wordWrap" />
             </div>
           </div>
         </div>
@@ -114,7 +110,7 @@
               <span class="setting-description">选择编辑器主题</span>
             </div>
             <div class="setting-control">
-              <n-select
+              <a-select
                 v-model:value="localSettings.interface.theme"
                 :options="themeOptions"
                 style="width: 150px"
@@ -128,7 +124,7 @@
               <span class="setting-description">记住并恢复面板的大小和位置</span>
             </div>
             <div class="setting-control">
-              <n-switch v-model:value="localSettings.interface.restoreLayout" />
+              <a-switch v-model:checked="localSettings.interface.restoreLayout" />
             </div>
           </div>
         </div>
@@ -143,7 +139,7 @@
               <span class="setting-description">编辑时自动更新预览</span>
             </div>
             <div class="setting-control">
-              <n-switch v-model:value="localSettings.preview.realtime" />
+              <a-switch v-model:checked="localSettings.preview.realtime" />
             </div>
           </div>
 
@@ -153,7 +149,7 @@
               <span class="setting-description">输入停止后延迟更新预览（毫秒）</span>
             </div>
             <div class="setting-control">
-              <n-input-number
+              <a-input-number
                 v-model:value="localSettings.preview.debounceDelay"
                 :min="100"
                 :max="5000"
@@ -168,19 +164,17 @@
       </div>
     </div>
 
-    <template #action>
-      <div class="settings-actions">
-        <n-button @click="resetToDefaults" style="margin-right: auto"> 恢复默认 </n-button>
-        <n-button @click="handleCancel" style="margin-right: 12px"> 取消 </n-button>
-        <n-button type="primary" @click="handleSave"> 保存设置 </n-button>
-      </div>
-    </template>
-  </n-modal>
+    <div class="settings-actions">
+      <a-button @click="resetToDefaults" style="margin-right: auto"> 恢复默认 </a-button>
+      <a-button @click="handleCancel" style="margin-right: 12px"> 取消 </a-button>
+      <a-button type="primary" @click="handleSave"> 保存设置 </a-button>
+    </div>
+  </a-modal>
 </template>
 
 <script setup>
   import { ref, computed, watch, onMounted } from 'vue';
-  import { NModal, NSwitch, NInputNumber, NSelect, NButton, NIcon, useMessage } from 'naive-ui';
+  import { message } from 'ant-design-vue';
 
   // 图标组件（使用内联SVG）
   const EditorIcon = {
@@ -219,7 +213,6 @@
   });
 
   const emit = defineEmits(['update:show', 'save-settings']);
-  const message = useMessage();
 
   const modalVisible = computed({
     get: () => props.show,

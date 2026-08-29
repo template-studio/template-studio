@@ -1,13 +1,14 @@
 <template>
   <!-- 文件条件设置弹窗 -->
-  <n-modal
-    v-model:show="modalVisible"
-    preset="card"
+  <a-modal
+    v-model:open="modalVisible"
+    title="设置生成条件"
     style="width: 800px; max-height: 80vh"
     :mask-closable="false"
-    @after-leave="handleClose"
+    :footer="null"
+    @cancel="handleClose"
   >
-    <template #header>
+    <template #title>
       <div class="condition-modal-header">
         <span class="modal-title">设置生成条件</span>
         <span v-if="selectedFileForCondition" class="file-path">{{
@@ -17,31 +18,32 @@
     </template>
 
     <div class="condition-content">
-      <n-alert v-if="!hasCondition" type="info" style="margin-bottom: 16px">
-        <template #header> 📋 如何设置生成条件 </template>
-        <div class="condition-help">
-          <p><strong>第一步：</strong>确保模板已定义变量（在"变量配置"中添加）</p>
-          <p><strong>第二步：</strong>点击下方"添加条件"按钮</p>
-          <p><strong>第三步：</strong>选择条件类型（条件/且/或/非/多分支）</p>
-          <p><strong>第四步：</strong>配置变量、操作符和比较值</p>
-          <p><strong>第五步：</strong>点击"保存条件"完成设置</p>
-        </div>
-      </n-alert>
+      <a-alert v-if="!hasCondition" type="info" style="margin-bottom: 16px">
+        <template #message> 📋 如何设置生成条件 </template>
+        <template #description>
+          <div class="condition-help">
+            <p><strong>第一步：</strong>确保模板已定义变量（在"变量配置"中添加）</p>
+            <p><strong>第二步：</strong>点击下方"添加条件"按钮</p>
+            <p><strong>第三步：</strong>选择条件类型（条件/且/或/非/多分支）</p>
+            <p><strong>第四步：</strong>配置变量、操作符和比较值</p>
+            <p><strong>第五步：</strong>点击"保存条件"完成设置</p>
+          </div>
+        </template>
+      </a-alert>
 
-      <n-alert
+      <a-alert
         v-if="variableOptions.length === 0 && hasCondition"
         type="warning"
         style="margin-bottom: 16px"
-      >
-        <strong>⚠️ 当前模板没有定义变量</strong><br />
-        请先在"变量配置"中添加变量后再设置条件。
-      </n-alert>
+        message="⚠️ 当前模板没有定义变量"
+        description="请先在'变量配置'中添加变量后再设置条件。"
+      />
 
       <div class="condition-actions" style="margin-bottom: 16px">
-        <n-button v-if="!hasCondition" type="primary" @click="addCondition"> 添加条件 </n-button>
+        <a-button v-if="!hasCondition" type="primary" @click="addCondition"> 添加条件 </a-button>
         <template v-else>
-          <n-button @click="clearCondition"> 清除条件 </n-button>
-          <n-button type="primary" @click="testCondition"> 测试条件 </n-button>
+          <a-button @click="clearCondition"> 清除条件 </a-button>
+          <a-button type="primary" @click="testCondition"> 测试条件 </a-button>
         </template>
       </div>
 
@@ -51,26 +53,23 @@
 
       <!-- 测试结果 -->
       <div v-if="testResult" class="test-result" style="margin-top: 16px">
-        <n-alert :type="testResult.success ? 'success' : 'error'">
-          <template #header> 测试结果 </template>
-          {{ testResult.message }}
-        </n-alert>
+        <a-alert :type="testResult.success ? 'success' : 'error'" message="测试结果">
+          <template #description>{{ testResult.message }}</template>
+        </a-alert>
       </div>
     </div>
 
-    <template #footer>
-      <div class="modal-footer">
-        <n-button @click="handleClose">取消</n-button>
-        <n-button type="primary" @click="handleSave" :loading="saving"> 保存条件 </n-button>
-      </div>
-    </template>
-  </n-modal>
+    <div class="modal-footer">
+      <a-button @click="handleClose">取消</a-button>
+      <a-button type="primary" @click="handleSave" :loading="saving"> 保存条件 </a-button>
+    </div>
+  </a-modal>
 </template>
 
 <script setup>
   import { ref, computed, watch } from 'vue';
   import { useRoute } from 'vue-router';
-  import { NModal, NButton, NIcon, NAlert } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import ConditionBuilder from './ConditionBuilder.vue';
   import {
     getFileCondition,
@@ -78,7 +77,6 @@
     deleteFileCondition,
     evaluateFileCondition,
   } from '@/api/conditions';
-  import { useMessage } from 'naive-ui';
 
   const route = useRoute();
 
@@ -99,7 +97,6 @@
 
   const emit = defineEmits(['update:show', 'close', 'saved']);
 
-  const message = useMessage();
   const saving = ref(false);
   const conditionData = ref(null);
   const testResult = ref(null);

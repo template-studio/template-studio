@@ -1,7 +1,7 @@
 import type { CSSProperties, PropType } from 'vue';
 import { FormSchema } from './types/form';
-import type { GridProps, GridItemProps } from 'naive-ui/lib/grid';
-import type { ButtonProps } from 'naive-ui/lib/button';
+import type { RowProps, ColProps } from 'ant-design-vue';
+import type { ButtonProps } from 'ant-design-vue/es/button';
 import { propTypes } from '@/utils/propTypes';
 export const basicProps = {
   // 标签宽度  固定宽度
@@ -27,7 +27,7 @@ export const basicProps = {
   //大小
   size: {
     type: String,
-    default: 'medium',
+    default: 'middle',
   },
   //标签位置
   labelPlacement: {
@@ -61,10 +61,10 @@ export const basicProps = {
     type: String,
     default: '重置',
   },
-  //grid 配置
-  gridProps: Object as PropType<GridProps>,
-  //gi配置
-  giProps: Object as PropType<GridItemProps>,
+  //row 配置
+  rowProps: Object as PropType<RowProps>,
+  //col 配置
+  colProps: Object as PropType<ColProps>,
   //grid 样式
   baseGridStyle: {
     type: Object as PropType<CSSProperties>,

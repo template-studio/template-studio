@@ -1,5 +1,5 @@
 <template>
-  <div class="layout-header">
+  <div class="layout-header" :class="{ 'layout-header-dark': inverted }">
     <!--顶部菜单-->
     <div
       class="layout-header-left"
@@ -23,12 +23,8 @@
         class="ml-1 layout-header-trigger layout-header-trigger-min"
         @click="handleMenuCollapsed"
       >
-        <n-icon size="18" v-if="collapsed">
-          <MenuUnfoldOutlined />
-        </n-icon>
-        <n-icon size="18" v-else>
-          <MenuFoldOutlined />
-        </n-icon>
+        <MenuUnfoldOutlined v-if="collapsed" class="trigger-icon" />
+        <MenuFoldOutlined v-else class="trigger-icon" />
       </div>
       <!-- 刷新 -->
       <div
@@ -36,22 +32,16 @@
         v-if="headerSetting.isReload"
         @click="reloadPage"
       >
-        <n-icon size="18">
-          <ReloadOutlined />
-        </n-icon>
+        <ReloadOutlined class="trigger-icon" />
       </div>
       <!-- 面包屑 -->
-      <n-breadcrumb v-if="crumbsSetting.show">
+      <a-breadcrumb v-if="crumbsSetting.show">
         <template
           v-for="routeItem in breadcrumbList"
           :key="routeItem.name === RedirectName ? void 0 : routeItem.name"
         >
-          <n-breadcrumb-item v-if="routeItem.meta.title">
-            <n-dropdown
-              v-if="routeItem.children.length"
-              :options="routeItem.children"
-              @select="dropdownSelect"
-            >
+          <a-breadcrumb-item v-if="routeItem.meta.title">
+            <a-dropdown v-if="routeItem.children.length">
               <span class="link-text">
                 <component
                   v-if="crumbsSetting.showIcon && routeItem.meta.icon"
@@ -59,7 +49,14 @@
                 />
                 {{ routeItem.meta.title }}
               </span>
-            </n-dropdown>
+              <template #overlay>
+                <a-menu @click="({ key }: any) => dropdownSelect(key)">
+                  <a-menu-item v-for="child in routeItem.children" :key="child.key">
+                    {{ child.label }}
+                  </a-menu-item>
+                </a-menu>
+              </template>
+            </a-dropdown>
             <span class="link-text" v-else>
               <component
                 v-if="crumbsSetting.showIcon && routeItem.meta.icon"
@@ -67,71 +64,62 @@
               />
               {{ routeItem.meta.title }}
             </span>
-          </n-breadcrumb-item>
+          </a-breadcrumb-item>
         </template>
-      </n-breadcrumb>
+      </a-breadcrumb>
     </div>
     <div class="layout-header-right">
       <!-- 返回前台按钮 -->
       <div class="layout-header-trigger layout-header-trigger-min" @click="goToFront">
-        <n-tooltip placement="bottom">
-          <template #trigger>
-            <n-icon size="18">
-              <HomeOutlined />
-            </n-icon>
-          </template>
-          <span>返回前台</span>
-        </n-tooltip>
+        <a-tooltip placement="bottom">
+          <template #title>返回前台</template>
+          <HomeOutlined class="trigger-icon" />
+        </a-tooltip>
       </div>
       <div
         class="layout-header-trigger layout-header-trigger-min"
         v-for="item in iconList"
         :key="item.icon"
       >
-        <n-tooltip placement="bottom">
-          <template #trigger>
-            <n-icon size="18">
-              <component :is="item.icon" v-on="item.eventObject || {}" />
-            </n-icon>
-          </template>
-          <span>{{ item.tips }}</span>
-        </n-tooltip>
+        <a-tooltip placement="bottom">
+          <template #title>{{ item.tips }}</template>
+          <component :is="item.icon" class="trigger-icon" v-on="item.eventObject || {}" />
+        </a-tooltip>
       </div>
       <!--切换全屏-->
       <div class="layout-header-trigger layout-header-trigger-min">
-        <n-tooltip placement="bottom">
-          <template #trigger>
-            <n-icon size="18">
-              <component :is="fullscreenIcon" @click="toggleFullScreen" />
-            </n-icon>
-          </template>
-          <span>全屏</span>
-        </n-tooltip>
+        <a-tooltip placement="bottom">
+          <template #title>全屏</template>
+          <component :is="fullscreenIcon" class="trigger-icon" @click="toggleFullScreen" />
+        </a-tooltip>
       </div>
       <!-- 个人中心 -->
       <div class="layout-header-trigger layout-header-trigger-min">
-        <n-dropdown trigger="hover" @select="avatarSelect" :options="avatarOptions">
+        <a-dropdown>
           <div class="avatar">
-            <n-avatar :src="websiteConfig.logo">
+            <a-avatar :src="websiteConfig.logo">
               <template #icon>
                 <UserOutlined />
               </template>
-            </n-avatar>
-            <n-divider vertical />
+            </a-avatar>
+            <a-divider type="vertical" />
             <span>{{ username }}</span>
           </div>
-        </n-dropdown>
+          <template #overlay>
+            <a-menu @click="({ key }: any) => avatarSelect(key)">
+              <a-menu-item v-for="item in avatarOptions" :key="item.key">
+                {{ item.label }}
+              </a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
       </div>
       <!--设置-->
       <div class="layout-header-trigger layout-header-trigger-min" @click="openSetting">
-        <n-tooltip placement="bottom-end">
-          <template #trigger>
-            <n-icon size="18" style="font-weight: bold">
-              <SettingOutlined />
-            </n-icon>
-          </template>
-          <span>项目配置</span>
-        </n-tooltip>
+        <a-tooltip placement="bottomRight">
+          <template #title>项目配置</template>
+          <SettingOutlined class="trigger-icon" style="font-weight: bold" />
+        </a-tooltip>
       </div>
     </div>
   </div>
@@ -144,10 +132,9 @@
   import { useProjectSetting } from '@/hooks/setting/useProjectSetting';
   import { AsideMenu } from '@/layout/components/Menu';
   import { RedirectName } from '@/router/constant';
-  import { useScreenLockStore } from '@/store/modules/screenLock';
   import { useUserStore } from '@/store/modules/user';
   import { TABS_ROUTES } from '@/store/mutation-types';
-  import { NDialogProvider, useDialog, useMessage } from 'naive-ui';
+  import { message, Modal } from 'ant-design-vue';
   import { computed, defineComponent, reactive, ref, toRefs, unref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import components from './components';
@@ -155,7 +142,7 @@
 
   export default defineComponent({
     name: 'PageHeader',
-    components: { ...components, NDialogProvider, ProjectSetting, AsideMenu },
+    components: { ...components, ProjectSetting, AsideMenu },
     props: {
       collapsed: {
         type: Boolean,
@@ -167,9 +154,6 @@
     emits: ['update:collapsed'],
     setup(props, { emit }) {
       const userStore = useUserStore();
-      const useLockscreen = useScreenLockStore();
-      const message = useMessage();
-      const dialog = useDialog();
       const { navMode, navTheme, headerSetting, menuSetting, crumbsSetting } = useProjectSetting();
 
       const drawerSetting = ref();
@@ -243,12 +227,10 @@
 
       // 退出登录
       const doLogout = () => {
-        dialog.info({
+        Modal.confirm({
           title: '提示',
           content: '您确定要退出登录吗',
-          positiveText: '确定',
-          negativeText: '取消',
-          onPositiveClick: () => {
+          onOk: () => {
             userStore.logout().then(() => {
               message.success('成功退出登录');
               // 移除标签页
@@ -263,7 +245,6 @@
                 .finally(() => location.reload());
             });
           },
-          onNegativeClick: () => {},
         });
       };
 
@@ -291,13 +272,6 @@
         {
           icon: 'SearchOutlined',
           tips: '搜索',
-        },
-        {
-          icon: 'LockOutlined',
-          tips: '锁屏',
-          eventObject: {
-            click: () => useLockscreen.setLock(true),
-          },
         },
       ];
       const avatarOptions = [
@@ -404,7 +378,7 @@
         color: #515a6e;
       }
 
-      .n-breadcrumb {
+      .ant-breadcrumb {
         display: inline-block;
       }
 
@@ -437,11 +411,13 @@
       cursor: pointer;
       transition: all 0.2s ease-in-out;
 
-      .n-icon {
+      .trigger-icon {
         display: flex;
         align-items: center;
+        justify-content: center;
         height: 64px;
         line-height: 64px;
+        font-size: 18px;
       }
 
       &:hover {
@@ -464,12 +440,12 @@
     background: #fff;
     color: #515a6e;
 
-    .n-icon {
+    .anticon {
       color: #515a6e;
     }
 
     .layout-header-left {
-      ::v-deep(.n-breadcrumb .n-breadcrumb-item:last-child .n-breadcrumb-item__link) {
+      ::v-deep(.ant-breadcrumb .ant-breadcrumb-link:last-child) {
         color: #515a6e;
       }
     }
@@ -489,11 +465,39 @@
     z-index: 11;
   }
 
-  //::v-deep(.menu-router-link) {
-  //  color: #515a6e;
-  //
-  //  &:hover {
-  //    color: #1890ff;
-  //  }
-  //}
+  // 深色主题样式
+  .layout-header-dark {
+    background: #001529;
+    color: #fff;
+
+    .anticon {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .layout-header-trigger {
+      &:hover {
+        background: hsla(0, 0%, 100%, 0.08);
+      }
+    }
+
+    .avatar {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .link-text {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    :deep(.ant-breadcrumb span:last-child .link-text) {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    :deep(.ant-breadcrumb-link) {
+      color: rgba(255, 255, 255, 0.65);
+    }
+
+    :deep(.ant-breadcrumb-separator) {
+      color: rgba(255, 255, 255, 0.45);
+    }
+  }
 </style>

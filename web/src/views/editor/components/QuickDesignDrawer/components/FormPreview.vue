@@ -1,19 +1,14 @@
 <template>
   <div class="form-preview">
-    <n-form
+    <a-form
       ref="formRef"
       :model="formData"
-      label-placement="left"
-      label-width="120px"
-      require-mark-placement="right-hanging"
-      size="medium"
+      layout="horizontal"
+      :label-col="{ style: { width: '120px' } }"
+      size="middle"
     >
       <template v-if="isEmptySchema">
-        <n-empty description="暂无表单字段" size="small">
-          <template #extra>
-            <n-text depth="3" style="font-size: 12px"> 请先在"组件 + 设计"Tab 中添加组件 </n-text>
-          </template>
-        </n-empty>
+        <a-empty description="暂无表单字段" />
       </template>
 
       <template v-else>
@@ -26,33 +21,33 @@
           @update:model-value="handleFieldChange(fieldName, $event)"
         />
       </template>
-    </n-form>
+    </a-form>
 
-    <n-divider v-if="!isEmptySchema" style="margin: 16px 0" />
+    <a-divider v-if="!isEmptySchema" style="margin: 16px 0" />
 
     <div v-if="!isEmptySchema" class="preview-actions">
-      <n-space>
-        <n-button size="small" @click="handleReset"> 重置 </n-button>
-        <n-button size="small" type="primary" @click="handleShowData"> 查看数据 </n-button>
-      </n-space>
+      <a-space>
+        <a-button size="small" @click="handleReset"> 重置 </a-button>
+        <a-button size="small" type="primary" @click="handleShowData"> 查看数据 </a-button>
+      </a-space>
     </div>
 
     <!-- 数据预览对话框 -->
-    <n-modal v-model:show="showDataModal" preset="card" title="表单数据" style="width: 600px">
-      <n-code :code="JSON.stringify(formData, null, 2)" language="json" />
+    <a-modal v-model:open="showDataModal" title="表单数据" :width="600" :footer="null">
+      <pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; overflow: auto; max-height: 400px"><code>{{ JSON.stringify(formData, null, 2) }}</code></pre>
       <template #footer>
-        <n-space justify="end">
-          <n-button @click="handleCopyData">复制</n-button>
-          <n-button type="primary" @click="showDataModal = false">关闭</n-button>
-        </n-space>
+        <a-space style="justify-content: flex-end">
+          <a-button @click="handleCopyData">复制</a-button>
+          <a-button type="primary" @click="showDataModal = false">关闭</a-button>
+        </a-space>
       </template>
-    </n-modal>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
   import { ref, computed, watch } from 'vue';
-  import { NForm, NEmpty, NDivider, NButton, NSpace, NModal, NCode, useMessage } from 'naive-ui';
+  import { message } from 'ant-design-vue';
   import FormField from './FormField.vue';
 
   const props = defineProps({
@@ -63,8 +58,6 @@
   });
 
   const emit = defineEmits(['change']);
-
-  const message = useMessage();
 
   // 表单数据
   const formData = ref({});
