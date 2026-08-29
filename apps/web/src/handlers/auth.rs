@@ -185,6 +185,18 @@ pub async fn update_profile(
     }
 }
 
+/// 校验图片魔数（PNG/JPEG/GIF/WebP），防止非图片内容伪装扩展名上传
+fn matches_image_magic(data: &[u8]) -> bool {
+    if data.len() < 12 {
+        return false;
+    }
+    let png = data.starts_with(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]);
+    let jpeg = data.starts_with(&[0xFF, 0xD8, 0xFF]);
+    let gif = data.starts_with(b"GIF87a") || data.starts_with(b"GIF89a");
+    let webp = data.starts_with(b"RIFF") && &data[8..12] == b"WEBP";
+    png || jpeg || gif || webp
+}
+
 /// 上传头像
 pub async fn upload_avatar(
     State(state): State<AppState>,
@@ -212,7 +224,24 @@ pub async fn upload_avatar(
         let ext = std::path::Path::new(&filename)
             .extension()
             .and_then(|e| e.to_str())
-            .unwrap_or("png");
+            .unwrap_or("png")
+            .to_lowercase();
+
+        // 扩展名白名单：data/avatars 由 ServeDir 直接对外提供，
+        // 放行 .html 等扩展名会构成存储型 XSS
+        const ALLOWED_EXTS: [&str; 5] = ["jpg", "jpeg", "png", "gif", "webp"];
+        if !ALLOWED_EXTS.contains(&ext.as_str()) {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "头像仅支持 jpg/jpeg/png/gif/webp 格式",
+            );
+        }
+
+        // 魔数校验：防止把脚本内容伪装成图片扩展名上传
+        if !matches_image_magic(&data) {
+            return error_response(StatusCode::BAD_REQUEST, "文件内容不是有效的图片");
+        }
+
         let avatar_filename = format!(
             "{}_{}.{}",
             auth_user.user_id,
