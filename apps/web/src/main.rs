@@ -279,8 +279,11 @@ pub struct AppState {
 
 /// 创建应用路由
 pub fn create_app(state: AppState) -> Router {
-    let admin = routes::admin_routes()
+    // /api/v1/admin 下混合两类路由：用户自助（仅登录）与管理功能（super_admin 角色校验）
+    let admin_self = routes::admin_user_self_routes()
         .layer(axum::middleware::from_fn_with_state(state.clone(), middleware::auth::auth_middleware));
+    let admin = routes::admin_admin_only_routes()
+        .layer(axum::middleware::from_fn_with_state(state.clone(), middleware::auth::admin_auth_middleware));
 
     // 模板写操作与 admin 一样需通过认证中间件（读操作保持公开）
     let template_protected = template_protected_routes()
@@ -299,8 +302,8 @@ pub fn create_app(state: AppState) -> Router {
         .nest("/api/v1/auth", routes::auth::auth_routes())
         // 模板API（读公开 + 写认证）
         .nest("/api/v1/template", template_routes().merge(template_protected))
-        // 管理员API（受认证保护）
-        .nest("/api/v1/admin", admin)
+        // /api/v1/admin：用户自助路由（仅登录）+ 管理路由（super_admin）
+        .nest("/api/v1/admin", admin_self.merge(admin))
         // 编辑器API（受认证保护）
         .nest("/api/v1/editor", editor)
         // Studio API

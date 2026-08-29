@@ -22,7 +22,8 @@ use crate::handlers::{
 use super::super::AppState;
 
 /// 管理员路由（不含 middleware，由 create_app 添加认证层）
-pub fn admin_routes() -> Router<AppState> {
+/// 用户自助路由（登录即可，无需管理角色）：个人资料/密码/PAT/我的模板
+pub fn admin_user_self_routes() -> Router<AppState> {
     Router::new()
         .route("/auth/info", get(auth_handler::get_info))
         .route("/auth/password", put(auth_handler::change_password))
@@ -30,11 +31,16 @@ pub fn admin_routes() -> Router<AppState> {
         .route("/auth/tokens/:id", delete(auth_handler::delete_pat))
         .route("/auth/profile", put(auth_handler::update_profile))
         .route("/auth/avatar", post(auth_handler::upload_avatar))
+        .nest("/my/templates", user_template_routes())
+}
+
+/// 管理员路由（需 super_admin 角色，middleware 由 create_app 添加）
+pub fn admin_admin_only_routes() -> Router<AppState> {
+    Router::new()
         .nest("/categories", category_admin_routes())
         .nest("/languages", language_admin_routes())
         .nest("/templates", template_admin_routes())
         .nest("/templates/pending", template_review_routes())
-        .nest("/my/templates", user_template_routes())
         .nest("/var-preset", var_preset_admin_routes())
         .nest("/statistics", statistics_routes())
         .nest("/settings", settings_admin_routes())

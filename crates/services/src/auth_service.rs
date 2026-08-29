@@ -135,4 +135,11 @@ impl AuthService {
             .into_iter().map(|r| r.name).collect();
         Ok(roles)
     }
+
+    /// 获取用户角色名列表（供 admin 角色校验中间件使用，每次查库保证角色变更即时生效）
+    pub async fn get_user_role_names(&self, user_id: i64) -> Result<Vec<String>> {
+        let roles = self.user_repo.get_user_roles(user_id).await?
+            .into_iter().map(|r| r.name).collect();
+        Ok(roles)
+    }
 }
