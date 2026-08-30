@@ -74,7 +74,7 @@ export const useUserStore = defineStore({
     },
     // 登录
     async login(params: any) {
-      const response = await login(params);
+      const response: any = await login(params);
       // 统一信封：{code:0, data}
       const { data: payload, code } = response;
       if (code === ResultEnum.SUCCESS) {
@@ -89,7 +89,7 @@ export const useUserStore = defineStore({
     },
     // 获取用户信息
     async getInfo() {
-      const data = await getUserInfoApi();
+      const data: any = await getUserInfoApi();
       // 统一信封：{code:0, data}
       const payload = data.data;
       if (payload.permissions && payload.permissions.length) {

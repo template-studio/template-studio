@@ -75,8 +75,12 @@ jobs:
       - name: 安装依赖
         run: pnpm install --frozen-lockfile
 
-      # 注：当前前端未安装 vue-tsc（无 type-check 脚本），类型检查待引入后启用；
-      # eslint 已含 @typescript-eslint 规则，先行覆盖大部分类型层面问题
+      # 类型检查：当前存量 30 个类型错误（清单见 dev-docs/type-debt-inventory.md），
+      # 先以非阻断方式呈现；清单清零后移除 continue-on-error 转为阻断
+      - name: TypeScript 类型检查
+        run: pnpm run type-check
+        continue-on-error: true
+
       # lint 脚本自带 --fix，CI 中仅用于暴露不可自动修复的问题，改动不会被提交
       - name: ESLint
         run: pnpm run lint:eslint

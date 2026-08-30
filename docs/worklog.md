@@ -378,3 +378,11 @@
 **涉及文件：** `apps/web/src/main.rs`、`crates/infrastructure/src/database/pool.rs`（既有 health_check 首次被调用）
 
 **验收结果：** /health 实测返回 `{"database":true,"status":"healthy",...}`（真实探测）；优雅停机编译就位——Windows 下 SIGTERM 信号语义受限无法本机完整验证停机时序，Unix 部署环境（K8s/docker）将正常触发，属已声明的验证边界。
+
+## 2026-08-30 vue-tsc 引入与类型检查落地
+
+**变更内容：** 安装 vue-tsc 1.8.27（Vue 3.5 + TS 4.9 兼容版），新增 `type-check` 脚本；tsconfig 调整（noUnusedLocals/Parameters 暂关——存量代码 24 处未使用告警属风格债、include 排除 build/ 与 vite.config.ts——构建脚本依赖类型不在 devDeps）。首跑 97 错，治理后余 30：api 层默认参数批量标注（Record<string,any>）、近期新代码补类型（user store 登录/getInfo、FooterBar target 收窄、useRenderService 的 renderTree 签名与信封统一时的新签名对齐、AdvancedDrawer 的 localSettings/backupState）、build/vite/proxy.ts 类型修正。剩余 30 个为通用组件层（Table/Form）移植期类型摩擦，产出 `dev-docs/type-debt-inventory.md` 清单（分布/错误类型/修复策略/完整列表）。CI 前端 job 启用 type-check（continue-on-error 非阻断，清单清零后转阻断）。
+
+**涉及文件：** `web/package.json`、`web/tsconfig.json`、`web/src/api/**`（3 文件批量标注）、`web/src/store/modules/user.ts`、`web/src/components/FooterBar.vue`、`web/src/composables/useRenderService.ts`、`web/src/views/editor/components/AdvancedDrawer.vue`、`web/build/vite/proxy.ts`、`.github/workflows/ci.yml`、`dev-docs/type-debt-inventory.md`（新增）
+
+**验收结果：** type-check 可稳定执行（97→30）；关键修复经 vite 编译验证（composable 200）；YAML 校验通过；错误清单落档供专项清理。

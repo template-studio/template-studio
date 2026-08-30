@@ -6,7 +6,7 @@
           v-for="link in footerLinks"
           :key="link.label"
           :href="link.url"
-          @click.prevent="link.url !== '#' && ($event.target.removeAttribute('href'))"
+          @click.prevent="link.url !== '#' && (($event.target as HTMLElement)?.removeAttribute('href'))"
         >{{ link.label }}</a>
       </div>
       <div class="footer-info">

@@ -1,7 +1,7 @@
 import request from '@/utils/request';
 
 // 获取公开分类列表
-export function getPublicCategories(params = {}) {
+export function getPublicCategories(params: Record<string, any> = {}) {
   return request({
     url: '/api/v1/studio/categories',
     method: 'get',
@@ -13,7 +13,7 @@ export function getPublicCategories(params = {}) {
 }
 
 // 获取公开语言列表
-export function getPublicLanguages(params = {}) {
+export function getPublicLanguages(params: Record<string, any> = {}) {
   return request({
     url: '/api/v1/studio/languages',
     method: 'get',
@@ -28,7 +28,7 @@ export function getPublicLanguages(params = {}) {
 }
 
 // 获取公开模板类型列表
-export function getPublicTemplateTypes(params = {}) {
+export function getPublicTemplateTypes(params: Record<string, any> = {}) {
   return request({
     url: '/api/v1/studio/template-types',
     method: 'get',
@@ -37,7 +37,7 @@ export function getPublicTemplateTypes(params = {}) {
 }
 
 //获取公开模板列表
-export function getPublicTemplates(params = {}) {
+export function getPublicTemplates(params: Record<string, any> = {}) {
   return request({
     url: '/api/v1/studio/templates/list',
     method: 'get',

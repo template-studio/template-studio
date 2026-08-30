@@ -591,7 +591,7 @@
   } | null>(null);
 
   // =============== 备份恢复相关 ===============
-  const backupState = reactive({
+  const backupState: any = reactive({
     // 创建备份状态
     isCreating: false,
     // 恢复备份状态
@@ -846,7 +846,7 @@
   };
 
   // 本地设置副本
-  const localSettings = ref({});
+  const localSettings = ref<any>({});
 
   // 初始化设置
   const initSettings = () => {

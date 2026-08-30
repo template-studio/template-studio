@@ -43,6 +43,7 @@ export interface UseRenderServiceReturn {
   ) => Promise<RenderResult>;
   /** 渲染文件树 */
   renderTree: (
+    templateId: number,
     files: TemplateFile[],
     variables: Record<string, unknown>
   ) => Promise<RenderResult[]>;

@@ -47,7 +47,7 @@ export function unsubscribePreset(templateId, presetId) {
  * @param {Object} params - 查询参数
  * @returns {Promise}
  */
-export function getAvailablePresets(params = {}) {
+export function getAvailablePresets(params: Record<string, any> = {}) {
   return request({
     url: '/api/v1/editor/templates/preset-variables/available',
     method: 'GET',
