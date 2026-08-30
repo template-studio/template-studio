@@ -322,3 +322,11 @@
 **涉及文件：** `apps/web/src/handlers/{template,editor,file_conditions,access}.rs`
 
 **验收结果：** 编译零错误零警告；双用户实测——普通用户对 admin 模板的文件树/内容读取 403、新建（合法请求体）/删除/设置条件/导出条件 403（首轮两个 422 为测试载荷字段不全导致的反序列化先行失败，非绕过，合法体复测均 403）；admin 同操作正常（新建+删除成功）。测试用户已清理。
+
+## 2026-08-29 实现 get_template_languages（模板详情语言字段）
+
+**变更内容：** 服务层 TODO 桩（恒返回空列表，模板详情 languages 字段因此永远为空）落地：仓库层新增 `get_template_language_details`（template_languages JOIN languages，含名称/显示名/图标/颜色/主语言标记，按主语言优先排序），服务层桩改为转发；`TemplateLanguageInfo` 补 `sqlx::FromRow` derive。
+
+**涉及文件：** `crates/repositories/src/template_repository.rs`、`crates/services/src/template_service.rs`、`crates/shared/src/models/template.rs`
+
+**验收结果：** 实测模板 1779081291997 详情返回 languages=[{name: go, displayName: go, isPrimary: 1}]（修复前恒为空数组）。

@@ -376,6 +376,29 @@ impl TemplateRepository {
     }
 
     /// 获取模板的关联语言列表
+    /// 获取模板的关联语言详情（JOIN languages 表，含名称/图标/主语言标记）
+    pub async fn get_template_language_details(
+        &self,
+        template_id: i64,
+    ) -> Result<Vec<template_studio_shared::models::template::TemplateLanguageInfo>> {
+        let languages =
+            sqlx::query_as::<_, template_studio_shared::models::template::TemplateLanguageInfo>(
+                r#"
+            SELECT CAST(l.id AS SIGNED) as id, l.name, l.display_name, l.code, l.icon, l.color,
+                   CAST(l.is_popular AS SIGNED) as is_popular,
+                   CAST(tl.is_primary AS SIGNED) as is_primary
+            FROM template_languages tl
+            JOIN languages l ON l.id = tl.language_id
+            WHERE tl.template_id = ?
+            ORDER BY tl.is_primary DESC, l.id ASC
+            "#,
+            )
+            .bind(template_id)
+            .fetch_all(&self.pool)
+            .await?;
+        Ok(languages)
+    }
+
     pub async fn get_template_languages(
         &self,
         template_id: i64,

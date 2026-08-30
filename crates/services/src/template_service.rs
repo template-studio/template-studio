@@ -531,11 +531,13 @@ impl TemplateService {
     /// 获取模板的语言信息
     async fn get_template_languages(
         &self,
-        _template_id: i64,
+        template_id: i64,
     ) -> Result<Vec<TemplateLanguageInfo>, AppError> {
-        // TODO: 实现获取模板语言关联的逻辑
-        // 这里需要查询template_languages表并关联languages表
-        let languages = vec![]; // 临时返回空列表
+        let languages = self
+            .repository
+            .get_template_language_details(template_id)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
         Ok(languages)
     }
 

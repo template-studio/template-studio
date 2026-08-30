@@ -77,7 +77,7 @@ pub struct UpdateTemplateRequest {
 pub struct TemplateLanguageRequest {
     #[validate(range(min = 1, message = "语言ID不能为空"))]
     #[serde(rename = "languageId")]
-    pub language_id: u32,  // 改为 u32
+    pub language_id: u32, // 改为 u32
     #[serde(rename = "isPrimary")]
     pub is_primary: i32,
 }
@@ -147,7 +147,7 @@ pub struct TemplateDetailResponse {
 }
 
 /// 模板语言信息
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct TemplateLanguageInfo {
     pub id: i64,
     pub name: String,
@@ -287,7 +287,7 @@ pub struct UserTemplateListQuery {
 pub struct ReviewTemplateRequest {
     #[serde(rename = "templateId")]
     pub template_id: i64,
-    pub action: String,   // approve / reject
+    pub action: String, // approve / reject
     pub reason: Option<String>,
 }
 
