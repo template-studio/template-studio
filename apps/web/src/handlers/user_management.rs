@@ -1,9 +1,10 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Extension, Path, State},
     http::StatusCode,
     response::Json,
 };
 use serde_json::{json, Value};
+use template_studio_shared::models::auth::AuthUser;
 use template_studio_shared::models::user::{
     AssignRolesRequest, CreateUserRequest, UpdateUserRequest,
 };
@@ -64,13 +65,29 @@ pub async fn update_user(
 /// 删除用户
 pub async fn delete_user(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Path(id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.user_service.delete_user(id).await {
-        Ok(_) => Ok(Json(json!({
-            "code": 0,
-            "message": "删除用户成功"
-        }))),
+        Ok(_) => {
+            state
+                .audit_service
+                .record(&template_studio_services::audit_service::AuditEntry {
+                    user_id: auth_user.user_id,
+                    username: auth_user.username.clone(),
+                    action: "user.delete".to_string(),
+                    resource_type: "user".to_string(),
+                    resource_id: Some(id.to_string()),
+                    detail: None,
+                    ip: None,
+                    user_agent: None,
+                })
+                .await;
+            Ok(Json(json!({
+                "code": 0,
+                "message": "删除用户成功"
+            })))
+        }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

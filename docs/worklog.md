@@ -450,3 +450,11 @@
 **涉及文件：** `migrations/022_alter_users_add_login_lockout.sql`（新增）、`crates/shared/src/models/user.rs`、`crates/repositories/src/user_repository.rs`、`crates/services/src/auth_service.rs`
 
 **验收结果：** 完整周期实测——5 次错误密码（每次正确报错）→ 第 5 次触发锁定 → 正确密码被拒并提示「约 15 分钟后再试」→ DB 确认计数 5/锁定时间 → 手动解锁 → 正确密码登录成功且计数清零。过程中修复 sqlx 不支持单 execute 多语句的问题（UPDATE+SELECT 拆两条）。JWT 有效期缩短（#23）因前端「记住登录」依赖 7 天存储时长需联动设计，未在本轮盲改。
+
+## 2026-08-30 操作审计日志（清单 #25）
+
+**变更内容：** 迁移 023 建 audit_logs 表（user_id/username 冗余/action/resource_type/resource_id/detail/ip/user_agent/created_at，四组索引）；新增 `audit_service`（record 失败仅告警不阻断业务——审计是旁路关注点；list 按动作/资源类型过滤分页查询单测级实现）；AppState 注入 audit_service；四个关键操作接入审计：template.delete、release.publish、release.rollback、user.delete（user_management 的 delete_user 顺带补上 Extension<AuthUser> 提取）。
+
+**涉及文件：** `migrations/023_create_audit_logs.sql`（新增）、`crates/services/src/audit_service.rs`（新增）及 lib.rs、`apps/web/src/main.rs`、`apps/web/src/handlers/{template,releases,user_management}.rs`
+
+**验收结果：** 端到端实测——创建临时模板→删除→audit_logs 表出现 (admin, template.delete, template, 1788085851173, 时间戳)；编译零错误。审计查询 API（admin 界面展示）未在本轮（record 链路为先），作为后续增量。

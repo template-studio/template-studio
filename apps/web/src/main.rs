@@ -20,10 +20,11 @@ use template_studio_repositories::{
     SystemSettingRepository, TemplateRepository, UserRepository, VarPresetRepository,
 };
 use template_studio_services::{
-    AuthService, BackupService, CategoryService, EmailService, FileConditionsService,
-    LanguageService, PatService, PermissionService, PresetSubscribeService, ReleaseService,
-    RoleService, SystemSettingService, TemplateAnalysisService, TemplateRenderService,
-    TemplateService, TemplateVariablesService, UserService, VarPresetService,
+    audit_service::AuditService, AuthService, BackupService, CategoryService, EmailService,
+    FileConditionsService, LanguageService, PatService, PermissionService, PresetSubscribeService,
+    ReleaseService, RoleService, SystemSettingService, TemplateAnalysisService,
+    TemplateRenderService, TemplateService, TemplateVariablesService, UserService,
+    VarPresetService,
 };
 use template_studio_shared::models::auth::JwtConfig;
 use tower_http::cors::CorsLayer;
@@ -144,7 +145,10 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // 创建应用状态
+    let audit_service = Arc::new(AuditService::new(db_pool.get_pool().clone()));
+
     let app_state = AppState {
+        audit_service,
         category_service,
         language_service,
         template_service,
@@ -204,6 +208,7 @@ async fn main() -> anyhow::Result<()> {
 /// 应用状态
 #[derive(Clone)]
 pub struct AppState {
+    pub audit_service: Arc<AuditService>,
     pub category_service: Arc<CategoryService>,
     pub language_service: Arc<LanguageService>,
     pub template_service: Arc<TemplateService>,

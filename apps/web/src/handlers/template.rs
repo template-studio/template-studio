@@ -675,10 +675,25 @@ pub async fn delete_template(
         return Err(resp);
     }
     match state.template_service.delete_template(params.id).await {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "删除模板成功"
-        }))),
+        Ok(()) => {
+            state
+                .audit_service
+                .record(&template_studio_services::audit_service::AuditEntry {
+                    user_id: auth_user.user_id,
+                    username: auth_user.username.clone(),
+                    action: "template.delete".to_string(),
+                    resource_type: "template".to_string(),
+                    resource_id: Some(params.id.to_string()),
+                    detail: None,
+                    ip: None,
+                    user_agent: None,
+                })
+                .await;
+            Ok(Json(json!({
+                "code": 0,
+                "message": "删除模板成功"
+            })))
+        }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

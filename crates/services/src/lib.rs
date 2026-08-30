@@ -10,6 +10,7 @@ pub mod file_conditions_service;
 pub mod release_service;
 pub mod backup_service;
 pub mod system_setting_service;
+pub mod audit_service;
 pub mod auth_service;
 pub mod user_service;
 pub mod role_service;

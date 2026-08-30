@@ -41,11 +41,26 @@ pub async fn create_release(
         .create_release(id, payload, creator_id, creator_name)
         .await
     {
-        Ok(response) => Ok(Json(json!({
-            "code": 0,
-            "message": "发布成功",
-            "data": response
-        }))),
+        Ok(response) => {
+            state
+                .audit_service
+                .record(&template_studio_services::audit_service::AuditEntry {
+                    user_id: auth_user.user_id,
+                    username: auth_user.username.clone(),
+                    action: "release.publish".to_string(),
+                    resource_type: "release".to_string(),
+                    resource_id: Some(id.to_string()),
+                    detail: None,
+                    ip: None,
+                    user_agent: None,
+                })
+                .await;
+            Ok(Json(json!({
+                "code": 0,
+                "message": "发布成功",
+                "data": response
+            })))
+        }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -81,11 +96,26 @@ pub async fn rollback_version(
         return Err(resp);
     }
     match state.release_service.rollback_version(id, &version).await {
-        Ok(response) => Ok(Json(json!({
-            "code": 0,
-            "message": "回滚成功",
-            "data": response
-        }))),
+        Ok(response) => {
+            state
+                .audit_service
+                .record(&template_studio_services::audit_service::AuditEntry {
+                    user_id: auth_user.user_id,
+                    username: auth_user.username.clone(),
+                    action: "release.rollback".to_string(),
+                    resource_type: "release".to_string(),
+                    resource_id: Some(id.to_string()),
+                    detail: None,
+                    ip: None,
+                    user_agent: None,
+                })
+                .await;
+            Ok(Json(json!({
+                "code": 0,
+                "message": "回滚成功",
+                "data": response
+            })))
+        }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
