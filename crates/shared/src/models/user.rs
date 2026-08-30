@@ -15,6 +15,10 @@ pub struct User {
     pub last_login_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    /// 连续登录失败次数（账号级锁定策略）
+    pub failed_login_count: i32,
+    /// 锁定截止时间（NULL 未锁定）
+    pub locked_until: Option<DateTime<Utc>>,
 }
 
 /// 用户列表项（不含密码）

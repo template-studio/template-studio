@@ -442,3 +442,11 @@
 **涉及文件：** `crates/shared/src/utils/response.rs`、`apps/web/src/handlers/access.rs`、`apps/web/src/middleware/auth.rs`
 
 **验收结果：** shared 7 测试全过；后端重启正常；无 token 的属主校验返回标准 401 信封。存量约 120 处 json! 手写信封的批量迁移（机械替换为 ApiResponse 构造）为独立后续项——本项已把「入口、错误码表、单测」三要素就位。
+
+## 2026-08-30 账号级登录失败锁定（清单 #24）
+
+**变更内容：** IP 级限速之外的账号级第二道闸：连续 5 次密码错误锁定账号 15 分钟（锁定期内正确密码也拒绝并提示剩余时间），登录成功即清零计数。实现：迁移 022 加 `failed_login_count`/`locked_until` 列（migrate.py 执行）；User 模型与 find_by_username 补两列；user_repository 新增 record_login_failure/clear_login_failures/lock_user_until；auth_service.login 接入锁定检查（锁定中拒绝）/失败累计（达阈值锁定并告警）/成功清零。
+
+**涉及文件：** `migrations/022_alter_users_add_login_lockout.sql`（新增）、`crates/shared/src/models/user.rs`、`crates/repositories/src/user_repository.rs`、`crates/services/src/auth_service.rs`
+
+**验收结果：** 完整周期实测——5 次错误密码（每次正确报错）→ 第 5 次触发锁定 → 正确密码被拒并提示「约 15 分钟后再试」→ DB 确认计数 5/锁定时间 → 手动解锁 → 正确密码登录成功且计数清零。过程中修复 sqlx 不支持单 execute 多语句的问题（UPDATE+SELECT 拆两条）。JWT 有效期缩短（#23）因前端「记住登录」依赖 7 天存储时长需联动设计，未在本轮盲改。
