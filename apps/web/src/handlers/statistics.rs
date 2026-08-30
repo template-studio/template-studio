@@ -1,3 +1,7 @@
+//! 统计处理器（真实聚合数据）
+//!
+//! 所有指标均来自数据库/文件系统的真实统计，替代早期演示用的伪造值。
+
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -13,6 +17,7 @@ pub struct UsageTrendsQuery {
     days: Option<i32>,
 }
 
+/// 总览：模板/分类/语言计数为真实值；文件总数取各模板最新发布版本 file_count 汇总
 pub async fn get_overview(
     State(state): State<AppState>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
@@ -31,6 +36,11 @@ pub async fn get_overview(
         .get_language_count()
         .await
         .unwrap_or(0);
+    let total_files = state
+        .template_service
+        .get_total_published_files()
+        .await
+        .unwrap_or(0);
 
     Ok(Json(json!({
         "code": 0,
@@ -38,131 +48,136 @@ pub async fn get_overview(
             "totalTemplates": template_count,
             "totalCategories": category_count,
             "totalLanguages": language_count,
-            "totalFiles": template_count * 5,
+            "totalFiles": total_files,
         },
         "message": "OK"
     })))
 }
 
+/// 分类分布：GROUP BY category_id 真实聚合
 pub async fn get_category_distribution(
     State(state): State<AppState>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let template_count = state
+    let rows = state
         .template_service
-        .get_template_count()
-        .await
-        .unwrap_or(1);
-
-    let categories = state
-        .category_service
-        .get_all_categories()
+        .get_category_distribution()
         .await
         .unwrap_or_default();
-    let total: i64 = categories.len() as i64;
+    let grand_total: i64 = rows.iter().map(|(_, c)| *c).sum();
 
-    let items: Vec<Value> = categories
+    let items: Vec<Value> = rows
         .iter()
-        .map(|cat| {
-            let count = if total > 0 {
-                (template_count as f64 * (100.0 / total as f64)) as i64 % 10
+        .map(|(name, count)| {
+            let pct = if grand_total > 0 {
+                (*count as f64 * 100.0 / grand_total as f64).round() as i32
             } else {
                 0
             };
             json!({
-                "categoryName": cat.name,
+                "categoryName": name,
                 "templateCount": count,
-                "percentage": if total > 0 { 100 / total as i32 } else { 0 }
+                "percentage": pct
             })
         })
         .collect();
 
     Ok(Json(json!({
         "code": 0,
-        "data": {
-            "items": items
-        },
+        "data": { "items": items },
         "message": "OK"
     })))
 }
 
+/// 语言热度：template_languages JOIN languages 真实聚合
 pub async fn get_language_popularity(
     State(state): State<AppState>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let template_count = state
+    let rows = state
         .template_service
-        .get_template_count()
-        .await
-        .unwrap_or(1);
-
-    let languages = state
-        .language_service
-        .get_all_languages()
+        .get_language_popularity()
         .await
         .unwrap_or_default();
-    let total: i64 = languages.len() as i64;
+    let grand_total: i64 = rows.iter().map(|(_, c)| *c).sum();
 
-    let items: Vec<Value> = languages
+    let items: Vec<Value> = rows
         .iter()
-        .map(|lang| {
-            let count = if total > 0 {
-                (template_count as f64 * (100.0 / total as f64)) as i64 % 10
+        .map(|(name, count)| {
+            let pct = if grand_total > 0 {
+                (*count as f64 * 100.0 / grand_total as f64).round() as i32
             } else {
                 0
             };
             json!({
-                "languageName": lang.name,
+                "languageName": name,
                 "templateCount": count,
-                "percentage": if total > 0 { 100 / total as i32 } else { 0 }
+                "percentage": pct
             })
         })
         .collect();
 
     Ok(Json(json!({
         "code": 0,
-        "data": {
-            "items": items
-        },
+        "data": { "items": items },
         "message": "OK"
     })))
 }
 
+/// 模板复杂度：按模板类型与变量定义数量真实分档
+///
+/// - 简单/中等/复杂：basic / scaffold / 其他（datadriven 等）
+/// - 无变量 / 少变量 / 多变量：解析各模板 .meta/variables/variables.json 的字段数（0 / 1-10 / >10）
 pub async fn get_template_complexity(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let stats = state
+        .template_service
+        .get_template_complexity_stats()
+        .await
+        .unwrap_or_default();
+
     Ok(Json(json!({
         "code": 0,
         "data": {
-            "simpleTemplates": 5,
-            "mediumTemplates": 8,
-            "complexTemplates": 3,
-            "noVariableTemplates": 4,
-            "fewVariableTemplates": 7,
-            "manyVariableTemplates": 5
+            "simpleTemplates": stats.simple,
+            "mediumTemplates": stats.medium,
+            "complexTemplates": stats.complex,
+            "noVariableTemplates": stats.no_variable,
+            "fewVariableTemplates": stats.few_variable,
+            "manyVariableTemplates": stats.many_variable,
         },
         "message": "OK"
     })))
 }
 
+/// 使用趋势：按模板创建日期真实聚合最近 N 天
 pub async fn get_usage_trends(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Query(query): Query<UsageTrendsQuery>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    let days = query.days.unwrap_or(30);
-    let mut items = Vec::new();
+    let days = query.days.unwrap_or(30).clamp(1, 365);
+    let rows = state
+        .template_service
+        .get_daily_created_counts(days)
+        .await
+        .unwrap_or_default();
+    let by_day: std::collections::HashMap<String, i64> = rows.into_iter().collect();
 
-    for i in (0..days).rev() {
-        let date = chrono::Utc::now() - chrono::Duration::days(i64::from(i));
-        items.push(json!({
-            "date": date.format("%Y-%m-%d").to_string(),
-            "templateCreated": (i % 10) as i32 + 1
-        }));
-    }
+    // 补齐无创建记录的日期为 0，保持时间轴连续
+    let items: Vec<Value> = (0..days)
+        .rev()
+        .map(|i| {
+            let date = chrono::Utc::now() - chrono::Duration::days(i64::from(i));
+            let key = date.format("%Y-%m-%d").to_string();
+            json!({
+                "date": key,
+                "templateCreated": by_day.get(&key).copied().unwrap_or(0)
+            })
+        })
+        .collect();
 
     Ok(Json(json!({
         "code": 0,
-        "data": {
-            "items": items
-        },
+        "data": { "items": items },
         "message": "OK"
     })))
 }

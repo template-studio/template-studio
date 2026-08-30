@@ -377,6 +377,78 @@ impl TemplateRepository {
 
     /// 获取模板的关联语言列表
     /// 获取模板的关联语言详情（JOIN languages 表，含名称/图标/主语言标记）
+    /// 全部模板的 id 与类型（供复杂度统计遍历）
+    pub async fn list_all_ids_and_types(&self) -> Result<Vec<(i64, String)>> {
+        let rows: Vec<(i64, String)> =
+            sqlx::query_as("SELECT CAST(id AS SIGNED), template_type FROM templates")
+                .fetch_all(&self.pool)
+                .await?;
+        Ok(rows)
+    }
+
+    /// 分类分布统计：每个分类的模板数量（GROUP BY 真实聚合）
+    pub async fn get_category_distribution(&self) -> Result<Vec<(String, i64)>> {
+        let rows: Vec<(String, i64)> = sqlx::query_as(
+            r#"
+            SELECT COALESCE(c.name, '未分类') as name, COUNT(*) as cnt
+            FROM templates t
+            LEFT JOIN categories c ON c.id = t.category_id
+            GROUP BY t.category_id, c.name
+            ORDER BY cnt DESC
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows)
+    }
+
+    /// 语言热度统计：每种语言关联的模板数量
+    pub async fn get_language_popularity(&self) -> Result<Vec<(String, i64)>> {
+        let rows: Vec<(String, i64)> = sqlx::query_as(
+            r#"
+            SELECT l.name, COUNT(*) as cnt
+            FROM template_languages tl
+            JOIN languages l ON l.id = tl.language_id
+            GROUP BY tl.language_id, l.name
+            ORDER BY cnt DESC
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows)
+    }
+
+    /// 按创建日期统计最近 N 天的模板创建数
+    pub async fn get_daily_created_counts(&self, days: i32) -> Result<Vec<(String, i64)>> {
+        let rows: Vec<(String, i64)> = sqlx::query_as(
+            r#"
+            SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as day, COUNT(*) as cnt
+            FROM templates
+            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            GROUP BY day
+            ORDER BY day ASC
+            "#,
+        )
+        .bind(days)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows)
+    }
+
+    /// 全部模板的文件总数（取各模板最新发布版本的 file_count 汇总）
+    pub async fn get_total_published_files(&self) -> Result<i64> {
+        let total: i64 = sqlx::query_scalar(
+            r#"
+            SELECT CAST(COALESCE(SUM(file_count), 0) AS SIGNED)
+            FROM template_versions
+            WHERE is_latest = true
+            "#,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(total)
+    }
+
     pub async fn get_template_language_details(
         &self,
         template_id: i64,

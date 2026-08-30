@@ -8,6 +8,17 @@ use template_studio_shared::{
     utils::{error::AppError, validation::validate_request},
 };
 
+/// 模板复杂度统计结果
+#[derive(Default)]
+pub struct ComplexityStats {
+    pub simple: i64,
+    pub medium: i64,
+    pub complex: i64,
+    pub no_variable: i64,
+    pub few_variable: i64,
+    pub many_variable: i64,
+}
+
 /// 模板业务服务
 pub struct TemplateService {
     repository: Arc<TemplateRepository>,
@@ -600,6 +611,92 @@ impl TemplateService {
         }
         tracing::info!("用户 {} 删除模板 {}", user_id, template_id);
         Ok(())
+    }
+
+    /// 分类分布统计（转发真实聚合）
+    pub async fn get_category_distribution(&self) -> Result<Vec<(String, i64)>, AppError> {
+        self.repository
+            .get_category_distribution()
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))
+    }
+
+    /// 语言热度统计（转发真实聚合）
+    pub async fn get_language_popularity(&self) -> Result<Vec<(String, i64)>, AppError> {
+        self.repository
+            .get_language_popularity()
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))
+    }
+
+    /// 最近 N 天每日创建模板数（转发真实聚合）
+    pub async fn get_daily_created_counts(
+        &self,
+        days: i32,
+    ) -> Result<Vec<(String, i64)>, AppError> {
+        self.repository
+            .get_daily_created_counts(days)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))
+    }
+
+    /// 已发布文件总数（各模板最新版本 file_count 汇总）
+    pub async fn get_total_published_files(&self) -> Result<i64, AppError> {
+        self.repository
+            .get_total_published_files()
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))
+    }
+
+    /// 模板复杂度统计：类型分档 + 变量定义数量分档（读取各模板 variables.json）
+    pub async fn get_template_complexity_stats(&self) -> Result<ComplexityStats, AppError> {
+        #[derive(Default)]
+        struct Acc {
+            simple: i64,
+            medium: i64,
+            complex: i64,
+            no_variable: i64,
+            few_variable: i64,
+            many_variable: i64,
+        }
+        let mut acc = Acc::default();
+
+        let templates = self
+            .repository
+            .list_all_ids_and_types()
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        for (id, template_type) in templates {
+            match template_type.as_str() {
+                "basic" => acc.simple += 1,
+                "scaffold" => acc.medium += 1,
+                _ => acc.complex += 1,
+            }
+
+            // 变量数量：读 .meta/variables/variables.json 的顶层字段数
+            let var_path = self.storage_manager.get_variables_file_path(id);
+            let var_count = match tokio::fs::read_to_string(&var_path).await {
+                Ok(content) => serde_json::from_str::<serde_json::Value>(&content)
+                    .ok()
+                    .and_then(|v| v.as_object().map(|o| o.len() as i64))
+                    .unwrap_or(0),
+                Err(_) => 0,
+            };
+            match var_count {
+                0 => acc.no_variable += 1,
+                1..=10 => acc.few_variable += 1,
+                _ => acc.many_variable += 1,
+            }
+        }
+
+        Ok(ComplexityStats {
+            simple: acc.simple,
+            medium: acc.medium,
+            complex: acc.complex,
+            no_variable: acc.no_variable,
+            few_variable: acc.few_variable,
+            many_variable: acc.many_variable,
+        })
     }
 
     /// 判断用户是否为模板属主（供 handler 层做属主校验）

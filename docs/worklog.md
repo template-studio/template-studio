@@ -330,3 +330,11 @@
 **涉及文件：** `crates/repositories/src/template_repository.rs`、`crates/services/src/template_service.rs`、`crates/shared/src/models/template.rs`
 
 **验收结果：** 实测模板 1779081291997 详情返回 languages=[{name: go, displayName: go, isPrimary: 1}]（修复前恒为空数组）。
+
+## 2026-08-29 统计接口真实化（仪表盘五指标去伪造）
+
+**变更内容：** statistics.rs 五个接口全部改为真实数据——总览的 totalFiles 由 `模板数×5` 臆造改为各模板最新发布版本 file_count 汇总；分类分布/语言热度由 `count*100/total%10` 伪造改为 GROUP BY 真实聚合（含真实百分比）；复杂度由硬编码 5/8/3 改为按模板类型分档 + 解析各模板 variables.json 字段数分档（0/1-10/>10）；使用趋势由 `(i%10)+1` 伪造改为按 created_at 真实聚合（补零保持时间轴连续）。仓库层新增四个聚合查询，service 层转发。
+
+**涉及文件：** `apps/web/src/handlers/statistics.rs`（重写）、`crates/repositories/src/template_repository.rs`、`crates/services/src/template_service.rs`
+
+**验收结果：** 实测：分类分布 web:6/cli:1（真实）、语言热度 go:4/vue:2/rust:2/python:1（真实）、复杂度 6 scaffold+1 datadriven 且变量分档来自真实 variables.json、趋势 400 天窗口显示 7 个真实创建日（近 7 天全零为正确行为）。过程中发现并修复 MySQL `SUM(INT)` 返回 DECIMAL 导致 i64 解码失败被 unwrap_or(0) 吞掉的问题（CAST AS SIGNED），totalFiles 由 0 修正为 323。
