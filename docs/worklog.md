@@ -466,3 +466,19 @@
 **涉及文件：** `crates/repositories/src/template_repository.rs`、`crates/services/src/template_service.rs`
 
 **验收结果：** 编译零错误、模板核心 52 测试全过；三个列表接口回归（templateList 7 条/公开 4 条/我的 7 条），语言关联数量与改造前一致。核查确认列表返回的 language name 为 null 属存量行为（TemplateLanguageItem 本无 name 字段），非本次引入——完整语言名填充可复用此前已实现的 get_template_language_details，作为后续增强。
+
+## 2026-08-30 文档维护（清单 #26/#27）
+
+**变更内容：** ① `template-studio-dev` skill 新增「关键机制」段：大修后的八条约定（统一信封+ApiResponse/ErrorCode、属主校验必须接入、token 头+?token=+限速+账号锁定、审计旁路写入、type-check CI 阻断、safe_join 路径安全、迁移只走 migrate.py 禁运行时迁移、统计保持真实聚合）。② 审计报告修复进度全量回填：P0×12 全完成、P1×5 全完成、P2 引擎全完成、P3 部分完成（N+1 ✅、ApiResponse 奠基、git 深度异步化待），另列审计后新增的修复批次与疑点勘误。
+
+**涉及文件：** `.zcode/skills/template-studio-dev/SKILL.md`（skill 文件不随版本管理，无提交）、`dev-docs/project-deep-audit-2026-08.md`、`dev-docs/remaining-work-inventory.md`
+
+**验收结果：** skill 内容与当前代码核对一致；审计报告进度与 worklog 逐项对得上。
+
+## 2026-08-30 ApiResponse 批量迁移（清单 #8 主体完成）
+
+**变更内容：** 120 处手写 json! 成功信封批量迁移为 ApiResponse 构造（success_with_message 75 处 + success_msg 38 处，21 个 handler 文件），Json<Value> 签名的 handler 经 serde_json::to_value 桥接。多轮机械转换的边角修正：裸对象字面量补 json! 包裹（34 处）、format! 条件消息的两处所有权顺序、悬空多行匹配。剩余 7 处 json! 信封为特殊形态（multipart 上传响应、builtin/engine 常量构造、SSE 流），保持手写合理。过程中发现并修复 find_by_id 漏带锁定策略新列导致的用户信息 500（上一轮加列时只改了 find_by_username）。
+
+**涉及文件：** `apps/web/src/handlers/*.rs`（21 个）、`crates/repositories/src/user_repository.rs`
+
+**验收结果：** 编译零错误；信封回归实测——登录（code:0 + data 含 roles/token）、公开分类、用户信息（修复后 code:0）、统计总览均正常。新增代码从「禁手写 json!」的约定变为存量已基本遵循。

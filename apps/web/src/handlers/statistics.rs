@@ -9,6 +9,7 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
+use template_studio_shared::utils::response::ApiResponse;
 
 pub type AppState = super::super::AppState;
 
@@ -42,16 +43,18 @@ pub async fn get_overview(
         .await
         .unwrap_or(0);
 
-    Ok(Json(json!({
-        "code": 0,
-        "data": {
-            "totalTemplates": template_count,
-            "totalCategories": category_count,
-            "totalLanguages": language_count,
-            "totalFiles": total_files,
-        },
-        "message": "OK"
-    })))
+    Ok(Json(
+        serde_json::to_value(ApiResponse::success_with_message(
+            json!({
+                "totalTemplates": template_count,
+                "totalCategories": category_count,
+                "totalLanguages": language_count,
+                "totalFiles": total_files,
+            }),
+            "OK",
+        ))
+        .unwrap_or_default(),
+    ))
 }
 
 /// 分类分布：GROUP BY category_id 真实聚合
@@ -81,11 +84,13 @@ pub async fn get_category_distribution(
         })
         .collect();
 
-    Ok(Json(json!({
-        "code": 0,
-        "data": { "items": items },
-        "message": "OK"
-    })))
+    Ok(Json(
+        serde_json::to_value(ApiResponse::success_with_message(
+            json!({ "items": items }),
+            "OK",
+        ))
+        .unwrap_or_default(),
+    ))
 }
 
 /// 语言热度：template_languages JOIN languages 真实聚合
@@ -115,11 +120,13 @@ pub async fn get_language_popularity(
         })
         .collect();
 
-    Ok(Json(json!({
-        "code": 0,
-        "data": { "items": items },
-        "message": "OK"
-    })))
+    Ok(Json(
+        serde_json::to_value(ApiResponse::success_with_message(
+            json!({ "items": items }),
+            "OK",
+        ))
+        .unwrap_or_default(),
+    ))
 }
 
 /// 模板复杂度：按模板类型与变量定义数量真实分档
@@ -135,18 +142,20 @@ pub async fn get_template_complexity(
         .await
         .unwrap_or_default();
 
-    Ok(Json(json!({
-        "code": 0,
-        "data": {
-            "simpleTemplates": stats.simple,
-            "mediumTemplates": stats.medium,
-            "complexTemplates": stats.complex,
-            "noVariableTemplates": stats.no_variable,
-            "fewVariableTemplates": stats.few_variable,
-            "manyVariableTemplates": stats.many_variable,
-        },
-        "message": "OK"
-    })))
+    Ok(Json(
+        serde_json::to_value(ApiResponse::success_with_message(
+            json!({
+                "simpleTemplates": stats.simple,
+                "mediumTemplates": stats.medium,
+                "complexTemplates": stats.complex,
+                "noVariableTemplates": stats.no_variable,
+                "fewVariableTemplates": stats.few_variable,
+                "manyVariableTemplates": stats.many_variable,
+            }),
+            "OK",
+        ))
+        .unwrap_or_default(),
+    ))
 }
 
 /// 使用趋势：按模板创建日期真实聚合最近 N 天
@@ -175,9 +184,11 @@ pub async fn get_usage_trends(
         })
         .collect();
 
-    Ok(Json(json!({
-        "code": 0,
-        "data": { "items": items },
-        "message": "OK"
-    })))
+    Ok(Json(
+        serde_json::to_value(ApiResponse::success_with_message(
+            json!({ "items": items }),
+            "OK",
+        ))
+        .unwrap_or_default(),
+    ))
 }

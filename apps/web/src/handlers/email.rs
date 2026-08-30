@@ -1,6 +1,7 @@
 use axum::{extract::State, http::StatusCode, response::Json};
 use serde::Deserialize;
 use serde_json::{json, Value};
+use template_studio_shared::utils::response::ApiResponse;
 use validator::Validate;
 
 pub type AppState = super::super::AppState;
@@ -34,17 +35,21 @@ pub async fn forgot_password(
     }
 
     match state.email_service.send_reset_email(&request.email).await {
-        Ok(_) => Ok(Json(json!({
-            "code": 0,
-            "message": "如果该邮箱已注册，重置邮件已发送"
-        }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg(
+                "如果该邮箱已注册，重置邮件已发送",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => {
             tracing::error!("发送重置邮件失败: {}", e);
             // 不暴露具体错误，防止邮箱枚举
-            Ok(Json(json!({
-                "code": 0,
-                "message": "如果该邮箱已注册，重置邮件已发送"
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::<()>::success_msg(
+                    "如果该邮箱已注册，重置邮件已发送",
+                ))
+                .unwrap_or_default(),
+            ))
         }
     }
 }
@@ -63,10 +68,10 @@ pub async fn reset_password(
         .reset_password(&request.token, &request.password)
         .await
     {
-        Ok(_) => Ok(Json(json!({
-            "code": 0,
-            "message": "密码重置成功"
-        }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("密码重置成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
 }
@@ -80,10 +85,10 @@ pub async fn test_email(
         return error_response(StatusCode::BAD_REQUEST, "请输入收件邮箱");
     }
     match state.email_service.send_test_email(&query.email).await {
-        Ok(_) => Ok(Json(json!({
-            "code": 0,
-            "message": "测试邮件发送成功"
-        }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("测试邮件发送成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             &format!("发送失败: {}", e),

@@ -5,6 +5,7 @@ use axum::{
 };
 use serde_json::{json, Value};
 use template_studio_shared::models::category::*;
+use template_studio_shared::utils::response::ApiResponse;
 use validator::Validate;
 
 pub type AppState = super::super::AppState;
@@ -20,11 +21,13 @@ pub async fn create_category(
     }
 
     match state.category_service.create_category(request).await {
-        Ok(id) => Ok(Json(json!({
-            "code": 0,
-            "data": { "id": id },
-            "message": "创建分类成功"
-        }))),
+        Ok(id) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                json!({ "id": id }),
+                "创建分类成功",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -35,11 +38,10 @@ pub async fn get_category(
     Path(id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.category_service.get_category(id).await {
-        Ok(Some(category)) => Ok(Json(json!({
-            "code": 0,
-            "data": category,
-            "message": "获取分类成功"
-        }))),
+        Ok(Some(category)) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(category, "获取分类成功"))
+                .unwrap_or_default(),
+        )),
         Ok(None) => error_response(StatusCode::NOT_FOUND, "分类不存在"),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -56,10 +58,10 @@ pub async fn update_category(
     }
 
     match state.category_service.update_category(request).await {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "更新分类成功"
-        }))),
+        Ok(()) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("更新分类成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -70,10 +72,10 @@ pub async fn delete_category(
     Path(id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.category_service.delete_category(id).await {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "删除分类成功"
-        }))),
+        Ok(()) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("删除分类成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -91,15 +93,17 @@ pub async fn list_categories(
     let page = query.page.unwrap_or(1);
 
     match state.category_service.list_categories(query).await {
-        Ok(categories) => Ok(Json(json!({
-            "code": 0,
-            "message": "OK",
-            "data": {
-                "currentPage": page,
-                "total": categories.len(),
-                "categoriesList": categories
-            }
-        }))),
+        Ok(categories) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                json!({
+                    "currentPage": page,
+                    "total": categories.len(),
+                    "categoriesList": categories
+                }),
+                "OK",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -109,15 +113,17 @@ pub async fn get_all_categories(
     State(state): State<AppState>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.category_service.get_all_categories().await {
-        Ok(categories) => Ok(Json(json!({
-            "code": 0,
-            "message": "OK",
-            "data": {
-                "currentPage": 1,
-                "total": categories.len(),
-                "categoriesList": categories
-            }
-        }))),
+        Ok(categories) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                json!({
+                    "currentPage": 1,
+                    "total": categories.len(),
+                    "categoriesList": categories
+                }),
+                "OK",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -134,10 +140,10 @@ pub async fn delete_category_by_query(
     Query(params): Query<DeleteCategoryQuery>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.category_service.delete_category(params.id).await {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "删除分类成功"
-        }))),
+        Ok(()) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("删除分类成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

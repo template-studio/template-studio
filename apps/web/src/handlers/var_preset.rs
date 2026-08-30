@@ -9,6 +9,7 @@ use template_studio_shared::models::var_preset::{
     UpdateVarPresetRequest, VarPresetDetailQuery, VarPresetDetailResponse, VarPresetListQuery,
     VarPresetResponse,
 };
+use template_studio_shared::utils::response::ApiResponse;
 use validator::Validate;
 
 pub type AppState = super::super::AppState;
@@ -24,11 +25,13 @@ pub async fn create_var_preset(
     }
 
     match state.var_preset_service.create_var_preset(request).await {
-        Ok(id) => Ok(Json(json!({
-            "code": 0,
-            "data": { "id": id },
-            "message": "创建变量预设成功"
-        }))),
+        Ok(id) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                json!({ "id": id }),
+                "创建变量预设成功",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -43,11 +46,10 @@ pub async fn get_var_preset(
             let detail_response = VarPresetDetailResponse {
                 var_preset: var_preset.into(),
             };
-            Ok(Json(json!({
-                "code": 0,
-                "data": detail_response,
-                "message": "OK"
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(detail_response, "OK"))
+                    .unwrap_or_default(),
+            ))
         }
         Ok(None) => error_response(StatusCode::NOT_FOUND, "变量预设不存在"),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
@@ -69,11 +71,10 @@ pub async fn get_var_preset_by_query(
             let detail_response = VarPresetDetailResponse {
                 var_preset: var_preset.into(),
             };
-            Ok(Json(json!({
-                "code": 0,
-                "data": detail_response,
-                "message": "OK"
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(detail_response, "OK"))
+                    .unwrap_or_default(),
+            ))
         }
         Ok(None) => error_response(StatusCode::NOT_FOUND, "变量预设不存在"),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
@@ -91,10 +92,10 @@ pub async fn update_var_preset(
     }
 
     match state.var_preset_service.update_var_preset(request).await {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "更新变量预设成功"
-        }))),
+        Ok(()) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("更新变量预设成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -105,10 +106,10 @@ pub async fn delete_var_preset(
     Path(id): Path<u64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.var_preset_service.delete_var_preset(id).await {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "删除变量预设成功"
-        }))),
+        Ok(()) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("删除变量预设成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -124,10 +125,10 @@ pub async fn toggle_var_preset(
     }
 
     match state.var_preset_service.toggle_var_preset(request).await {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "切换变量预设状态成功"
-        }))),
+        Ok(()) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("切换变量预设状态成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -150,14 +151,16 @@ pub async fn list_var_presets(
                 .into_iter()
                 .map(VarPresetResponse::from)
                 .collect();
-            Ok(Json(json!({
-                "code": 0,
-                "message": "OK",
-                "data": {
-                    "total": response.len(),
-                    "varPresetsList": response
-                }
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(
+                    json!({
+                        "total": response.len(),
+                        "varPresetsList": response
+                    }),
+                    "OK",
+                ))
+                .unwrap_or_default(),
+            ))
         }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -173,14 +176,16 @@ pub async fn get_all_var_presets(
                 .into_iter()
                 .map(VarPresetResponse::from)
                 .collect();
-            Ok(Json(json!({
-                "code": 0,
-                "message": "OK",
-                "data": {
-                    "total": response.len(),
-                    "varPresetsList": response
-                }
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(
+                    json!({
+                        "total": response.len(),
+                        "varPresetsList": response
+                    }),
+                    "OK",
+                ))
+                .unwrap_or_default(),
+            ))
         }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -196,14 +201,16 @@ pub async fn get_enabled_var_presets(
                 .into_iter()
                 .map(VarPresetResponse::from)
                 .collect();
-            Ok(Json(json!({
-                "code": 0,
-                "message": "OK",
-                "data": {
-                    "total": response.len(),
-                    "varPresetsList": response
-                }
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(
+                    json!({
+                        "total": response.len(),
+                        "varPresetsList": response
+                    }),
+                    "OK",
+                ))
+                .unwrap_or_default(),
+            ))
         }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -224,14 +231,16 @@ pub async fn get_var_presets_by_category(
                 .into_iter()
                 .map(VarPresetResponse::from)
                 .collect();
-            Ok(Json(json!({
-                "code": 0,
-                "message": "OK",
-                "data": {
-                    "total": response.len(),
-                    "varPresetsList": response
-                }
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(
+                    json!({
+                        "total": response.len(),
+                        "varPresetsList": response
+                    }),
+                    "OK",
+                ))
+                .unwrap_or_default(),
+            ))
         }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -252,11 +261,10 @@ pub async fn get_available_var_presets(
         .get_available_var_presets(query)
         .await
     {
-        Ok(response) => Ok(Json(json!({
-            "code": 0,
-            "message": "OK",
-            "data": response
-        }))),
+        Ok(response) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(response, "OK"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

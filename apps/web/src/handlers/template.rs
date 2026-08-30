@@ -14,6 +14,7 @@ use std::fs::File;
 use std::io::{Read, Seek, Write};
 use template_studio_shared::models::auth::AuthUser;
 use template_studio_shared::models::template::*;
+use template_studio_shared::utils::response::ApiResponse;
 use validator::Validate;
 use zip::read::ZipArchive;
 use zip::{write::FileOptions, ZipWriter};
@@ -80,11 +81,13 @@ pub async fn list_templates(
         .list_templates_original_format(query)
         .await
     {
-        Ok(template_list_response) => Ok(Json(json!({
-            "code": 0,
-            "message": "OK",
-            "data": template_list_response
-        }))),
+        Ok(template_list_response) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                template_list_response,
+                "OK",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -104,11 +107,10 @@ pub async fn get_template(
     Path(id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.template_service.get_template(id).await {
-        Ok(Some(template)) => Ok(Json(json!({
-            "code": 0,
-            "data": template,
-            "message": "获取模板成功"
-        }))),
+        Ok(Some(template)) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(template, "获取模板成功"))
+                .unwrap_or_default(),
+        )),
         Ok(None) => error_response(StatusCode::NOT_FOUND, "模板不存在"),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -120,11 +122,10 @@ pub async fn get_template_detail(
     Query(params): Query<TemplateDetailQuery>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.template_service.get_template(params.id).await {
-        Ok(Some(template)) => Ok(Json(json!({
-            "code": 0,
-            "data": template,
-            "message": "获取模板成功"
-        }))),
+        Ok(Some(template)) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(template, "获取模板成功"))
+                .unwrap_or_default(),
+        )),
         Ok(None) => error_response(StatusCode::NOT_FOUND, "模板不存在"),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -192,14 +193,16 @@ pub async fn get_template_file_content(
     match tokio::fs::read_to_string(&file_path).await {
         Ok(content) => {
             tracing::info!("文件读取成功: size={} bytes", content.len());
-            Ok(Json(json!({
-                "code": 0,
-                "data": {
-                    "content": content,
-                    "filePath": params.file_path
-                },
-                "message": "获取文件内容成功"
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(
+                    json!({
+                        "content": content,
+                        "filePath": params.file_path
+                    }),
+                    "获取文件内容成功",
+                ))
+                .unwrap_or_default(),
+            ))
         }
         Err(e) => {
             tracing::error!("文件读取失败: {:?}", e);
@@ -207,15 +210,17 @@ pub async fn get_template_file_content(
             if let Ok(bytes) = tokio::fs::read(&file_path).await {
                 // 转换为base64返回
                 let base64_content = general_purpose::STANDARD.encode(&bytes);
-                Ok(Json(json!({
-                    "code": 0,
-                    "data": {
-                        "content": base64_content,
-                        "filePath": params.file_path,
-                        "isBinary": true
-                    },
-                    "message": "获取文件内容成功"
-                })))
+                Ok(Json(
+                    serde_json::to_value(ApiResponse::success_with_message(
+                        json!({
+                            "content": base64_content,
+                            "filePath": params.file_path,
+                            "isBinary": true
+                        }),
+                        "获取文件内容成功",
+                    ))
+                    .unwrap_or_default(),
+                ))
             } else {
                 error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string())
             }
@@ -358,19 +363,21 @@ pub async fn add_template_file(
     };
 
     // 返回新创建的文件节点信息（与文件树格式一致）
-    Ok(Json(json!({
-        "code": 0,
-        "data": {
-            "id": chrono::Utc::now().timestamp_millis(), // 临时ID
-            "fileName": request.file_name,
-            "filePath": relative_path,
-            "isDirectory": request.is_directory,
-            "parentId": 0, // 前端会根据 parentPath 重新组织树结构
-            "fileSize": file_size,
-            "md5": md5_hash
-        },
-        "message": "文件创建成功"
-    })))
+    Ok(Json(
+        serde_json::to_value(ApiResponse::success_with_message(
+            json!({
+                "id": chrono::Utc::now().timestamp_millis(), // 临时ID
+                "fileName": request.file_name,
+                "filePath": relative_path,
+                "isDirectory": request.is_directory,
+                "parentId": 0, // 前端会根据 parentPath 重新组织树结构
+                "fileSize": file_size,
+                "md5": md5_hash
+            }),
+            "文件创建成功",
+        ))
+        .unwrap_or_default(),
+    ))
 }
 
 /// 删除文件请求参数
@@ -439,10 +446,9 @@ pub async fn delete_template_file(
 
     tracing::info!("文件删除成功: {:?}", file_path);
 
-    Ok(Json(json!({
-        "code": 0,
-        "message": "文件删除成功"
-    })))
+    Ok(Json(
+        serde_json::to_value(ApiResponse::<()>::success_msg("文件删除成功")).unwrap_or_default(),
+    ))
 }
 
 /// 编辑文件请求
@@ -506,10 +512,9 @@ pub async fn edit_template_file(
         request.content.len()
     );
 
-    Ok(Json(json!({
-        "code": 0,
-        "message": "文件保存成功"
-    })))
+    Ok(Json(
+        serde_json::to_value(ApiResponse::<()>::success_msg("文件保存成功")).unwrap_or_default(),
+    ))
 }
 
 /// 移动文件请求
@@ -605,10 +610,9 @@ pub async fn move_template_file(
 
     tracing::info!("文件移动成功: {:?} -> {:?}", source_path, target_path);
 
-    Ok(Json(json!({
-        "code": 0,
-        "message": "文件移动成功"
-    })))
+    Ok(Json(
+        serde_json::to_value(ApiResponse::<()>::success_msg("文件移动成功")).unwrap_or_default(),
+    ))
 }
 
 /// 获取模板类型列表
@@ -618,11 +622,10 @@ pub async fn get_template_types(
     match state.template_service.get_template_types().await {
         Ok(template_types) => {
             let response = TemplateTypesResponse { template_types };
-            Ok(Json(json!({
-                "code": 0,
-                "data": response,
-                "message": "OK"
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(response, "OK"))
+                    .unwrap_or_default(),
+            ))
         }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -649,10 +652,10 @@ pub async fn toggle_featured(
         .toggle_featured(request.id, request.is_featured)
         .await
     {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "切换推荐状态成功"
-        }))),
+        Ok(()) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("切换推荐状态成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -689,10 +692,10 @@ pub async fn delete_template(
                     user_agent: None,
                 })
                 .await;
-            Ok(Json(json!({
-                "code": 0,
-                "message": "删除模板成功"
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::<()>::success_msg("删除模板成功"))
+                    .unwrap_or_default(),
+            ))
         }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -735,11 +738,13 @@ pub async fn create_template(
                 }
             }
 
-            Ok(Json(json!({
-                "code": 0,
-                "data": template_id,
-                "message": "模板创建成功"
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(
+                    template_id,
+                    "模板创建成功",
+                ))
+                .unwrap_or_default(),
+            ))
         }
         Err(e) => {
             // 根据错误类型返回不同的状态码
@@ -1020,15 +1025,17 @@ pub async fn upload_code(
         is_text
     );
 
-    Ok(Json(json!({
-        "code": 0,
-        "data": {
-            "fileName": file_name,
-            "filePath": file_path,
-            "isTextFile": is_text
-        },
-        "message": "文件上传成功"
-    })))
+    Ok(Json(
+        serde_json::to_value(ApiResponse::success_with_message(
+            json!({
+                "fileName": file_name,
+                "filePath": file_path,
+                "isTextFile": is_text
+            }),
+            "文件上传成功",
+        ))
+        .unwrap_or_default(),
+    ))
 }
 
 /// 上传ZIP包
@@ -1169,14 +1176,16 @@ pub async fn upload_zip(
         failed_files
     );
 
-    Ok(Json(json!({
-        "code": 0,
-        "data": {
-            "successCount": success_count,
-            "failedFiles": failed_files
-        },
-        "message": "ZIP包上传完成"
-    })))
+    Ok(Json(
+        serde_json::to_value(ApiResponse::success_with_message(
+            json!({
+                "successCount": success_count,
+                "failedFiles": failed_files
+            }),
+            "ZIP包上传完成",
+        ))
+        .unwrap_or_default(),
+    ))
 }
 
 /// 检查模板是否已有自定义文件
@@ -1659,10 +1668,10 @@ pub async fn update_template(
     match state.template_service.update_template(request).await {
         Ok(()) => {
             tracing::info!("更新模板成功");
-            Ok(Json(json!({
-                "code": 0,
-                "message": "更新模板成功"
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::<()>::success_msg("更新模板成功"))
+                    .unwrap_or_default(),
+            ))
         }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -1747,11 +1756,13 @@ pub async fn fork_template(
                 }
             }
 
-            Ok(Json(json!({
-                "code": 0,
-                "data": new_template_id,
-                "message": "Fork 模板成功"
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(
+                    new_template_id,
+                    "Fork 模板成功",
+                ))
+                .unwrap_or_default(),
+            ))
         }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -1790,7 +1801,10 @@ pub async fn list_my_templates(
         .list_user_templates(auth_user.user_id, query)
         .await
     {
-        Ok(resp) => Ok(Json(json!({ "code": 0, "data": resp }))),
+        Ok(resp) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(resp, "获取成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -1809,7 +1823,10 @@ pub async fn update_user_template(
         .update_user_template(auth_user.user_id, request)
         .await
     {
-        Ok(_) => Ok(Json(json!({ "code": 0, "message": "模板更新成功" }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("模板更新成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
 }
@@ -1826,7 +1843,10 @@ pub async fn delete_user_template(
         .delete_user_template(auth_user.user_id, id)
         .await
     {
-        Ok(_) => Ok(Json(json!({ "code": 0, "message": "模板删除成功" }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("模板删除成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
 }
@@ -1843,7 +1863,9 @@ pub async fn submit_for_review(
         .submit_for_review(auth_user.user_id, id)
         .await
     {
-        Ok(_) => Ok(Json(json!({ "code": 0, "message": "已提交审核" }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("已提交审核")).unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
 }
@@ -1854,7 +1876,10 @@ pub async fn list_public_templates(
     Query(query): Query<UserTemplateListQuery>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.template_service.list_public_templates(query).await {
-        Ok(resp) => Ok(Json(json!({ "code": 0, "data": resp }))),
+        Ok(resp) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(resp, "获取成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -1880,7 +1905,10 @@ pub async fn list_pending_templates(
         .list_pending_templates(page, page_size)
         .await
     {
-        Ok(resp) => Ok(Json(json!({ "code": 0, "data": resp }))),
+        Ok(resp) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(resp, "获取成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -1896,7 +1924,9 @@ pub async fn review_template_admin(
         .review_template(auth_user.user_id, request)
         .await
     {
-        Ok(_) => Ok(Json(json!({ "code": 0, "message": "审核完成" }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("审核完成")).unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
 }

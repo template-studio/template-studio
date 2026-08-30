@@ -26,7 +26,7 @@ impl UserRepository {
 
     pub async fn find_by_id(&self, id: i64) -> Result<Option<User>> {
         let user = sqlx::query_as::<_, User>(
-            "SELECT id, username, password_hash, email, avatar, bio, status, last_login_at, created_at, updated_at FROM users WHERE id = ?"
+            "SELECT id, username, password_hash, email, avatar, bio, status, last_login_at, created_at, updated_at, failed_login_count, locked_until FROM users WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&self.pool)

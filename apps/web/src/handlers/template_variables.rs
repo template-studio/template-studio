@@ -6,6 +6,7 @@ use axum::{
     response::Json,
 };
 use serde_json::{json, Value};
+use template_studio_shared::utils::response::ApiResponse;
 
 pub type AppState = super::super::AppState;
 
@@ -26,21 +27,23 @@ pub async fn get_variables(
     {
         Ok(content) => {
             // 包装成原始API格式以适配前端
-            Ok(Json(json!({
-                "code": 0,
-                "message": "OK",
-                "data": {
-                    "templateExpose": {
-                        "id": 0,
-                        "templateId": template_id_i64,
-                        "fieldSchemaJson": content,
-                        "version": "1.0",
-                        "description": "",
-                        "createdAt": "",
-                        "updatedAt": ""
-                    }
-                }
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(
+                    json!({
+                        "templateExpose": {
+                            "id": 0,
+                            "templateId": template_id_i64,
+                            "fieldSchemaJson": content,
+                            "version": "1.0",
+                            "description": "",
+                            "createdAt": "",
+                            "updatedAt": ""
+                        }
+                    }),
+                    "OK",
+                ))
+                .unwrap_or_default(),
+            ))
         }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -71,10 +74,9 @@ pub async fn save_variables(
         .save_variables(template_id_i64, content)
         .await
     {
-        Ok(_) => Ok(Json(json!({
-            "code": 0,
-            "message": "保存成功"
-        }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("保存成功")).unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -94,11 +96,10 @@ pub async fn get_test_data(
         .get_test_data(template_id_i64)
         .await
     {
-        Ok(content) => Ok(Json(json!({
-            "code": 0,
-            "data": content,
-            "message": "OK"
-        }))),
+        Ok(content) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(content, "OK"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -128,10 +129,9 @@ pub async fn save_test_data(
         .save_test_data(template_id_i64, content)
         .await
     {
-        Ok(_) => Ok(Json(json!({
-            "code": 0,
-            "message": "保存成功"
-        }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("保存成功")).unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

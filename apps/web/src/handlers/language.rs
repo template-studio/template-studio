@@ -3,6 +3,7 @@ use serde_json::{json, Value};
 use template_studio_shared::models::language::{
     LanguageListQuery, LanguageResponse, UpdateLanguageRequest,
 };
+use template_studio_shared::utils::response::ApiResponse;
 use validator::Validate;
 
 pub type AppState = super::super::AppState;
@@ -16,15 +17,17 @@ pub async fn list_languages(
         Ok(languages) => {
             let response: Vec<LanguageResponse> =
                 languages.into_iter().map(LanguageResponse::from).collect();
-            Ok(Json(json!({
-                "code": 0,
-                "message": "OK",
-                "data": {
-                    "currentPage": 1,
-                    "total": response.len(),
-                    "languagesList": response
-                }
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(
+                    json!({
+                        "currentPage": 1,
+                        "total": response.len(),
+                        "languagesList": response
+                    }),
+                    "OK",
+                ))
+                .unwrap_or_default(),
+            ))
         }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -38,15 +41,17 @@ pub async fn get_all_languages(
         Ok(languages) => {
             let response: Vec<LanguageResponse> =
                 languages.into_iter().map(LanguageResponse::from).collect();
-            Ok(Json(json!({
-                "code": 0,
-                "message": "OK",
-                "data": {
-                    "currentPage": 1,
-                    "total": response.len(),
-                    "languagesList": response
-                }
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(
+                    json!({
+                        "currentPage": 1,
+                        "total": response.len(),
+                        "languagesList": response
+                    }),
+                    "OK",
+                ))
+                .unwrap_or_default(),
+            ))
         }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -60,15 +65,17 @@ pub async fn get_popular_languages(
         Ok(languages) => {
             let response: Vec<LanguageResponse> =
                 languages.into_iter().map(LanguageResponse::from).collect();
-            Ok(Json(json!({
-                "code": 0,
-                "message": "OK",
-                "data": {
-                    "currentPage": 1,
-                    "total": response.len(),
-                    "languagesList": response
-                }
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(
+                    json!({
+                        "currentPage": 1,
+                        "total": response.len(),
+                        "languagesList": response
+                    }),
+                    "OK",
+                ))
+                .unwrap_or_default(),
+            ))
         }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -85,10 +92,10 @@ pub async fn update_language(
     }
 
     match state.language_service.update_language(request).await {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "更新编程语言成功"
-        }))),
+        Ok(()) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("更新编程语言成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

@@ -10,6 +10,7 @@ use axum::{
 use serde::Deserialize;
 use serde_json::{json, Value};
 use template_studio_shared::utils::error::AppError;
+use template_studio_shared::utils::response::ApiResponse;
 
 pub type AppState = super::super::AppState;
 
@@ -136,11 +137,10 @@ pub async fn preview_backup(
     ))?;
 
     match state.backup_service.preview_backup(&backup_data).await {
-        Ok(preview) => Ok(Json(json!({
-            "code": 0,
-            "message": "OK",
-            "data": preview
-        }))),
+        Ok(preview) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(preview, "OK"))
+                .unwrap_or_default(),
+        )),
         Err(AppError::Validation(msg)) => Err((
             StatusCode::BAD_REQUEST,
             Json(json!({"code": 400, "message": msg})),
@@ -230,11 +230,17 @@ pub async fn restore_backup(
         .restore_backup(template_id, &backup_data)
         .await
     {
-        Ok(result) => Ok(Json(json!({
-            "code": 0,
-            "message": if result.success { "恢复成功" } else { "恢复失败" },
-            "data": result
-        }))),
+        Ok(result) => {
+            let msg = if result.success {
+                "恢复成功"
+            } else {
+                "恢复失败"
+            };
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(result, msg))
+                    .unwrap_or_default(),
+            ))
+        }
         Err(AppError::Validation(msg)) => Err((
             StatusCode::BAD_REQUEST,
             Json(json!({"code": 400, "message": msg})),

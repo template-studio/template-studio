@@ -3,6 +3,7 @@
 use axum::{extract::State, http::StatusCode, response::Json};
 use serde::{de::Error, Deserialize, Deserializer};
 use serde_json::{json, Value};
+use template_studio_shared::utils::response::ApiResponse;
 
 pub type AppState = super::super::AppState;
 
@@ -55,11 +56,10 @@ pub async fn render_file(
         .render_file(template_id, &payload.file_path, &variables)
         .await
     {
-        Ok(result) => Ok(Json(json!({
-            "code": 0,
-            "message": "OK",
-            "data": result
-        }))),
+        Ok(result) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(result, "OK"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -99,11 +99,10 @@ pub async fn render_file_tree(
         .render_file_tree(template_id, file_tree_response.tree, &variables)
         .await
     {
-        Ok(result) => Ok(Json(json!({
-            "code": 0,
-            "message": "OK",
-            "data": result
-        }))),
+        Ok(result) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(result, "OK"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

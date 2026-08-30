@@ -8,6 +8,7 @@ use axum::{
 use serde_json::{json, Value};
 use template_studio_shared::models::auth::AuthUser;
 use template_studio_shared::models::release::*;
+use template_studio_shared::utils::response::ApiResponse;
 use validator::Validate;
 
 pub type AppState = super::super::AppState;
@@ -55,11 +56,10 @@ pub async fn create_release(
                     user_agent: None,
                 })
                 .await;
-            Ok(Json(json!({
-                "code": 0,
-                "message": "发布成功",
-                "data": response
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(response, "发布成功"))
+                    .unwrap_or_default(),
+            ))
         }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -72,14 +72,16 @@ pub async fn list_releases(
     Path(id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.release_service.list_versions(id).await {
-        Ok(versions) => Ok(Json(json!({
-            "code": 0,
-            "message": "OK",
-            "data": VersionsListResponse {
-                template_id: id,
-                versions,
-            }
-        }))),
+        Ok(versions) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                VersionsListResponse {
+                    template_id: id,
+                    versions,
+                },
+                "OK",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -110,11 +112,10 @@ pub async fn rollback_version(
                     user_agent: None,
                 })
                 .await;
-            Ok(Json(json!({
-                "code": 0,
-                "message": "回滚成功",
-                "data": response
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(response, "回滚成功"))
+                    .unwrap_or_default(),
+            ))
         }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -132,10 +133,10 @@ pub async fn deprecate_version(
         return Err(resp);
     }
     match state.release_service.deprecate_version(id, &version).await {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "版本已标记为弃用"
-        }))),
+        Ok(()) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("版本已标记为弃用"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -152,11 +153,13 @@ pub async fn reset_to_latest(
         return Err(resp);
     }
     match state.release_service.reset_to_latest(id).await {
-        Ok(response) => Ok(Json(json!({
-            "code": 0,
-            "message": format!("已重置到版本 {}", response.version),
-            "data": response
-        }))),
+        Ok(response) => {
+            let msg = format!("已重置到版本 {}", response.version);
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(response, &msg))
+                    .unwrap_or_default(),
+            ))
+        }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 use template_studio_shared::models::role::{
     AssignPermissionsRequest, CreateRoleRequest, UpdateRoleRequest,
 };
+use template_studio_shared::utils::response::ApiResponse;
 use validator::Validate;
 
 pub type AppState = super::super::AppState;
@@ -16,14 +17,16 @@ pub async fn list_roles(
     State(state): State<AppState>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.role_service.list_roles().await {
-        Ok(roles) => Ok(Json(json!({
-            "code": 0,
-            "message": "OK",
-            "data": {
-                "list": roles,
-                "total": roles.len()
-            }
-        }))),
+        Ok(roles) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                json!({
+                    "list": roles,
+                    "total": roles.len()
+                }),
+                "OK",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -38,11 +41,13 @@ pub async fn create_role(
     }
 
     match state.role_service.create_role(&request).await {
-        Ok(id) => Ok(Json(json!({
-            "code": 0,
-            "data": { "id": id },
-            "message": "创建角色成功"
-        }))),
+        Ok(id) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                json!({ "id": id }),
+                "创建角色成功",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -53,10 +58,10 @@ pub async fn update_role(
     Json(request): Json<UpdateRoleRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.role_service.update_role(&request).await {
-        Ok(_) => Ok(Json(json!({
-            "code": 0,
-            "message": "更新角色成功"
-        }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("更新角色成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -67,10 +72,10 @@ pub async fn delete_role(
     Path(id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.role_service.delete_role(id).await {
-        Ok(_) => Ok(Json(json!({
-            "code": 0,
-            "message": "删除角色成功"
-        }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("删除角色成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -86,10 +91,10 @@ pub async fn assign_permissions(
         .assign_permissions(role_id, &request.permission_ids)
         .await
     {
-        Ok(_) => Ok(Json(json!({
-            "code": 0,
-            "message": "分配权限成功"
-        }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("分配权限成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -100,10 +105,13 @@ pub async fn get_role_permissions(
     Path(role_id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.role_service.get_role_permissions(role_id).await {
-        Ok(ids) => Ok(Json(json!({
-            "code": 0,
-            "data": { "permission_ids": ids }
-        }))),
+        Ok(ids) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                json!({ "permission_ids": ids }),
+                "操作成功",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

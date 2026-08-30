@@ -1,5 +1,6 @@
 use axum::{extract::State, http::StatusCode, response::Json};
 use serde_json::{json, Value};
+use template_studio_shared::utils::response::ApiResponse;
 
 pub type AppState = super::super::AppState;
 
@@ -8,14 +9,16 @@ pub async fn list_permissions(
     State(state): State<AppState>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.permission_service.list_permissions().await {
-        Ok(permissions) => Ok(Json(json!({
-            "code": 0,
-            "message": "OK",
-            "data": {
-                "list": permissions,
-                "total": permissions.len()
-            }
-        }))),
+        Ok(permissions) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                json!({
+                    "list": permissions,
+                    "total": permissions.len()
+                }),
+                "OK",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -25,10 +28,10 @@ pub async fn get_permission_tree(
     State(state): State<AppState>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.permission_service.get_permission_tree().await {
-        Ok(tree) => Ok(Json(json!({
-            "code": 0,
-            "data": tree
-        }))),
+        Ok(tree) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(tree, "操作成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

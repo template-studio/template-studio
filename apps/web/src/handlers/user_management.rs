@@ -8,6 +8,7 @@ use template_studio_shared::models::auth::AuthUser;
 use template_studio_shared::models::user::{
     AssignRolesRequest, CreateUserRequest, UpdateUserRequest,
 };
+use template_studio_shared::utils::response::ApiResponse;
 use validator::Validate;
 
 pub type AppState = super::super::AppState;
@@ -17,14 +18,16 @@ pub async fn list_users(
     State(state): State<AppState>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.user_service.list_users().await {
-        Ok(users) => Ok(Json(json!({
-            "code": 0,
-            "message": "OK",
-            "data": {
-                "list": users,
-                "total": users.len()
-            }
-        }))),
+        Ok(users) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                json!({
+                    "list": users,
+                    "total": users.len()
+                }),
+                "OK",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -39,11 +42,13 @@ pub async fn create_user(
     }
 
     match state.user_service.create_user(&request).await {
-        Ok(id) => Ok(Json(json!({
-            "code": 0,
-            "data": { "id": id },
-            "message": "创建用户成功"
-        }))),
+        Ok(id) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                json!({ "id": id }),
+                "创建用户成功",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -54,10 +59,10 @@ pub async fn update_user(
     Json(request): Json<UpdateUserRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.user_service.update_user(&request).await {
-        Ok(_) => Ok(Json(json!({
-            "code": 0,
-            "message": "更新用户成功"
-        }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("更新用户成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -83,10 +88,10 @@ pub async fn delete_user(
                     user_agent: None,
                 })
                 .await;
-            Ok(Json(json!({
-                "code": 0,
-                "message": "删除用户成功"
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::<()>::success_msg("删除用户成功"))
+                    .unwrap_or_default(),
+            ))
         }
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -103,10 +108,10 @@ pub async fn assign_roles(
         .assign_roles(user_id, &request.role_ids)
         .await
     {
-        Ok(_) => Ok(Json(json!({
-            "code": 0,
-            "message": "分配角色成功"
-        }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("分配角色成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

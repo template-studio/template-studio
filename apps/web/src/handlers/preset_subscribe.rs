@@ -7,6 +7,7 @@ use axum::{
 };
 use serde_json::{json, Value};
 use template_studio_shared::models::preset_subscribe::*;
+use template_studio_shared::utils::response::ApiResponse;
 use validator::Validate;
 
 pub type AppState = super::super::AppState;
@@ -30,11 +31,13 @@ pub async fn get_subscribe_list(
         .get_subscribe_list(&template_id, &subscribe_path)
         .await
     {
-        Ok(response) => Ok(Json(json!({
-            "code": 0,
-            "data": response,
-            "message": "获取订阅列表成功"
-        }))),
+        Ok(response) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                response,
+                "获取订阅列表成功",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -63,10 +66,9 @@ pub async fn subscribe(
         .subscribe(request, &subscribe_path)
         .await
     {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "订阅成功"
-        }))),
+        Ok(()) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("订阅成功")).unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -94,10 +96,10 @@ pub async fn unsubscribe(
         .unsubscribe(request, &subscribe_path)
         .await
     {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "取消订阅成功"
-        }))),
+        Ok(()) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("取消订阅成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -121,11 +123,10 @@ pub async fn get_preset_variables(
         .get_preset_variables(&template_id, &subscribe_path)
         .await
     {
-        Ok(response) => Ok(Json(json!({
-            "code": 0,
-            "data": response,
-            "message": "OK"
-        }))),
+        Ok(response) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(response, "OK"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

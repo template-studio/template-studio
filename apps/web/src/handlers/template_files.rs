@@ -9,6 +9,7 @@ use axum::{
 use serde_json::{json, Value};
 use template_studio_shared::models::release::*;
 use template_studio_shared::utils::error::AppError;
+use template_studio_shared::utils::response::ApiResponse;
 
 pub type AppState = super::super::AppState;
 
@@ -68,11 +69,10 @@ pub async fn preview_template_file(
                 version: None, // preview 不返回版本号
             };
 
-            Ok(Json(json!({
-                "code": 0,
-                "message": "OK",
-                "data": response
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(response, "OK"))
+                    .unwrap_or_default(),
+            ))
         }
         Err(AppError::NotFound(msg)) => Err((
             StatusCode::NOT_FOUND,
@@ -155,11 +155,10 @@ pub async fn generate_template_file(
                 version: Some(version), // generate 返回使用的版本号
             };
 
-            Ok(Json(json!({
-                "code": 0,
-                "message": "OK",
-                "data": response
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(response, "OK"))
+                    .unwrap_or_default(),
+            ))
         }
         Err(AppError::NotFound(msg)) => error_response(StatusCode::NOT_FOUND, &msg),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
@@ -219,11 +218,10 @@ pub async fn preview_file_tree(
         .render_file_tree(template_id, file_tree_response.tree, &variables)
         .await
     {
-        Ok(result) => Ok(Json(json!({
-            "code": 0,
-            "message": "OK",
-            "data": result
-        }))),
+        Ok(result) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(result, "OK"))
+                .unwrap_or_default(),
+        )),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({"code": 500, "message": e.to_string()})),
@@ -316,11 +314,10 @@ pub async fn generate_file_tree(
             if let Some(obj) = response_data.as_object_mut() {
                 obj.insert("version".to_string(), serde_json::json!(version));
             }
-            Ok(Json(json!({
-                "code": 0,
-                "message": "OK",
-                "data": response_data
-            })))
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(response_data, "OK"))
+                    .unwrap_or_default(),
+            ))
         }
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -406,14 +403,16 @@ pub async fn get_template_variables(
         .await
         .unwrap_or_else(|_| "{}".to_string());
 
-    Ok(Json(json!({
-        "code": 0,
-        "message": "OK",
-        "data": {
-            "fieldSchemaJson": field_schema_json,
-            "version": version
-        }
-    })))
+    Ok(Json(
+        serde_json::to_value(ApiResponse::success_with_message(
+            json!({
+                "fieldSchemaJson": field_schema_json,
+                "version": version
+            }),
+            "OK",
+        ))
+        .unwrap_or_default(),
+    ))
 }
 
 /// 生成并下载ZIP文件（生产模式，从发布版本读取）
@@ -624,11 +623,13 @@ pub async fn clear_cache(
     state.template_render_service.clear_cache(template_id).await;
     template_studio_template_core::clear_template_cache();
 
-    Ok(Json(json!({
-        "code": 0,
-        "message": "缓存已清除",
-        "data": {
-            "templateId": template_id
-        }
-    })))
+    Ok(Json(
+        serde_json::to_value(ApiResponse::success_with_message(
+            json!({
+                "templateId": template_id
+            }),
+            "缓存已清除",
+        ))
+        .unwrap_or_default(),
+    ))
 }

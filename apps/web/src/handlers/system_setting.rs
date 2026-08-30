@@ -5,6 +5,7 @@ use axum::{
 };
 use serde_json::{json, Value};
 use template_studio_shared::models::system_setting::*;
+use template_studio_shared::utils::response::ApiResponse;
 use validator::Validate;
 
 pub type AppState = super::super::AppState;
@@ -19,11 +20,10 @@ pub async fn get_settings(
         .get_settings(query.group.as_deref(), query.key.as_deref())
         .await
     {
-        Ok(settings) => Ok(Json(json!({
-            "code": 0,
-            "message": "OK",
-            "data": settings
-        }))),
+        Ok(settings) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(settings, "OK"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -38,11 +38,10 @@ pub async fn get_public_settings(
         .get_settings(Some(&group), None)
         .await
     {
-        Ok(settings) => Ok(Json(json!({
-            "code": 0,
-            "message": "OK",
-            "data": settings
-        }))),
+        Ok(settings) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(settings, "OK"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -57,10 +56,10 @@ pub async fn update_setting(
     }
 
     match state.system_setting_service.update_setting(&request).await {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "更新设置成功"
-        }))),
+        Ok(()) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("更新设置成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -79,10 +78,10 @@ pub async fn batch_update_settings(
         .batch_update_settings(&request)
         .await
     {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "批量更新设置成功"
-        }))),
+        Ok(()) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("批量更新设置成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

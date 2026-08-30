@@ -7,6 +7,7 @@ use axum::{
 };
 use serde_json::{json, Value};
 use template_studio_shared::models::auth::AuthUser;
+use template_studio_shared::utils::response::ApiResponse;
 
 pub type AppState = super::super::AppState;
 
@@ -26,11 +27,10 @@ pub async fn analyze_variables(
         .analyze_variables(template_id)
         .await
     {
-        Ok(response) => Ok(Json(json!({
-            "code": 0,
-            "data": response,
-            "message": "OK"
-        }))),
+        Ok(response) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(response, "OK"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

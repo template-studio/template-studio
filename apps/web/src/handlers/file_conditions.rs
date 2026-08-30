@@ -8,6 +8,7 @@ use axum::{
 use serde::Deserialize;
 use serde_json::{json, Value};
 use template_studio_shared::models::auth::AuthUser;
+use template_studio_shared::utils::response::ApiResponse;
 
 pub type AppState = super::super::AppState;
 
@@ -43,25 +44,29 @@ pub async fn get_file_condition(
     {
         Ok(Some(condition)) => {
             let condition_json = serde_json::to_value(&condition).unwrap_or_default();
-            Ok(Json(json!({
-                "code": 0,
-                "message": "OK",
-                "data": {
+            Ok(Json(
+                serde_json::to_value(ApiResponse::success_with_message(
+                    json!({
+                        "template_id": params.template_id,
+                        "file_path": params.file_path,
+                        "condition": condition_json
+                    }),
+                    "OK",
+                ))
+                .unwrap_or_default(),
+            ))
+        }
+        Ok(None) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                json!({
                     "template_id": params.template_id,
                     "file_path": params.file_path,
-                    "condition": condition_json
-                }
-            })))
-        }
-        Ok(None) => Ok(Json(json!({
-            "code": 0,
-            "message": "OK",
-            "data": {
-                "template_id": params.template_id,
-                "file_path": params.file_path,
-                "condition": null
-            }
-        }))),
+                    "condition": null
+                }),
+                "OK",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -94,14 +99,16 @@ pub async fn set_file_condition(
         .set_file_condition(req.template_id, &req.file_path, req.condition)
         .await
     {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "条件设置成功",
-            "data": {
-                "template_id": req.template_id,
-                "file_path": req.file_path
-            }
-        }))),
+        Ok(()) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                json!({
+                    "template_id": req.template_id,
+                    "file_path": req.file_path
+                }),
+                "条件设置成功",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -133,14 +140,16 @@ pub async fn delete_file_condition(
         .delete_file_condition(req.template_id, &req.file_path)
         .await
     {
-        Ok(()) => Ok(Json(json!({
-            "code": 0,
-            "message": "条件删除成功",
-            "data": {
-                "template_id": req.template_id,
-                "file_path": req.file_path
-            }
-        }))),
+        Ok(()) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                json!({
+                    "template_id": req.template_id,
+                    "file_path": req.file_path
+                }),
+                "条件删除成功",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -163,14 +172,16 @@ pub async fn export_conditions_yaml(
         .export_conditions_yaml(template_id)
         .await
     {
-        Ok(yaml_content) => Ok(Json(json!({
-            "code": 0,
-            "message": "导出成功",
-            "data": {
-                "template_id": template_id,
-                "yaml": yaml_content
-            }
-        }))),
+        Ok(yaml_content) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                json!({
+                    "template_id": template_id,
+                    "yaml": yaml_content
+                }),
+                "导出成功",
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -200,14 +211,13 @@ pub async fn import_conditions_yaml(
         .import_conditions_yaml(template_id, &req.yaml)
         .await
     {
-        Ok(count) => Ok(Json(json!({
-            "code": 0,
-            "message": format!("成功导入 {} 个条件", count),
-            "data": {
-                "template_id": template_id,
-                "count": count
-            }
-        }))),
+        Ok(count) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(
+                json!({ "template_id": template_id, "count": count }),
+                &format!("成功导入 {} 个条件", count),
+            ))
+            .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }

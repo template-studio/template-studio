@@ -10,6 +10,7 @@ use template_studio_shared::models::pat::CreatePatRequest;
 use template_studio_shared::models::user::{
     ChangePasswordRequest, LoginRequest, RegisterRequest, UpdateProfileRequest,
 };
+use template_studio_shared::utils::response::ApiResponse;
 use tracing::warn;
 use validator::Validate;
 
@@ -26,11 +27,10 @@ pub async fn login(
     }
 
     match state.auth_service.login(&request).await {
-        Ok(resp) => Ok(Json(json!({
-            "code": 0,
-            "message": "登录成功",
-            "data": resp
-        }))),
+        Ok(resp) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(resp, "登录成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => {
             warn!("登录失败: {}", e);
             error_response(StatusCode::UNAUTHORIZED, &e.to_string())
@@ -48,11 +48,10 @@ pub async fn register(
     }
 
     match state.auth_service.register(&request).await {
-        Ok(resp) => Ok(Json(json!({
-            "code": 0,
-            "message": "注册成功",
-            "data": resp
-        }))),
+        Ok(resp) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(resp, "注册成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
 }
@@ -63,10 +62,10 @@ pub async fn get_info(
     Extension(auth_user): Extension<AuthUser>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     match state.auth_service.get_user_info(auth_user.user_id).await {
-        Ok(info) => Ok(Json(json!({
-            "code": 0,
-            "data": info
-        }))),
+        Ok(info) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(info, "获取成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -86,10 +85,10 @@ pub async fn change_password(
         .change_password(auth_user.user_id, &request)
         .await
     {
-        Ok(_) => Ok(Json(json!({
-            "code": 0,
-            "message": "密码修改成功"
-        }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("密码修改成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -104,11 +103,10 @@ pub async fn create_pat(
         return error_response(StatusCode::FORBIDDEN, "不允许使用令牌创建新令牌");
     }
     match state.pat_service.create(auth_user.user_id, &request).await {
-        Ok(resp) => Ok(Json(json!({
-            "code": 0,
-            "message": "令牌创建成功",
-            "data": resp
-        }))),
+        Ok(resp) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(resp, "令牌创建成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::BAD_REQUEST, &e.to_string()),
     }
 }
@@ -122,10 +120,10 @@ pub async fn list_pats(
         return error_response(StatusCode::FORBIDDEN, "不允许使用令牌管理令牌");
     }
     match state.pat_service.list(auth_user.user_id).await {
-        Ok(list) => Ok(Json(json!({
-            "code": 0,
-            "data": list
-        }))),
+        Ok(list) => Ok(Json(
+            serde_json::to_value(ApiResponse::success_with_message(list, "操作成功"))
+                .unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
@@ -140,10 +138,9 @@ pub async fn delete_pat(
         return error_response(StatusCode::FORBIDDEN, "不允许使用令牌管理令牌");
     }
     match state.pat_service.delete(id, auth_user.user_id).await {
-        Ok(true) => Ok(Json(json!({
-            "code": 0,
-            "message": "令牌已删除"
-        }))),
+        Ok(true) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("令牌已删除")).unwrap_or_default(),
+        )),
         Ok(false) => error_response(StatusCode::NOT_FOUND, "令牌不存在"),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
@@ -180,7 +177,9 @@ pub async fn update_profile(
         )
         .await
     {
-        Ok(_) => Ok(Json(json!({ "code": 0, "message": "更新成功" }))),
+        Ok(_) => Ok(Json(
+            serde_json::to_value(ApiResponse::<()>::success_msg("更新成功")).unwrap_or_default(),
+        )),
         Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
     }
 }
