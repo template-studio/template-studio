@@ -386,3 +386,11 @@
 **涉及文件：** `web/package.json`、`web/tsconfig.json`、`web/src/api/**`（3 文件批量标注）、`web/src/store/modules/user.ts`、`web/src/components/FooterBar.vue`、`web/src/composables/useRenderService.ts`、`web/src/views/editor/components/AdvancedDrawer.vue`、`web/build/vite/proxy.ts`、`.github/workflows/ci.yml`、`dev-docs/type-debt-inventory.md`（新增）
 
 **验收结果：** type-check 可稳定执行（97→30）；关键修复经 vite 编译验证（composable 200）；YAML 校验通过；错误清单落档供专项清理。
+
+## 2026-08-30 CLI 三个 stub 落地
+
+**变更内容：** ① `config set`：支持 server.url / server.api_key / user.author / user.email 四个配置项的写入与持久化（Config::save 落 ~/.cicbyte/template_studio/config/config.toml），未知配置项给出支持列表。② `ai config` 三子命令：show（持久化配置优先，未配置时展示环境变量状态并给出指引）、set（增量更新——未指定字段保留现有值，写回 config 的 [ai] 段，Config 结构新增可选 AiSection）、test（真实 HTTP 连通测试——对 chat/completions 发 8-token 探测请求，成功/HTTP 错误/网络错误三种结果都有明确输出，未配置时回退 AI_API_KEY 环境变量）。③ `ai recommend --project <id>`：CLI 不连数据库按 ID 无从解析，从「暂未实现」改为明确的指引性报错（附正确用法示例）。README 承诺的命令至此全部可用。
+
+**涉及文件：** `apps/cli/src/cli/commands.rs`、`apps/cli/src/config/mod.rs`
+
+**验收结果：** 实测——config set 写入后 config show 正确回显、未知项报支持列表；ai config show 未配置态/配置态两种输出正确；ai config set 持久化 glm 配置后 show 显示（key 脱敏）；ai config test 用假 key 对真实端点发起请求，返回真实的 HTTP 401 与服务端错误信息（链路完整）；recommend 给出明确指引。测试产物已从配置文件清理。

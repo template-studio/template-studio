@@ -1,9 +1,9 @@
+use super::{AiCommands, AiConfigCommands, ConfigCommands, CreateCommand, TemplateCommands};
 use crate::client::ApiClient;
 use crate::config::Config;
-use crate::tui::run_tui;
 use crate::generator::ProjectGenerator;
 use crate::renderer::LocalRenderer;
-use super::{CreateCommand, TemplateCommands, ConfigCommands, AiCommands, AiConfigCommands};
+use crate::tui::run_tui;
 use anyhow::{Context, Result};
 use tracing::{info, warn};
 
@@ -39,7 +39,8 @@ pub async fn handle_create(
             cmd.template,
             &cmd.output,
             cmd.force,
-        ).await?;
+        )
+        .await?;
     } else {
         // CLI模式
         let project_name = cmd.project_name.unwrap();
@@ -48,11 +49,15 @@ pub async fn handle_create(
         info!("CLI模式创建项目: {} from {}", project_name, template_name);
 
         // 查找模板
-        let template = client.find_template(&template_name).await
+        let template = client
+            .find_template(&template_name)
+            .await
             .context("查找模板失败")?;
 
         // 获取模板版本列表
-        let versions = client.get_template_versions(&template.id).await
+        let versions = client
+            .get_template_versions(&template.id)
+            .await
             .context("获取模板版本失败")?;
 
         if versions.is_empty() {
@@ -79,42 +84,36 @@ pub async fn handle_create(
             info!("下载模板中...");
 
             // 下载 ZIP
-            let zip_bytes = client.download_template_version(&template.id, &version.version).await
+            let zip_bytes = client
+                .download_template_version(&template.id, &version.version)
+                .await
                 .context("下载模板失败")?;
 
             info!("ZIP文件大小: {} bytes", zip_bytes.len());
 
             // 创建缓存目录
-            std::fs::create_dir_all(&cache_dir)
-                .context("创建缓存目录失败")?;
+            std::fs::create_dir_all(&cache_dir).context("创建缓存目录失败")?;
 
             // 解压 ZIP
             use std::io::Cursor;
             let cursor = Cursor::new(zip_bytes);
-            let mut archive = zip::ZipArchive::new(cursor)
-                .context("解析ZIP文件失败")?;
+            let mut archive = zip::ZipArchive::new(cursor).context("解析ZIP文件失败")?;
 
             for i in 0..archive.len() {
-                let mut file = archive.by_index(i)
-                    .context("读取ZIP条目失败")?;
-                let file_path = cache_dir.join(file.enclosed_name()
-                    .context("ZIP文件路径非法")?);
+                let mut file = archive.by_index(i).context("读取ZIP条目失败")?;
+                let file_path = cache_dir.join(file.enclosed_name().context("ZIP文件路径非法")?);
 
                 if file.is_dir() {
-                    std::fs::create_dir_all(&file_path)
-                        .context("创建目录失败")?;
+                    std::fs::create_dir_all(&file_path).context("创建目录失败")?;
                 } else {
                     if let Some(parent) = file_path.parent() {
                         if !parent.exists() {
-                            std::fs::create_dir_all(parent)
-                                .context("创建父目录失败")?;
+                            std::fs::create_dir_all(parent).context("创建父目录失败")?;
                         }
                     }
 
-                    let mut outfile = std::fs::File::create(&file_path)
-                        .context("创建文件失败")?;
-                    std::io::copy(&mut file, &mut outfile)
-                        .context("写入文件失败")?;
+                    let mut outfile = std::fs::File::create(&file_path).context("创建文件失败")?;
+                    std::io::copy(&mut file, &mut outfile).context("写入文件失败")?;
                 }
             }
 
@@ -141,12 +140,10 @@ pub async fn handle_create(
         // 本地渲染
         use crate::renderer::LocalRenderer;
         let renderer = LocalRenderer::new(cache_dir.clone());
-        let rendered_files = renderer.render(&variables_map)
-            .context("本地渲染失败")?;
+        let rendered_files = renderer.render(&variables_map).context("本地渲染失败")?;
 
         // 生成项目
-        let generator = ProjectGenerator::new(&cmd.output, cmd.force)
-            .with_template_path(cache_dir);
+        let generator = ProjectGenerator::new(&cmd.output, cmd.force).with_template_path(cache_dir);
         generator.generate(&project_name, &rendered_files)?;
 
         // 自动执行 Git 初始化（如果 git 可用）
@@ -196,12 +193,19 @@ pub async fn handle_template(
             }
         }
 
-        TemplateCommands::Info { template_name, variables, files } => {
+        TemplateCommands::Info {
+            template_name,
+            variables,
+            files,
+        } => {
             let template = client.get_template_info(&template_name).await?;
 
             println!("模板名称: {}", template.name);
             println!("模板ID: {}", template.id);
-            println!("描述: {}", template.description.as_deref().unwrap_or("无描述"));
+            println!(
+                "描述: {}",
+                template.description.as_deref().unwrap_or("无描述")
+            );
 
             if variables {
                 if let Some(vars) = template.variables {
@@ -240,10 +244,12 @@ pub async fn handle_template(
             let templates = client.list_templates(category.as_deref()).await?;
 
             let keyword_lower = keyword.to_lowercase();
-            let filtered: Vec<_> = templates.into_iter()
+            let filtered: Vec<_> = templates
+                .into_iter()
                 .filter(|t| {
                     t.name.to_lowercase().contains(&keyword_lower)
-                        || t.description.as_ref()
+                        || t.description
+                            .as_ref()
                             .map(|d| d.to_lowercase().contains(&keyword_lower))
                             .unwrap_or(false)
                 })
@@ -268,26 +274,48 @@ pub async fn handle_template(
     Ok(())
 }
 
-pub async fn handle_config(
-    cmd: ConfigCommands,
-    config_path: Option<String>,
-) -> Result<()> {
-    let config = Config::load(config_path)?;
+pub async fn handle_config(cmd: ConfigCommands, config_path: Option<String>) -> Result<()> {
+    let mut config = Config::load(config_path)?;
 
     match cmd {
         ConfigCommands::Show => {
             println!("当前配置:");
             println!("  服务器 URL: {}", config.server.url);
-            println!("  API 密钥: {}", if config.server.api_key.is_empty() { "(未设置)" } else { "****" });
-            println!("  默认作者: {}", config.user.author.unwrap_or_else(|| "(未设置)".to_string()));
-            println!("  默认邮箱: {}", config.user.email.unwrap_or_else(|| "(未设置)".to_string()));
+            println!(
+                "  API 密钥: {}",
+                if config.server.api_key.is_empty() {
+                    "(未设置)"
+                } else {
+                    "****"
+                }
+            );
+            println!(
+                "  默认作者: {}",
+                config.user.author.unwrap_or_else(|| "(未设置)".to_string())
+            );
+            println!(
+                "  默认邮箱: {}",
+                config.user.email.unwrap_or_else(|| "(未设置)".to_string())
+            );
             println!("  模板存储路径: {}", config.storage.template_path.display());
         }
 
         ConfigCommands::Set { key, value } => {
-            // TODO: 实现配置设置
-            println!("设置配置: {} = {}", key, value);
-            warn!("配置设置功能尚未实现");
+            match key.as_str() {
+                "server.url" => config.server.url = value.clone(),
+                "server.api_key" => config.server.api_key = value.clone(),
+                "user.author" => config.user.author = Some(value.clone()),
+                "user.email" => config.user.email = Some(value.clone()),
+                _ => {
+                    anyhow::bail!(
+                        "未知配置项: {}
+支持的配置项: server.url | server.api_key | user.author | user.email",
+                        key
+                    );
+                }
+            }
+            config.save()?;
+            println!("已设置 {} = {}", key, value);
         }
     }
 
@@ -304,24 +332,47 @@ pub async fn handle_ai(
         AiCommands::AnalyzeVariables { path, format } => {
             handle_analyze_variables(&path, &format).await
         }
-        AiCommands::FillVariables { path, project, provider, model, dry_run, write, format } => {
-            handle_fill_variables(&path, project, provider, model, dry_run, write, &format).await
-        }
-        AiCommands::ConvertToTemplate { path, output, name, category, strategy } => {
-            handle_convert_to_template(&path, &output, name, category, &strategy).await
-        }
-        AiCommands::RenderPreview { path, vars_file, vars, full } => {
-            handle_render_preview(&path, vars_file, vars, full).await
-        }
-        AiCommands::Validate { path, vars_file, check_output } => {
-            handle_validate(&path, vars_file, check_output).await
-        }
-        AiCommands::EditFile { path, insert, replace, delete, append, content } => {
-            handle_edit_file(&path, insert, replace, delete, append, content).await
-        }
-        AiCommands::Recommend { project, language, category, explain } => {
-            handle_recommend(project, language, category, explain).await
-        }
+        AiCommands::FillVariables {
+            path,
+            project,
+            provider,
+            model,
+            dry_run,
+            write,
+            format,
+        } => handle_fill_variables(&path, project, provider, model, dry_run, write, &format).await,
+        AiCommands::ConvertToTemplate {
+            path,
+            output,
+            name,
+            category,
+            strategy,
+        } => handle_convert_to_template(&path, &output, name, category, &strategy).await,
+        AiCommands::RenderPreview {
+            path,
+            vars_file,
+            vars,
+            full,
+        } => handle_render_preview(&path, vars_file, vars, full).await,
+        AiCommands::Validate {
+            path,
+            vars_file,
+            check_output,
+        } => handle_validate(&path, vars_file, check_output).await,
+        AiCommands::EditFile {
+            path,
+            insert,
+            replace,
+            delete,
+            append,
+            content,
+        } => handle_edit_file(&path, insert, replace, delete, append, content).await,
+        AiCommands::Recommend {
+            project,
+            language,
+            category,
+            explain,
+        } => handle_recommend(project, language, category, explain).await,
         AiCommands::Config { config_subcommand } => {
             handle_ai_config(config_subcommand, config_path).await
         }
@@ -365,7 +416,8 @@ fn load_variables(
 async fn handle_analyze_variables(path: &str, format: &str) -> Result<()> {
     use crate::ai::{OutputFormat, OutputFormatter};
 
-    let result = template_studio_ai_agent::analyze_variables(path).await
+    let result = template_studio_ai_agent::analyze_variables(path)
+        .await
         .map_err(|e| anyhow::anyhow!("变量分析失败: {}", e))?;
 
     let formatter = OutputFormatter::new(OutputFormat::from_str(format));
@@ -412,7 +464,8 @@ async fn handle_fill_variables(
         naming_convention: None,
     };
 
-    let result = template_studio_ai_agent::fill_variables(&client, path, &context).await
+    let result = template_studio_ai_agent::fill_variables(&client, path, &context)
+        .await
         .map_err(|e| anyhow::anyhow!("变量填充失败: {}", e))?;
 
     let formatter = OutputFormatter::new(OutputFormat::from_str(format));
@@ -480,11 +533,7 @@ async fn handle_render_preview(
     Ok(())
 }
 
-async fn handle_validate(
-    path: &str,
-    vars_file: Option<String>,
-    check_output: bool,
-) -> Result<()> {
+async fn handle_validate(path: &str, vars_file: Option<String>, check_output: bool) -> Result<()> {
     use crate::ai::{OutputFormat, OutputFormatter};
 
     let formatter = OutputFormatter::new(OutputFormat::Json);
@@ -534,22 +583,30 @@ async fn handle_edit_file(
         ("insert", Some(line_num), None)
     } else if let Some(range) = &replace {
         let parts: Vec<&str> = range.split('-').collect();
-        let start = parts[0].parse::<usize>()
+        let start = parts[0]
+            .parse::<usize>()
             .map_err(|_| anyhow::anyhow!("无效的行号: {}", parts[0]))?;
         let end = if parts.len() > 1 {
-            Some(parts[1].parse::<usize>()
-                .map_err(|_| anyhow::anyhow!("无效的行号: {}", parts[1]))?)
+            Some(
+                parts[1]
+                    .parse::<usize>()
+                    .map_err(|_| anyhow::anyhow!("无效的行号: {}", parts[1]))?,
+            )
         } else {
             None
         };
         ("replace", Some(start), end)
     } else if let Some(range) = &delete {
         let parts: Vec<&str> = range.split('-').collect();
-        let start = parts[0].parse::<usize>()
+        let start = parts[0]
+            .parse::<usize>()
             .map_err(|_| anyhow::anyhow!("无效的行号: {}", parts[0]))?;
         let end = if parts.len() > 1 {
-            Some(parts[1].parse::<usize>()
-                .map_err(|_| anyhow::anyhow!("无效的行号: {}", parts[1]))?)
+            Some(
+                parts[1]
+                    .parse::<usize>()
+                    .map_err(|_| anyhow::anyhow!("无效的行号: {}", parts[1]))?,
+            )
         } else {
             None
         };
@@ -560,15 +617,10 @@ async fn handle_edit_file(
         anyhow::bail!("请指定操作: --insert, --replace, --delete, 或 --append");
     };
 
-    let result = template_studio_ai_agent::edit_file(
-        path,
-        operation,
-        line,
-        end_line,
-        content.as_deref(),
-    )
-    .await
-    .map_err(|e| anyhow::anyhow!("文件编辑失败: {}", e))?;
+    let result =
+        template_studio_ai_agent::edit_file(path, operation, line, end_line, content.as_deref())
+            .await
+            .map_err(|e| anyhow::anyhow!("文件编辑失败: {}", e))?;
 
     let formatter = OutputFormatter::new(OutputFormat::Json);
     formatter.print(&result)?;
@@ -584,10 +636,15 @@ async fn handle_recommend(
 ) -> Result<()> {
     use crate::ai::{OutputFormat, OutputFormatter};
 
-    // 如果指定了项目，需要获取项目路径
-    let project_path = if let Some(_pid) = project {
-        // TODO: 从数据库获取项目路径
-        anyhow::bail!("项目 ID 推荐暂未实现，请直接指定项目路径");
+    // 项目 ID：CLI 面向本地无数据库场景，ID 无从解析——要求直接给路径，
+    // 但给出比「暂未实现」明确得多的指引
+    let project_path = if let Some(pid) = project {
+        anyhow::bail!(
+            "不支持按项目 ID 推荐（CLI 不连接数据库）。
+请直接指定项目路径，例如:
+  template-studio-cli ai recommend ./{}",
+            pid
+        );
     } else {
         // 使用当前目录
         std::env::current_dir()
@@ -611,38 +668,135 @@ async fn handle_recommend(
     Ok(())
 }
 
-async fn handle_ai_config(
-    cmd: AiConfigCommands,
-    config_path: Option<String>,
-) -> Result<()> {
-    let _config = Config::load(config_path)?;
+async fn handle_ai_config(cmd: AiConfigCommands, config_path: Option<String>) -> Result<()> {
+    let mut config = Config::load(config_path)?;
 
     match cmd {
-        AiConfigCommands::Show => {
-            println!("AI 配置:");
-            println!("  提供商: (未配置)");
-            println!("  模型: (未配置)");
-            println!("  API Key: (未配置)");
-        }
-        AiConfigCommands::Set { provider, model, api_key, base_url } => {
+        AiConfigCommands::Show => match &config.ai {
+            Some(ai) => {
+                println!("AI 配置:");
+                println!("  提供商: {}", ai.provider);
+                println!("  模型: {}", ai.model);
+                println!("  API Key: {}****", &ai.api_key[..4.min(ai.api_key.len())]);
+                println!(
+                    "  API URL: {}",
+                    ai.base_url.as_deref().unwrap_or("(提供商默认)")
+                );
+                println!("  配置文件: ~/.cicbyte/template_studio/config/config.toml");
+            }
+            None => {
+                println!("AI 配置: (未通过 ai config 配置)");
+                let env_key = std::env::var("AI_API_KEY").ok();
+                println!(
+                    "  环境变量 AI_API_KEY: {}",
+                    if env_key.is_some() {
+                        "已设置"
+                    } else {
+                        "未设置"
+                    }
+                );
+                println!("  提示: 运行 `template-studio-cli ai config set --provider deepseek --api-key <key>` 持久化配置");
+            }
+        },
+        AiConfigCommands::Set {
+            provider,
+            model,
+            api_key,
+            base_url,
+        } => {
+            // 增量更新：未指定的字段保留现有值
+            let mut section = config
+                .ai
+                .clone()
+                .unwrap_or_else(|| crate::config::AiSection {
+                    provider: "deepseek".to_string(),
+                    model: "deepseek-chat".to_string(),
+                    api_key: String::new(),
+                    base_url: None,
+                });
             if let Some(p) = provider {
-                println!("设置提供商: {}", p);
+                section.provider = p;
             }
             if let Some(m) = model {
-                println!("设置模型: {}", m);
+                section.model = m;
             }
             if let Some(k) = api_key {
-                println!("设置 API Key: {}****", &k[..4.min(k.len())]);
+                section.api_key = k;
             }
             if let Some(u) = base_url {
-                println!("设置 API URL: {}", u);
+                section.base_url = Some(u);
             }
-            println!("AI 配置已更新");
+            if section.api_key.is_empty() {
+                anyhow::bail!("API Key 不能为空（--api-key 或先前的配置）");
+            }
+            config.ai = Some(section);
+            config.save()?;
+            println!("AI 配置已保存");
         }
         AiConfigCommands::Test => {
-            println!("测试 AI 连接...");
-            // TODO: 实现连接测试
-            println!("连接测试功能正在开发中...");
+            let ai = config.ai.as_ref().or_else(|| {
+                // 未持久化配置时尝试环境变量拼一个临时配置
+                None::<&crate::config::AiSection>
+            });
+            let (provider, model, api_key, base_url) = match ai {
+                Some(a) => (
+                    a.provider.clone(),
+                    a.model.clone(),
+                    a.api_key.clone(),
+                    a.base_url.clone(),
+                ),
+                None => {
+                    let key = std::env::var("AI_API_KEY").unwrap_or_default();
+                    if key.is_empty() {
+                        anyhow::bail!(
+                            "无 AI 配置：请先 `ai config set` 或设置 AI_API_KEY 环境变量"
+                        );
+                    }
+                    (
+                        "deepseek".to_string(),
+                        "deepseek-chat".to_string(),
+                        key,
+                        std::env::var("AI_BASE_URL").ok(),
+                    )
+                }
+            };
+
+            use template_studio_ai_agent::config::AiConfig;
+            let ai_config = AiConfig {
+                provider,
+                model,
+                api_key,
+                base_url,
+            };
+            println!("测试 AI 连接: {}", ai_config.chat_endpoint());
+
+            let client = reqwest::Client::new();
+            let body = serde_json::json!({
+                "model": ai_config.model,
+                "messages": [{"role": "user", "content": "回复 ok 两个字母即可"}],
+                "max_tokens": 8,
+            });
+            match client
+                .post(ai_config.chat_endpoint())
+                .header("Authorization", format!("Bearer {}", ai_config.api_key))
+                .json(&body)
+                .send()
+                .await
+            {
+                Ok(resp) if resp.status().is_success() => {
+                    println!("✅ 连接成功（HTTP {}）", resp.status());
+                }
+                Ok(resp) => {
+                    let status = resp.status();
+                    let body = resp.text().await.unwrap_or_default();
+                    anyhow::bail!(
+                        "❌ 连接失败（HTTP {}）: {}",
+                        status,
+                        body.chars().take(200).collect::<String>()
+                    );
+                }
+                Err(e) => anyhow::bail!("❌ 网络错误: {}", e),
+            }
         }
     }
 

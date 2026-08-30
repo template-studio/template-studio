@@ -8,6 +8,19 @@ pub struct Config {
     pub server: ServerConfig,
     pub user: UserConfig,
     pub storage: StorageConfig,
+    /// AI 配置（可选——未配置时 AI 命令回退环境变量 AI_API_KEY/AI_BASE_URL）
+    #[serde(default)]
+    pub ai: Option<AiSection>,
+}
+
+/// CLI 本地持久化的 AI 配置段（ai config set 写入）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AiSection {
+    pub provider: String,
+    pub model: String,
+    pub api_key: String,
+    #[serde(default)]
+    pub base_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,9 +70,8 @@ impl Default for Config {
                 author: None,
                 email: None,
             },
-            storage: StorageConfig {
-                template_path,
-            },
+            storage: StorageConfig { template_path },
+            ai: None,
         }
     }
 }
@@ -70,8 +82,7 @@ impl Config {
             PathBuf::from(path)
         } else {
             // 默认配置路径: ~/.cicbyte/template_studio/config/config.toml
-            let home_dir = dirs::home_dir()
-                .context("无法确定用户主目录")?;
+            let home_dir = dirs::home_dir().context("无法确定用户主目录")?;
 
             let config_dir = home_dir
                 .join(".cicbyte")
@@ -79,8 +90,7 @@ impl Config {
                 .join("config");
 
             // 确保配置目录存在
-            std::fs::create_dir_all(&config_dir)
-                .context("创建配置目录失败")?;
+            std::fs::create_dir_all(&config_dir).context("创建配置目录失败")?;
 
             config_dir.join("config.toml")
         };
@@ -95,48 +105,39 @@ impl Config {
                 .context("创建模板存储目录失败")?;
 
             // 序列化配置为TOML格式
-            let config_str = toml::to_string_pretty(&default_config)
-                .context("序列化配置失败")?;
+            let config_str = toml::to_string_pretty(&default_config).context("序列化配置失败")?;
 
-            std::fs::write(&config_path, config_str)
-                .context("写入配置文件失败")?;
+            std::fs::write(&config_path, config_str).context("写入配置文件失败")?;
 
             return Ok(default_config);
         }
 
         // 读取配置文件
-        let config_str = std::fs::read_to_string(&config_path)
-            .context("读取配置文件失败")?;
+        let config_str = std::fs::read_to_string(&config_path).context("读取配置文件失败")?;
 
-        let config: Config = toml::from_str(&config_str)
-            .context("解析配置文件失败")?;
+        let config: Config = toml::from_str(&config_str).context("解析配置文件失败")?;
 
         Ok(config)
     }
 
     #[allow(dead_code)]
     pub fn save(&self) -> Result<()> {
-        let home_dir = dirs::home_dir()
-            .context("无法确定用户主目录")?;
+        let home_dir = dirs::home_dir().context("无法确定用户主目录")?;
 
         let config_dir = home_dir
             .join(".cicbyte")
             .join("template_studio")
             .join("config");
 
-        std::fs::create_dir_all(&config_dir)
-            .context("创建配置目录失败")?;
+        std::fs::create_dir_all(&config_dir).context("创建配置目录失败")?;
 
         // 确保模板存储目录存在
-        std::fs::create_dir_all(&self.storage.template_path)
-            .context("创建模板存储目录失败")?;
+        std::fs::create_dir_all(&self.storage.template_path).context("创建模板存储目录失败")?;
 
         let config_path = config_dir.join("config.toml");
-        let config_str = toml::to_string_pretty(self)
-            .context("序列化配置失败")?;
+        let config_str = toml::to_string_pretty(self).context("序列化配置失败")?;
 
-        std::fs::write(&config_path, config_str)
-            .context("写入配置文件失败")?;
+        std::fs::write(&config_path, config_str).context("写入配置文件失败")?;
 
         Ok(())
     }
