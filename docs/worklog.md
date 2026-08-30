@@ -418,3 +418,11 @@
 **涉及文件：** `web/src/` 下 16 个文件（见各修复点）、`.github/workflows/ci.yml`
 
 **验收结果：** `pnpm run type-check` 退出码 0、零错误；全部改动模块经 vite 编译 200；YAML 校验通过。
+
+## 2026-08-30 fork 反模式重构与 git2 非 Send 修复（清单 #10 部分 + #12 fork 部分）
+
+**变更内容：** 清单 #10/#12 的 fork 相关项：① 移除请求路径内嵌套整个 tokio Runtime 的反模式（`Runtime::new().unwrap()` + block_on 在 async fn 里二次阻塞）——模板名查询与 git 克隆改为当前 async 上下文直接 await，spawn_blocking 包装一并拆除（git 服务自身按需 spawn_blocking）。② 修复 git2 非 Send 类型跨 await：`Repository`/`Signature`（裸指针包装）在 await 期间存活导致 future 不满足 axum Handler 的 Send 约束（此前被嵌套 Runtime 掩盖，拉平后立即暴露）。重构 git 服务的 init_repository/configure_repository：init 后立即取 workdir 并 drop 仓库句柄，configure 改按路径接收（内部需要时重开），Signature 创建移到纯同步提交段。③ release_service 的 `dest.parent().unwrap()` 加守卫。
+
+**涉及文件：** `apps/web/src/handlers/template.rs`、`crates/infrastructure/src/git/service.rs`、`crates/services/src/release_service.rs`
+
+**验收结果：** 编译零错误（#[axum::debug_handler] 辅助定位后移除）；模板核心 52 测试全过；端到端实测 fork 全链路（合法载荷 → 新模板 1788083580182 创建 + 目录落盘 + git 仓库初始化含 HEAD/config）后删除清理、目录无残留。

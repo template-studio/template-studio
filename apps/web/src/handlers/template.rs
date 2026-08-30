@@ -1676,79 +1676,59 @@ pub async fn fork_template(
                 new_template_id
             );
 
-            // 同步执行 Git 克隆，确保文件就绪后再返回
-            let clone_result = tokio::task::spawn_blocking(move || {
-                use template_studio_infrastructure::config::settings::GitConfig;
-                use template_studio_infrastructure::git::service::GitService;
-
-                let start_time = std::time::Instant::now();
-                tracing::info!(
-                    "开始 Git 克隆操作: source_id={}, new_id={}",
-                    source_id,
-                    new_template_id
-                );
-
-                let rt = tokio::runtime::Runtime::new().unwrap();
-                let template_name = rt.block_on(async {
-                    template_service
-                        .get_template(new_template_id)
-                        .await
-                        .ok()
-                        .and_then(|t| t.map(|tmpl| tmpl.name))
-                        .unwrap_or_else(|| {
-                            tracing::warn!(
-                                "无法获取模板名称，使用默认名称: template_id={}",
-                                new_template_id
-                            );
-                            "Forked Template".to_string()
-                        })
+            // Git 克隆（async 直行；此前在 spawn_blocking 里新建整个 Runtime 反而阻塞 worker）
+            let template_name = template_service
+                .get_template(new_template_id)
+                .await
+                .ok()
+                .and_then(|t| t.map(|tmpl| tmpl.name))
+                .unwrap_or_else(|| {
+                    tracing::warn!(
+                        "无法获取模板名称，使用默认名称: template_id={}",
+                        new_template_id
+                    );
+                    "Forked Template".to_string()
                 });
+            let source_path = storage_manager.get_template_path(source_id);
+            let target_path = storage_manager.get_template_path(new_template_id);
 
-                let source_path = storage_manager.get_template_path(source_id);
-                let target_path = storage_manager.get_template_path(new_template_id);
+            let start_time = std::time::Instant::now();
+            tracing::info!(
+                "开始 Git 克隆操作: source_id={}, new_id={}",
+                source_id,
+                new_template_id
+            );
 
-                tracing::info!(
-                    "Git 克隆路径: source={:?}, target={:?}",
-                    source_path,
-                    target_path
-                );
+            let git_config = template_studio_infrastructure::config::settings::GitConfig {
+                auto_init: true,
+                default_branch: "main".to_string(),
+            };
+            let git_service =
+                template_studio_infrastructure::git::service::GitService::new(git_config);
 
-                let git_config = GitConfig {
-                    auto_init: true,
-                    default_branch: "main".to_string(),
-                };
-                let git_service = GitService::new(git_config);
+            let clone_inner = git_service
+                .clone_and_clean(
+                    &source_path,
+                    &target_path,
+                    &template_name,
+                    Some("Template Studio"),
+                    Some("template@studio.local"),
+                )
+                .await;
 
-                let result = rt.block_on(async {
-                    git_service
-                        .clone_and_clean(
-                            &source_path,
-                            &target_path,
-                            &template_name,
-                            Some("Template Studio"),
-                            Some("template@studio.local"),
-                        )
-                        .await
-                });
+            let elapsed = start_time.elapsed();
+            tracing::info!(
+                "Git 克隆完成: template_id={}, 耗时={:?}",
+                new_template_id,
+                elapsed
+            );
 
-                let elapsed = start_time.elapsed();
-                tracing::info!(
-                    "Git 克隆完成: template_id={}, 耗时={:?}",
-                    new_template_id,
-                    elapsed
-                );
-
-                result
-            })
-            .await;
+            let clone_result = clone_inner;
 
             match clone_result {
-                Ok(Ok(_)) => tracing::info!("Git 仓库克隆成功: new_id={}", new_template_id),
-                Ok(Err(e)) => {
-                    tracing::error!("Git 仓库克隆失败: new_id={}, error={}", new_template_id, e)
-                }
+                Ok(_) => tracing::info!("Git 仓库克隆成功: new_id={}", new_template_id),
                 Err(e) => {
-                    tracing::error!("Git 克隆任务异常: new_id={}, error={}", new_template_id, e)
+                    tracing::error!("Git 仓库克隆失败: new_id={}, error={}", new_template_id, e)
                 }
             }
 

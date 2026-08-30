@@ -485,9 +485,11 @@ impl ReleaseService {
     async fn clone_to_release(&self, src: &PathBuf, dest: &PathBuf) -> Result<()> {
         use std::process::Command;
 
-        tokio::fs::create_dir_all(dest.parent().unwrap())
-            .await
-            .map_err(|e| anyhow::anyhow!("创建目录失败: {}", e))?;
+        if let Some(parent) = dest.parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|e| anyhow::anyhow!("创建目录失败: {}", e))?;
+        }
 
         let status = Command::new("git")
             .arg("clone")

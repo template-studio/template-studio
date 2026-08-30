@@ -1,8 +1,8 @@
 use crate::config::settings::GitConfig;
 use anyhow::Result;
-use std::path::PathBuf;
-use tracing::{info, error};
 use git2::{Repository, RepositoryInitOptions, Signature};
+use std::path::PathBuf;
+use tracing::{error, info};
 
 /// Git服务
 pub struct GitService {
@@ -15,7 +15,13 @@ impl GitService {
     }
 
     /// 初始化Git仓库
-    pub async fn init_repository(&self, repo_path: &PathBuf, template_name: &str, author_name: Option<&str>, author_email: Option<&str>) -> Result<()> {
+    pub async fn init_repository(
+        &self,
+        repo_path: &PathBuf,
+        template_name: &str,
+        author_name: Option<&str>,
+        author_email: Option<&str>,
+    ) -> Result<()> {
         info!("正在初始化Git仓库: {:?}", repo_path);
 
         // 确保父目录存在
@@ -23,14 +29,18 @@ impl GitService {
             tokio::fs::create_dir_all(parent).await?;
         }
 
-        // 初始化仓库
-        match Repository::init_opts(
-            repo_path,
-            RepositoryInitOptions::new().bare(false)
-        ) {
+        // 初始化仓库（git2 句柄不跨 await：init 后立即取 workdir 并 drop，
+        // configure 内部需要时重开）
+        match Repository::init_opts(repo_path, RepositoryInitOptions::new().bare(false)) {
             Ok(repo) => {
                 info!("Git仓库初始化成功: {:?}", repo_path);
-                self.configure_repository(&repo, template_name, author_name, author_email).await
+                let workdir = repo
+                    .workdir()
+                    .ok_or_else(|| anyhow::anyhow!("无法获取Git仓库工作目录"))?
+                    .to_path_buf();
+                drop(repo);
+                self.configure_repository_at(&workdir, template_name, author_name, author_email)
+                    .await
             }
             Err(e) => {
                 error!("Git仓库初始化失败: {:?}, 路径: {:?}", e, repo_path);
@@ -40,25 +50,35 @@ impl GitService {
     }
 
     /// 配置仓库
-    async fn configure_repository(&self, repo: &Repository, template_name: &str, author_name: Option<&str>, author_email: Option<&str>) -> Result<()> {
-        // 设置签名
+    ///
+    /// git2::Repository 非 Send，不能跨 await 持有（否则外层 future 不满足
+    /// axum Handler 的 Send 约束）——签名与工作目录先提取，文件创建的 await
+    /// 段不持 repo，提交段重新打开仓库
+    async fn configure_repository_at(
+        &self,
+        workdir: &std::path::Path,
+        template_name: &str,
+        author_name: Option<&str>,
+        author_email: Option<&str>,
+    ) -> Result<()> {
+        // git2 的 Repository 与 Signature 都是非 Send 类型，不能跨 await 持有：
+        // 先提取纯数据（名字/邮箱/路径），await 段只持 Send 数据，git 对象在同步段重建
         let name = author_name.unwrap_or("Template Studio");
         let email = author_email.unwrap_or("template@studio.local");
-
-        let signature = Signature::now(name, email)?;
-
-        // 获取工作目录（仓库根目录）
-        let workdir = repo.workdir().ok_or_else(|| anyhow::anyhow!("无法获取Git仓库工作目录"))?;
+        let workdir = workdir.to_path_buf();
 
         // 创建.gitignore文件（在工作目录）
         self.create_gitignore(workdir.join(".gitignore")).await?;
 
         // 创建README.md文件（在工作目录）
-        self.create_readme(workdir.join("README.md"), template_name).await?;
+        self.create_readme(workdir.join("README.md"), template_name)
+            .await?;
 
-        // 创建初始提交
+        // 创建初始提交——同步段重建 Signature 与 Repository
         if self.config.auto_init {
-            self.create_initial_commit(repo, &signature, template_name).await?;
+            let signature = Signature::now(name, email)?;
+            let repo = Repository::open(&workdir)?;
+            self.create_initial_commit_sync(&repo, &signature, template_name)?;
         }
 
         info!("Git仓库配置完成: {:?}", workdir);
@@ -129,7 +149,8 @@ yarn.lock
 
     /// 创建README.md文件
     async fn create_readme(&self, readme_path: PathBuf, template_name: &str) -> Result<()> {
-        let readme_content = format!(r#"
+        let readme_content = format!(
+            r#"
 # {}
 
 ## 描述
@@ -202,15 +223,41 @@ src/
 - 0.1.0
     - 初始版本
     - 基本功能实现
-"#, template_name);
+"#,
+            template_name
+        );
 
         tokio::fs::write(&readme_path, readme_content).await?;
         info!("创建README.md文件: {:?}", readme_path);
         Ok(())
     }
 
+    /// 创建初始提交（同步版：内部无 await，供不跨 await 的调用方使用）
+    fn create_initial_commit_sync(
+        &self,
+        repo: &Repository,
+        signature: &Signature<'_>,
+        template_name: &str,
+    ) -> Result<()> {
+        self.create_initial_commit_inner(repo, signature, template_name)
+    }
+
     /// 创建初始提交
-    async fn create_initial_commit(&self, repo: &Repository, signature: &Signature<'_>, template_name: &str) -> Result<()> {
+    async fn create_initial_commit(
+        &self,
+        repo: &Repository,
+        signature: &Signature<'_>,
+        template_name: &str,
+    ) -> Result<()> {
+        self.create_initial_commit_inner(repo, signature, template_name)
+    }
+
+    fn create_initial_commit_inner(
+        &self,
+        repo: &Repository,
+        signature: &Signature<'_>,
+        template_name: &str,
+    ) -> Result<()> {
         let mut index = repo.index()?;
 
         // 添加所有文件到暂存区
@@ -241,7 +288,11 @@ src/
 
         // 检查提交是否成功
         let commit = repo.find_commit(commit_id)?;
-        info!("创建初始提交: {} - {}", commit.id(), commit.message().unwrap_or("无消息"));
+        info!(
+            "创建初始提交: {} - {}",
+            commit.id(),
+            commit.message().unwrap_or("无消息")
+        );
         Ok(())
     }
 
@@ -260,7 +311,12 @@ src/
                 Ok(())
             }
             Err(e) => {
-                error!("Git仓库克隆失败: {}, URL: {}, 路径: {}", e, url, target_path.display());
+                error!(
+                    "Git仓库克隆失败: {}, URL: {}, 路径: {}",
+                    e,
+                    url,
+                    target_path.display()
+                );
                 Err(anyhow::anyhow!("Git仓库克隆失败: {}", e))
             }
         }
@@ -304,13 +360,20 @@ src/
             tokio::fs::create_dir_all(parent).await?;
         }
 
-        // 检查源路径是否为 Git 仓库
+        // 检查源路径是否为 Git 仓库。
+        // git2::Repository 非 Send，不能跨 await 持有（否则 future 不满足 axum Handler
+        // 的 Send 约束）——先取出工作目录路径再 drop
         let source_repo = Repository::open(source_path);
 
         if let Ok(repo) = source_repo {
             // 源是 Git 仓库，进行本地克隆
             info!("检测到源路径是Git仓库，执行本地克隆");
-            self.clone_repository_local(&repo, target_path).await?;
+            let workdir = repo
+                .workdir()
+                .ok_or_else(|| anyhow::anyhow!("无法获取源仓库工作目录"))?
+                .to_path_buf();
+            drop(repo);
+            self.copy_directory_recursive(&workdir, target_path).await?;
 
             // 清理原有的 Git 信息
             info!("清理原有的Git信息");
@@ -318,15 +381,18 @@ src/
 
             // 初始化新的 Git 仓库
             info!("初始化新的Git仓库");
-            self.init_repository(target_path, new_name, author_name, author_email).await?;
+            self.init_repository(target_path, new_name, author_name, author_email)
+                .await?;
         } else {
             // 源不是 Git 仓库，直接复制目录
             info!("源路径不是Git仓库，直接复制目录");
-            self.copy_directory_recursive(source_path, target_path).await?;
+            self.copy_directory_recursive(source_path, target_path)
+                .await?;
 
             // 初始化新的 Git 仓库
             info!("初始化新的Git仓库");
-            self.init_repository(target_path, new_name, author_name, author_email).await?;
+            self.init_repository(target_path, new_name, author_name, author_email)
+                .await?;
         }
 
         info!("Fork模板完成: {:?}", target_path);
@@ -334,14 +400,19 @@ src/
     }
 
     /// 本地克隆 Git 仓库（复制包括 .git 目录在内的所有文件）
-    async fn clone_repository_local(&self, source_repo: &Repository, target_path: &PathBuf) -> Result<()> {
+    async fn clone_repository_local(
+        &self,
+        source_repo: &Repository,
+        target_path: &PathBuf,
+    ) -> Result<()> {
         let source_workdir = source_repo
             .workdir()
             .ok_or_else(|| anyhow::anyhow!("无法获取源仓库工作目录"))?
             .to_path_buf();
 
         // 复制所有文件包括 .git 目录
-        self.copy_directory_recursive(&source_workdir, target_path).await?;
+        self.copy_directory_recursive(&source_workdir, target_path)
+            .await?;
 
         info!("本地克隆完成: {:?}", target_path);
         Ok(())
@@ -423,7 +494,8 @@ src/
                     Ok(None)
                 }
             }
-        }).await??;
+        })
+        .await??;
 
         match result {
             Some(content) => {
