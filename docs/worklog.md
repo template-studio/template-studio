@@ -354,3 +354,11 @@
 **涉及文件：** `apps/desktop/src-tauri/src/database/{migrations,mod}.rs`、`apps/desktop/src-tauri/src/lib.rs`、`apps/desktop/src-tauri/tests/mig005_test.rs`（新增）、`apps/desktop/src-tauri/Cargo.toml`（dev-deps tokio）
 
 **验收结果：** 集成测试通过——v4 模拟库（1 项目/1 数据源/1 表/2 列）升级后全部数据保留、新结构（datasource_id 列）就位、暂存表清理干净；desktop 全部测试（5 单测 + 1 集成）通过。过程中修正回填列名与新表 schema 的不匹配（extra/updated_at 列新表不存在）。
+
+## 2026-08-30 桌面端凭据加密存储
+
+**变更内容：** 新增 `database/credential.rs`：机器绑定密钥 + AES-256-GCM 加密。密钥优先存 OS 凭据管理器（keyring crate，实测已写入 Windows Credential Manager `local-db-encryption-key.template-studio-desktop`），不可用时回退用户目录密钥文件（0600）；密文格式 `v1:base64(nonce||ciphertext+tag)`；非 v1 前缀的历史明文解密时原样返回（不破坏存量），下次写入自动升级为密文。接入两个明文存储点：数据源密码（datasource.rs 的 create/update 加密、get_all/get_datasource 解密）、AI api_key（ai.rs 的 upsert 加密、两处查询解密）。
+
+**涉及文件：** `apps/desktop/src-tauri/src/database/{credential,datasource,ai,mod}.rs`（新增+接线）、`apps/desktop/src-tauri/Cargo.toml`（aes-gcm/base64/rand/keyring 依赖）
+
+**验收结果：** credential 单测 2 项通过（中英文+emoji 密码往返、随机 nonce 密文唯一性、历史明文兼容）；desktop 全部 7 单测通过；Windows 凭据管理器确认密钥落位、回退文件未触发。存量明文数据在下次读取时兼容、保存时自动加密升级。

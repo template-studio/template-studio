@@ -23,7 +23,9 @@ impl Database {
                     "providerName": row.get::<String, _>("provider_name"),
                     "displayName": row.get::<String, _>("display_name"),
                     "providerType": row.get::<String, _>("provider_type"),
-                    "apiKey": row.get::<Option<String>, _>("api_key"),
+                    "apiKey": row
+                        .get::<Option<String>, _>("api_key")
+                        .map(|k| crate::database::credential::decrypt(&k).unwrap_or_default()),
                     "apiEndpoint": row.get::<Option<String>, _>("api_endpoint"),
                     "isEnabled": row.get::<i32, _>("is_enabled") == 1,
                     "isDefault": row.get::<i32, _>("is_default") == 1,
@@ -61,7 +63,9 @@ impl Database {
                 "providerName": r.get::<String, _>("provider_name"),
                 "displayName": r.get::<String, _>("display_name"),
                 "providerType": r.get::<String, _>("provider_type"),
-                "apiKey": r.get::<Option<String>, _>("api_key"),
+                "apiKey": r
+                    .get::<Option<String>, _>("api_key")
+                    .map(|k| crate::database::credential::decrypt(&k).unwrap_or_default()),
                 "apiEndpoint": r.get::<Option<String>, _>("api_endpoint"),
                 "isEnabled": r.get::<i32, _>("is_enabled") == 1,
                 "isDefault": r.get::<i32, _>("is_default") == 1,
@@ -105,7 +109,14 @@ impl Database {
         .bind(provider_name)
         .bind(display_name)
         .bind(provider_type)
-        .bind(api_key)
+        .bind(
+            api_key
+                .map(crate::database::credential::encrypt)
+                .transpose()
+                .map_err(|e| {
+                    sqlx::Error::Io(std::io::Error::other(format!("凭据加密失败: {}", e)))
+                })?,
+        )
         .bind(api_endpoint)
         .bind(if is_enabled { 1 } else { 0 })
         .bind(temperature)

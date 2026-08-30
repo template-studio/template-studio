@@ -1,6 +1,11 @@
 use super::{Database, Datasource, TestConnectionParams};
 use sqlx::Row;
 
+/// 凭据加密错误 → sqlx::Error（数据库层的存储加密属 IO 范畴错误）
+fn sqlx_encrypt_err(e: String) -> sqlx::Error {
+    sqlx::Error::Io(std::io::Error::other(format!("凭据加密失败: {}", e)))
+}
+
 impl Database {
     /// ===== 数据源操作 =====
     /// 创建数据源
@@ -24,7 +29,7 @@ impl Database {
         .bind(host)
         .bind(port.map(|p| p as i32))
         .bind(username)
-        .bind(password)
+        .bind(password.map(crate::database::credential::encrypt).transpose().map_err(sqlx_encrypt_err)?)
         .bind(database)
         .bind(sqlite_file)
         .execute(&self.pool)
@@ -52,7 +57,11 @@ impl Database {
                 host: row.try_get("host").ok(),
                 port: row.try_get("port").ok(),
                 username: row.try_get("username").ok(),
-                password: row.try_get("password").ok(),
+                password: row
+                    .try_get::<Option<String>, _>("password")
+                    .ok()
+                    .flatten()
+                    .map(|p| crate::database::credential::decrypt(&p).unwrap_or_default()),
                 database: row.try_get("database").ok(),
                 sqlite_file: row.try_get("sqlite_file").ok(),
                 is_active: row.get::<i32, _>("is_active") == 1,
@@ -83,7 +92,11 @@ impl Database {
                 host: row.try_get("host").ok(),
                 port: row.try_get("port").ok(),
                 username: row.try_get("username").ok(),
-                password: row.try_get("password").ok(),
+                password: row
+                    .try_get::<Option<String>, _>("password")
+                    .ok()
+                    .flatten()
+                    .map(|p| crate::database::credential::decrypt(&p).unwrap_or_default()),
                 database: row.try_get("database").ok(),
                 sqlite_file: row.try_get("sqlite_file").ok(),
                 is_active: row.get::<i32, _>("is_active") == 1,
@@ -117,7 +130,7 @@ impl Database {
         .bind(host)
         .bind(port.map(|p| p as i32))
         .bind(username)
-        .bind(password)
+        .bind(password.map(crate::database::credential::encrypt).transpose().map_err(sqlx_encrypt_err)?)
         .bind(database)
         .bind(sqlite_file)
         .bind(id)

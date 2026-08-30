@@ -6,6 +6,7 @@ pub use models::*;
 mod ai;
 mod column;
 mod datasource;
+pub mod credential;
 pub(crate) mod import;
 mod language;
 mod migrations;
