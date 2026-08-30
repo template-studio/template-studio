@@ -3,11 +3,9 @@ use crate::config::Config;
 /// 获取配置
 #[tauri::command]
 pub fn get_config() -> Result<String, String> {
-    let config = Config::load()
-        .map_err(|e| format!("加载配置失败: {}", e))?;
+    let config = Config::load().map_err(|e| format!("加载配置失败: {}", e))?;
 
-    serde_json::to_string(&config)
-        .map_err(|e| format!("序列化配置失败: {}", e))
+    serde_json::to_string(&config).map_err(|e| format!("序列化配置失败: {}", e))
 }
 
 /// 更新 Web 服务器配置
@@ -16,8 +14,7 @@ pub fn update_web_server_config(
     api_url: Option<String>,
     api_key: Option<String>,
 ) -> Result<String, String> {
-    let mut config = Config::load()
-        .map_err(|e| format!("加载配置失败: {}", e))?;
+    let mut config = Config::load().map_err(|e| format!("加载配置失败: {}", e))?;
 
     // 更新配置
     if let Some(url) = api_url {
@@ -29,8 +26,7 @@ pub fn update_web_server_config(
     }
 
     // 保存配置
-    config.save()
-        .map_err(|e| format!("保存配置失败: {}", e))?;
+    config.save().map_err(|e| format!("保存配置失败: {}", e))?;
 
     Ok("配置已保存".to_string())
 }
@@ -40,22 +36,19 @@ pub fn update_web_server_config(
 pub fn update_template_path(template_path: String) -> Result<String, String> {
     use std::path::PathBuf;
 
-    let mut config = Config::load()
-        .map_err(|e| format!("加载配置失败: {}", e))?;
+    let mut config = Config::load().map_err(|e| format!("加载配置失败: {}", e))?;
 
     // 验证路径
     let path = PathBuf::from(&template_path);
 
     // 创建目录（如果不存在）
-    std::fs::create_dir_all(&path)
-        .map_err(|e| format!("创建模板目录失败: {}", e))?;
+    std::fs::create_dir_all(&path).map_err(|e| format!("创建模板目录失败: {}", e))?;
 
     // 更新配置
     config.storage.template_path = path;
 
     // 保存配置
-    config.save()
-        .map_err(|e| format!("保存配置失败: {}", e))?;
+    config.save().map_err(|e| format!("保存配置失败: {}", e))?;
 
     Ok("模板存储路径已更新".to_string())
 }

@@ -2,6 +2,11 @@ use super::Database;
 
 impl Database {
     /// 运行数据库迁移
+    /// 公开包装：供集成测试对指定库执行完整迁移链
+    pub async fn run_migrations_for_test(&self) -> Result<(), sqlx::Error> {
+        self.run_migrations().await
+    }
+
     pub(crate) async fn run_migrations(&self) -> Result<(), sqlx::Error> {
         println!("运行数据库迁移...");
 
@@ -242,7 +247,57 @@ impl Database {
     }
 
     /// 迁移 005: 更新数据库架构（添加语言支持）
+    ///
+    /// 历史 BUG 修复：本迁移原实现直接 DROP 旧表重建，v4 及更早版本升级时
+    /// 用户的 projects/datasources/db_tables/db_columns 数据全部清空。
+    /// 现改为备份-重建-回填：先把带数据的旧表改名暂存，建好新表后按字段映射
+    /// 迁回旧数据（无法映射的字段用兜底值），最后清理暂存表。
     async fn migration_005_update_schema(&self) -> Result<(), sqlx::Error> {
+        // 幂等保护：新结构已存在（重复运行/半途失败后重试）时直接补版本号
+        let already_migrated: bool = sqlx::query_scalar(
+            "SELECT COUNT(*) = 1 FROM pragma_table_info('projects') WHERE name = 'datasource_id'",
+        )
+        .fetch_one(&self.pool)
+        .await?;
+        if already_migrated {
+            println!("迁移 005: 新表结构已存在，跳过重建");
+            sqlx::query("INSERT OR IGNORE INTO schema_migrations (version) VALUES (5)")
+                .execute(&self.pool)
+                .await?;
+            return Ok(());
+        }
+
+        // ---- 暂存带数据的旧表（无数据/不存在的表直接 DROP，无需暂存）----
+        let old_tables = ["projects", "datasources", "db_tables", "db_columns"];
+        for t in old_tables {
+            let exists: bool = sqlx::query_scalar(&format!(
+                "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='{}'",
+                t
+            ))
+            .fetch_one(&self.pool)
+            .await?;
+            let has_rows: bool = if exists {
+                sqlx::query_scalar(&format!("SELECT COUNT(*) > 0 FROM {}", t))
+                    .fetch_one(&self.pool)
+                    .await?
+            } else {
+                false
+            };
+            if has_rows {
+                sqlx::query(&format!("ALTER TABLE {} RENAME TO {}__mig005_old", t, t))
+                    .execute(&self.pool)
+                    .await?;
+                let n: i64 = sqlx::query_scalar(&format!("SELECT COUNT(*) FROM {}__mig005_old", t))
+                    .fetch_one(&self.pool)
+                    .await?;
+                println!("迁移 005: 已暂存旧表 {}（{} 行）", t, n);
+            } else if exists {
+                sqlx::query(&format!("DROP TABLE IF EXISTS {}", t))
+                    .execute(&self.pool)
+                    .await?;
+            }
+        }
+
         println!("执行迁移 005: 更新数据库架构");
 
         // 1. 创建 languages 表
@@ -439,10 +494,141 @@ impl Database {
             .execute(&self.pool)
             .await?;
 
-        sqlx::query("INSERT INTO schema_migrations (version) VALUES (5)")
+        // ---- 回填旧数据 ----
+        // datasources：新旧表同名列直迁（database 列 006 才加，无需处理）
+        self.mig005_copy_if_exists(
+            "datasources",
+            &[
+                "name",
+                "type",
+                "host",
+                "port",
+                "username",
+                "password",
+                "is_active",
+                "created_at",
+                "updated_at",
+            ],
+        )
+        .await?;
+
+        // projects：旧表无 datasource_id/database_name/primary_language_id。
+        // datasource_id 用第一个可用数据源兜底，database_name 用旧 database_type 占位。
+        let fallback_ds: i64 = sqlx::query_scalar("SELECT COALESCE(MIN(id), 0) FROM datasources")
+            .fetch_one(&self.pool)
+            .await?;
+        let has_old_projects: bool = sqlx::query_scalar(
+            "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='projects__mig005_old'",
+        )
+        .fetch_one(&self.pool)
+        .await?;
+        if has_old_projects && fallback_ds > 0 {
+            sqlx::query(
+                r#"INSERT INTO projects (name, description, datasource_id, database_name, table_count, created_at, updated_at)
+                   SELECT name, description, ?, database_type, table_count, created_at, updated_at
+                   FROM projects__mig005_old"#,
+            )
+            .bind(fallback_ds)
+            .execute(&self.pool)
+            .await?;
+            println!("迁移 005: 已回填 projects（数据源兜底 id={}）", fallback_ds);
+        } else if has_old_projects {
+            println!(
+                "迁移 005: 无可用数据源，projects 旧数据保留在 projects__mig005_old 供人工恢复"
+            );
+        }
+
+        // db_tables：按项目名关联迁回（新 project_id 与旧不同）
+        self.mig005_backfill_tables().await?;
+
+        // db_columns：按 表名+项目名 双重关联迁回
+        self.mig005_backfill_columns().await?;
+
+        // ---- 清理暂存表（回填失败的数据仍留在暂存表可人工恢复，故最后才删）----
+        for t in old_tables {
+            sqlx::query(&format!("DROP TABLE IF EXISTS {}__mig005_old", t))
+                .execute(&self.pool)
+                .await?;
+        }
+
+        sqlx::query("INSERT OR IGNORE INTO schema_migrations (version) VALUES (5)")
             .execute(&self.pool)
             .await?;
 
+        Ok(())
+    }
+
+    /// mig005 辅助：旧暂存表存在时按同名列直迁回填
+    async fn mig005_copy_if_exists(&self, table: &str, cols: &[&str]) -> Result<(), sqlx::Error> {
+        let old = format!("{}__mig005_old", table);
+        let exists: bool = sqlx::query_scalar(&format!(
+            "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='{}'",
+            old
+        ))
+        .fetch_one(&self.pool)
+        .await?;
+        if !exists {
+            return Ok(());
+        }
+        let col_list = cols.join(", ");
+        let n = sqlx::query(&format!(
+            "INSERT INTO {} ({}) SELECT {} FROM {}",
+            table, col_list, col_list, old
+        ))
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+        println!("迁移 005: 已回填 {}（{} 行，同名列直迁）", table, n);
+        Ok(())
+    }
+
+    /// mig005 辅助：db_tables 按项目名关联回填
+    async fn mig005_backfill_tables(&self) -> Result<(), sqlx::Error> {
+        let exists: bool = sqlx::query_scalar(
+            "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='db_tables__mig005_old'",
+        )
+        .fetch_one(&self.pool)
+        .await?;
+        if !exists {
+            return Ok(());
+        }
+        let n = sqlx::query(
+            r#"INSERT INTO db_tables (project_id, name, comment, engine, table_type, row_count, column_count, created_at, updated_at)
+               SELECT np.id, t.name, t.comment, t.engine, t.table_type, t.row_count, t.column_count, t.created_at, t.updated_at
+               FROM db_tables__mig005_old t
+               JOIN projects__mig005_old op ON op.id = t.project_id
+               JOIN projects np ON np.name = op.name"#,
+        )
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+        println!("迁移 005: 已回填 db_tables（{} 行，按项目名关联）", n);
+        Ok(())
+    }
+
+    /// mig005 辅助：db_columns 按 表名+项目名 双重关联回填
+    async fn mig005_backfill_columns(&self) -> Result<(), sqlx::Error> {
+        let exists: bool = sqlx::query_scalar(
+            "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='db_columns__mig005_old'",
+        )
+        .fetch_one(&self.pool)
+        .await?;
+        if !exists {
+            return Ok(());
+        }
+        let n = sqlx::query(
+            r#"INSERT INTO db_columns (table_id, name, data_type, length, is_nullable, is_primary_key, is_unique, default_value, comment, created_at)
+               SELECT nt.id, c.name, c.data_type, c.length, c.is_nullable, c.is_primary_key, c.is_unique, c.default_value, c.comment, c.created_at
+               FROM db_columns__mig005_old c
+               JOIN db_tables__mig005_old ot ON ot.id = c.table_id
+               JOIN projects__mig005_old op ON op.id = ot.project_id
+               JOIN db_tables nt ON nt.name = ot.name
+               JOIN projects np ON np.name = op.name AND nt.project_id = np.id"#,
+        )
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+        println!("迁移 005: 已回填 db_columns（{} 行，按表名+项目名关联）", n);
         Ok(())
     }
 

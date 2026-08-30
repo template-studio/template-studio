@@ -1,8 +1,8 @@
-use std::sync::{Arc, Mutex};
-use std::collections::HashMap;
 use sqlx::mysql::MySqlPool;
 use sqlx::postgres::PgPool;
 use sqlx::sqlite::SqlitePool;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use crate::database::Database;
 
@@ -41,7 +41,9 @@ pub struct BrowserPoolCache {
 
 impl BrowserPoolCache {
     pub fn new() -> Self {
-        Self { pools: Mutex::new(HashMap::new()) }
+        Self {
+            pools: Mutex::new(HashMap::new()),
+        }
     }
 
     pub async fn get_or_create_mysql(&self, url: &str) -> Result<MySqlPool, String> {
@@ -51,7 +53,8 @@ impl BrowserPoolCache {
                 return Ok(pool.clone());
             }
         }
-        let pool = MySqlPool::connect(url).await
+        let pool = MySqlPool::connect(url)
+            .await
             .map_err(|e| format!("连接失败: {}", e))?;
         let mut pools = self.pools.lock().unwrap();
         pools.insert(url.to_string(), BrowserPool::MySQL(pool.clone()));
@@ -65,7 +68,8 @@ impl BrowserPoolCache {
                 return Ok(pool.clone());
             }
         }
-        let pool = PgPool::connect(url).await
+        let pool = PgPool::connect(url)
+            .await
             .map_err(|e| format!("连接失败: {}", e))?;
         let mut pools = self.pools.lock().unwrap();
         pools.insert(url.to_string(), BrowserPool::PostgreSQL(pool.clone()));
@@ -79,7 +83,8 @@ impl BrowserPoolCache {
                 return Ok(pool.clone());
             }
         }
-        let pool = SqlitePool::connect(url).await
+        let pool = SqlitePool::connect(url)
+            .await
             .map_err(|e| format!("连接失败: {}", e))?;
         let mut pools = self.pools.lock().unwrap();
         pools.insert(url.to_string(), BrowserPool::SQLite(pool.clone()));

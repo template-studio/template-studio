@@ -1288,6 +1288,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
  "template_studio_template_core",
+ "tokio",
  "zip 2.4.2",
 ]
 

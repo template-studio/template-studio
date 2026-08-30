@@ -50,3 +50,6 @@ anyhow = { workspace = true }
 template_studio_template_core = { path = "../../../crates/template_core" }
 # template_studio_shared = { path = "../../../crates/shared" }  # 暂时注释，等需要时再启用
 
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

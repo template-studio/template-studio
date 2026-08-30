@@ -9,11 +9,12 @@ pub async fn db_get_system_type_mappings(
 ) -> Result<String, String> {
     let db = database.as_ref();
 
-    let mappings = db.get_system_type_mappings().await
+    let mappings = db
+        .get_system_type_mappings()
+        .await
         .map_err(|e| format!("查询系统级类型映射失败: {}", e))?;
 
-    serde_json::to_string(&mappings)
-        .map_err(|e| format!("序列化失败: {}", e))
+    serde_json::to_string(&mappings).map_err(|e| format!("序列化失败: {}", e))
 }
 
 /// 根据语言和数据库类型获取系统级类型映射
@@ -25,11 +26,12 @@ pub async fn db_get_system_type_mappings_by_lang_db(
 ) -> Result<String, String> {
     let db = database.as_ref();
 
-    let mappings = db.get_system_type_mappings_by_lang_db(language_id, &db_type).await
+    let mappings = db
+        .get_system_type_mappings_by_lang_db(language_id, &db_type)
+        .await
         .map_err(|e| format!("查询系统级类型映射失败: {}", e))?;
 
-    serde_json::to_string(&mappings)
-        .map_err(|e| format!("序列化失败: {}", e))
+    serde_json::to_string(&mappings).map_err(|e| format!("序列化失败: {}", e))
 }
 
 /// 创建系统级类型映射
@@ -89,8 +91,8 @@ pub async fn db_batch_save_system_type_mappings(
 ) -> Result<(), String> {
     let db = database.as_ref();
 
-    let mappings: Vec<serde_json::Value> = serde_json::from_str(&mappings)
-        .map_err(|e| format!("解析类型映射数据失败: {}", e))?;
+    let mappings: Vec<serde_json::Value> =
+        serde_json::from_str(&mappings).map_err(|e| format!("解析类型映射数据失败: {}", e))?;
 
     db.batch_save_system_type_mappings(mappings)
         .await
@@ -109,11 +111,12 @@ pub async fn db_get_project_type_mappings(
 ) -> Result<String, String> {
     let db = database.as_ref();
 
-    let mappings = db.get_project_type_mappings(project_id).await
+    let mappings = db
+        .get_project_type_mappings(project_id)
+        .await
         .map_err(|e| format!("查询项目级类型映射失败: {}", e))?;
 
-    serde_json::to_string(&mappings)
-        .map_err(|e| format!("序列化失败: {}", e))
+    serde_json::to_string(&mappings).map_err(|e| format!("序列化失败: {}", e))
 }
 
 /// 根据项目和范围获取项目级类型映射
@@ -125,11 +128,12 @@ pub async fn db_get_project_type_mappings_by_scope(
 ) -> Result<String, String> {
     let db = database.as_ref();
 
-    let mappings = db.get_project_type_mappings_by_scope(project_id, &scope).await
+    let mappings = db
+        .get_project_type_mappings_by_scope(project_id, &scope)
+        .await
         .map_err(|e| format!("查询项目级类型映射失败: {}", e))?;
 
-    serde_json::to_string(&mappings)
-        .map_err(|e| format!("序列化失败: {}", e))
+    serde_json::to_string(&mappings).map_err(|e| format!("序列化失败: {}", e))
 }
 
 /// 创建项目级类型映射
@@ -145,9 +149,16 @@ pub async fn db_create_project_type_mapping(
 ) -> Result<i64, String> {
     let db = database.as_ref();
 
-    db.create_project_type_mapping(project_id, &scope, &db_type, &pattern, &target_type, priority)
-        .await
-        .map_err(|e| format!("创建项目级类型映射失败: {}", e))
+    db.create_project_type_mapping(
+        project_id,
+        &scope,
+        &db_type,
+        &pattern,
+        &target_type,
+        priority,
+    )
+    .await
+    .map_err(|e| format!("创建项目级类型映射失败: {}", e))
 }
 
 /// 更新项目级类型映射
@@ -192,8 +203,8 @@ pub async fn db_batch_save_project_type_mappings(
 ) -> Result<(), String> {
     let db = database.as_ref();
 
-    let mappings: Vec<serde_json::Value> = serde_json::from_str(&mappings)
-        .map_err(|e| format!("解析类型映射数据失败: {}", e))?;
+    let mappings: Vec<serde_json::Value> =
+        serde_json::from_str(&mappings).map_err(|e| format!("解析类型映射数据失败: {}", e))?;
 
     db.batch_save_project_type_mappings(project_id, &scope, mappings)
         .await

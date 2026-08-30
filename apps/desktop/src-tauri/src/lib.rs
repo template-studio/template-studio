@@ -1,14 +1,14 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
-mod config;
-mod database;
-mod state;
-mod ddl;
 mod commands;
+mod config;
+pub mod database;
+mod ddl;
+mod state;
 
-use tauri::Manager;
 use database::Database;
-use state::{DbState, BrowserPoolCache};
+use state::{BrowserPoolCache, DbState};
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

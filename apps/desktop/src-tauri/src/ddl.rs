@@ -44,7 +44,8 @@ pub fn generate_create_table_ddl(
         col_defs.push(def);
     }
 
-    let pks: Vec<String> = columns.iter()
+    let pks: Vec<String> = columns
+        .iter()
         .filter(|c| c.is_primary_key)
         .map(|c| format!("`{}`", c.name.trim_matches('`')))
         .collect();
@@ -72,7 +73,13 @@ pub fn generate_create_table_ddl(
 mod tests {
     use super::*;
 
-    fn make_col(name: &str, data_type: &str, length: Option<i64>, nullable: bool, pk: bool) -> PushColumnDef {
+    fn make_col(
+        name: &str,
+        data_type: &str,
+        length: Option<i64>,
+        nullable: bool,
+        pk: bool,
+    ) -> PushColumnDef {
         PushColumnDef {
             name: name.to_string(),
             data_type: data_type.to_string(),
@@ -108,8 +115,16 @@ mod tests {
         ];
         let ddl = generate_create_table_ddl("test_table", Some("InnoDB"), Some("测试表"), &cols);
         println!("DDL:\n{}", ddl);
-        assert!(ddl.contains("`gender` tinyint"), "expected tinyint without length, got: {}", ddl);
-        assert!(!ddl.contains("tinyint("), "should not have tinyint(length), got: {}", ddl);
+        assert!(
+            ddl.contains("`gender` tinyint"),
+            "expected tinyint without length, got: {}",
+            ddl
+        );
+        assert!(
+            !ddl.contains("tinyint("),
+            "should not have tinyint(length), got: {}",
+            ddl
+        );
         assert!(ddl.contains("`score` decimal(10)"));
         assert!(ddl.contains("ENGINE=InnoDB"));
         assert!(ddl.contains("COMMENT='测试表'"));
@@ -117,17 +132,15 @@ mod tests {
 
     #[test]
     fn test_backtick_stripping() {
-        let cols = vec![
-            PushColumnDef {
-                name: "`id`".to_string(),
-                data_type: "bigint".to_string(),
-                length: None,
-                is_nullable: false,
-                is_primary_key: true,
-                default_value: None,
-                comment: None,
-            },
-        ];
+        let cols = vec![PushColumnDef {
+            name: "`id`".to_string(),
+            data_type: "bigint".to_string(),
+            length: None,
+            is_nullable: false,
+            is_primary_key: true,
+            default_value: None,
+            comment: None,
+        }];
         let ddl = generate_create_table_ddl("`user`", None, None, &cols);
         println!("DDL:\n{}", ddl);
         assert!(ddl.contains("CREATE TABLE `user`"));

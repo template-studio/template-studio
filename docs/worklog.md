@@ -346,3 +346,11 @@
 **涉及文件：** `apps/desktop/src-tauri/src/commands/template.rs`
 
 **验收结果：** desktop 编译零错误、5 个单测全过。注：两个命令的完整 UI 级验证需启动 Tauri 桌面应用进行，本机验证以编译与单测为界；render_template 走 render_template_preview 已验证过的渲染管线。
+
+## 2026-08-30 migration_005 升级数据保护（备份-重建-回填）
+
+**变更内容：** 桌面端 migration_005 原实现直接 DROP 旧表重建（v4 及更早版本升级时用户的 projects/datasources/db_tables/db_columns 数据全部清空）。重写为备份-重建-回填：①幂等保护（检测新列已存在则只补版本号）；②带数据的旧表 RENAME 暂存（无数据的直接 DROP）；③原重建逻辑不变；④回填——datasources 同名列直迁，projects 以首个数据源兜底关联+database_type 占位，db_tables/db_columns 按项目名/表名+项目名关联迁回；⑤最后清理暂存表（回填失败的数据保留在暂存表可人工恢复）。新增集成测试 `tests/mig005_test.rs`（对真实库副本模拟 v4 结构与数据，执行完整迁移链后断言数据保留/新结构就位/暂存表清理），Database 增加 `from_pool` 测试构造与 `run_migrations_for_test` 公开包装。
+
+**涉及文件：** `apps/desktop/src-tauri/src/database/{migrations,mod}.rs`、`apps/desktop/src-tauri/src/lib.rs`、`apps/desktop/src-tauri/tests/mig005_test.rs`（新增）、`apps/desktop/src-tauri/Cargo.toml`（dev-deps tokio）
+
+**验收结果：** 集成测试通过——v4 模拟库（1 项目/1 数据源/1 表/2 列）升级后全部数据保留、新结构（datasource_id 列）就位、暂存表清理干净；desktop 全部测试（5 单测 + 1 集成）通过。过程中修正回填列名与新表 schema 的不匹配（extra/updated_at 列新表不存在）。

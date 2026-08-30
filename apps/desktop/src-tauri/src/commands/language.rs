@@ -4,16 +4,15 @@ use crate::state::DbState;
 
 /// 获取所有语言
 #[tauri::command]
-pub async fn db_get_all_languages(
-    database: tauri::State<'_, DbState>,
-) -> Result<String, String> {
+pub async fn db_get_all_languages(database: tauri::State<'_, DbState>) -> Result<String, String> {
     let db = database.as_ref();
 
-    let languages = db.get_all_languages().await
+    let languages = db
+        .get_all_languages()
+        .await
         .map_err(|e| format!("查询语言失败: {}", e))?;
 
-    serde_json::to_string(&languages)
-        .map_err(|e| format!("序列化失败: {}", e))
+    serde_json::to_string(&languages).map_err(|e| format!("序列化失败: {}", e))
 }
 
 /// 根据 ID 获取语言
@@ -24,12 +23,13 @@ pub async fn db_get_language(
 ) -> Result<String, String> {
     let db = database.as_ref();
 
-    let language = db.get_language(id).await
+    let language = db
+        .get_language(id)
+        .await
         .map_err(|e| format!("查询语言失败: {}", e))?
         .ok_or_else(|| "语言不存在".to_string())?;
 
-    serde_json::to_string(&language)
-        .map_err(|e| format!("序列化失败: {}", e))
+    serde_json::to_string(&language).map_err(|e| format!("序列化失败: {}", e))
 }
 
 /// 创建语言
@@ -40,7 +40,8 @@ pub async fn db_create_language(
 ) -> Result<i64, String> {
     let db = database.as_ref();
 
-    let name = params.get("name")
+    let name = params
+        .get("name")
         .and_then(|v| v.as_str())
         .ok_or_else(|| "缺少语言名称".to_string())?;
 
@@ -48,7 +49,8 @@ pub async fn db_create_language(
     let color = params.get("color").and_then(|v| v.as_str());
     let description = params.get("description").and_then(|v| v.as_str());
 
-    let id = db.create_language(name, icon, color, description)
+    let id = db
+        .create_language(name, icon, color, description)
         .await
         .map_err(|e| format!("创建语言失败: {}", e))?;
 
@@ -64,7 +66,8 @@ pub async fn db_update_language(
 ) -> Result<(), String> {
     let db = database.as_ref();
 
-    let name = params.get("name")
+    let name = params
+        .get("name")
         .and_then(|v| v.as_str())
         .ok_or_else(|| "缺少语言名称".to_string())?;
 
@@ -118,11 +121,12 @@ pub async fn db_get_project_languages(
 ) -> Result<String, String> {
     let db = database.as_ref();
 
-    let languages = db.get_project_languages(project_id).await
+    let languages = db
+        .get_project_languages(project_id)
+        .await
         .map_err(|e| format!("查询项目语言失败: {}", e))?;
 
-    serde_json::to_string(&languages)
-        .map_err(|e| format!("序列化失败: {}", e))
+    serde_json::to_string(&languages).map_err(|e| format!("序列化失败: {}", e))
 }
 
 /// 为项目添加语言
@@ -167,12 +171,12 @@ pub async fn db_get_language_field_types(
 ) -> Result<String, String> {
     let db = database.as_ref();
 
-    let field_types = db.get_language_field_types(language_id)
+    let field_types = db
+        .get_language_field_types(language_id)
         .await
         .map_err(|e| format!("查询类型字段失败: {}", e))?;
 
-    serde_json::to_string(&field_types)
-        .map_err(|e| format!("序列化失败: {}", e))
+    serde_json::to_string(&field_types).map_err(|e| format!("序列化失败: {}", e))
 }
 
 /// 创建语言类型字段
@@ -233,8 +237,8 @@ pub async fn db_batch_save_language_field_types(
 ) -> Result<(), String> {
     let db = database.as_ref();
 
-    let field_types: Vec<serde_json::Value> = serde_json::from_str(&field_types)
-        .map_err(|e| format!("解析类型字段数据失败: {}", e))?;
+    let field_types: Vec<serde_json::Value> =
+        serde_json::from_str(&field_types).map_err(|e| format!("解析类型字段数据失败: {}", e))?;
 
     db.batch_save_language_field_types(language_id, field_types)
         .await

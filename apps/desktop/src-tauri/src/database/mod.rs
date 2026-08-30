@@ -75,6 +75,11 @@ impl Database {
         Ok(db)
     }
 
+    /// 用已有连接池构造（测试用：对指定库文件执行迁移验证）
+    pub fn from_pool(pool: SqlitePool) -> Self {
+        Self { pool }
+    }
+
     /// 获取数据库连接池的引用
     pub fn pool(&self) -> &SqlitePool {
         &self.pool

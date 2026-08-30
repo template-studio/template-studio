@@ -68,8 +68,7 @@ impl Config {
         };
 
         // 确保配置目录存在
-        std::fs::create_dir_all(&config_dir)
-            .context("创建配置目录失败")?;
+        std::fs::create_dir_all(&config_dir).context("创建配置目录失败")?;
 
         Ok(config_dir.join("template-studio-desktop.yaml"))
     }
@@ -93,16 +92,13 @@ impl Config {
         }
 
         // 读取配置文件
-        let content = std::fs::read_to_string(&config_path)
-            .context("读取配置文件失败")?;
+        let content = std::fs::read_to_string(&config_path).context("读取配置文件失败")?;
 
         // 解析 YAML
-        let config: Config = serde_yaml::from_str(&content)
-            .context("解析配置文件失败")?;
+        let config: Config = serde_yaml::from_str(&content).context("解析配置文件失败")?;
 
         // 确保模板存储目录存在
-        std::fs::create_dir_all(&config.storage.template_path)
-            .context("创建模板存储目录失败")?;
+        std::fs::create_dir_all(&config.storage.template_path).context("创建模板存储目录失败")?;
 
         Ok(config)
     }
@@ -111,11 +107,9 @@ impl Config {
     pub fn save(&self) -> Result<()> {
         let config_path = Self::get_config_path()?;
 
-        let yaml = serde_yaml::to_string(self)
-            .context("序列化配置失败")?;
+        let yaml = serde_yaml::to_string(self).context("序列化配置失败")?;
 
-        std::fs::write(&config_path, yaml)
-            .context("写入配置文件失败")?;
+        std::fs::write(&config_path, yaml).context("写入配置文件失败")?;
 
         Ok(())
     }
@@ -124,8 +118,6 @@ impl Config {
         // 目录结构: templates/{template_id}/{version}/
         // version 参数是实际的版本号（如 "1.0.0"）
         // 前端会自动选择 is_latest=true 的版本，与 CLI 保持一致
-        self.storage.template_path
-            .join(template_id)
-            .join(version)
+        self.storage.template_path.join(template_id).join(version)
     }
 }

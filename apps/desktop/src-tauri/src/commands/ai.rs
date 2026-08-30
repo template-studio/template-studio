@@ -2,16 +2,15 @@ use crate::state::DbState;
 
 /// 获取所有 AI 提供商
 #[tauri::command]
-pub async fn ai_get_all_providers(
-    database: tauri::State<'_, DbState>,
-) -> Result<String, String> {
+pub async fn ai_get_all_providers(database: tauri::State<'_, DbState>) -> Result<String, String> {
     let db = database.as_ref();
 
-    let providers = db.get_all_ai_providers().await
+    let providers = db
+        .get_all_ai_providers()
+        .await
         .map_err(|e| format!("获取 AI 提供商失败: {}", e))?;
 
-    serde_json::to_string(&providers)
-        .map_err(|e| format!("序列化失败: {}", e))
+    serde_json::to_string(&providers).map_err(|e| format!("序列化失败: {}", e))
 }
 
 /// 获取单个 AI 提供商
@@ -22,12 +21,13 @@ pub async fn ai_get_provider(
 ) -> Result<String, String> {
     let db = database.as_ref();
 
-    let provider = db.get_ai_provider(&provider_name).await
+    let provider = db
+        .get_ai_provider(&provider_name)
+        .await
         .map_err(|e| format!("获取 AI 提供商失败: {}", e))?
         .ok_or_else(|| "AI 提供商不存在".to_string())?;
 
-    serde_json::to_string(&provider)
-        .map_err(|e| format!("序列化失败: {}", e))
+    serde_json::to_string(&provider).map_err(|e| format!("序列化失败: {}", e))
 }
 
 /// 保存 AI 提供商配置
@@ -38,35 +38,49 @@ pub async fn ai_save_provider(
 ) -> Result<String, String> {
     let db = database.as_ref();
 
-    let provider_name = params.get("providerName")
+    let provider_name = params
+        .get("providerName")
         .and_then(|v| v.as_str())
         .ok_or_else(|| "缺少提供商名称".to_string())?;
 
-    let display_name = params.get("displayName")
+    let display_name = params
+        .get("displayName")
         .and_then(|v| v.as_str())
         .ok_or_else(|| "缺少显示名称".to_string())?;
 
-    let provider_type = params.get("providerType")
+    let provider_type = params
+        .get("providerType")
         .and_then(|v| v.as_str())
         .ok_or_else(|| "缺少提供商类型".to_string())?;
 
     let api_key = params.get("apiKey").and_then(|v| v.as_str());
     let api_endpoint = params.get("apiEndpoint").and_then(|v| v.as_str());
-    let is_enabled = params.get("isEnabled").and_then(|v| v.as_bool()).unwrap_or(false);
-    let temperature = params.get("temperature").and_then(|v| v.as_f64()).unwrap_or(0.7);
-    let max_tokens = params.get("maxTokens").and_then(|v| v.as_i64()).unwrap_or(4096) as i32;
+    let is_enabled = params
+        .get("isEnabled")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let temperature = params
+        .get("temperature")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.7);
+    let max_tokens = params
+        .get("maxTokens")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(4096) as i32;
 
-    let _id = db.save_ai_provider(
-        provider_name,
-        display_name,
-        provider_type,
-        api_key,
-        api_endpoint,
-        is_enabled,
-        temperature,
-        max_tokens,
-    ).await
-    .map_err(|e| format!("保存 AI 提供商失败: {}", e))?;
+    let _id = db
+        .save_ai_provider(
+            provider_name,
+            display_name,
+            provider_type,
+            api_key,
+            api_endpoint,
+            is_enabled,
+            temperature,
+            max_tokens,
+        )
+        .await
+        .map_err(|e| format!("保存 AI 提供商失败: {}", e))?;
 
     Ok("配置已保存".to_string())
 }
@@ -110,11 +124,12 @@ pub async fn ai_get_provider_models_grouped(
 ) -> Result<String, String> {
     let db = database.as_ref();
 
-    let groups = db.get_ai_provider_models_grouped(&provider_name).await
+    let groups = db
+        .get_ai_provider_models_grouped(&provider_name)
+        .await
         .map_err(|e| format!("获取模型列表失败: {}", e))?;
 
-    serde_json::to_string(&groups)
-        .map_err(|e| format!("序列化失败: {}", e))
+    serde_json::to_string(&groups).map_err(|e| format!("序列化失败: {}", e))
 }
 
 /// 添加 AI 模型
@@ -125,26 +140,41 @@ pub async fn ai_add_model(
 ) -> Result<i64, String> {
     let db = database.as_ref();
 
-    let model_id = params.get("modelId")
+    let model_id = params
+        .get("modelId")
         .and_then(|v| v.as_str())
         .ok_or_else(|| "缺少模型 ID".to_string())?;
 
-    let model_name = params.get("modelName")
+    let model_name = params
+        .get("modelName")
         .and_then(|v| v.as_str())
         .ok_or_else(|| "缺少模型名称".to_string())?;
 
-    let provider_name = params.get("providerName")
+    let provider_name = params
+        .get("providerName")
         .and_then(|v| v.as_str())
         .ok_or_else(|| "缺少提供商名称".to_string())?;
 
-    let group_id = params.get("groupId")
+    let group_id = params
+        .get("groupId")
         .and_then(|v| v.as_str())
         .unwrap_or("chat");
 
     let description = params.get("description").and_then(|v| v.as_str());
-    let max_tokens = params.get("maxTokens").and_then(|v| v.as_i64()).unwrap_or(4096) as i32;
+    let max_tokens = params
+        .get("maxTokens")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(4096) as i32;
 
-    let id = db.add_ai_model(model_id, model_name, provider_name, group_id, description, max_tokens)
+    let id = db
+        .add_ai_model(
+            model_id,
+            model_name,
+            provider_name,
+            group_id,
+            description,
+            max_tokens,
+        )
         .await
         .map_err(|e| format!("添加模型失败: {}", e))?;
 
@@ -175,15 +205,18 @@ pub async fn ai_update_model(
 ) -> Result<(), String> {
     let db = database.as_ref();
 
-    let new_model_id = params.get("modelId")
+    let new_model_id = params
+        .get("modelId")
         .and_then(|v| v.as_str())
         .ok_or_else(|| "缺少模型 ID".to_string())?;
 
-    let model_name = params.get("modelName")
+    let model_name = params
+        .get("modelName")
         .and_then(|v| v.as_str())
         .ok_or_else(|| "缺少模型名称".to_string())?;
 
-    let group_id = params.get("groupId")
+    let group_id = params
+        .get("groupId")
         .and_then(|v| v.as_str())
         .unwrap_or("chat");
 
@@ -205,7 +238,9 @@ pub async fn ai_fetch_models(
     let db = database.as_ref();
 
     // 获取提供商配置
-    let provider_config = db.get_ai_provider(&provider_name).await
+    let provider_config = db
+        .get_ai_provider(&provider_name)
+        .await
         .map_err(|e| format!("获取提供商失败: {}", e))?
         .ok_or_else(|| "提供商不存在".to_string())?;
 
@@ -244,7 +279,9 @@ pub async fn ai_fetch_models(
         return Err(format!("API 返回错误 ({}): {}", status, body));
     }
 
-    let response_json: serde_json::Value = response.json().await
+    let response_json: serde_json::Value = response
+        .json()
+        .await
         .map_err(|e| format!("解析响应失败: {}", e))?;
 
     // 解析 OpenAI 兼容格式的模型列表
@@ -264,8 +301,7 @@ pub async fn ai_fetch_models(
         })
         .collect();
 
-    serde_json::to_string(&models)
-        .map_err(|e| format!("序列化失败: {}", e))
+    serde_json::to_string(&models).map_err(|e| format!("序列化失败: {}", e))
 }
 
 /// 批量添加 AI 模型
@@ -277,23 +313,35 @@ pub async fn ai_batch_add_models(
 ) -> Result<i64, String> {
     let db = database.as_ref();
 
-    let models_array = models.as_array()
+    let models_array = models
+        .as_array()
         .ok_or_else(|| "models 格式错误：应为数组".to_string())?;
 
     let mut model_tuples: Vec<(&str, &str, &str, &str, Option<&str>, i32)> = Vec::new();
     for m in models_array {
         let model_id = m.get("modelId").and_then(|v| v.as_str()).unwrap_or("");
-        let model_name = m.get("modelName").and_then(|v| v.as_str()).unwrap_or(model_id);
+        let model_name = m
+            .get("modelName")
+            .and_then(|v| v.as_str())
+            .unwrap_or(model_id);
         let group_id = m.get("groupId").and_then(|v| v.as_str()).unwrap_or("chat");
         let description = m.get("description").and_then(|v| v.as_str());
         let max_tokens = m.get("maxTokens").and_then(|v| v.as_i64()).unwrap_or(4096) as i32;
 
         if !model_id.is_empty() {
-            model_tuples.push((model_id, model_name, &provider_name, group_id, description, max_tokens));
+            model_tuples.push((
+                model_id,
+                model_name,
+                &provider_name,
+                group_id,
+                description,
+                max_tokens,
+            ));
         }
     }
 
-    let count = db.batch_add_ai_models(&model_tuples)
+    let count = db
+        .batch_add_ai_models(&model_tuples)
         .await
         .map_err(|e| format!("批量添加模型失败: {}", e))?;
 
@@ -318,7 +366,11 @@ pub async fn ai_test_connection(
     // 使用 /models 接口快速检测连通性
     let url = match provider_type.as_str() {
         "ollama" => {
-            let base = if api_endpoint.is_empty() { "http://localhost:11434" } else { &api_endpoint };
+            let base = if api_endpoint.is_empty() {
+                "http://localhost:11434"
+            } else {
+                &api_endpoint
+            };
             format!("{}/api/tags", base)
         }
         _ => {
@@ -331,14 +383,15 @@ pub async fn ai_test_connection(
         }
     };
 
-    let mut request = client.get(&url)
-        .timeout(std::time::Duration::from_secs(5));
+    let mut request = client.get(&url).timeout(std::time::Duration::from_secs(5));
 
     if !api_key.is_empty() {
         request = request.header("Authorization", format!("Bearer {}", api_key));
     }
 
-    let response = request.send().await
+    let response = request
+        .send()
+        .await
         .map_err(|e| format!("连接失败: {}", e))?;
 
     let status = response.status();
@@ -363,7 +416,9 @@ pub async fn ai_generate_sql(
     let db = database.as_ref();
 
     // 获取提供商配置
-    let provider_config = db.get_ai_provider(&provider).await
+    let provider_config = db
+        .get_ai_provider(&provider)
+        .await
         .map_err(|e| format!("获取提供商失败: {}", e))?
         .ok_or_else(|| "提供商不存在".to_string())?;
 
@@ -385,7 +440,8 @@ pub async fn ai_generate_sql(
     };
 
     // 验证 messages 格式
-    let messages_array = messages.as_array()
+    let messages_array = messages
+        .as_array()
         .ok_or_else(|| "messages 格式错误：应为数组".to_string())?;
 
     if messages_array.is_empty() {
@@ -411,7 +467,9 @@ pub async fn ai_generate_sql(
         return Err(format!("AI API 返回错误: {}", response.status()));
     }
 
-    let response_json: serde_json::Value = response.json().await
+    let response_json: serde_json::Value = response
+        .json()
+        .await
         .map_err(|e| format!("解析响应失败: {}", e))?;
 
     let sql = response_json["choices"][0]["message"]["content"]
@@ -445,7 +503,9 @@ pub async fn ai_fix_sql(
     );
 
     // 获取提供商配置
-    let provider_config = db.get_ai_provider(&provider).await
+    let provider_config = db
+        .get_ai_provider(&provider)
+        .await
         .map_err(|e| format!("获取提供商失败: {}", e))?
         .ok_or_else(|| "提供商不存在".to_string())?;
 
@@ -489,7 +549,9 @@ pub async fn ai_fix_sql(
         return Err(format!("AI API 返回错误: {}", response.status()));
     }
 
-    let response_json: serde_json::Value = response.json().await
+    let response_json: serde_json::Value = response
+        .json()
+        .await
         .map_err(|e| format!("解析响应失败: {}", e))?;
 
     let sql = response_json["choices"][0]["message"]["content"]
