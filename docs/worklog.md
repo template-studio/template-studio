@@ -370,3 +370,11 @@
 **涉及文件：** `apps/web/src/middleware/auth.rs`、`apps/web/src/main.rs`、`web/src/api/templates/index.ts`
 
 **验收结果：** 实测矩阵——无 token 直链/版本下载 401、`?token=` 有效令牌 200（导出 19KB、下载 19.6KB）、假 token 401；前端模块编译 200。
+
+## 2026-08-30 优雅停机与 /health 真实化
+
+**变更内容：** ① `/health` 由恒返回静态 OK 改为真实数据库连通探测（AppState 增加 db_pool 字段），返回 `{status, database, timestamp}` JSON，数据库不可达时 HTTP 503（此前数据库挂了探针仍通过）。② 优雅停机：`with_graceful_shutdown` 接入 SIGTERM（Unix）/Ctrl+C 信号处理，停止接收新连接后关闭数据库连接池再退出，供容器滚动更新避免硬切在途请求；关停用 db_pool 句柄在路由 move 前克隆，Arc 解构后调用 close(self)。
+
+**涉及文件：** `apps/web/src/main.rs`、`crates/infrastructure/src/database/pool.rs`（既有 health_check 首次被调用）
+
+**验收结果：** /health 实测返回 `{"database":true,"status":"healthy",...}`（真实探测）；优雅停机编译就位——Windows 下 SIGTERM 信号语义受限无法本机完整验证停机时序，Unix 部署环境（K8s/docker）将正常触发，属已声明的验证边界。

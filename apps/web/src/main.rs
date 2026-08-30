@@ -3,6 +3,7 @@ mod handlers;
 mod middleware;
 mod routes;
 
+use axum::response::{IntoResponse, Response};
 use axum::{
     routing::{delete, get, post, put},
     Router,
@@ -267,9 +268,12 @@ async fn main() -> anyhow::Result<()> {
         user_repository,
         template_repository,
         storage_manager,
+        db_pool: std::sync::Arc::new(db_pool),
     };
 
     // 创建路由
+    let shutdown_db_pool = app_state.db_pool.clone();
+
     let app = create_app(app_state, &config);
 
     // 启动服务器（带连接信息，供限速中间件获取客户端 IP）
@@ -277,11 +281,23 @@ async fn main() -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind(&bind_addr).await?;
     info!("服务器启动成功: http://{}", bind_addr);
 
+    // 优雅停机：SIGTERM/Ctrl+C 后停止接收新连接，给在途请求 30s 完成窗口，
+    // 再关数据库池。容器编排（K8s rolling update / docker stop）依赖此行为
+    // 避免请求被硬切断
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
     )
+    .with_graceful_shutdown(shutdown_signal())
     .await?;
+
+    info!("HTTP 服务已停止，关闭数据库连接池");
+    // close(self) 需要 owned——Arc 解构（此句柄仅此处使用，解构安全）
+    match std::sync::Arc::try_unwrap(shutdown_db_pool) {
+        Ok(pool) => pool.close().await,
+        Err(_) => unreachable!("关停句柄不应有其他引用"),
+    }
+    info!("数据库连接池已关闭，进程退出");
 
     Ok(())
 }
@@ -311,6 +327,8 @@ pub struct AppState {
     pub user_repository: Arc<UserRepository>,
     pub template_repository: Arc<TemplateRepository>,
     pub storage_manager: Arc<StorageManager>,
+    /// 数据库池（健康检查与优雅关停用）
+    pub db_pool: Arc<DatabasePool>,
 }
 
 /// 创建应用路由
@@ -580,9 +598,49 @@ fn backup_routes() -> Router<AppState> {
         .route("/restore", post(handlers::backup::restore_backup))
 }
 
-/// 健康检查
-async fn health_check() -> &'static str {
-    "OK"
+/// 健康检查：数据库连通性探测，返回结构化状态
+///
+/// 供负载均衡/K8s 探针使用；数据库不可达时返回 503（此前恒返回静态 OK，
+/// 数据库挂了探针仍然通过）。
+async fn health_check(
+    axum::extract::State(state): axum::extract::State<AppState>,
+) -> axum::response::Response {
+    let db_ok = state.db_pool.health_check().await;
+    let status = if db_ok { "healthy" } else { "degraded" };
+    let body = serde_json::json!({
+        "status": status,
+        "database": db_ok,
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+    });
+    let code = if db_ok {
+        axum::http::StatusCode::OK
+    } else {
+        axum::http::StatusCode::SERVICE_UNAVAILABLE
+    };
+    axum::response::IntoResponse::into_response((code, axum::Json(body)))
+}
+
+/// 优雅停机信号：SIGTERM（容器）或 Ctrl+C
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        let _ = tokio::signal::ctrl_c().await;
+    };
+    #[cfg(unix)]
+    let terminate = async {
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut sig) => {
+                sig.recv().await;
+            }
+            Err(_) => std::future::pending::<()>().await,
+        }
+    };
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => info!("收到 Ctrl+C，开始优雅停机"),
+        _ = terminate => info!("收到 SIGTERM，开始优雅停机"),
+    }
 }
 
 /// Git初始化wrapper函数
