@@ -1,3 +1,5 @@
+import { storage } from '@/utils/Storage';
+import { ACCESS_TOKEN } from '@/store/mutation-types';
 import request from '@/utils/request';
 
 // 模板-新增
@@ -96,10 +98,11 @@ export function toggleTemplateFeatured(data) {
   });
 }
 
-// 导出模板 - 直接下载文件
+// 导出模板 - 直接下载文件（直链下载无法带请求头，token 经查询参数传递）
 export function exportTemplate(templateId, format = 'files', fileName = null) {
+  const token = storage.get(ACCESS_TOKEN) || '';
   // 创建一个临时链接来触发文件下载
-  const exportUrl = `/api/v1/template/templates/${templateId}/export?format=${format}`;
+  const exportUrl = `/api/v1/template/templates/${templateId}/export?format=${format}&token=${token}`;
   const link = document.createElement('a');
   link.href = exportUrl;
   link.download = fileName || `template_${templateId}.${format === 'json' ? 'json' : 'zip'}`;

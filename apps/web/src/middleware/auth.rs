@@ -66,11 +66,31 @@ pub async fn admin_auth_middleware(
 }
 
 fn extract_token(request: &Request) -> Option<&str> {
-    request
+    // 1) 标准 token 请求头
+    if let Some(t) = request
         .headers()
         .get("token")
         .and_then(|v| v.to_str().ok())
         .filter(|t| !t.is_empty())
+    {
+        return Some(t);
+    }
+    // 2) ?token= 查询参数：供 <a href> 直链下载等无法携带请求头的场景。
+    //    查询参数会进访问日志/浏览器历史，安全弱于请求头，仅用于 GET 下载类接口
+    //    （路由层按需开启，非全局放行）。
+    if request.method() == axum::http::Method::GET {
+        if let Some(query) = request.uri().query() {
+            for pair in query.split('&') {
+                if let Some(t) = pair.strip_prefix("token=") {
+                    // JWT/PAT 字符集 URL 安全，要求调用方不做额外编码
+                    if !t.is_empty() {
+                        return Some(t);
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 async fn authenticate(state: &AppState, token: &str) -> Result<AuthUser, &'static str> {

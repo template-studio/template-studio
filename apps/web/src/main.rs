@@ -413,22 +413,12 @@ fn template_routes() -> Router<AppState> {
             "/templates/detail",
             get(handlers::template::get_template_detail),
         )
-        // GET 下载类接口：前端用 <a href> 直链下载，无法携带 token 请求头，暂保持公开。
-        // TODO(安全): 改为支持 ?token= 查询参数或短时下载签名后纳入认证组
-        .route(
-            "/templates/:id/export",
-            get(handlers::template::export_template),
-        )
         .route(
             "/templates/:id/releases",
             get(handlers::releases::list_releases),
         )
-        // 版本发布路由（写操作在 template_protected_routes）
-        // 下载版本模板（发布内容的公开下载）
-        .route(
-            "/templates/:id/releases/:version/download",
-            get(handlers::template::download_template_version),
-        )
+    // 导出与版本下载已移入 template_protected_routes（认证组）：
+    // 认证中间件支持 ?token= 查询参数（仅 GET），供 <a href> 直链下载
 }
 
 /// 模板写操作路由（需认证）
@@ -466,6 +456,15 @@ fn template_protected_routes() -> Router<AppState> {
         .route(
             "/templates/:id/releases/:version/deprecate",
             post(handlers::releases::deprecate_version),
+        )
+        // 下载类 GET（前端 <a href> 直链 + ?token= 查询参数认证）
+        .route(
+            "/templates/:id/export",
+            get(handlers::template::export_template),
+        )
+        .route(
+            "/templates/:id/releases/:version/download",
+            get(handlers::template::download_template_version),
         )
 }
 

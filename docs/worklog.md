@@ -362,3 +362,11 @@
 **涉及文件：** `apps/desktop/src-tauri/src/database/{credential,datasource,ai,mod}.rs`（新增+接线）、`apps/desktop/src-tauri/Cargo.toml`（aes-gcm/base64/rand/keyring 依赖）
 
 **验收结果：** credential 单测 2 项通过（中英文+emoji 密码往返、随机 nonce 密文唯一性、历史明文兼容）；desktop 全部 7 单测通过；Windows 凭据管理器确认密钥落位、回退文件未触发。存量明文数据在下次读取时兼容、保存时自动加密升级。
+
+## 2026-08-30 直链下载的 ?token= 认证支持（审计 P0 收尾）
+
+**变更内容：** `extract_token` 扩展：token 请求头缺失且方法为 GET 时回退读取 `?token=` 查询参数（JWT/PAT 字符集 URL 安全，要求不做额外编码）；路由调整——`templates/:id/export` 与 `templates/:id/releases/:version/download` 从公开组移入认证组（导出含未发布草稿内容，版本下载统一语义），消除此前「无法带请求头所以公开」的妥协；前端 `exportTemplate` 的直链 URL 拼 `&token=`。过程中修复路由重复注册 panic（同路径 GET 在两组各留一份导致 Overlapping method route，公开组移除后恢复）。
+
+**涉及文件：** `apps/web/src/middleware/auth.rs`、`apps/web/src/main.rs`、`web/src/api/templates/index.ts`
+
+**验收结果：** 实测矩阵——无 token 直链/版本下载 401、`?token=` 有效令牌 200（导出 19KB、下载 19.6KB）、假 token 401；前端模块编译 200。
