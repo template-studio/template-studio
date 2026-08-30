@@ -482,3 +482,11 @@
 **涉及文件：** `apps/web/src/handlers/*.rs`（21 个）、`crates/repositories/src/user_repository.rs`
 
 **验收结果：** 编译零错误；信封回归实测——登录（code:0 + data 含 roles/token）、公开分类、用户信息（修复后 code:0）、统计总览均正常。新增代码从「禁手写 json!」的约定变为存量已基本遵循。
+
+## 2026-08-30 编译警告清零与死代码清理
+
+**变更内容：** ① 清理 5 处 unused import（services 的 render_string、access.rs 的 State、main.rs 的 IntoResponse/Response、routes/auth.rs 的 put）；② 删除 git service 的两个死方法（async create_initial_commit 委托壳——sync 版在用；clone_repository_local——被 clone_and_clean 的 Send 安全重写替代）。
+
+**涉及文件：** `crates/infrastructure/src/git/service.rs`、`crates/services/src/template_render_service.rs`、`apps/web/src/handlers/access.rs`、`apps/web/src/main.rs`、`apps/web/src/routes/auth.rs`
+
+**验收结果：** `cargo check -p template-studio-web` 零警告零错误（含全部依赖 crate）；后端重启正常、/health 通过。

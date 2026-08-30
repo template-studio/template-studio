@@ -1,7 +1,7 @@
 use super::super::AppState;
 use crate::handlers::{auth, email};
 use axum::{
-    routing::{get, post, put},
+    routing::{get, post},
     Router,
 };
 

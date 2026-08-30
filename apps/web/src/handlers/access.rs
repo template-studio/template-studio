@@ -1,6 +1,6 @@
 //! 模板级访问控制：属主或 super_admin 才能操作指定模板
 
-use axum::{extract::State, http::StatusCode, response::Json};
+use axum::{http::StatusCode, response::Json};
 use serde_json::{json, Value};
 use template_studio_shared::models::auth::AuthUser;
 

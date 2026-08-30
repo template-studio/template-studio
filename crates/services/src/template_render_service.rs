@@ -8,9 +8,7 @@ use std::sync::Arc;
 use template_studio_shared::models::file_tree::FileTreeNode;
 use template_studio_shared::utils::error::AppError;
 use template_studio_template_core::conditions::ConditionsYaml;
-use template_studio_template_core::{
-    render_string, render_tree, TemplateFile, TreeBuilder, Variables,
-};
+use template_studio_template_core::{render_tree, TemplateFile, TreeBuilder, Variables};
 use tokio::fs;
 use tracing::{debug, error, info, warn};
 

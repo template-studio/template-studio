@@ -242,16 +242,6 @@ src/
         self.create_initial_commit_inner(repo, signature, template_name)
     }
 
-    /// 创建初始提交
-    async fn create_initial_commit(
-        &self,
-        repo: &Repository,
-        signature: &Signature<'_>,
-        template_name: &str,
-    ) -> Result<()> {
-        self.create_initial_commit_inner(repo, signature, template_name)
-    }
-
     fn create_initial_commit_inner(
         &self,
         repo: &Repository,
@@ -396,25 +386,6 @@ src/
         }
 
         info!("Fork模板完成: {:?}", target_path);
-        Ok(())
-    }
-
-    /// 本地克隆 Git 仓库（复制包括 .git 目录在内的所有文件）
-    async fn clone_repository_local(
-        &self,
-        source_repo: &Repository,
-        target_path: &PathBuf,
-    ) -> Result<()> {
-        let source_workdir = source_repo
-            .workdir()
-            .ok_or_else(|| anyhow::anyhow!("无法获取源仓库工作目录"))?
-            .to_path_buf();
-
-        // 复制所有文件包括 .git 目录
-        self.copy_directory_recursive(&source_workdir, target_path)
-            .await?;
-
-        info!("本地克隆完成: {:?}", target_path);
         Ok(())
     }
 

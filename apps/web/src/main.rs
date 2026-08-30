@@ -3,7 +3,6 @@ mod handlers;
 mod middleware;
 mod routes;
 
-use axum::response::{IntoResponse, Response};
 use axum::{
     routing::{delete, get, post, put},
     Router,
