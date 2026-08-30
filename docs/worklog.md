@@ -426,3 +426,11 @@
 **涉及文件：** `apps/web/src/handlers/template.rs`、`crates/infrastructure/src/git/service.rs`、`crates/services/src/release_service.rs`
 
 **验收结果：** 编译零错误（#[axum::debug_handler] 辅助定位后移除）；模板核心 52 测试全过；端到端实测 fork 全链路（合法载荷 → 新模板 1788083580182 创建 + 目录落盘 + git 仓库初始化含 HEAD/config）后删除清理、目录无残留。
+
+## 2026-08-30 迁移目录化（清单 #11）：017-021 运行时迁移废除
+
+**变更内容：** main.rs 里约 100 行的运行时迁移块（017 templates 可见性字段 / 018 审核表 / 019 密码重置令牌表 / 020 users.bio / 021 PAT scopes）整体移除——此前以运行时 ALTER/CREATE + `.ok()` 吞错实现，迁移失败无感知且不记录版本号。补齐缺失的 019/020 SQL 文件（019 加 IF NOT EXISTS 防御），migrations/ 目录自此 001-021 完整、由 scripts/migrate.py 统一执行与记录版本。当前库的版本记录缺失项（001-007 历史建表无记录、017-021 运行时迁移无记录）已按实际状态补登（表/字段均已存在的实证核对）。
+
+**涉及文件：** `apps/web/src/main.rs`（移除运行时迁移块）、`migrations/019_create_password_reset_tokens.sql`（新增）、`migrations/020_alter_users_add_bio.sql`（新增）
+
+**验收结果：** migrate.py dry-run 显示「所有迁移已执行」；后端重启日志确认无运行时迁移输出、/health 正常；版本记录表 001-021 完整。
