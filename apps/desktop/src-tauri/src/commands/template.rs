@@ -29,29 +29,114 @@ pub struct RenderedFile {
 // Tauri Commands
 // ---------------------------------------------------------------------------
 
-/// 获取模板列表
+/// 获取模板列表：优先读本地已下载模板，为空时回退 Web 服务端公开模板列表
+///
+/// 桌面端定位是离线优先：用户通过模板广场下载的模板落盘在本地，
+/// 模板选择器应展示这些可离线渲染的模板；本地一个都没有时（首次使用）
+/// 引导性地展示服务端公开模板（此时渲染需在线下载）。
 #[tauri::command]
 pub async fn list_templates() -> Result<Vec<Template>, String> {
-    // TODO: 从 API 或本地加载模板列表
-    // 这里先返回模拟数据
-    Ok(vec![
-        Template {
-            id: "1".to_string(),
-            name: "Go Web Service".to_string(),
-            description: Some("一个使用 Gin 框架的 Go Web 服务模板".to_string()),
-            template_type: "web".to_string(),
-            language: Some("Go".to_string()),
-            is_featured: true,
-        },
-        Template {
-            id: "2".to_string(),
-            name: "Rust CLI Tool".to_string(),
-            description: Some("使用 Clap 的 Rust 命令行工具模板".to_string()),
-            template_type: "cli".to_string(),
-            language: Some("Rust".to_string()),
-            is_featured: false,
-        },
-    ])
+    // 1) 本地已下载模板（data/templates/<id>/.meta/variables/variables.json 提供元数据）
+    let mut templates: Vec<Template> = Vec::new();
+    if let Ok(config) = Config::load() {
+        let base = config.storage.template_path.clone();
+        if let Ok(entries) = std::fs::read_dir(&base) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if !path.is_dir() {
+                    continue;
+                }
+                let id = entry.file_name().to_string_lossy().to_string();
+                let meta_path = path.join(".meta").join("variables").join("variables.json");
+                let (name, description) = if meta_path.exists() {
+                    match std::fs::read_to_string(&meta_path) {
+                        Ok(content) => {
+                            let v: serde_json::Value =
+                                serde_json::from_str(&content).unwrap_or(serde_json::json!({}));
+                            (
+                                v.get("_templateName")
+                                    .and_then(|x| x.as_str())
+                                    .unwrap_or(&id)
+                                    .to_string(),
+                                v.get("_templateDescription")
+                                    .and_then(|x| x.as_str())
+                                    .map(|x| x.to_string()),
+                            )
+                        }
+                        Err(_) => (id.clone(), None),
+                    }
+                } else {
+                    (id.clone(), None)
+                };
+                templates.push(Template {
+                    id,
+                    name,
+                    description,
+                    template_type: "web".to_string(),
+                    language: None,
+                    is_featured: false,
+                });
+            }
+        }
+    }
+    if !templates.is_empty() {
+        templates.sort_by(|a, b| a.name.cmp(&b.name));
+        return Ok(templates);
+    }
+
+    // 2) 回退：Web 服务端公开模板列表（离线时返回空并提示由前端处理）
+    if let Ok(config) = Config::load() {
+        let url = format!("{}/api/v1/studio/templates/list", config.web_server.api_url);
+        if let Ok(client) = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(5))
+            .build()
+        {
+            if let Ok(resp) = client
+                .get(&url)
+                .query(&[("page", "1"), ("pageSize", "50")])
+                .send()
+                .await
+            {
+                if let Ok(body) = resp.json::<serde_json::Value>().await {
+                    if let Some(list) = body
+                        .pointer("/data/templatesList")
+                        .and_then(|x| x.as_array())
+                    {
+                        for item in list {
+                            templates.push(Template {
+                                id: item
+                                    .get("id")
+                                    .and_then(|x| x.as_i64())
+                                    .map(|x| x.to_string())
+                                    .unwrap_or_default(),
+                                name: item
+                                    .get("name")
+                                    .and_then(|x| x.as_str())
+                                    .unwrap_or("")
+                                    .to_string(),
+                                description: item
+                                    .get("description")
+                                    .and_then(|x| x.as_str())
+                                    .map(|x| x.to_string()),
+                                template_type: item
+                                    .get("templateType")
+                                    .and_then(|x| x.as_str())
+                                    .unwrap_or("web")
+                                    .to_string(),
+                                language: None,
+                                is_featured: item
+                                    .get("isFeatured")
+                                    .and_then(|x| x.as_i64())
+                                    .map(|x| x != 0)
+                                    .unwrap_or(false),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(templates)
 }
 
 /// 获取模板变量定义（从本地 variables.json 读取）
@@ -78,48 +163,35 @@ pub async fn get_template_variables(
     }
 }
 
-/// 渲染模板预览
+/// 渲染模板（旧入口，保留兼容）：按 templateId 定位本地模板并整树渲染
+///
+/// 历史上这里是硬编码模拟内容；现复用 render_template_preview 的本地渲染
+/// 链路（扫描 + 条件过滤 + render_tree），返回前端期望的扁平文件列表。
 #[tauri::command]
-pub fn render_template(
+pub async fn render_template(
     template_id: String,
     variables: serde_json::Value,
 ) -> Result<Vec<RenderedFile>, String> {
-    let vars = Variables::from_json(&variables.to_string()).map_err(|e| e.to_string())?;
-
-    // TODO: 根据 template_id 加载实际模板内容
-    // 这里使用模拟的模板内容
-    let template_content = match template_id.as_str() {
-        "1" => "package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"Hello, {{ project_name }}!\")\n    fmt.Println(\"Author: {{ author }}\")\n}",
-        "2" => "use std::println;\n\nfn main() {\n    println!(\"Hello, {{ cli_name }}!\");\n}",
-        _ => "Hello, {{ name }}!"
-    };
-
-    // 简单渲染示例（实际应该使用 render_tree）
-    let result = render_string(template_content, &vars, None).map_err(|e| e.to_string())?;
-
-    // 返回模拟的文件列表
-    Ok(vec![
-        RenderedFile {
-            path: match template_id.as_str() {
-                "1" => "main.go".to_string(),
-                "2" => "main.rs".to_string(),
-                _ => "main.txt".to_string(),
-            },
-            content: result.content,
-        },
-        RenderedFile {
-            path: "README.md".to_string(),
-            content: format!(
-                "# Project\n\nGenerated by: {}\n\nWelcome to your new project!",
-                variables
-                    .get("project_name")
-                    .or_else(|| variables.get("cli_name"))
-                    .or_else(|| variables.get("name"))
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("unknown")
-            ),
-        },
-    ])
+    let result_json = render_template_preview(template_id, variables, None).await?;
+    // preview 返回 core::RenderedFile 树（file_path/file_content/is_directory）
+    let rendered: Vec<serde_json::Value> =
+        serde_json::from_str(&result_json).map_err(|e| format!("解析渲染结果失败: {}", e))?;
+    Ok(rendered
+        .into_iter()
+        .filter(|f| f.get("isDirectory").and_then(|v| v.as_i64()) == Some(0))
+        .map(|f| RenderedFile {
+            path: f
+                .get("filePath")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+            content: f
+                .get("fileContent")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+        })
+        .collect())
 }
 
 /// 渲染模板预览（返回文件树）

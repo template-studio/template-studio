@@ -338,3 +338,11 @@
 **涉及文件：** `apps/web/src/handlers/statistics.rs`（重写）、`crates/repositories/src/template_repository.rs`、`crates/services/src/template_service.rs`
 
 **验收结果：** 实测：分类分布 web:6/cli:1（真实）、语言热度 go:4/vue:2/rust:2/python:1（真实）、复杂度 6 scaffold+1 datadriven 且变量分档来自真实 variables.json、趋势 400 天窗口显示 7 个真实创建日（近 7 天全零为正确行为）。过程中发现并修复 MySQL `SUM(INT)` 返回 DECIMAL 导致 i64 解码失败被 unwrap_or(0) 吞掉的问题（CAST AS SIGNED），totalFiles 由 0 修正为 323。
+
+## 2026-08-29 桌面端两个 mock 命令落地
+
+**变更内容：** ① `list_templates`：由返回硬编码假模板（Go Web Service/Rust CLI Tool）改为本地优先策略——扫描本地模板存储目录列出已下载模板（离线可用，配合桌面端离线定位），本地为空时回退 Web 服务端公开模板列表（5 秒超时，离线静默返回空由前端提示）。② `render_template`：由按 ID 硬编码模拟内容改为复用 `render_template_preview` 的真实本地渲染链路（扫描 + 条件过滤 + render_tree），把树形结果转换为前端期望的扁平文件列表（过滤目录节点）。
+
+**涉及文件：** `apps/desktop/src-tauri/src/commands/template.rs`
+
+**验收结果：** desktop 编译零错误、5 个单测全过。注：两个命令的完整 UI 级验证需启动 Tauri 桌面应用进行，本机验证以编译与单测为界；render_template 走 render_template_preview 已验证过的渲染管线。
