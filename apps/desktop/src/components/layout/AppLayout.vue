@@ -30,6 +30,7 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useLayoutStore } from '@/stores/layout'
 import { useThemeStore } from '@/stores/theme'
+import { debounce } from '@/utils/debounce'
 import Sidebar from './Sidebar.vue'
 import Navbar from './Navbar.vue'
 import MainContent from './MainContent.vue'
@@ -65,19 +66,6 @@ const updateWindowSize = () => {
     width: window.innerWidth,
     height: window.innerHeight
   })
-}
-
-// Simple debounce function
-const debounce = (func, wait) => {
-  let timeout
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout)
-      func(...args)
-    }
-    clearTimeout(timeout)
-    timeout = setTimeout(later, wait)
-  }
 }
 </script>
 

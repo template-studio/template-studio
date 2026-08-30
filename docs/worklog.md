@@ -298,3 +298,11 @@
 **涉及文件：** `CLAUDE.md`
 
 **验收结果：** 漂移扫描清零（Naive UI/type-check/3000/web::CLAUDE 引用）。至此 README（中英）与 CLAUDE.md 三份文档全部与现状对齐。
+
+## 2026-08-29 修复桌面端 lodash-es 幽灵依赖
+
+**变更内容：** `TemplateWizardDrawer.vue` 引用了未在 package.json 声明的 `lodash-es`（仅为一个 debounce 函数），导致 vite 导入解析失败。将 AppLayout.vue 中的内联 debounce 实现提取为共享工具 `apps/desktop/src/utils/debounce.ts`（补 TS 泛型与类型），两处统一引用，移除对 lodash-es 的依赖需求。
+
+**涉及文件：** `apps/desktop/src/utils/debounce.ts`（新增）、`apps/desktop/src/components/layout/AppLayout.vue`、`apps/desktop/src/views/templates/components/TemplateWizardDrawer.vue`
+
+**验收结果：** 桌面端运行中的 dev server（14200）实测三个改动模块编译均 200 且无解析错误；全项目 `lodash-es` 引用仅剩工具文件注释。
