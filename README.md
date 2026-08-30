@@ -75,6 +75,7 @@ cp config/config.toml.example config/config.toml
 ```
 
 注意：
+
 - 数据库 url 必须是标准 URL 格式 `mysql://user:pass@host:port/db`（不支持 Go DSN 的 `tcp(host:port)` 写法）
 - 生产部署应通过环境变量 `TEMPLATE_STUDIO_JWT_SECRET` 配置 JWT 密钥（未配置时 release 构建每次启动生成临时密钥，重启后登录态失效）
 

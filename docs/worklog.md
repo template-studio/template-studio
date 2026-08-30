@@ -290,3 +290,11 @@
 **涉及文件：** `README_EN.md`
 
 **验收结果：** 残留扫描清零（致谢区模板来源引用保留）、div 配对 1:1、代码围栏 32 偶数配对。过程中修正一处脚本拼接引入的代码块围栏错误（缺 ```bash 开头与续行符丢失），已重写该段并复核。
+
+## 2026-08-29 CLAUDE.md 对齐项目现状
+
+**变更内容：** 文档漂移收尾：前端描述 Naive UI→Ant Design Vue（含单前端说明）、移除幽灵 `type-check` 脚本与不存在的 `web/CLAUDE.md` 引用、前端端口 3000→8001、后端补根目录运行与默认凭据、workspace 9→10 crate（补 ai_agent）、桌面命令数 98→100、database.rs→database/ 模块目录。新增「Key backend conventions」小节沉淀当日确立的约定：统一信封、token 头认证与路由组权限布局、路径安全工具、JWT 环境变量、WASM 共享构建脚本、元数据与文件双存储。
+
+**涉及文件：** `CLAUDE.md`
+
+**验收结果：** 漂移扫描清零（Naive UI/type-check/3000/web::CLAUDE 引用）。至此 README（中英）与 CLAUDE.md 三份文档全部与现状对齐。

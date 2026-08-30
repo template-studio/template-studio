@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Template Studio is a template management and code generation platform. It's a fullstack monorepo with three application targets:
 
-- **Web backend** (`apps/web/`) — Rust/Axum API server + Vue 3/Naive UI admin frontend (`web/`)
+- **Web backend** (`apps/web/`) — Rust/Axum API server + Vue 3/Ant Design Vue frontend (`web/`; unified tech stack with the desktop app)
 - **CLI tool** (`apps/cli/`) — Rust CLI with TUI support
 - **Desktop app** (`apps/desktop/`) — Tauri 2.x + Vue 3/Ant Design Vue
 
@@ -15,6 +15,8 @@ Template Studio is a template management and code generation platform. It's a fu
 ### Rust Backend
 
 ```bash
+# Backend must run from the repo root (config & ./data are relative paths).
+# Default admin: admin / 12345678
 cargo run -p template-studio-web          # Start API server (localhost:8080)
 cargo run -p template-studio-cli -- <cmd> # Run CLI
 cargo test                                 # Run all Rust tests
@@ -22,17 +24,16 @@ cargo clippy                               # Lint
 cargo fmt                                  # Format
 ```
 
-### Web Frontend (Vue 3 + Naive UI)
+### Web Frontend (Vue 3 + Ant Design Vue)
 
 ```bash
 cd web
 pnpm install
-pnpm run dev              # Dev server at localhost:3000
+pnpm run dev              # Dev server at localhost:8001 (auto-builds WASM engine on first run)
 pnpm build                # Production build
 pnpm run lint:eslint      # ESLint
 pnpm run lint:prettier    # Prettier
 pnpm run lint:stylelint   # Stylelint
-pnpm run type-check       # TypeScript type checking
 ```
 
 ### Desktop App (Tauri)
@@ -46,26 +47,36 @@ cargo test -p desktop --lib  # Run Rust unit tests
 
 ## Architecture
 
-### Rust Workspace (9 crates)
+### Rust Workspace (10 crates)
 
 ```
-apps/web/src/              → Axum handlers, routes, middleware
+apps/web/src/              → Axum handlers, routes, middleware (auth + admin role check + rate limit)
 apps/cli/src/              → CLI commands (clap), TUI (ratatui), renderer
-apps/desktop/src-tauri/src/ → Tauri commands, SQLite database layer
+apps/desktop/src-tauri/src/ → Tauri commands, SQLite database layer (database/ module dir)
 
-crates/shared/             → Types, models, constants, utils
+crates/shared/             → Types, models, constants, utils (path safety helpers, ApiResponse envelope)
 crates/infrastructure/     → DB pool, config, git, logging, file_tree
-crates/repositories/       → Data access layer (10 modules)
-crates/services/           → Business logic layer (20 modules)
-crates/template_core/      → Template engine (MiniJinja), conditions, filters, tree rendering
+crates/repositories/       → Data access layer
+crates/services/           → Business logic layer
+crates/template_core/      → Template engine (MiniJinja): conditions, filters, dual-key inheritance, env cache
 crates/template_core_wasm/ → WASM bindings for browser-side template rendering
+crates/ai_agent/           → AI tools (variable analysis, fill, convert)
 ```
 
 **Request flow**: Handler → Service → Repository → Database (layered architecture).
 
+### Key backend conventions
+
+- **Unified API envelope**: `{"code": 0, "message": "...", "data": ...}`; on failure the HTTP status matches semantics and the body carries the same code. Do not introduce `result`-style envelopes.
+- **Auth**: custom `token` header (NOT `Authorization: Bearer`). Route groups: `/api/v1/admin/*` requires super_admin role; template write ops, `/editor/*`, `/backup/*` require login; public reads (square/generator) stay anonymous.
+- **Path safety**: any user-provided path/version/zip entry must go through `shared::utils::path::safe_join` / `validate_relative_path` (blocks `..`, absolute paths, drive letters).
+- **JWT secret**: env var `TEMPLATE_STUDIO_JWT_SECRET` (debug builds fall back to a dev default; release generates ephemeral).
+- **WASM build**: shared script `scripts/build-wasm.mjs` — frontends invoke it via package.json, never inline build commands.
+- **DB**: template metadata lives in MySQL; template files live under `./data/templates/<id>/` (migrate both together). File conditions in `.meta/variables/conditions.yml`.
+
 ### Web Frontend (`web/`)
 
-Vue 3 + TypeScript + Naive UI admin panel. See `web/CLAUDE.md` for detailed frontend architecture.
+Vue 3 + TypeScript + Ant Design Vue admin panel (single frontend; the old Naive UI version was removed).
 
 Key patterns:
 - **Alova** for HTTP client (configured in `src/utils/http/alova/`)
@@ -104,16 +115,16 @@ Key pages:
 - `SchemaDiffDrawer.vue` — Schema diff/sync: overview (remote-new/local-new/synced) + column-level diff with bidirectional sync
 
 **Backend** (`apps/desktop/src-tauri/src/`):
-- `lib.rs` — 98 Tauri commands, DDL generation, unit tests
-- `database.rs` — SQLite database layer (4400+ lines), 12 migrations, 60+ methods
+- `lib.rs` — 100 Tauri commands, DDL generation, unit tests
+- `database/` — SQLite database layer (directory of modules, ~4500 lines), 12 migrations, 60+ methods
 - `config.rs` — App configuration
 
-**98 Tauri commands** covering: template engine, project/datasource CRUD, remote database operations (MySQL/PostgreSQL/SQLite), table/column management, schema sync, language/type mapping CRUD, AI services, table preferences.
+**100 Tauri commands** covering: template engine, project/datasource CRUD, remote database operations (MySQL/PostgreSQL/SQLite), table/column management, schema sync, language/type mapping CRUD, AI services, table preferences.
 
 ### Database
 
 - **Web/CLI**: MySQL (primary), SQLite, PostgreSQL — all supported via SQLx feature flags. Migrations in `migrations/` (SQL files). Config: `config/config.toml` (gitignored, copy from `config/config.toml.example`).
-- **Desktop**: Local SQLite database at `~/.cicbyte/template_studio/db/desktop.db` with 12 inline migrations in `database.rs`. Uses `sqlx` with WAL mode, 64MB cache, foreign keys enabled.
+- **Desktop**: Local SQLite database at `~/.cicbyte/template_studio/db/desktop.db` with 12 inline migrations in `src-tauri/src/database/`. Uses `sqlx` with WAL mode, 64MB cache, foreign keys enabled.
 
 ### Template Engine
 
