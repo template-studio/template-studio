@@ -527,7 +527,7 @@ impl TemplateService {
                 .into_iter()
                 .map(|lang| StudioTemplateLanguage {
                     language_id: lang.language_id,
-                    name: format!("语言{}", lang.language_id), // 临时实现，应该关联查询languages表
+                    name: lang.language_id.to_string(), // 临时实现，应该关联查询languages表
                     is_primary: lang.is_primary,
                 })
                 .collect();

@@ -1,9 +1,9 @@
+use std::sync::Arc;
 use template_studio_repositories::VarPresetRepository;
 use template_studio_shared::{
     models::var_preset::*,
-    utils::{validation::validate_request, error::AppError},
+    utils::{error::AppError, validation::validate_request},
 };
-use std::sync::Arc;
 
 /// 变量预设业务服务
 pub struct VarPresetService {
@@ -16,18 +16,28 @@ impl VarPresetService {
     }
 
     /// 创建变量预设
-    pub async fn create_var_preset(&self, request: CreateVarPresetRequest) -> Result<u64, AppError> {
+    pub async fn create_var_preset(
+        &self,
+        request: CreateVarPresetRequest,
+    ) -> Result<u64, AppError> {
         // 验证请求数据
         validate_request(&request)?;
 
         // 检查名称是否重复
-        if let Some(_) = self.repository.get_by_name(&request.name).await? {
-            return Err(AppError::Duplicate(format!("变量预设名称 '{}' 已存在", request.name)));
+        if self.repository.get_by_name(&request.name).await?.is_some() {
+            return Err(AppError::Duplicate(format!(
+                "变量预设名称 '{}' 已存在",
+                request.name
+            )));
         }
 
         // 创建变量预设
         let var_preset_id = self.repository.create(&request).await?;
-        tracing::info!("创建变量预设成功: id={}, name={}", var_preset_id, request.name);
+        tracing::info!(
+            "创建变量预设成功: id={}, name={}",
+            var_preset_id,
+            request.name
+        );
 
         Ok(var_preset_id)
     }
@@ -44,7 +54,10 @@ impl VarPresetService {
         validate_request(&request)?;
 
         // 检查变量预设是否存在
-        let _existing = self.repository.get_by_id(request.id).await?
+        let _existing = self
+            .repository
+            .get_by_id(request.id)
+            .await?
             .ok_or_else(|| AppError::NotFound(format!("变量预设 ID {} 不存在", request.id)))?;
 
         // 更新变量预设
@@ -58,7 +71,10 @@ impl VarPresetService {
     /// 删除变量预设
     pub async fn delete_var_preset(&self, id: u64) -> Result<(), AppError> {
         // 检查变量预设是否存在
-        let _var_preset = self.repository.get_by_id(id).await?
+        let _var_preset = self
+            .repository
+            .get_by_id(id)
+            .await?
             .ok_or_else(|| AppError::NotFound(format!("变量预设 ID {} 不存在", id)))?;
 
         // 删除变量预设
@@ -77,24 +93,35 @@ impl VarPresetService {
         validate_request(&request)?;
 
         // 检查变量预设是否存在
-        let _var_preset = self.repository.get_by_id(request.id).await?
+        let _var_preset = self
+            .repository
+            .get_by_id(request.id)
+            .await?
             .ok_or_else(|| AppError::NotFound(format!("变量预设 ID {} 不存在", request.id)))?;
 
         // 切换状态
         let toggled = self.repository.toggle(&request).await?;
         if !toggled {
-            return Err(AppError::NotFound(format!("变量预设 {} 不存在", request.id)));
+            return Err(AppError::NotFound(format!(
+                "变量预设 {} 不存在",
+                request.id
+            )));
         }
 
-        let status = request.is_enabled.map(|v| if v == 1 { "启用" } else { "禁用" }).unwrap_or("切换");
+        let status = request
+            .is_enabled
+            .map(|v| if v == 1 { "启用" } else { "禁用" })
+            .unwrap_or("切换");
         tracing::info!("{}变量预设成功: id={}", status, request.id);
         Ok(())
     }
 
     /// 获取变量预设列表
-    pub async fn list_var_presets(&self, query: VarPresetListQuery) -> Result<Vec<VarPreset>, AppError> {
-        let var_presets = self.repository.list(&query).await?
-            .items; // 只返回数据，不考虑分页
+    pub async fn list_var_presets(
+        &self,
+        query: VarPresetListQuery,
+    ) -> Result<Vec<VarPreset>, AppError> {
+        let var_presets = self.repository.list(&query).await?.items; // 只返回数据，不考虑分页
 
         Ok(var_presets)
     }
@@ -106,7 +133,10 @@ impl VarPresetService {
     }
 
     /// 根据分类获取变量预设
-    pub async fn get_var_presets_by_category(&self, category: &str) -> Result<Vec<VarPreset>, AppError> {
+    pub async fn get_var_presets_by_category(
+        &self,
+        category: &str,
+    ) -> Result<Vec<VarPreset>, AppError> {
         let query = VarPresetListQuery {
             page: None,
             page_size: None,
@@ -115,8 +145,7 @@ impl VarPresetService {
             is_enabled: Some(1), // 只获取启用的
         };
 
-        let var_presets = self.repository.list(&query).await?
-            .items;
+        let var_presets = self.repository.list(&query).await?.items;
 
         Ok(var_presets)
     }
@@ -131,14 +160,16 @@ impl VarPresetService {
             is_enabled: Some(1),
         };
 
-        let var_presets = self.repository.list(&query).await?
-            .items;
+        let var_presets = self.repository.list(&query).await?.items;
 
         Ok(var_presets)
     }
 
     /// 获取可用的预设变量列表（用于编辑器，支持分页和关键词搜索）
-    pub async fn get_available_var_presets(&self, query: AvailableVarPresetQuery) -> Result<AvailableVarPresetResponse, AppError> {
+    pub async fn get_available_var_presets(
+        &self,
+        query: AvailableVarPresetQuery,
+    ) -> Result<AvailableVarPresetResponse, AppError> {
         let page_num = query.page_num.unwrap_or(1).max(1);
         let page_size = query.page_size.unwrap_or(20).min(100);
 
@@ -151,8 +182,7 @@ impl VarPresetService {
             is_enabled: Some(1), // 只获取启用的
         };
 
-        let mut all_var_presets = self.repository.list(&list_query).await?
-            .items;
+        let mut all_var_presets = self.repository.list(&list_query).await?.items;
 
         // 应用关键词搜索
         if let Some(keyword) = &query.keyword {
@@ -160,10 +190,14 @@ impl VarPresetService {
                 let keyword_lower = keyword.to_lowercase();
                 all_var_presets.retain(|var_preset| {
                     var_preset.name.to_lowercase().contains(&keyword_lower)
-                        || var_preset.display_name.to_lowercase().contains(&keyword_lower)
-                        || var_preset.description.as_ref().map_or(false, |desc| {
-                            desc.to_lowercase().contains(&keyword_lower)
-                        })
+                        || var_preset
+                            .display_name
+                            .to_lowercase()
+                            .contains(&keyword_lower)
+                        || var_preset
+                            .description
+                            .as_ref()
+                            .map_or(false, |desc| desc.to_lowercase().contains(&keyword_lower))
                 });
             }
         }

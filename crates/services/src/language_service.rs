@@ -1,9 +1,9 @@
+use std::sync::Arc;
 use template_studio_repositories::LanguageRepository;
 use template_studio_shared::{
     models::language::*,
-    utils::{validation::validate_request, error::AppError},
+    utils::{error::AppError, validation::validate_request},
 };
-use std::sync::Arc;
 
 /// 编程语言业务服务
 pub struct LanguageService {
@@ -21,13 +21,20 @@ impl LanguageService {
         validate_request(&request)?;
 
         // 检查代码是否重复
-        if let Some(_) = self.repository.get_by_code(&request.code).await? {
-            return Err(AppError::Duplicate(format!("语言代码 '{}' 已存在", request.code)));
+        if self.repository.get_by_code(&request.code).await?.is_some() {
+            return Err(AppError::Duplicate(format!(
+                "语言代码 '{}' 已存在",
+                request.code
+            )));
         }
 
         // 创建编程语言
         let language_id = self.repository.create(&request).await?;
-        tracing::info!("创建编程语言成功: id={}, code={}", language_id, request.code);
+        tracing::info!(
+            "创建编程语言成功: id={}, code={}",
+            language_id,
+            request.code
+        );
 
         Ok(language_id)
     }
@@ -50,20 +57,29 @@ impl LanguageService {
         validate_request(&request)?;
 
         // 检查编程语言是否存在
-        let existing = self.repository.get_by_id(request.id).await?
+        let existing = self
+            .repository
+            .get_by_id(request.id)
+            .await?
             .ok_or_else(|| AppError::NotFound(format!("编程语言 {} 不存在", request.id)))?;
 
         // 如果代码发生变化，检查新代码是否重复
         if existing.code != request.code {
-            if let Some(_) = self.repository.get_by_code(&request.code).await? {
-                return Err(AppError::Duplicate(format!("语言代码 '{}' 已存在", request.code)));
+            if self.repository.get_by_code(&request.code).await?.is_some() {
+                return Err(AppError::Duplicate(format!(
+                    "语言代码 '{}' 已存在",
+                    request.code
+                )));
             }
         }
 
         // 更新编程语言
         let updated = self.repository.update(&request).await?;
         if !updated {
-            return Err(AppError::NotFound(format!("编程语言 {} 不存在", request.id)));
+            return Err(AppError::NotFound(format!(
+                "编程语言 {} 不存在",
+                request.id
+            )));
         }
 
         tracing::info!("更新编程语言成功: id={}, code={}", request.id, request.code);
@@ -73,7 +89,10 @@ impl LanguageService {
     /// 删除编程语言
     pub async fn delete_language(&self, id: i64) -> Result<(), AppError> {
         // 检查编程语言是否存在
-        let _language = self.repository.get_by_id(id as u32).await?
+        let _language = self
+            .repository
+            .get_by_id(id as u32)
+            .await?
             .ok_or_else(|| AppError::NotFound(format!("编程语言 {} 不存在", id)))?;
 
         // TODO: 检查是否有关联的模板，如果有则不允许删除
@@ -93,7 +112,10 @@ impl LanguageService {
     }
 
     /// 分页获取编程语言列表
-    pub async fn list_languages(&self, query: LanguageListQuery) -> Result<Vec<Language>, AppError> {
+    pub async fn list_languages(
+        &self,
+        query: LanguageListQuery,
+    ) -> Result<Vec<Language>, AppError> {
         let paged_response = self.repository.list(&query).await?;
         Ok(paged_response.items)
     }
@@ -120,14 +142,14 @@ impl LanguageService {
     pub async fn get_language_popularity(&self) -> Result<Vec<LanguagePopularity>, AppError> {
         let languages = self.repository.get_all().await?;
         let mut popularity = Vec::new();
-        
+
         for language in languages {
             popularity.push(LanguagePopularity {
                 name: language.name,
                 count: 0,
             });
         }
-        
+
         Ok(popularity)
     }
 }

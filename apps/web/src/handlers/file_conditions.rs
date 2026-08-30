@@ -30,12 +30,7 @@ pub async fn get_file_condition(
     Extension(auth_user): Extension<AuthUser>,
     Query(params): Query<GetFileConditionRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, params.template_id)
-            .await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, params.template_id).await?;
 
     match state
         .file_conditions_service
@@ -88,11 +83,7 @@ pub async fn set_file_condition(
     Extension(auth_user): Extension<AuthUser>,
     Json(req): Json<SetFileConditionRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, req.template_id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, req.template_id).await?;
 
     match state
         .file_conditions_service
@@ -129,11 +120,7 @@ pub async fn delete_file_condition(
     Extension(auth_user): Extension<AuthUser>,
     Json(req): Json<DeleteFileConditionRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, req.template_id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, req.template_id).await?;
 
     match state
         .file_conditions_service
@@ -161,11 +148,7 @@ pub async fn export_conditions_yaml(
     Extension(auth_user): Extension<AuthUser>,
     Path(template_id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, template_id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, template_id).await?;
 
     match state
         .file_conditions_service
@@ -200,11 +183,7 @@ pub async fn import_conditions_yaml(
     Path(template_id): Path<i64>,
     Json(req): Json<ImportConditionsRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, template_id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, template_id).await?;
 
     match state
         .file_conditions_service
@@ -239,11 +218,7 @@ pub async fn evaluate_file_condition(
     Extension(auth_user): Extension<AuthUser>,
     Json(req): Json<EvaluateConditionRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, req.template_id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, req.template_id).await?;
 
     match state
         .file_conditions_service

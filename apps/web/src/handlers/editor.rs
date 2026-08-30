@@ -28,11 +28,7 @@ pub async fn get_file_tree(
     Extension(auth_user): Extension<AuthUser>,
     Query(query): Query<FileTreeQuery>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, query.template_id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, query.template_id).await?;
 
     // 获取文件树
     let mut tree_response = match state
@@ -117,12 +113,8 @@ pub async fn restore_file(
     Extension(auth_user): Extension<AuthUser>,
     Json(payload): Json<RestoreFileRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, payload.template_id)
-            .await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, payload.template_id)
+        .await?;
 
     let template_id = payload.template_id;
     let file_path = payload.file_path;

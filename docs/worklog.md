@@ -490,3 +490,11 @@
 **涉及文件：** `crates/infrastructure/src/git/service.rs`、`crates/services/src/template_render_service.rs`、`apps/web/src/handlers/access.rs`、`apps/web/src/main.rs`、`apps/web/src/routes/auth.rs`
 
 **验收结果：** `cargo check -p template-studio-web` 零警告零错误（含全部依赖 crate）；后端重启正常、/health 通过。
+
+## 2026-08-30 clippy 清理（60→23）
+
+**变更内容：** ① `cargo clippy --fix` 自动修复 27 条（needless_return、redundant clone 等）；② 手工修复 10 条：`if let Some(_) =` → `is_some()`（3 文件 5 处）、冗余 `as i64` cast（bind 参数）、useless `format!`、变量分析服务的**循环内正则编译**提升为 `LazyLock` 静态（模板分析每次循环重复编译正则，分析大模板时的隐性热点）。③ 误删恢复：`total as u32` 的 cast 不是冗余的（COUNT 返回 i64，PagedResponse 要 u32），编译期抓到后恢复。剩余 23 条为 &PathBuf→&Path 签名改动（4 处，影响面广）、too many arguments（2 处，需重构参数结构体）、少量 or_insert_with 等低价值项——保留给日常迭代消化。
+
+**涉及文件：** `crates/services/src/{category,language,var_preset,template_analysis}_service.rs`、`crates/repositories/src/template_repository.rs`、`apps/web/src/{main,handlers/template}.rs`（自动修复涉及面更广）
+
+**验收结果：** 全部测试通过（template_core 52 + services 2 + web 3）；编译零警告零错误；变量分析接口回归 200（正则提升后功能不变）。

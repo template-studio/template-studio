@@ -1,9 +1,9 @@
+use std::sync::Arc;
 use template_studio_repositories::CategoryRepository;
 use template_studio_shared::{
     models::category::*,
-    utils::{validation::validate_request, error::AppError},
+    utils::{error::AppError, validation::validate_request},
 };
-use std::sync::Arc;
 
 /// 分类业务服务
 pub struct CategoryService {
@@ -21,8 +21,11 @@ impl CategoryService {
         validate_request(&request)?;
 
         // 检查名称是否重复
-        if let Some(_) = self.repository.get_by_name(&request.name).await? {
-            return Err(AppError::Duplicate(format!("分类名称 '{}' 已存在", request.name)));
+        if self.repository.get_by_name(&request.name).await?.is_some() {
+            return Err(AppError::Duplicate(format!(
+                "分类名称 '{}' 已存在",
+                request.name
+            )));
         }
 
         // 创建分类
@@ -44,13 +47,19 @@ impl CategoryService {
         validate_request(&request)?;
 
         // 检查分类是否存在
-        let existing = self.repository.get_by_id(request.id).await?
+        let existing = self
+            .repository
+            .get_by_id(request.id)
+            .await?
             .ok_or_else(|| AppError::NotFound(format!("分类 {} 不存在", request.id)))?;
 
         // 如果名称发生变化，检查新名称是否重复
         if existing.name != request.name {
-            if let Some(_) = self.repository.get_by_name(&request.name).await? {
-                return Err(AppError::Duplicate(format!("分类名称 '{}' 已存在", request.name)));
+            if self.repository.get_by_name(&request.name).await?.is_some() {
+                return Err(AppError::Duplicate(format!(
+                    "分类名称 '{}' 已存在",
+                    request.name
+                )));
             }
         }
 
@@ -67,7 +76,10 @@ impl CategoryService {
     /// 删除分类
     pub async fn delete_category(&self, id: i64) -> Result<(), AppError> {
         // 检查分类是否存在
-        let _category = self.repository.get_by_id(id).await?
+        let _category = self
+            .repository
+            .get_by_id(id)
+            .await?
             .ok_or_else(|| AppError::NotFound(format!("分类 {} 不存在", id)))?;
 
         // TODO: 检查是否有关联的模板，如果有则不允许删除
@@ -87,7 +99,10 @@ impl CategoryService {
     }
 
     /// 分页获取分类列表
-    pub async fn list_categories(&self, query: CategoryListQuery) -> Result<Vec<Category>, AppError> {
+    pub async fn list_categories(
+        &self,
+        query: CategoryListQuery,
+    ) -> Result<Vec<Category>, AppError> {
         let paged_response = self.repository.list(&query).await?;
         Ok(paged_response.items)
     }
@@ -108,14 +123,14 @@ impl CategoryService {
     pub async fn get_category_distribution(&self) -> Result<Vec<CategoryDistribution>, AppError> {
         let categories = self.repository.get_all().await?;
         let mut distribution = Vec::new();
-        
+
         for category in categories {
             distribution.push(CategoryDistribution {
                 name: category.name,
                 count: 0,
             });
         }
-        
+
         Ok(distribution)
     }
 }

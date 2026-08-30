@@ -33,7 +33,7 @@ impl TemplateRepository {
         .bind(template_id)
         .bind(&request.name)
         .bind(&request.description)
-        .bind(request.category_id as i64)
+        .bind(request.category_id)
         .bind(&request.template_type)
         .bind(&request.type_config)
         .bind(&request.introduction)
@@ -219,7 +219,7 @@ impl TemplateRepository {
             );
 
             let templates = sqlx::query_as::<_, Template>(&sql)
-                .bind(category_id as i64)
+                .bind(category_id)
                 .bind(page_size as i64)
                 .bind(offset as i64)
                 .fetch_all(&self.pool)
@@ -230,7 +230,7 @@ impl TemplateRepository {
                 vis_filter
             );
             let total: i64 = sqlx::query_scalar(&count_sql)
-                .bind(category_id as i64)
+                .bind(category_id)
                 .fetch_one(&self.pool)
                 .await
                 .unwrap_or(0);
@@ -295,12 +295,7 @@ impl TemplateRepository {
             (templates, total)
         };
 
-        Ok(PagedResponse::new(
-            templates,
-            total as u32,
-            page as u32,
-            page_size as u32,
-        ))
+        Ok(PagedResponse::new(templates, total as u32, page, page_size))
     }
 
     /// 切换推荐状态

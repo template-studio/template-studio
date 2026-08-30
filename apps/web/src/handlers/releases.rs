@@ -21,10 +21,7 @@ pub async fn create_release(
     Path(id): Path<i64>,
     Json(payload): Json<CreateReleaseRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) = crate::handlers::access::ensure_template_access(&state, &auth_user, id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, id).await?;
     // 验证请求参数
     if let Err(errors) = payload.validate() {
         return error_response(
@@ -93,10 +90,7 @@ pub async fn rollback_version(
     Extension(auth_user): Extension<AuthUser>,
     Path((id, version)): Path<(i64, String)>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) = crate::handlers::access::ensure_template_access(&state, &auth_user, id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, id).await?;
     match state.release_service.rollback_version(id, &version).await {
         Ok(response) => {
             state
@@ -128,10 +122,7 @@ pub async fn deprecate_version(
     Extension(auth_user): Extension<AuthUser>,
     Path((id, version)): Path<(i64, String)>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) = crate::handlers::access::ensure_template_access(&state, &auth_user, id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, id).await?;
     match state.release_service.deprecate_version(id, &version).await {
         Ok(()) => Ok(Json(
             serde_json::to_value(ApiResponse::<()>::success_msg("版本已标记为弃用"))
@@ -148,10 +139,7 @@ pub async fn reset_to_latest(
     Extension(auth_user): Extension<AuthUser>,
     Path(id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) = crate::handlers::access::ensure_template_access(&state, &auth_user, id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, id).await?;
     match state.release_service.reset_to_latest(id).await {
         Ok(response) => {
             let msg = format!("已重置到版本 {}", response.version);

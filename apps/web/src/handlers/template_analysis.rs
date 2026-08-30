@@ -17,11 +17,7 @@ pub async fn analyze_variables(
     Extension(auth_user): Extension<AuthUser>,
     Path(template_id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, template_id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, template_id).await?;
     match state
         .template_analysis_service
         .analyze_variables(template_id)

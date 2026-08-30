@@ -293,7 +293,7 @@ pub fn create_app(
             "/avatars",
             tower_http::services::ServeDir::new("data/avatars"),
         )
-        .layer(cors_layer(&config))
+        .layer(cors_layer(config))
         .with_state(state)
 }
 

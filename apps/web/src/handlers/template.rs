@@ -154,12 +154,7 @@ pub async fn get_template_file_content(
     Extension(auth_user): Extension<AuthUser>,
     Query(params): Query<FileContentQuery>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, params.template_id)
-            .await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, params.template_id).await?;
 
     // 验证参数
     if let Err(e) = params.validate() {
@@ -249,12 +244,8 @@ pub async fn add_template_file(
     Extension(auth_user): Extension<AuthUser>,
     Json(request): Json<AddFileRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, request.template_id)
-            .await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, request.template_id)
+        .await?;
 
     // 验证请求
     if let Err(e) = request.validate() {
@@ -397,12 +388,7 @@ pub async fn delete_template_file(
     Extension(auth_user): Extension<AuthUser>,
     Query(params): Query<DeleteFileRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, params.template_id)
-            .await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, params.template_id).await?;
 
     // 验证参数
     if let Err(e) = params.validate() {
@@ -470,12 +456,8 @@ pub async fn edit_template_file(
     Extension(auth_user): Extension<AuthUser>,
     Json(request): Json<EditFileRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, request.template_id)
-            .await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, request.template_id)
+        .await?;
 
     // 验证请求
     if let Err(e) = request.validate() {
@@ -537,12 +519,8 @@ pub async fn move_template_file(
     Extension(auth_user): Extension<AuthUser>,
     Json(request): Json<MoveFileRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, request.template_id)
-            .await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, request.template_id)
+        .await?;
 
     // 验证请求
     if let Err(e) = request.validate() {
@@ -637,11 +615,7 @@ pub async fn toggle_featured(
     Extension(auth_user): Extension<AuthUser>,
     Json(request): Json<ToggleFeaturedRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, request.id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, request.id).await?;
     // 验证请求数据
     if let Err(e) = request.validate() {
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
@@ -672,11 +646,7 @@ pub async fn delete_template(
     Extension(auth_user): Extension<AuthUser>,
     Query(params): Query<DeleteTemplateRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, params.id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, params.id).await?;
     match state.template_service.delete_template(params.id).await {
         Ok(()) => {
             state
@@ -889,7 +859,7 @@ pub async fn upload_code(
             }
             "file" => {
                 file_name = field.file_name().map(|s| s.to_string());
-                file_content = Some(Bytes::from(field.bytes().await.map_err(|e| {
+                file_content = Some(field.bytes().await.map_err(|e| {
                     tracing::error!("读取文件内容失败: {:?}", e);
                     (
                         StatusCode::BAD_REQUEST,
@@ -898,7 +868,7 @@ pub async fn upload_code(
                             "message": format!("读取文件内容失败: {}", e)
                         })),
                     )
-                })?));
+                })?);
             }
             _ => {
                 // 忽略未知字段
@@ -963,11 +933,7 @@ pub async fn upload_code(
         file_name.clone()
     };
     // 属主校验（multipart 的 templateId 解析完成后）
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, template_id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, template_id).await?;
 
     let full_path = template_studio_shared::utils::path::safe_join(&template_path, &file_path)
         .map_err(|e| {
@@ -1108,11 +1074,7 @@ pub async fn upload_zip(
     })?;
 
     // 属主校验（multipart 的 templateId 解析完成后）
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, template_id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, template_id).await?;
 
     let zip_content = zip_content.ok_or_else(|| {
         (
@@ -1553,7 +1515,7 @@ fn create_template_zip(template_path: std::path::PathBuf) -> Result<Vec<u8>, Str
                 add_dir_to_zip(&mut zip, &path, &template_path, &excluded_dirs)?;
             } else {
                 // 添加文件
-                if let Some(relative_path) = path.strip_prefix(&template_path).ok() {
+                if let Ok(relative_path) = path.strip_prefix(&template_path) {
                     let relative_path_str = relative_path.to_string_lossy().replace('\\', "/");
 
                     // 检查是否在排除的目录中
@@ -1616,7 +1578,7 @@ fn add_dir_to_zip<W: Write + Seek>(
             // 递归处理子目录
             add_dir_to_zip(zip, &path, base_path, excluded_dirs)?;
         } else {
-            if let Some(relative_path) = path.strip_prefix(base_path).ok() {
+            if let Ok(relative_path) = path.strip_prefix(base_path) {
                 let relative_path_str = relative_path.to_string_lossy().replace('\\', "/");
 
                 // 检查是否在排除的目录中
@@ -1655,11 +1617,7 @@ pub async fn update_template(
     Extension(auth_user): Extension<AuthUser>,
     Json(request): Json<UpdateTemplateRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
-    if let Err(resp) =
-        crate::handlers::access::ensure_template_access(&state, &auth_user, request.id).await
-    {
-        return Err(resp);
-    }
+    crate::handlers::access::ensure_template_access(&state, &auth_user, request.id).await?;
     // 验证请求数据
     if let Err(e) = request.validate() {
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
