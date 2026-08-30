@@ -493,22 +493,35 @@ impl TemplateService {
             .unwrap_or_default();
 
         let mut result = Vec::new();
+        // N+1 治理：分类与语言一次批量取
+        let cat_ids: Vec<u32> = templates.iter().map(|t| t.category_id as u32).collect();
+        let lang_map = self
+            .repository
+            .get_languages_for_templates(&templates.iter().map(|t| t.id).collect::<Vec<_>>())
+            .await
+            .unwrap_or_default();
+        let mut category_cache: std::collections::HashMap<u32, String> =
+            std::collections::HashMap::new();
+        for cid in cat_ids.iter() {
+            if !category_cache.contains_key(cid) {
+                if let Some(Some(cat)) = self
+                    .category_repository
+                    .get_by_id(i64::from(*cid))
+                    .await
+                    .ok()
+                {
+                    category_cache.insert(*cid, cat.name);
+                }
+            }
+        }
         for template in templates {
-            // 获取分类信息
-            let category = self
-                .category_repository
-                .get_by_id(template.category_id)
-                .await?
+            let category_name = category_cache
+                .get(&(template.category_id as u32))
+                .cloned()
                 .ok_or_else(|| {
                     AppError::NotFound(format!("分类 {} 不存在", template.category_id))
                 })?;
-
-            // 获取语言信息
-            let languages = self
-                .repository
-                .get_template_languages(template.id)
-                .await
-                .unwrap_or_default();
+            let languages = lang_map.get(&template.id).cloned().unwrap_or_default();
 
             let template_languages: Vec<StudioTemplateLanguage> = languages
                 .into_iter()
@@ -526,7 +539,7 @@ impl TemplateService {
                 introduction: template.introduction,
                 template_type: template.template_type,
                 category_id: template.category_id,
-                category_name: category.name,
+                category_name: category_name.clone(),
                 logo: template.logo,
                 icon: template.icon,
                 created_at: template.created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
@@ -741,12 +754,13 @@ impl TemplateService {
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
         let mut list = Vec::new();
+        let lang_map = self
+            .repository
+            .get_languages_for_templates(&paged.items.iter().map(|t| t.id).collect::<Vec<_>>())
+            .await
+            .unwrap_or_default();
         for tmpl in paged.items {
-            let languages = self
-                .repository
-                .get_template_languages(tmpl.id)
-                .await
-                .unwrap_or_default();
+            let languages = lang_map.get(&tmpl.id).cloned().unwrap_or_default();
             list.push(TemplateItem {
                 id: tmpl.id,
                 name: tmpl.name,
@@ -785,12 +799,13 @@ impl TemplateService {
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
         let mut list = Vec::new();
+        let lang_map = self
+            .repository
+            .get_languages_for_templates(&paged.items.iter().map(|t| t.id).collect::<Vec<_>>())
+            .await
+            .unwrap_or_default();
         for tmpl in paged.items {
-            let languages = self
-                .repository
-                .get_template_languages(tmpl.id)
-                .await
-                .unwrap_or_default();
+            let languages = lang_map.get(&tmpl.id).cloned().unwrap_or_default();
             list.push(TemplateItem {
                 id: tmpl.id,
                 name: tmpl.name,
@@ -830,12 +845,13 @@ impl TemplateService {
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
         let mut list = Vec::new();
+        let lang_map = self
+            .repository
+            .get_languages_for_templates(&paged.items.iter().map(|t| t.id).collect::<Vec<_>>())
+            .await
+            .unwrap_or_default();
         for tmpl in paged.items {
-            let languages = self
-                .repository
-                .get_template_languages(tmpl.id)
-                .await
-                .unwrap_or_default();
+            let languages = lang_map.get(&tmpl.id).cloned().unwrap_or_default();
             list.push(TemplateItem {
                 id: tmpl.id,
                 name: tmpl.name,

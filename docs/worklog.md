@@ -458,3 +458,11 @@
 **涉及文件：** `migrations/023_create_audit_logs.sql`（新增）、`crates/services/src/audit_service.rs`（新增）及 lib.rs、`apps/web/src/main.rs`、`apps/web/src/handlers/{template,releases,user_management}.rs`
 
 **验收结果：** 端到端实测——创建临时模板→删除→audit_logs 表出现 (admin, template.delete, template, 1788085851173, 时间戳)；编译零错误。审计查询 API（admin 界面展示）未在本轮（record 链路为先），作为后续增量。
+
+## 2026-08-30 列表接口 N+1 治理（清单 #13）
+
+**变更内容：** 仓库层新增 `get_languages_for_templates`（一次 IN 查询批量取多模板语言关联，按 template_id 分组）；服务层四个逐行查语言的循环点改为两阶段（批量取 + 内存组装）：list_templates（templates_list）、list_public_templates、list_user_templates、get_featured_templates（featured 循环同时治理分类逐行查询——分类按 ID 去重后预取缓存）。每行 2 个 owner 子查询因已在单条 SQL 内（数据库端关联，非应用层 N+1）保持不动。
+
+**涉及文件：** `crates/repositories/src/template_repository.rs`、`crates/services/src/template_service.rs`
+
+**验收结果：** 编译零错误、模板核心 52 测试全过；三个列表接口回归（templateList 7 条/公开 4 条/我的 7 条），语言关联数量与改造前一致。核查确认列表返回的 language name 为 null 属存量行为（TemplateLanguageItem 本无 name 字段），非本次引入——完整语言名填充可复用此前已实现的 get_template_language_details，作为后续增强。

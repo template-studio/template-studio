@@ -746,6 +746,50 @@ impl TemplateRepository {
     }
 
     /// 验证模板所有者
+    /// 批量获取多模板的语言关联（列表接口的 N+1 治理：一次 IN 查询替代逐行查询）
+    #[allow(clippy::type_complexity)]
+    pub async fn get_languages_for_templates(
+        &self,
+        template_ids: &[i64],
+    ) -> Result<
+        std::collections::HashMap<
+            i64,
+            Vec<template_studio_shared::models::template::TemplateLanguageItem>,
+        >,
+    > {
+        if template_ids.is_empty() {
+            return Ok(std::collections::HashMap::new());
+        }
+        let placeholders = vec!["?"; template_ids.len()].join(",");
+        let sql = format!(
+            r#"
+            SELECT CAST(template_id AS SIGNED) as template_id, CAST(id AS SIGNED) as id,
+                   CAST(language_id AS SIGNED) as language_id, is_primary
+            FROM template_languages
+            WHERE template_id IN ({})
+            ORDER BY template_id, is_primary DESC, id ASC
+            "#,
+            placeholders
+        );
+        let mut q = sqlx::query_as::<
+            _,
+            template_studio_shared::models::template::TemplateLanguageItem,
+        >(&sql);
+        for id in template_ids {
+            q = q.bind(id);
+        }
+        let rows = q.fetch_all(&self.pool).await?;
+
+        let mut map: std::collections::HashMap<
+            i64,
+            Vec<template_studio_shared::models::template::TemplateLanguageItem>,
+        > = std::collections::HashMap::new();
+        for row in rows {
+            map.entry(row.template_id).or_default().push(row);
+        }
+        Ok(map)
+    }
+
     pub async fn is_owner(&self, template_id: i64, user_id: i64) -> Result<bool> {
         let owner_id: Option<i64> =
             sqlx::query_scalar("SELECT owner_id FROM templates WHERE id = ?")
