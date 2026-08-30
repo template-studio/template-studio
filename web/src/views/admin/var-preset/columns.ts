@@ -70,9 +70,7 @@ export const columns: BasicColumn<VarPresetData>[] = [
     dataIndex: 'description',
     key: 'description',
     width: 180,
-    ellipsis: {
-      tooltip: true,
-    },
+    ellipsis: true,
     customRender({ record }) {
       return record.description || h('span', { class: 'text-placeholder' }, '暂无描述');
     },

@@ -83,7 +83,7 @@
       >
         <a-tooltip placement="bottom">
           <template #title>{{ item.tips }}</template>
-          <component :is="item.icon" class="trigger-icon" v-on="item.eventObject || {}" />
+          <component :is="item.icon" class="trigger-icon" v-on="(item as any).eventObject || {}" />
         </a-tooltip>
       </div>
       <!--切换全屏-->

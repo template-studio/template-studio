@@ -109,14 +109,14 @@ async function handleTest() {
   testing.value = true;
   try {
     await handleSave();
-    const res = await request.post('/api/v1/admin/email/test', { email: testEmail.value });
+    const res: any = await request.post('/api/v1/admin/email/test', { email: testEmail.value });
     if (res.data?.code === 0) {
       message.success('测试邮件已发送，请检查收件箱');
     } else {
       message.error(res.data?.message || '发送失败');
     }
   } catch (e) {
-    message.error(e?.response?.data?.message || '发送失败，请检查 SMTP 配置');
+    message.error((e as any)?.response?.data?.message || '发送失败，请检查 SMTP 配置');
   } finally {
     testing.value = false;
   }

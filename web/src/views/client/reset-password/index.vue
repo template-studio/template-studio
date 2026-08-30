@@ -107,7 +107,7 @@ const rules = {
 };
 
 onMounted(() => {
-  token.value = route.query.token || '';
+  token.value = (route.query.token as string) || '';
   if (!token.value) {
     error.value = '缺少重置令牌，请重新申请密码重置邮件。';
   }

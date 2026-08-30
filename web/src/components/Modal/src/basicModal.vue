@@ -1,23 +1,23 @@
 <template>
-  <n-modal id="basic-modal" v-bind="getBindValue" v-model:show="isModal" @close="onCloseModal">
-    <template #header>
-      <div class="w-full cursor-move" id="basic-modal-bar">{{ getBindValue.title }}</div>
+  <a-modal id="basic-modal" v-bind="getBindValue" v-model:open="isModal" @cancel="onCloseModal">
+    <template #title>
+      <div class="w-full cursor-move" id="basic-modal-bar">{{ (getBindValue as any).title }}</div>
     </template>
     <template #default>
       <slot name="default"></slot>
     </template>
-    <template #action v-if="!$slots.action">
-      <n-space>
-        <n-button @click="closeModal">取消</n-button>
-        <n-button type="primary" :loading="subLoading" @click="handleSubmit">{{
+    <template #footer v-if="!$slots.action">
+      <a-space>
+        <a-button @click="closeModal">取消</a-button>
+        <a-button type="primary" :loading="subLoading" @click="handleSubmit">{{
           subBtuText
-        }}</n-button>
-      </n-space>
+        }}</a-button>
+      </a-space>
     </template>
-    <template v-else #action>
+    <template v-else #footer>
       <slot name="action"></slot>
     </template>
-  </n-modal>
+  </a-modal>
 </template>
 
 <script lang="ts" setup>

@@ -128,7 +128,7 @@
 
       //组装完整图片地址
       function getImgUrl(url: string): string {
-        const { imgUrl } = globSetting;
+        const { imgUrl } = globSetting as any;
         return /(^http|https:\/\/)/g.test(url) ? url : `${imgUrl}${url}`;
       }
 

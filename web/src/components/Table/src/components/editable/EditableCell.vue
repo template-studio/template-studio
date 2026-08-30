@@ -15,7 +15,7 @@
         />
       </div>
       <div class="editable-cell-action" v-if="!getRowEditable">
-        <CheckOutlined class="mx-2 cursor-pointer" title="保存" @click="handleSubmit" />
+        <CheckOutlined class="mx-2 cursor-pointer" title="保存" @click="() => handleSubmit()" />
         <CloseOutlined class="mx-2 cursor-pointer" title="取消" @click="handleCancel" />
       </div>
     </div>

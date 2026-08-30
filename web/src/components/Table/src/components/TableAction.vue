@@ -90,7 +90,7 @@
               size: 'small',
               type: actionType,
               ...action,
-              key: action.key || index,
+              key: (action as any).key || index,
               ...popConfirm,
               onConfirm: popConfirm?.confirm,
               onCancel: popConfirm?.cancel,

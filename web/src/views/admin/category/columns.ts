@@ -31,9 +31,7 @@ export const columns: BasicColumn<CategoryData>[] = [
     dataIndex: 'description',
     key: 'description',
     width: 200,
-    ellipsis: {
-      tooltip: true,
-    },
+    ellipsis: true,
     customRender({ record }) {
       return record.description || h('span', { class: 'text-placeholder' }, '暂无描述');
     },

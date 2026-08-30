@@ -648,7 +648,7 @@
       });
 
       // response.data 是 Blob（axios 返回完整 response 对象）
-      const blob = response.data as Blob;
+      const blob = (response as any).data as Blob;
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const filename = `template_${props.templateId}_backup_${timestamp}.tsbk`;
       saveAs(blob, filename);

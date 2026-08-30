@@ -221,7 +221,7 @@
 
       //固定
       function fixedColumn(item, fixed) {
-        if (!state.checkList.includes(item.key)) return;
+        if (!(state.checkList as any[]).includes(item.key)) return;
         let columns = getColumns();
         const isFixed = item.fixed === fixed ? undefined : fixed;
         let index = columns.findIndex((res) => res.key === item.key);

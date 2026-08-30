@@ -21,7 +21,7 @@ export interface TemplateData {
 }
 
 // 外部依赖的函数（在 index.vue 中实现并传入）
-let getCategoryName: (categoryId: number) => string = () => null;
+let getCategoryName: (categoryId: number) => string = () => '';
 let getLanguageName: (languageId: number) => string = () => '';
 
 export const setColumnHelpers = (
@@ -38,9 +38,7 @@ export const columns: BasicColumn<TemplateData>[] = [
     dataIndex: 'id',
     key: 'id',
     width: 120,
-    ellipsis: {
-      tooltip: true,
-    },
+    ellipsis: true,
   },
   {
     title: '模板名称',
@@ -66,9 +64,7 @@ export const columns: BasicColumn<TemplateData>[] = [
     dataIndex: 'description',
     key: 'description',
     width: 220,
-    ellipsis: {
-      tooltip: true,
-    },
+    ellipsis: true,
     customRender({ record }) {
       try {
         return record.description || h('span', { class: 'text-placeholder' }, '暂无描述');

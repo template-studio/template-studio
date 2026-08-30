@@ -29,7 +29,7 @@
             <a-checkbox-group v-model:value="formModel[schema.field]">
               <a-space>
                 <a-checkbox
-                  v-for="item in schema.componentProps.options"
+                  v-for="item in (schema.componentProps as any)?.options || []"
                   :key="item.value"
                   :value="item.value"
                 >
@@ -44,7 +44,7 @@
             <a-radio-group v-model:value="formModel[schema.field]">
               <a-space>
                 <a-radio
-                  v-for="item in schema.componentProps.options"
+                  v-for="item in (schema.componentProps as any)?.options || []"
                   :key="item.value"
                   :value="item.value"
                 >

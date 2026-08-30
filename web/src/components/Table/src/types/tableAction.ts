@@ -1,7 +1,7 @@
 import type { ButtonProps } from 'ant-design-vue';
 import type { Component } from 'vue';
 import { PermissionsEnum } from '@/enums/permissionsEnum';
-export interface ActionItem extends Partial<ButtonProps> {
+export interface ActionItem extends Omit<Partial<ButtonProps>, 'type' | 'onClick'> {
   onClick?: Fn;
   label?: string;
   type?: 'success' | 'error' | 'warning' | 'info' | 'primary' | 'default' | 'link' | 'ghost' | 'dashed';

@@ -119,7 +119,7 @@
   const innerPropsRef = ref<Partial<BasicTableProps>>();
 
   const getProps = computed(() => {
-    return { ...props, ...unref(innerPropsRef) } as BasicTableProps;
+    return { ...props, ...unref(innerPropsRef) } as unknown as BasicTableProps;
   });
 
   const tableSize = ref(unref(getProps as any).size || 'middle');
@@ -238,7 +238,7 @@
     }
     let height =
       bottomIncludeBody - (headerH + paginationH + marginH + (props.resizeHeightOffset || 0));
-    const maxHeight = props.maxHeight;
+    const maxHeight = (props as any).maxHeight;
     height = maxHeight && maxHeight < height ? maxHeight : height;
     deviceHeight.value = height;
   }

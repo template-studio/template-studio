@@ -29,7 +29,7 @@
     () => [designStore.appTheme, designStore.darkTheme],
     ([appTheme, isDark]) => {
       themeConfig.algorithm = isDark ? theme.darkAlgorithm : theme.defaultAlgorithm;
-      themeConfig.token.colorPrimary = appTheme;
+      themeConfig.token.colorPrimary = appTheme as string;
     },
     { immediate: true }
   );

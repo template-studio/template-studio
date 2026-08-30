@@ -75,11 +75,8 @@ jobs:
       - name: 安装依赖
         run: pnpm install --frozen-lockfile
 
-      # 类型检查：当前存量 30 个类型错误（清单见 dev-docs/type-debt-inventory.md），
-      # 先以非阻断方式呈现；清单清零后移除 continue-on-error 转为阻断
       - name: TypeScript 类型检查
         run: pnpm run type-check
-        continue-on-error: true
 
       # lint 脚本自带 --fix，CI 中仅用于暴露不可自动修复的问题，改动不会被提交
       - name: ESLint

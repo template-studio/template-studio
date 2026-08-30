@@ -286,7 +286,7 @@ const handleSubmit = async (e) => {
   if (isRegister.value) {
     loading.value = true;
     try {
-      const { code, message: msg } = await register({ username, password, email: email || undefined });
+      const { code, message: msg }: any = await register({ username, password, email: email || undefined });
       if (code == ResultEnum.SUCCESS) {
         message.success('注册成功');
         await userStore.login({ username, password });

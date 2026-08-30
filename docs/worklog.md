@@ -394,3 +394,27 @@
 **涉及文件：** `apps/cli/src/cli/commands.rs`、`apps/cli/src/config/mod.rs`
 
 **验收结果：** 实测——config set 写入后 config show 正确回显、未知项报支持列表；ai config show 未配置态/配置态两种输出正确；ai config set 持久化 glm 配置后 show 显示（key 脱敏）；ai config test 用假 key 对真实端点发起请求，返回真实的 HTTP 401 与服务端错误信息（链路完整）；recommend 给出明确指引。测试产物已从配置文件清理。
+
+## 2026-08-30 输出剩余工作清单
+
+**变更内容：** 汇总两轮审计、四份专项分析文档与全部 worklog 遗留注记，核对仓库现状（避免已完成项误列），产出分类清单：数据清理（1 项）/ 验证性收尾（3 项）/ 前端类型债（3 项）/ 后端工程质量（8 项）/ 引擎（4 项）/ 桌面端产品缺口（3 项）/ 安全增强（3 项）/ 文档维护（2 项），共 27 项，附优先级建议与详细出处。
+
+**涉及文件：** `dev-docs/remaining-work-inventory.md`（新增）
+
+**验收结果：** 全部条目经仓库现状核对（属主校验 18 处已接、测试版本残留已确认存在、dev-docs 文档清单核对），无已完成项误列。
+
+## 2026-08-30 清单 #1：清理测试版本数据
+
+**变更内容：** 删除模板 1779081291997 的两个测试版本（0.1.0-test/0.2.0-test，事务验证时发布）：先经 API 弃用标记，再 pymysql 直连删除版本表 2 行 + 磁盘发布快照两个目录；API 复验版本数归零。过程中发现无单版本删除接口（仅删模板时级联清理），已将「版本删除接口」作为潜在项归入后端工程质量包。
+
+**涉及文件：** `dev-docs/remaining-work-inventory.md`（#1 标记完成）
+
+**验收结果：** DB 剩余版本 0、快照目录清空、releases API 返回空列表。
+
+## 2026-08-30 前端类型债清零（30→0）与 CI 转阻断
+
+**变更内容：** 清单 #5/#6 完成。零散视图 13 处：ellipsis `{tooltip:true}`→`true` 语义转换（naive 的 tooltip 属性 antd CellEllipsisType 不含，4 处 columns + useColumns 默认值）、App.vue colorPrimary 断言、login register 返回 any、columns 占位函数 null→''、reset-password 查询参数收窄、smtp 异步响应 any、Header eventObject 断言、downloadFile blob null 守卫、AdvancedDrawer 备份 Blob 断言。组件层 17 处：BasicForm componentProps 可选链、useForm 去泛型、editable 的 dataIndex 数组扁平化与 key 回退、EditableCell 点击包装、ActionItem extends Omit（type/onClick 与 antd ButtonProps 冲突）、TableAction/BasicUpload/Modal 的 any 断言、Table getProps 经 unknown 双重转换、maxHeight 动态属性、ColumnSetting checkList 数组化。ci.yml 的 type-check 移除 continue-on-error 转阻断。
+
+**涉及文件：** `web/src/` 下 16 个文件（见各修复点）、`.github/workflows/ci.yml`
+
+**验收结果：** `pnpm run type-check` 退出码 0、零错误；全部改动模块经 vite 编译 200；YAML 校验通过。

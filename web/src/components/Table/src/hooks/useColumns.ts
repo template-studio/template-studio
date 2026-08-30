@@ -48,11 +48,11 @@ export function useColumns(propsRef: ComputedRef<BasicTableProps>) {
     const columns = cloneDeep(pageColumns);
     return columns
       .filter((column) => {
-        return hasPermission(column.auth as string[]) && isIfShow(column);
+        return hasPermission(column.auth as string[]) && isIfShow(column as any);
       })
       .map((column) => {
         //默认 ellipsis 为true
-        column.ellipsis = typeof column.ellipsis === 'undefined' ? { tooltip: true } : false;
+        column.ellipsis = typeof column.ellipsis === 'undefined' ? true : false;
         const { edit } = column;
         if (edit) {
           // renderEditCell 沿用 naive 的 (record, index) 签名，antd 的 customRender 以单对象调用，需做包装
