@@ -1,12 +1,13 @@
 //! 文件条件管理处理器
 
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
     response::Json,
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
+use template_studio_shared::models::auth::AuthUser;
 
 pub type AppState = super::super::AppState;
 
@@ -25,8 +26,16 @@ pub struct GetFileConditionRequest {
 /// GET /api/v1/editor/file-conditions?templateId=:templateId&filePath=:filePath
 pub async fn get_file_condition(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Query(params): Query<GetFileConditionRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, params.template_id)
+            .await
+    {
+        return Err(resp);
+    }
+
     match state
         .file_conditions_service
         .get_file_condition(params.template_id, &params.file_path)
@@ -71,8 +80,15 @@ pub struct SetFileConditionRequest {
 /// POST /api/v1/editor/file-conditions
 pub async fn set_file_condition(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Json(req): Json<SetFileConditionRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, req.template_id).await
+    {
+        return Err(resp);
+    }
+
     match state
         .file_conditions_service
         .set_file_condition(req.template_id, &req.file_path, req.condition)
@@ -103,8 +119,15 @@ pub struct DeleteFileConditionRequest {
 /// DELETE /api/v1/editor/file-conditions
 pub async fn delete_file_condition(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Json(req): Json<DeleteFileConditionRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, req.template_id).await
+    {
+        return Err(resp);
+    }
+
     match state
         .file_conditions_service
         .delete_file_condition(req.template_id, &req.file_path)
@@ -126,8 +149,15 @@ pub async fn delete_file_condition(
 /// GET /api/v1/editor/templates/:templateId/conditions/export
 pub async fn export_conditions_yaml(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Path(template_id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, template_id).await
+    {
+        return Err(resp);
+    }
+
     match state
         .file_conditions_service
         .export_conditions_yaml(template_id)
@@ -155,9 +185,16 @@ pub struct ImportConditionsRequest {
 /// POST /api/v1/editor/templates/:templateId/conditions/import
 pub async fn import_conditions_yaml(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Path(template_id): Path<i64>,
     Json(req): Json<ImportConditionsRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, template_id).await
+    {
+        return Err(resp);
+    }
+
     match state
         .file_conditions_service
         .import_conditions_yaml(template_id, &req.yaml)
@@ -189,8 +226,15 @@ pub struct EvaluateConditionRequest {
 /// POST /api/v1/editor/file-conditions/evaluate
 pub async fn evaluate_file_condition(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Json(req): Json<EvaluateConditionRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, req.template_id).await
+    {
+        return Err(resp);
+    }
+
     match state
         .file_conditions_service
         .should_generate_file(req.template_id, &req.file_path, &req.variables)

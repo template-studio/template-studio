@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Query, State},
+    extract::{Extension, Query, State},
     http::StatusCode,
     response::Json,
 };
@@ -8,6 +8,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use template_studio_infrastructure::config::settings::GitConfig;
 use template_studio_infrastructure::git::service::GitService;
+use template_studio_shared::models::auth::AuthUser;
 use template_studio_shared::models::file_tree::FileTreeQuery;
 
 pub type AppState = super::super::AppState;
@@ -23,8 +24,15 @@ pub struct RestoreFileRequest {
 /// 获取模板文件树（带条件标记）
 pub async fn get_file_tree(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Query(query): Query<FileTreeQuery>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, query.template_id).await
+    {
+        return Err(resp);
+    }
+
     // 获取文件树
     let mut tree_response = match state
         .file_tree_service
@@ -106,8 +114,16 @@ fn error_response(
 /// POST /api/v1/editor/templateFiles/restore
 pub async fn restore_file(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Json(payload): Json<RestoreFileRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, payload.template_id)
+            .await
+    {
+        return Err(resp);
+    }
+
     let template_id = payload.template_id;
     let file_path = payload.file_path;
 

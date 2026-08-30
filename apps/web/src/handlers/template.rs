@@ -150,8 +150,16 @@ pub struct FileContentQuery {
 /// 获取模板文件内容
 pub async fn get_template_file_content(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Query(params): Query<FileContentQuery>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, params.template_id)
+            .await
+    {
+        return Err(resp);
+    }
+
     // 验证参数
     if let Err(e) = params.validate() {
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
@@ -233,8 +241,16 @@ pub struct AddFileRequest {
 /// 添加模板文件
 pub async fn add_template_file(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Json(request): Json<AddFileRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, request.template_id)
+            .await
+    {
+        return Err(resp);
+    }
+
     // 验证请求
     if let Err(e) = request.validate() {
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
@@ -371,8 +387,16 @@ pub struct DeleteFileRequest {
 /// 删除模板文件
 pub async fn delete_template_file(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Query(params): Query<DeleteFileRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, params.template_id)
+            .await
+    {
+        return Err(resp);
+    }
+
     // 验证参数
     if let Err(e) = params.validate() {
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
@@ -437,8 +461,16 @@ pub struct EditFileRequest {
 /// 编辑（保存）模板文件
 pub async fn edit_template_file(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Json(request): Json<EditFileRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, request.template_id)
+            .await
+    {
+        return Err(resp);
+    }
+
     // 验证请求
     if let Err(e) = request.validate() {
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
@@ -497,8 +529,16 @@ pub struct MoveFileRequest {
 /// 移动（重命名）模板文件
 pub async fn move_template_file(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Json(request): Json<MoveFileRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, request.template_id)
+            .await
+    {
+        return Err(resp);
+    }
+
     // 验证请求
     if let Err(e) = request.validate() {
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
@@ -776,6 +816,7 @@ fn is_text_file(content: &[u8]) -> bool {
 /// 上传代码文件
 pub async fn upload_code(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     mut multipart: Multipart,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let mut template_id: Option<i64> = None;
@@ -901,6 +942,12 @@ pub async fn upload_code(
         // 否则为根目录
         file_name.clone()
     };
+    // 属主校验（multipart 的 templateId 解析完成后）
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, template_id).await
+    {
+        return Err(resp);
+    }
 
     let full_path = template_studio_shared::utils::path::safe_join(&template_path, &file_path)
         .map_err(|e| {
@@ -972,6 +1019,7 @@ pub async fn upload_code(
 /// 上传ZIP包
 pub async fn upload_zip(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     mut multipart: Multipart,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let mut template_id: Option<i64> = None;
@@ -1036,6 +1084,13 @@ pub async fn upload_zip(
             })),
         )
     })?;
+
+    // 属主校验（multipart 的 templateId 解析完成后）
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, template_id).await
+    {
+        return Err(resp);
+    }
 
     let zip_content = zip_content.ok_or_else(|| {
         (

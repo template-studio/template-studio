@@ -314,3 +314,11 @@
 **涉及文件：** `apps/web/src/handlers/{access,mod,template,releases,template_analysis}.rs`、`crates/services/src/template_service.rs`
 
 **验收结果：** 编译零错误；双用户实测矩阵——普通用户对 admin 模板的编辑/删除/发布/回滚/重置/弃用/推荐切换/变量分析全部 403，admin 同值操作正常（编辑 422 为字段校验、发布列表 200、toggle 成功）；测试用户已清理。
+
+## 2026-08-29 模板属主校验（第二批：编辑器文件面 13 个接口）
+
+**变更内容：** `ensure_template_access` 接入编辑器文件操作全组：文件树/内容读取、新建/删除/编辑/重命名（move）、uploadCode/uploadZip（multipart 在 templateId 解析后校验）、restore，以及 file-conditions 六接口（查/设/删/试评/导入/导出）。至此普通登录用户无法读写删他人模板的文件与条件配置。过程中一处脚本插入将 upload_zip 的 `pub` 劈裂产生语法碎片，经按行修复与三处复核（guard 落点、回读核实、编译）收敛。
+
+**涉及文件：** `apps/web/src/handlers/{template,editor,file_conditions,access}.rs`
+
+**验收结果：** 编译零错误零警告；双用户实测——普通用户对 admin 模板的文件树/内容读取 403、新建（合法请求体）/删除/设置条件/导出条件 403（首轮两个 422 为测试载荷字段不全导致的反序列化先行失败，非绕过，合法体复测均 403）；admin 同操作正常（新建+删除成功）。测试用户已清理。
