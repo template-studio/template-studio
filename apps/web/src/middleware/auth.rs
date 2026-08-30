@@ -128,6 +128,8 @@ fn forbidden_response(message: &str) -> Response {
 }
 
 fn error_response(status: StatusCode, code: i32, message: &str) -> Response {
+    // 注意：401/403 的错误信封仍带 result 字段（前端拦截器在 401 场景读 result=null），
+    // code 值与 ErrorCode 表同步
     let body = json!({
         "code": code,
         "message": message,

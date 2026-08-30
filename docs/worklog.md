@@ -434,3 +434,11 @@
 **涉及文件：** `apps/web/src/main.rs`（移除运行时迁移块）、`migrations/019_create_password_reset_tokens.sql`（新增）、`migrations/020_alter_users_add_bio.sql`（新增）
 
 **验收结果：** migrate.py dry-run 显示「所有迁移已执行」；后端重启日志确认无运行时迁移输出、/health 正常；版本记录表 001-021 完整。
+
+## 2026-08-30 错误码表与 ApiResponse 强化（清单 #8/#9 奠基）
+
+**变更内容：** shared 新增 `ErrorCode` 枚举（Ok/BadRequest/Unauthorized/Forbidden/NotFound/Conflict/TooManyRequests/Internal，`code()` 与 HTTP 语义同步、附 as_str 标识），ApiResponse 补 `success_msg`/`success_with_message` 构造与文档注释（唯一信封的构造入口，禁手写 json! 的约束写入注释）；`access.rs` 属主校验的两处错误信封改经 ErrorCode 产生（示范接入点）；auth 中间件的错误信封加注释说明 401/403 保留 result 字段的前端兼容原因。附 3 个单测（成功信封、错误码-HTTP 映射、序列化形态）。
+
+**涉及文件：** `crates/shared/src/utils/response.rs`、`apps/web/src/handlers/access.rs`、`apps/web/src/middleware/auth.rs`
+
+**验收结果：** shared 7 测试全过；后端重启正常；无 token 的属主校验返回标准 401 信封。存量约 120 处 json! 手写信封的批量迁移（机械替换为 ApiResponse 构造）为独立后续项——本项已把「入口、错误码表、单测」三要素就位。

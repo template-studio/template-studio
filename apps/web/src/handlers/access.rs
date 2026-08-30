@@ -31,7 +31,10 @@ pub async fn ensure_template_access(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "code": 500, "message": e.to_string() })),
+                Json(json!({
+                    "code": template_studio_shared::utils::response::ErrorCode::Internal.code(),
+                    "message": e.to_string()
+                })),
             )
         })?;
 
@@ -40,7 +43,10 @@ pub async fn ensure_template_access(
     } else {
         Err((
             StatusCode::FORBIDDEN,
-            Json(json!({ "code": 403, "message": "无权操作他人的模板" })),
+            Json(json!({
+                "code": template_studio_shared::utils::response::ErrorCode::Forbidden.code(),
+                "message": "无权操作他人的模板"
+            })),
         ))
     }
 }
