@@ -591,8 +591,14 @@ pub async fn get_template_types(
 /// 切换模板推荐状态
 pub async fn toggle_featured(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Json(request): Json<ToggleFeaturedRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, request.id).await
+    {
+        return Err(resp);
+    }
     // 验证请求数据
     if let Err(e) = request.validate() {
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());
@@ -620,8 +626,14 @@ pub struct DeleteTemplateRequest {
 /// 删除模板
 pub async fn delete_template(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Query(params): Query<DeleteTemplateRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, params.id).await
+    {
+        return Err(resp);
+    }
     match state.template_service.delete_template(params.id).await {
         Ok(()) => Ok(Json(json!({
             "code": 0,
@@ -1561,8 +1573,14 @@ fn add_dir_to_zip<W: Write + Seek>(
 /// 更新模板
 pub async fn update_template(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Json(request): Json<UpdateTemplateRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, request.id).await
+    {
+        return Err(resp);
+    }
     // 验证请求数据
     if let Err(e) = request.validate() {
         return error_response(StatusCode::BAD_REQUEST, &e.to_string());

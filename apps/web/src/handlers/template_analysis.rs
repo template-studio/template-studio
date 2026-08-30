@@ -1,19 +1,26 @@
 //! 模板变量分析处理器
 
 use axum::{
-    extract::{Path, State},
+    extract::{Extension, Path, State},
     http::StatusCode,
     response::Json,
 };
 use serde_json::{json, Value};
+use template_studio_shared::models::auth::AuthUser;
 
 pub type AppState = super::super::AppState;
 
 /// 分析模板变量
 pub async fn analyze_variables(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Path(template_id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) =
+        crate::handlers::access::ensure_template_access(&state, &auth_user, template_id).await
+    {
+        return Err(resp);
+    }
     match state
         .template_analysis_service
         .analyze_variables(template_id)

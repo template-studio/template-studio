@@ -600,6 +600,18 @@ impl TemplateService {
         Ok(())
     }
 
+    /// 判断用户是否为模板属主（供 handler 层做属主校验）
+    pub async fn is_template_owner(
+        &self,
+        template_id: i64,
+        user_id: i64,
+    ) -> Result<bool, AppError> {
+        self.repository
+            .is_owner(template_id, user_id)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))
+    }
+
     /// 提交审核 (private → pending)
     pub async fn submit_for_review(&self, user_id: i64, template_id: i64) -> Result<(), AppError> {
         let is_owner = self

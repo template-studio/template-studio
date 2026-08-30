@@ -1,11 +1,12 @@
 //! 模板版本发布处理器
 
 use axum::{
-    extract::{Path, State},
+    extract::{Extension, Path, State},
     http::StatusCode,
     response::Json,
 };
 use serde_json::{json, Value};
+use template_studio_shared::models::auth::AuthUser;
 use template_studio_shared::models::release::*;
 use validator::Validate;
 
@@ -15,9 +16,14 @@ pub type AppState = super::super::AppState;
 /// POST /api/v1/templates/:id/releases
 pub async fn create_release(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Path(id): Path<i64>,
     Json(payload): Json<CreateReleaseRequest>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) = crate::handlers::access::ensure_template_access(&state, &auth_user, id).await
+    {
+        return Err(resp);
+    }
     // 验证请求参数
     if let Err(errors) = payload.validate() {
         return error_response(
@@ -67,8 +73,13 @@ pub async fn list_releases(
 /// POST /api/v1/templates/:id/releases/:version/rollback
 pub async fn rollback_version(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Path((id, version)): Path<(i64, String)>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) = crate::handlers::access::ensure_template_access(&state, &auth_user, id).await
+    {
+        return Err(resp);
+    }
     match state.release_service.rollback_version(id, &version).await {
         Ok(response) => Ok(Json(json!({
             "code": 0,
@@ -83,8 +94,13 @@ pub async fn rollback_version(
 /// POST /api/v1/templates/:id/releases/:version/deprecate
 pub async fn deprecate_version(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Path((id, version)): Path<(i64, String)>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) = crate::handlers::access::ensure_template_access(&state, &auth_user, id).await
+    {
+        return Err(resp);
+    }
     match state.release_service.deprecate_version(id, &version).await {
         Ok(()) => Ok(Json(json!({
             "code": 0,
@@ -98,8 +114,13 @@ pub async fn deprecate_version(
 /// POST /api/v1/templates/:id/releases/reset-to-latest
 pub async fn reset_to_latest(
     State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
     Path(id): Path<i64>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if let Err(resp) = crate::handlers::access::ensure_template_access(&state, &auth_user, id).await
+    {
+        return Err(resp);
+    }
     match state.release_service.reset_to_latest(id).await {
         Ok(response) => Ok(Json(json!({
             "code": 0,

@@ -306,3 +306,11 @@
 **涉及文件：** `apps/desktop/src/utils/debounce.ts`（新增）、`apps/desktop/src/components/layout/AppLayout.vue`、`apps/desktop/src/views/templates/components/TemplateWizardDrawer.vue`
 
 **验收结果：** 桌面端运行中的 dev server（14200）实测三个改动模块编译均 200 且无解析错误；全项目 `lodash-es` 引用仅剩工具文件注释。
+
+## 2026-08-29 模板属主校验（第一批：模板管理面 8 个接口）
+
+**变更内容：** 新增 `handlers/access.rs` 的 `ensure_template_access`（super_admin 直通，否则查库校验属主，403「无权操作他人的模板」）与 `template_service.is_template_owner` 转发。接入 8 个模板管理接口：templates/edit、del、toggle-featured、analyze-variables、releases 发布/回滚/重置/弃用——普通登录用户此前可增删改发布任何人的模板。编辑器文件操作组与文件条件组（templateFiles/content、add、del、edit、rename、uploadCode、uploadZip、restore、file-conditions 系列）为第二批待接。
+
+**涉及文件：** `apps/web/src/handlers/{access,mod,template,releases,template_analysis}.rs`、`crates/services/src/template_service.rs`
+
+**验收结果：** 编译零错误；双用户实测矩阵——普通用户对 admin 模板的编辑/删除/发布/回滚/重置/弃用/推荐切换/变量分析全部 403，admin 同值操作正常（编辑 422 为字段校验、发布列表 200、toggle 成功）；测试用户已清理。
