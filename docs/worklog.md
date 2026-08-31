@@ -546,3 +546,19 @@
 **涉及文件：** `apps/desktop/src/views/my-templates/index.vue`（新增）、`apps/desktop/src/components/layout/NavigationMenu.vue`、`apps/desktop/src/router/index.js`
 
 **验收结果：** `pnpm build` 通过（期间修正一处图标名：`GitForkOutlined` 在 icons-vue 7.x 不存在，改 `ForkOutlined`）；`vite preview` 实测页面渲染完整（标题/筛选/空态/创建按钮），无 PAT 时菜单项与数据请求按设计降级（菜单隐藏 + 401 引导文案）；列表与 fork 接口响应形状带 PAT 实测核对（`{templatesList,total}`、fork 返回裸 id）。
+
+## 2026-08-31 桌面端编辑器阶段6：真实环境回归与收尾修复
+
+**变更内容：** tauri:dev 真实环境回归中暴露并修复三个问题：① 「我的模板」列表解析层级错误——`res?.data?.templatesList` 应为 `res?.data?.data?.templatesList`（apiRequest 返回 axios response，业务数据在信封第二层），请求成功但解析取空，页面呈误导性「还没有创建模板」空态；全项目排查同层级错误，编辑器 28 视图（`response.data.data`）与广场旧客户端（单层 `.data`）均正确，仅此一处。② 我的模板卡片样式与模板广场对齐：140px 深色渐变视觉区 + 微光动画、语言标签行、按主语言生成代码片段（Rust/Go/Python/JS/TS 分支）、5 列网格、状态徽章改玻璃质感。③ 加载 Spin 贴顶：a-spin 包空网格高度塌陷，容器加 320px 最小高度垂直居中（模板广场存在同类存量问题，未在本期处理）。
+
+**涉及文件：** `apps/desktop/src/views/my-templates/index.vue`
+
+**验收结果：** 用户实测数据加载正常（8 模板）；修复后构建通过、tauri 会话日志零 error/panic；模板广场/设置/项目等存量页面回归无异常。桌面端模板编辑链路（清单 #20）至此完整落地：PAT 认证 → 我的模板管理 → 编辑器（文件树/内存渲染/发布）→ 广场消费。
+
+## 2026-08-31 模板广场加载 Spin 贴顶修复
+
+**变更内容：** 模板广场页与「我的模板」页存在同款存量问题——`a-spin` 包裹的网格在加载时为空、高度塌陷导致 spinner 贴顶；补同款修复（`.ant-spin-nested-loading`/`.ant-spin-container` 加 320px 最小高度，spinner 在内容区垂直居中）。
+
+**涉及文件：** `apps/desktop/src/views/templates/index.vue`
+
+**验收结果：** `pnpm build` 通过；Tauri 运行窗口经 HMR 生效，加载态 spinner 居中。

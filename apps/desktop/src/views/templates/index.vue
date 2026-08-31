@@ -301,6 +301,9 @@ onMounted(async () => {
 .templates-view { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
 .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md); padding: var(--spacing-sm) var(--spacing-lg); flex-shrink: 0; }
 .templates-content { flex: 1; overflow-y: auto; min-height: 0; padding: 0 var(--spacing-lg); }
+/* 加载时网格为空导致高度塌陷，Spin 贴顶；给容器最小高度使其在内容区垂直居中（与我的模板页同款） */
+.templates-content :deep(.ant-spin-nested-loading),
+.templates-content :deep(.ant-spin-container) { min-height: 320px; }
 .toolbar-left { display: flex; align-items: baseline; gap: var(--spacing-md); }
 .page-title { margin: 0; font-size: 24px; font-weight: 600; color: var(--color-text); }
 .result-count { color: var(--color-text-secondary); font-size: 14px; }
