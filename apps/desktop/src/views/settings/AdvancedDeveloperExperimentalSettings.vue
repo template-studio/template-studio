@@ -26,13 +26,10 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { useUiSettingsStore } from '@/stores/uiSettings'
 
-const settings = reactive({
-  betaFeatures: false,
-  newUIPreview: false,
-  performanceMode: false
-})
+const uiSettings = useUiSettingsStore()
+const settings = uiSettings.experimental
 </script>
 
 <style scoped>

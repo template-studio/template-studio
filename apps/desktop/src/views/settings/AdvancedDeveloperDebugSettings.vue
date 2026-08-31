@@ -38,14 +38,10 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { useUiSettingsStore } from '@/stores/uiSettings'
 
-const settings = reactive({
-  debugMode: false,
-  showPerformanceMonitor: false,
-  logLevel: 'info',
-  debugPort: '9222'
-})
+const uiSettings = useUiSettingsStore()
+const settings = uiSettings.debug
 </script>
 
 <style scoped>

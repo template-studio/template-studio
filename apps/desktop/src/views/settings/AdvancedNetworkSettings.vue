@@ -31,13 +31,10 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { useUiSettingsStore } from '@/stores/uiSettings'
 
-const settings = reactive({
-  proxyMode: 'system',
-  requestTimeout: '30',
-  maxConnections: 10
-})
+const uiSettings = useUiSettingsStore()
+const settings = uiSettings.network
 </script>
 
 <style scoped>

@@ -26,13 +26,11 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { useUiSettingsStore } from '@/stores/uiSettings'
 
-const settings = reactive({
-  enableCSP: true,
-  blockExternalLinks: false,
-  enableSandbox: true
-})
+const uiSettings = useUiSettingsStore()
+// 嵌套 state 是 store 响应式对象的一部分，v-model 直写并经 $subscribe 自动落盘
+const settings = uiSettings.security
 </script>
 
 <style scoped>

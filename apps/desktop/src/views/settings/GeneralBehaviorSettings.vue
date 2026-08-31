@@ -26,13 +26,10 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { useUiSettingsStore } from '@/stores/uiSettings'
 
-const settings = reactive({
-  doubleClickToClose: false,
-  dragToSort: true,
-  autoHideToolbar: false
-})
+const uiSettings = useUiSettingsStore()
+const settings = uiSettings.behavior
 </script>
 
 <style scoped>

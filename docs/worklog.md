@@ -562,3 +562,11 @@
 **涉及文件：** `apps/desktop/src/views/templates/index.vue`
 
 **验收结果：** `pnpm build` 通过；Tauri 运行窗口经 HMR 生效，加载态 spinner 居中。
+
+## 2026-08-31 设置页 UI 壳持久化（清单 #22）
+
+**变更内容：** ① 新增 `stores/uiSettings.js`：localStorage 持久化的 pinia store（key `ui-settings-v1`），含默认值深合并（新增字段自动补默认、不丢用户已有设置）与 resetAll；经 pinia 插件 `$subscribe`（detached）实现任意变更自动落盘，插件在 `stores/index.js` 注册。② 5 个纯 UI 壳设置页接线到 store（安全/网络/行为/调试/实验性，共 16 个开关绑定），模板层零改动、仅替换 script 的本地 reactive。勘误：KeyboardShortcutsSettings 原本就有 localStorage 持久化，清单误记为壳。
+
+**涉及文件：** `apps/desktop/src/stores/uiSettings.js`（新增）、`apps/desktop/src/stores/index.js`、`apps/desktop/src/views/settings/{AdvancedSecurity,AdvancedNetwork,GeneralBehavior,AdvancedDeveloperDebug,AdvancedDeveloperExperimental}Settings.vue`
+
+**验收结果：** 浏览器实测闭环——默认值渲染 → 点击开关 localStorage 立即写入完整状态（含全部 5 个分区）→ 刷新后开关状态保留；`pnpm build` 通过。注：部分开关（沙盒/CSP/代理/调试端口）当前仅存储偏好，生效逻辑待功能实现时接线。
