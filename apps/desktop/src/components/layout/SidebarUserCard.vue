@@ -2,7 +2,14 @@
   <!-- 登录态身份锚点：配置 API Token 后显示；点击弹出用户信息与凭据管理 -->
   <a-popover v-model:open="menuOpen" trigger="click" placement="rightBottom" :overlay-class-name="'user-card-popover'">
     <button class="user-chip" :class="{ error: isError, collapsed: collapsed }">
-      <img v-if="avatarUrl" :src="avatarUrl" class="avatar" alt="" @error="avatarUrl = ''" />
+      <img
+        v-if="avatarUrl"
+        :src="avatarUrl"
+        class="avatar"
+        alt=""
+        @error="avatarUrl = ''"
+        @load="onAvatarLoad"
+      />
       <span v-else class="avatar avatar-fallback">{{ initial }}</span>
       <template v-if="!collapsed">
         <span class="name">{{ displayName }}</span>
@@ -69,6 +76,13 @@ const initial = computed(() => (username.value ? username.value[0].toUpperCase()
 const goTokenSettings = () => {
   menuOpen.value = false
   router.push('/settings/web-server')
+}
+
+// 防御无效头像：加载"成功"但自然尺寸过小（如 1×1 占位图）视为无效，回退首字母
+const onAvatarLoad = (e) => {
+  if (e.target.naturalWidth <= 2 || e.target.naturalHeight <= 2) {
+    avatarUrl.value = ''
+  }
 }
 
 onMounted(async () => {
