@@ -18,6 +18,12 @@ const routes = [
     component: () => import('@/views/templates/index.vue')
   },
   {
+    // 我的模板（登录态专属：侧边栏菜单按 hasApiKey 显隐）
+    path: '/my-templates',
+    name: 'MyTemplates',
+    component: () => import('@/views/my-templates/index.vue')
+  },
+  {
     // 模板编辑器：独立全屏页（与 web 端形态一致，不进侧边栏布局）
     path: '/editor/:id',
     name: 'TemplateEditor',

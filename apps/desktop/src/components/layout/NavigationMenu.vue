@@ -20,6 +20,13 @@
       <span>脚手架</span>
     </a-menu-item>
 
+    <a-menu-item v-if="configStore.hasApiKey" key="/my-templates">
+      <template #icon>
+        <FolderOpenOutlined />
+      </template>
+      <span>我的模板</span>
+    </a-menu-item>
+
     <a-sub-menu key="codegen">
       <template #icon>
         <CodeOutlined />
@@ -71,11 +78,13 @@
 import { ref, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLayoutStore } from '@/stores/layout'
+import { useConfigStore } from '@/stores/config'
 import {
   HomeOutlined,
   FileTextOutlined,
   DatabaseOutlined,
   FolderOutlined,
+  FolderOpenOutlined,
   CodeOutlined,
   SettingOutlined,
   SwapOutlined,
@@ -85,6 +94,7 @@ import {
 const router = useRouter()
 const route = useRoute()
 const layoutStore = useLayoutStore()
+const configStore = useConfigStore()
 
 // 使用计算属性直接从路由获取选中状态，避免状态不同步
 const codegenRoutes = ['/languages', '/datasource', '/projects', '/mappings']

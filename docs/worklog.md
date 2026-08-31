@@ -538,3 +538,11 @@
 **涉及文件：** `apps/desktop/src/api/editor/templates/contribution.ts`（新增）、`apps/desktop/src/views/templates/index.vue`
 
 **验收结果：** 表单载荷实测往返——创建（code:0 得到新模板 id）→ 删除（code:0）验证载荷形状正确；类型接口返回 `templateTypes: [{value,label,description}]` 与下拉渲染匹配；浏览器验证广场正常渲染（分类/语言/4 张模板卡片）、无 PAT 时新入口按设计隐藏。带 PAT 的入口展示待真实 Tauri 环境（阶段6）。
+
+## 2026-08-31 桌面端「我的模板」管理页（用户反馈：登录态专属菜单）
+
+**变更内容：** ① 新增 `views/my-templates/index.vue`（参照 web 前台我的模板页重写）：状态筛选（全部/草稿/待审核/已发布）、卡片列表（状态徽章 + 悬浮操作：编辑内容/修改信息/Fork）、右键菜单（提交审核/撤回/删除）、创建/编辑/Fork 三个弹窗；样式改用桌面 CSS 变量适配深色主题。② 侧边栏 `NavigationMenu.vue` 新增「我的模板」菜单项，以 `configStore.hasApiKey` 显隐（与模板广场入口同一登录态判定）。③ 路由 `/my-templates`。④ 移植修复：web 版「撤回」操作误用弹窗里可能过期的 `formData` 构造载荷，桌面版改为基于菜单命中的模板对象构造。
+
+**涉及文件：** `apps/desktop/src/views/my-templates/index.vue`（新增）、`apps/desktop/src/components/layout/NavigationMenu.vue`、`apps/desktop/src/router/index.js`
+
+**验收结果：** `pnpm build` 通过（期间修正一处图标名：`GitForkOutlined` 在 icons-vue 7.x 不存在，改 `ForkOutlined`）；`vite preview` 实测页面渲染完整（标题/筛选/空态/创建按钮），无 PAT 时菜单项与数据请求按设计降级（菜单隐藏 + 401 引导文案）；列表与 fork 接口响应形状带 PAT 实测核对（`{templatesList,total}`、fork 返回裸 id）。
