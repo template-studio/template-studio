@@ -742,8 +742,8 @@
   // 获取变量类型颜色
   const getVariableTypeColor = (type) => {
     const colorMap = {
-      string: '#1890ff',
-      text: '#1890ff',
+      string: '#3e7bfa',
+      text: '#3e7bfa',
       number: '#52c41a',
       integer: '#52c41a',
       boolean: '#fa8c16',
@@ -752,7 +752,7 @@
       object: '#eb2f96',
       object_arr: '#9254de',
     };
-    return colorMap[type] || '#1890ff';
+    return colorMap[type] || '#3e7bfa';
   };
 
   // 获取变量标签类型

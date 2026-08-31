@@ -50,7 +50,7 @@ export function useTheme() {
   // Theme-aware styling helper
   const getThemeColor = (colorType) => {
     const colorMap = {
-      primary: isDark.value ? '#90caf9' : '#1976d2',
+      primary: isDark.value ? '#f2f2ef' : '#1b1c1f',
       secondary: isDark.value ? '#b0b0b0' : '#424242',
       background: isDark.value ? '#121212' : '#ffffff',
       surface: isDark.value ? '#1e1e1e' : '#f5f5f5',

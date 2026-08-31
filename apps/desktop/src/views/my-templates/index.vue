@@ -512,7 +512,7 @@ function formatDate(d) {
 }
 .visual-bg::before {
   content: ''; position: absolute; top: 0; left: -100%; width: 200%; height: 100%;
-  background: linear-gradient(90deg, transparent 0%, rgba(24,144,255,0.03) 45%, rgba(24,144,255,0.08) 50%, rgba(24,144,255,0.03) 55%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(28,29,31,0.04) 45%, rgba(28,29,31,0.06) 50%, rgba(28,29,31,0.04) 55%, transparent 100%);
   animation: shimmer 4s ease-in-out infinite;
 }
 @keyframes shimmer { 0% { transform: translateX(0); } 100% { transform: translateX(50%); } }
@@ -562,7 +562,7 @@ function formatDate(d) {
   color: var(--color-text-secondary); font-size: 11px; padding: 2px 8px; border-radius: 4px;
   transition: all 0.2s ease;
 }
-.template-card:hover .template-tag { background: rgba(24,144,255,0.08); border-color: rgba(24,144,255,0.2); color: var(--color-primary); }
+.template-card:hover .template-tag { background: rgba(28,29,31,0.06); border-color: rgba(28,29,31,0.14); color: var(--color-primary); }
 .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--color-border-light); }
 .card-type { font-size: 11px; color: var(--color-primary); background: var(--color-hover); padding: 1px 8px; border-radius: 10px; }
 .creation-time { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-text-muted); }

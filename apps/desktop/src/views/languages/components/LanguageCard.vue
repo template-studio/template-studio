@@ -69,7 +69,7 @@ const colorMap = {
   gold: '#faad14',
   green: '#52c41a',
   cyan: '#13c2c2',
-  blue: '#1890ff',
+  blue: '#3e7bfa',
   purple: '#722ed1',
   pink: '#eb2f96'
 }

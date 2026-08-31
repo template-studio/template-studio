@@ -1,32 +1,60 @@
 /* Theme transitions and animations - removed global rules to prevent glass effects */
 
-/* Light Theme */
-[data-theme="light"] {
-  background-color: var(--color-background);
-  color: var(--color-text);
-}
-
-/* Dark Theme */
+/* 画布底：整个应用铺画布色，面板浮于其上（壳层细节见 AppLayout） */
+[data-theme="light"],
 [data-theme="dark"] {
-  background-color: var(--color-background);
+  background-color: var(--color-canvas);
   color: var(--color-text);
 }
 
-/* Component-specific theme styles */
-.app-sidebar {
-  background-color: var(--color-sidebar);
-  border-right: 1px solid var(--color-border);
+/* ---------- 全局细节（AgentHub/HiFox） ---------- */
+
+/* 品牌绿选区 */
+::selection {
+  background: rgba(22, 163, 74, 0.18);
 }
 
-.app-navbar {
-  background-color: var(--color-navbar);
-  border-bottom: 1px solid var(--color-border);
+/* 键盘焦点环（品牌绿） */
+:focus-visible {
+  outline: 2px solid rgba(22, 163, 74, 0.45);
+  outline-offset: 1px;
+  border-radius: 6px;
+}
+
+/* 细滚动条 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d6d6d3;
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #bfbfbb;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #383a41;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #454850;
+  border: 3px solid transparent;
+  background-clip: content-box;
 }
 
 /* Button theme variants */
 .btn-primary {
   background-color: var(--color-primary);
-  color: white;
+  color: var(--color-canvas);
   border: 1px solid var(--color-primary);
 }
 

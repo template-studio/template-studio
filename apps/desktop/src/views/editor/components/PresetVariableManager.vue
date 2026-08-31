@@ -615,7 +615,7 @@
 
   .variable-path {
     font-family: monospace;
-    color: #1890ff;
+    color: #3e7bfa;
     background: #f0f8ff;
     padding: 2px 6px;
     border-radius: 4px;

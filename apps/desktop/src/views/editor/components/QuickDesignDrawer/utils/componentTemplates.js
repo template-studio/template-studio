@@ -35,7 +35,7 @@ export const COMPONENT_CATEGORIES = [
         name: '文本框',
         icon: TextOutline,
         description: '单行文本输入',
-        color: '#1890ff'
+        color: '#3e7bfa'
       },
       {
         type: COMPONENT_TYPES.INTEGER,
@@ -382,7 +382,7 @@ export function getComponentDisplayInfo(componentType) {
   const info = {
     [COMPONENT_TYPES.STRING]: {
       label: '字符串',
-      color: '#1890ff',
+      color: '#3e7bfa',
       bgColor: '#e6f7ff',
       borderColor: '#91d5ff'
     },

@@ -578,3 +578,11 @@
 **涉及文件：** `web/src/api/templateExpose/index.ts`、`apps/desktop/src/api/editor/templateExpose/index.ts`（删除死函数）；`crates/infrastructure/src/database/pool.rs`；`apps/web/src/middleware/request_log.rs`（新增）、`apps/web/src/middleware/mod.rs`、`apps/web/src/main.rs`
 
 **验收结果：** cargo check 零错误、web 测试 3/3 通过；后端重启实测——响应头 `x-trace-id` 返回且同 ID 出现在 handler 日志 span、请求日志含 `status=200 elapsed_ms`、`access-control-expose-headers: x-trace-id` 生效、/health 无日志噪音。
+
+## 2026-08-31 桌面端视觉重构：AgentHub/HiFox 视觉语言
+
+**变更内容：** 引入 `dev-docs/prototype`（AgentHub 原型）的视觉语言，仅桌面端。① **令牌换血**：`variables.css` 整体重写——暖灰画布（浅 `#f1f1ee`/暗 `#141519`）+ 白色面板 + 单色主操作（浅黑 `#1b1c1f`/暗反转白 `#f2f2ef`）+ 品牌绿 `#16a34a`（仅强调）；状态色对齐原型；新增画布/品牌/面板阴影（resting/breathe/hover 三态，暗色对应翻转）。变量名全部保留只换值，零组件改名。② **AntD 主题令牌**（App.vue）：colorPrimary 单色化、暗色补 `colorTextLightSolid` 反转（白底主按钮黑字，AntD 默认白字会消失）、borderRadius 8。③ **壳层浮卡**（AppLayout）：画布底 + 顶栏/侧栏/内容三张悬浮圆角卡（8px 栏间缝）+ `panelBreathe` 8s 呼吸动画（关键帧用令牌驱动以支持暗色翻转）。④ **全局细节**：细滚动条（两主题）、品牌绿选区与焦点环。⑤ **蓝色残留清理**：18 个文件 28 处硬编码旧蓝——logo→品牌绿、语法/调色板→info 蓝、推荐徽标→黑、微光/悬停中性化、useTheme/DisplaySettings 同步新令牌。
+
+**涉及文件：** `apps/desktop/src/assets/styles/{variables,themes}.css`、`src/App.vue`、`src/components/layout/AppLayout.vue` + 蓝色清理涉及的 18 个组件/视图
+
+**验收结果：** `pnpm build` 通过；计算样式实测浅/暗两主题的关键令牌（画布/面板/主操作/品牌绿）与浮卡几何（三卡 top 8px、圆角 14、动画运行）全部正确；视觉走查发现的「推荐徽标蓝残留」已修。遗留：ProjectWorkspaceLayout（/project/* 工作区）暂未浮卡化，见 `dev-docs/desktop-visual-refactor.md`。

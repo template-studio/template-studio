@@ -320,17 +320,17 @@ onMounted(async () => {
 .template-card.selected { border-color: var(--color-primary); box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1); }
 .card-visual { height: 140px; position: relative; overflow: hidden; }
 .visual-bg { width: 100%; height: 100%; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-.visual-bg::before { content: ''; position: absolute; top: 0; left: -100%; width: 200%; height: 100%; background: linear-gradient(90deg, transparent 0%, rgba(24,144,255,0.03) 45%, rgba(24,144,255,0.08) 50%, rgba(24,144,255,0.03) 55%, transparent 100%); animation: shimmer 4s ease-in-out infinite; }
+.visual-bg::before { content: ''; position: absolute; top: 0; left: -100%; width: 200%; height: 100%; background: linear-gradient(90deg, transparent 0%, rgba(28,29,31,0.04) 45%, rgba(28,29,31,0.06) 50%, rgba(28,29,31,0.04) 55%, transparent 100%); animation: shimmer 4s ease-in-out infinite; }
 @keyframes shimmer { 0% { transform: translateX(0); } 100% { transform: translateX(50%); } }
 .code-preview { font-family: 'JetBrains Mono','Fira Code','Consolas',monospace; font-size: 10px; line-height: 1.5; color: rgba(148, 163, 184, 0.4); white-space: pre; padding: 16px 20px; text-align: left; position: relative; z-index: 1; overflow: hidden; }
-.template-badge { position: absolute; top: 10px; right: 10px; background: rgba(24,144,255,0.9); backdrop-filter: blur(8px); padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; color: #fff; z-index: 2; letter-spacing: 0.3px; }
+.template-badge { position: absolute; top: 10px; right: 10px; background: rgba(28,29,31,0.92); backdrop-filter: blur(8px); padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; color: #fff; z-index: 2; letter-spacing: 0.3px; }
 .card-content { padding: 16px 20px 20px; }
 .template-name { margin: 0 0 6px 0; font-size: 16px; font-weight: 600; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -0.2px; }
 .template-card:hover .template-name { color: var(--color-primary); }
 .template-desc { margin: 0 0 12px 0; font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .template-languages { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 .template-tag { background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-secondary); font-size: 11px; padding: 2px 8px; border-radius: 4px; transition: all 0.2s ease; }
-.template-card:hover .template-tag { background: rgba(24,144,255,0.08); border-color: rgba(24,144,255,0.2); color: var(--color-primary); }
+.template-card:hover .template-tag { background: rgba(28,29,31,0.06); border-color: rgba(28,29,31,0.14); color: var(--color-primary); }
 .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--color-border-light); }
 .card-author { display: flex; align-items: center; gap: 8px; }
 .author-avatar { width: 24px; height: 24px; border-radius: 6px; background: linear-gradient(135deg, #0f172a 0%, #334155 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; font-size: 12px; position: relative; overflow: hidden; }

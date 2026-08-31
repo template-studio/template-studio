@@ -366,7 +366,7 @@ onBeforeUnmount(() => { if (editorView) editorView.destroy(); if (jsonEditor) js
 .steps-compact { display: flex; align-items: center; gap: 24px; }
 .step-item { display: flex; align-items: center; gap: 8px; transition: all 0.3s ease; }
 .step-dot { width: 28px; height: 28px; border-radius: 50%; background: var(--color-border); color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; transition: all 0.3s ease; flex-shrink: 0; }
-.step-item.active .step-dot { background: var(--color-info); color: #fff; transform: scale(1.15); box-shadow: 0 2px 8px rgba(24,144,255,0.4); }
+.step-item.active .step-dot { background: var(--color-info); color: #fff; transform: scale(1.15); box-shadow: 0 2px 8px rgba(22,163,74,0.4); }
 .step-text { font-size: 14px; color: var(--color-text-secondary); font-weight: 500; white-space: nowrap; transition: all 0.3s ease; }
 .step-item.active .step-text { color: var(--color-info); font-weight: 600; }
 .wizard-content { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 16px 24px; display: flex; flex-direction: column; max-width: 1600px; margin: 0 auto; }

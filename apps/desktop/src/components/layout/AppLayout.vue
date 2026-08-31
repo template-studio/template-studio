@@ -70,32 +70,68 @@ const updateWindowSize = () => {
 </script>
 
 <style scoped>
+/* ============================================================
+ * 壳层：画布 + 悬浮面板（AgentHub/HiFox 视觉语言）
+ * 画布灰底上：侧栏卡片 | (顶栏卡片 + 内容卡片)，栏间 8px 细缝
+ * ============================================================ */
 .app-layout {
   height: 100vh;
   width: 100vw;
   overflow: hidden;
+  background: var(--color-canvas);
+  column-gap: 8px;
+  padding: 8px 10px 10px 10px;
+  box-sizing: border-box;
+}
+
+/* 内层布局透明，让画布透出 */
+.app-layout :deep(.ant-layout) {
+  background: transparent;
+}
+
+/* 悬浮面板通用：圆角卡片 + 细边框 + 呼吸阴影 */
+.app-sidebar,
+.app-navbar,
+.app-content {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  transition: box-shadow 0.35s ease;
+  animation: panelBreathe 8s ease-in-out infinite;
+}
+
+.app-sidebar:hover,
+.app-navbar:hover,
+.app-content:hover {
+  animation: none;
+  box-shadow: var(--shadow-panel-hover);
+}
+
+/* 悬浮栏呼吸：阴影缓慢涨落，像面板在轻轻起伏 */
+@keyframes panelBreathe {
+  /* 用令牌驱动，暗色主题下阴影同步翻转（写死值在暗色下不可见） */
+  0%, 100% { box-shadow: var(--shadow-panel); }
+  50%      { box-shadow: var(--shadow-panel-breathe); }
 }
 
 .app-sidebar {
-  background: var(--color-sidebar);
-  border-right: 1px solid var(--color-border);
-  box-shadow: 1px 0 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
 .app-navbar {
-  background: var(--color-navbar);
-  border-bottom: 1px solid var(--color-border);
   padding: 0;
   height: var(--navbar-height);
   line-height: var(--navbar-height);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   width: 100%;
+  flex: none;
+  margin-bottom: 8px;
 }
 
 .app-content {
-  background: var(--color-background);
   overflow: hidden;
-  height: calc(100vh - var(--navbar-height));
+  flex: 1;
+  min-height: 0;
   width: 100%;
 }
 
@@ -112,7 +148,7 @@ const updateWindowSize = () => {
   }
 }
 
-/* Smooth transitions */
+/* 折叠触发条随面板底色 */
 .app-layout :deep(.ant-layout-sider-trigger) {
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
@@ -122,6 +158,4 @@ const updateWindowSize = () => {
 .app-layout :deep(.ant-layout-sider-trigger:hover) {
   background: var(--color-hover);
 }
-
-/* Theme adjustments now handled by global CSS variables */
 </style>

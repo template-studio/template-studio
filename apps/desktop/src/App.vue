@@ -14,20 +14,28 @@ const themeStore = useThemeStore()
 const globalSearchRef = ref(null)
 const configStore = useConfigStore()
 
-// Ant Design 主题配置
+// Ant Design 主题配置（视觉语言：AgentHub/HiFox——单色主操作 + 品牌绿强调）
 const antTheme = computed(() => ({
   algorithm: themeStore.isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
   token: {
-    colorBgContainer: themeStore.isDark ? '#1e1e1e' : '#ffffff',
-    colorBgElevated: themeStore.isDark ? '#252525' : '#ffffff',
-    colorBgLayout: themeStore.isDark ? '#121212' : '#f5f5f5',
-    colorText: themeStore.isDark ? '#ffffff' : '#212121',
-    colorTextSecondary: themeStore.isDark ? '#a0a0a0' : '#757575',
-    colorBorder: themeStore.isDark ? '#333333' : '#e0e0e0',
-    colorBorderSecondary: themeStore.isDark ? '#2a2a2a' : '#f0f0f0',
-    colorPrimary: themeStore.isDark ? '#90caf9' : '#1976d2',
-    controlItemBgActive: themeStore.isDark ? 'rgba(144, 202, 249, 0.16)' : 'rgba(25, 118, 210, 0.08)',
-    controlItemBgHover: themeStore.isDark ? 'rgba(144, 202, 249, 0.08)' : 'rgba(25, 118, 210, 0.04)',
+    colorBgContainer: themeStore.isDark ? '#1d1e23' : '#ffffff',
+    colorBgElevated: themeStore.isDark ? '#24262b' : '#ffffff',
+    colorBgLayout: themeStore.isDark ? '#141519' : '#f1f1ee',
+    colorText: themeStore.isDark ? '#e9e9e6' : '#1c1d21',
+    colorTextSecondary: themeStore.isDark ? '#a6a8ad' : '#5c6167',
+    colorBorder: themeStore.isDark ? '#2c2e35' : '#e9e9e7',
+    colorBorderSecondary: themeStore.isDark ? '#262830' : '#f0f0ee',
+    // 主操作单色：浅色黑底白字 / 暗色反转白底黑字（colorTextLightSolid 需同步反转）
+    colorPrimary: themeStore.isDark ? '#f2f2ef' : '#1b1c1f',
+    colorTextLightSolid: themeStore.isDark ? '#17181c' : '#ffffff',
+    colorLink: themeStore.isDark ? '#f2f2ef' : '#1b1c1f',
+    colorSuccess: themeStore.isDark ? '#22c55e' : '#16a34a',
+    colorError: '#e5484d',
+    colorWarning: '#f5a623',
+    colorInfo: '#3e7bfa',
+    borderRadius: 8,
+    controlItemBgActive: themeStore.isDark ? '#32343b' : '#e8e8e6',
+    controlItemBgHover: themeStore.isDark ? '#2a2c32' : '#f1f1ef',
   }
 }))
 

@@ -177,7 +177,7 @@ const techStack = [
     name: 'Ant Design',
     version: '4.x',
     icon: ApiOutlined,
-    color: '#1890ff'
+    color: '#3e7bfa'
   },
   {
     name: 'Vite',

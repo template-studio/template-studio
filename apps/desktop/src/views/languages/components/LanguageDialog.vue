@@ -83,7 +83,7 @@
           </a-select-option>
           <a-select-option value="blue">
             <span class="color-option">
-              <span class="color-box" style="background: #1890ff;"></span>
+              <span class="color-box" style="background: #3e7bfa;"></span>
               蓝色
             </span>
           </a-select-option>

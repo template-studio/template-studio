@@ -1,55 +1,64 @@
 :root {
-  /* Color System */
-  --color-background: #ffffff;
-  --color-surface: #f5f5f5;
-  --color-surface-2: #fafafa;
-  --color-surface-3: #f8f9fa;
+  /* ============================================================
+   * 视觉语言：AgentHub/HiFox（见 dev-docs/desktop-visual-refactor.md）
+   * 暖灰画布 + 白色悬浮面板 + 单色主操作（黑）+ 品牌绿强调
+   * ============================================================ */
+
+  /* Color System（浅色） */
+  --color-canvas: #f1f1ee;            /* 画布底：栏与栏之间露出的颜色 */
+  --color-background: #ffffff;        /* 面板/卡片底 */
+  --color-surface: #f8f8f7;           /* 内嵌浅底（bg-subtle） */
+  --color-surface-2: #f4f4f2;
+  --color-surface-3: #efefec;
   --color-card-bg: #ffffff;
-  --color-primary: #1976d2;
-  --color-secondary: #424242;
-  --color-text: #212121;
-  --color-text-secondary: #757575;
-  --color-text-muted: #999999;
-  --color-border: #e0e0e0;
-  --color-border-light: #f0f0f0;
-  --color-accent: #ff4081;
-  --color-overlay: rgba(255, 255, 255, 0.8);
+  --color-primary: #1b1c1f;           /* 单色主操作（黑）；选中文字/链接同源 */
+  --color-brand: #16a34a;             /* 品牌绿：焦点/选区/成功强调，不做大面积使用 */
+  --color-secondary: #5c6167;
+  --color-text: #1c1d21;
+  --color-text-secondary: #5c6167;
+  --color-text-muted: #97999d;
+  --color-border: #e9e9e7;
+  --color-border-light: #f0f0ee;
+  --color-accent: #16a34a;
+  --color-overlay: rgba(24, 24, 22, 0.32);
   --color-code-bg: #1e1e1e;
 
   /* Status Colors */
-  --color-success: #52c41a;
-  --color-warning: #faad14;
-  --color-error: #ff4d4f;
-  --color-info: #1890ff;
+  --color-success: #16a34a;
+  --color-warning: #f5a623;
+  --color-error: #e5484d;
+  --color-info: #3e7bfa;
 
   /* Dark Theme Colors */
-  --color-background-dark: #121212;
-  --color-surface-dark: #1e1e1e;
-  --color-surface-2-dark: #252525;
-  --color-surface-3-dark: #2a2a2a;
-  --color-card-bg-dark: #1e1e1e;
-  --color-primary-dark: #90caf9;
-  --color-secondary-dark: #b0b0b0;
-  --color-text-dark: #ffffff;
-  --color-text-secondary-dark: #a0a0a0;
-  --color-text-muted-dark: #666666;
-  --color-border-dark: #333333;
-  --color-border-light-dark: #2a2a2a;
-  --color-accent-dark: #f48fb1;
+  --color-canvas-dark: #141519;
+  --color-background-dark: #1d1e23;   /* 面板底（比画布亮一档） */
+  --color-surface-dark: #24262b;
+  --color-surface-2-dark: #2a2c32;
+  --color-surface-3-dark: #32343b;
+  --color-card-bg-dark: #232429;
+  --color-primary-dark: #f2f2ef;      /* 暗色下主操作反转：白底黑字 */
+  --color-brand-dark: #22c55e;
+  --color-secondary-dark: #a6a8ad;
+  --color-text-dark: #e9e9e6;
+  --color-text-secondary-dark: #a6a8ad;
+  --color-text-muted-dark: #6b6e75;
+  --color-border-dark: #2c2e35;
+  --color-border-light-dark: #262830;
+  --color-accent-dark: #22c55e;
   --color-overlay-dark: rgba(0, 0, 0, 0.6);
-  --color-code-bg-dark: #1e1e1e;
+  --color-code-bg-dark: #17181c;
 
-  /* Layout Colors */
-  --color-sidebar: #F4F4F4;
-  --color-sidebar-dark: #1a1a1a;
-  --color-navbar: #F4F4F4;
-  --color-navbar-dark: #141414;
+  /* Layout Colors（侧栏/顶栏随面板底；壳层改造见 themes.css） */
+  --color-sidebar: #ffffff;
+  --color-sidebar-dark: #1d1e23;
+  --color-navbar: #ffffff;
+  --color-navbar-dark: #1a1b20;
 
-  /* Interactive States */
-  --color-hover: rgba(25, 118, 210, 0.08);
-  --color-hover-dark: rgba(144, 202, 249, 0.08);
-  --color-active: rgba(25, 118, 210, 0.12);
-  --color-active-dark: rgba(144, 202, 249, 0.12);
+  /* Interactive States（中性暖灰，不带色相） */
+  --color-hover: #f1f1ef;
+  --color-hover-dark: #2a2c32;
+  --color-active: #e8e8e6;
+  --color-active-dark: #32343b;
 
   /* Layout Dimensions */
   --sidebar-width: 60px;
@@ -66,14 +75,21 @@
   --spacing-xl: 32px;
 
   /* Border Radius */
-  --border-radius-sm: 4px;
-  --border-radius-md: 6px;
+  --border-radius-sm: 6px;
+  --border-radius-md: 8px;
   --border-radius-lg: 12px;
+  --radius-panel: 14px;               /* 悬浮面板圆角 */
 
-  /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+  /* Shadows（多层柔和；面板专用 see panelBreathe） */
+  --shadow-sm: 0 1px 2px rgba(19, 19, 22, 0.05);
+  --shadow-md: 0 4px 6px -2px rgba(19, 19, 22, 0.05), 0 12px 32px -4px rgba(19, 19, 22, 0.1);
+  --shadow-lg: 0 24px 72px -8px rgba(19, 19, 22, 0.2), 0 2px 8px rgba(19, 19, 22, 0.06);
+  --shadow-panel: 0 1px 2px rgba(19, 19, 22, 0.03), 0 8px 24px -16px rgba(19, 19, 22, 0.08);
+  --shadow-panel-breathe: 0 2px 4px rgba(19, 19, 22, 0.04), 0 16px 38px -16px rgba(19, 19, 22, 0.16);
+  --shadow-panel-hover: 0 1px 2px rgba(19, 19, 22, 0.04), 0 12px 32px -12px rgba(19, 19, 22, 0.14);
+  --shadow-panel-dark: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -16px rgba(0, 0, 0, 0.55);
+  --shadow-panel-breathe-dark: 0 2px 5px rgba(0, 0, 0, 0.45), 0 18px 42px -16px rgba(0, 0, 0, 0.7);
+  --shadow-panel-hover-dark: 0 1px 2px rgba(0, 0, 0, 0.5), 0 14px 38px -12px rgba(0, 0, 0, 0.65);
 
   /* Transitions */
   --transition-fast: 150ms ease;
@@ -92,12 +108,14 @@
 
 /* Dark Theme */
 [data-theme="dark"] {
+  --color-canvas: var(--color-canvas-dark);
   --color-background: var(--color-background-dark);
   --color-surface: var(--color-surface-dark);
   --color-surface-2: var(--color-surface-2-dark);
   --color-surface-3: var(--color-surface-3-dark);
   --color-card-bg: var(--color-card-bg-dark);
   --color-primary: var(--color-primary-dark);
+  --color-brand: var(--color-brand-dark);
   --color-secondary: var(--color-secondary-dark);
   --color-text: var(--color-text-dark);
   --color-text-secondary: var(--color-text-secondary-dark);
@@ -111,4 +129,7 @@
   --color-navbar: var(--color-navbar-dark);
   --color-hover: var(--color-hover-dark);
   --color-active: var(--color-active-dark);
+  --shadow-panel: var(--shadow-panel-dark);
+  --shadow-panel-breathe: var(--shadow-panel-breathe-dark);
+  --shadow-panel-hover: var(--shadow-panel-hover-dark);
 }

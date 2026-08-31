@@ -23,7 +23,7 @@
               <rect x="8" y="6" width="12" height="16" rx="1" fill="#ffffff" />
               <path d="M18 6 L18 10 L22 10 Z" fill="#e6f7ff" />
               <rect x="10" y="10" width="6" height="1" fill="#52c41a" />
-              <rect x="10" y="12" width="4" height="1" fill="#1890ff" />
+              <rect x="10" y="12" width="4" height="1" fill="#16a34a" />
               <rect x="10" y="14" width="5" height="1" fill="#722ed1" />
               <circle cx="11" cy="17" r="0.5" fill="#ff4d4f" />
               <circle cx="13" cy="17" r="0.5" fill="#ff4d4f" />
@@ -38,7 +38,7 @@
               />
               <defs>
                 <linearGradient id="brandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" style="stop-color: #1890ff; stop-opacity: 1" />
+                  <stop offset="0%" style="stop-color: #16a34a; stop-opacity: 1" />
                   <stop offset="100%" style="stop-color: #18a058; stop-opacity: 1" />
                 </linearGradient>
               </defs>

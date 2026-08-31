@@ -337,7 +337,7 @@ onMounted(async () => {
   left: -100%;
   width: 200%;
   height: 100%;
-  background: linear-gradient(90deg, transparent 0%, rgba(24,144,255,0.03) 45%, rgba(24,144,255,0.08) 50%, rgba(24,144,255,0.03) 55%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(28,29,31,0.04) 45%, rgba(28,29,31,0.06) 50%, rgba(28,29,31,0.04) 55%, transparent 100%);
   animation: shimmer 4s ease-in-out infinite;
 }
 
@@ -363,7 +363,7 @@ onMounted(async () => {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: rgba(24, 144, 255, 0.9);
+  background: rgba(28, 29, 31, 0.92);
   backdrop-filter: blur(8px);
   padding: 3px 10px;
   border-radius: 6px;
@@ -421,7 +421,7 @@ onMounted(async () => {
 
 .template-card:hover .template-tag {
   background: rgba(24, 144, 255, 0.08);
-  border-color: rgba(24, 144, 255, 0.2);
+  border-color: rgba(28, 29, 31, 0.14);
   color: var(--color-primary);
 }
 

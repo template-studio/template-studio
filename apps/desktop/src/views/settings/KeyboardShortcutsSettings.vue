@@ -219,13 +219,13 @@ onUnmounted(() => {
 
 .shortcut-key :deep(.ant-input.recording) {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(28, 29, 31, 0.14);
   animation: pulse 1s infinite;
 }
 
 @keyframes pulse {
   0%, 100% {
-    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+    box-shadow: 0 0 0 2px rgba(28, 29, 31, 0.14);
   }
   50% {
     box-shadow: 0 0 0 4px rgba(24, 144, 255, 0.4);

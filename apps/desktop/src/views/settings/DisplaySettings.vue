@@ -141,7 +141,7 @@ const themeStore = useThemeStore()
 
 // 主题颜色选项
 const themeColors = [
-  { name: '蓝色', value: '#1890ff' },
+  { name: '蓝色', value: '#3e7bfa' },
   { name: '绿色', value: '#52c41a' },
   { name: '紫色', value: '#722ed1' },
   { name: '橙色', value: '#fa8c16' },
@@ -152,7 +152,7 @@ const themeColors = [
 // 响应式设置数据
 const settings = reactive({
   theme: 'light',
-  primaryColor: '#1890ff',
+  primaryColor: '#1b1c1f',
   showSidebar: true,
   compactMode: false,
   fontSize: 14,
@@ -220,7 +220,7 @@ const saveSettings = () => {
 const resetSettings = () => {
   const defaultSettings = {
     theme: 'light',
-    primaryColor: '#1890ff',
+    primaryColor: '#1b1c1f',
     showSidebar: true,
     compactMode: false,
     fontSize: 14,

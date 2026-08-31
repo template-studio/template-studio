@@ -40,7 +40,7 @@
         >
           <CodeOutlined />
           <span>前端映射</span>
-          <a-badge :count="frontendMappings.length" :number-style="{ backgroundColor: '#1890ff' }" />
+          <a-badge :count="frontendMappings.length" :number-style="{ backgroundColor: '#3e7bfa' }" />
         </div>
         <div
           :class="['scope-tab', { active: activeScope === 'backend' }]"

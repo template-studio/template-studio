@@ -39,7 +39,7 @@
               </g>
               <defs>
                 <linearGradient id="aiGrad2" x1="10" y1="1" x2="4" y2="10" gradientUnits="userSpaceOnUse">
-                  <stop offset="0.13" stop-color="#1976d2"></stop>
+                  <stop offset="0.13" stop-color="#16a34a"></stop>
                   <stop offset="0.93" stop-color="#90caf9"></stop>
                 </linearGradient>
                 <clipPath id="aiClip2">
