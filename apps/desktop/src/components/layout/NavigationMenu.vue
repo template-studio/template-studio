@@ -1,294 +1,174 @@
 <template>
-  <a-menu
-    :selectedKeys="selectedKeys"
-    :openKeys="openKeys"
-    mode="inline"
-    class="navigation-menu"
-    @click="handleMenuClick"
-  >
-    <a-menu-item key="/home">
-      <template #icon>
-        <HomeOutlined />
-      </template>
-      <span>首页</span>
-    </a-menu-item>
-
-    <a-menu-item key="/templates">
-      <template #icon>
-        <FileTextOutlined />
-      </template>
-      <span>脚手架</span>
-    </a-menu-item>
-
-    <a-menu-item v-if="configStore.hasApiKey" key="/my-templates">
-      <template #icon>
-        <FolderOpenOutlined />
-      </template>
-      <span>我的模板</span>
-    </a-menu-item>
-
-    <a-sub-menu key="codegen">
-      <template #icon>
-        <CodeOutlined />
-      </template>
-      <template #title>代码生成器</template>
-      <a-menu-item key="/languages">
-        <template #icon>
-          <CodeOutlined />
+  <nav class="nav">
+    <div class="nav-scroll">
+      <template v-for="section in sections" :key="section.label">
+        <!-- 折叠态不显示小节标题，只显示条目 -->
+        <div v-if="!collapsed && section.items.length" class="side-label">{{ section.label }}</div>
+        <template v-for="item in section.items" :key="item.path">
+          <a-tooltip v-if="collapsed" :title="item.label" placement="right">
+            <button
+              class="nav-item collapsed-item"
+              :class="{ active: isActive(item) }"
+              @click="go(item.path)"
+            >
+              <component :is="item.icon" class="nav-ic" />
+            </button>
+          </a-tooltip>
+          <button
+            v-else
+            class="nav-item"
+            :class="{ active: isActive(item) }"
+            @click="go(item.path)"
+          >
+            <component :is="item.icon" class="nav-ic" />
+            <span class="nav-text">{{ item.label }}</span>
+          </button>
         </template>
-        <span>语言管理</span>
-      </a-menu-item>
-      <a-menu-item key="/datasource">
-        <template #icon>
-          <DatabaseOutlined />
-        </template>
-        <span>数据源</span>
-      </a-menu-item>
-      <a-menu-item key="/projects">
-        <template #icon>
-          <FolderOutlined />
-        </template>
-        <span>项目</span>
-      </a-menu-item>
-      <a-menu-item key="/mappings">
-        <template #icon>
-          <SwapOutlined />
-        </template>
-        <span>映射管理</span>
-      </a-menu-item>
-    </a-sub-menu>
-
-    <a-menu-item key="/template-render">
-      <template #icon>
-        <AppstoreOutlined />
       </template>
-      <span>模板渲染</span>
-    </a-menu-item>
-
-    <a-menu-item key="/settings">
-      <template #icon>
-        <SettingOutlined />
-      </template>
-      <span>设置</span>
-    </a-menu-item>
-  </a-menu>
+    </div>
+  </nav>
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useLayoutStore } from '@/stores/layout'
 import { useConfigStore } from '@/stores/config'
+import { useLayoutStore } from '@/stores/layout'
 import {
   HomeOutlined,
   FileTextOutlined,
-  DatabaseOutlined,
-  FolderOutlined,
   FolderOpenOutlined,
   CodeOutlined,
-  SettingOutlined,
+  DatabaseOutlined,
+  FolderOutlined,
   SwapOutlined,
-  AppstoreOutlined
+  AppstoreOutlined,
+  SettingOutlined,
 } from '@ant-design/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
-const layoutStore = useLayoutStore()
 const configStore = useConfigStore()
+const layoutStore = useLayoutStore()
 
-// 使用计算属性直接从路由获取选中状态，避免状态不同步
-const codegenRoutes = ['/languages', '/datasource', '/projects', '/mappings']
+const collapsed = computed(() => layoutStore.sidebarCollapsed)
 
-const selectedKeys = computed(() => {
-  return [route.path]
-})
+// 信息架构：小节分组 + 平铺条目（不折叠——菜单总量少，展开永远可见胜过省一次点击）
+const sections = computed(() => [
+  {
+    label: '工作台',
+    items: [
+      { path: '/home', label: '首页', icon: HomeOutlined },
+      { path: '/templates', label: '脚手架', icon: FileTextOutlined },
+      // 登录态专属：配置了 API Token 才显示
+      ...(configStore.hasApiKey
+        ? [{ path: '/my-templates', label: '我的模板', icon: FolderOpenOutlined }]
+        : []),
+    ],
+  },
+  {
+    label: '代码生成',
+    items: [
+      { path: '/languages', label: '语言管理', icon: CodeOutlined },
+      { path: '/datasource', label: '数据源', icon: DatabaseOutlined },
+      { path: '/projects', label: '项目', icon: FolderOutlined },
+      { path: '/mappings', label: '映射管理', icon: SwapOutlined },
+    ],
+  },
+  {
+    label: '系统',
+    items: [
+      { path: '/template-render', label: '模板渲染', icon: AppstoreOutlined },
+      { path: '/settings', label: '设置', icon: SettingOutlined },
+    ],
+  },
+])
 
-const openKeys = computed(() => {
-  return codegenRoutes.some(r => route.path.startsWith(r)) ? ['codegen'] : []
-})
+function isActive(item) {
+  return route.path === item.path || route.path.startsWith(item.path + '/')
+}
 
-const handleMenuClick = ({ key }) => {
-  if (key !== route.path) {
-    router.push(key)
+function go(path) {
+  if (route.path !== path) {
+    router.push(path)
   }
 }
 </script>
 
 <style scoped>
-.navigation-menu {
-  border: none !important;
-  border-right: none !important;
-  background: transparent !important;
+.nav {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-/* 强制移除 Ant Design 菜单的右边框 */
-.navigation-menu :deep(.ant-menu),
-.navigation-menu :deep(.ant-menu-inline),
-.navigation-menu :deep(.ant-menu-root) {
-  border-right: none !important;
-  background: transparent !important;
+.nav-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 10px 12px;
 }
 
-.navigation-menu :deep(.ant-menu-sub),
-.navigation-menu :deep(.ant-menu-submenu) {
-  background: transparent !important;
+/* 小节标题（原型 side-label） */
+.side-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 14px 8px 4px;
+  user-select: none;
 }
 
-.navigation-menu :deep(.ant-menu-submenu-title) {
-  background: transparent !important;
-}
-
-.navigation-menu :deep(.ant-menu-item) {
-  margin: 2px 0;
-  border-radius: var(--border-radius-md);
-  color: var(--color-text);
-  border: 0.5px solid transparent;
-  transition: background-color var(--transition-fast) ease;
-  position: relative;
-}
-
-/* 使用流畅的过渡动画，参考设置界面的体验 */
-.navigation-menu :deep(.ant-menu-item) {
-  transition: background-color var(--transition-fast) ease, color var(--transition-fast) ease;
-}
-
-.navigation-menu :deep(.ant-menu-item::after) {
-  transition: none !important;
-}
-
-.navigation-menu :deep(.ant-menu-item-selected::after) {
-  transition: none !important;
-}
-
-/* 悬浮状态 - 增强CSS优先级，覆盖Ant Design默认样式 */
-.navigation-menu :deep(.ant-menu-item:hover),
-.navigation-menu :deep(.ant-menu-item.ant-menu-item:hover),
-.navigation-menu :deep(.ant-menu-inline .ant-menu-item:hover) {
-  background: var(--color-surface) !important;
-  color: var(--color-primary) !important;
-  border-color: transparent !important;
-}
-
-/* 选中状态 - 与悬浮状态颜色完全相同，只有边框不同 */
-.navigation-menu :deep(.ant-menu-item-selected),
-.navigation-menu :deep(.ant-menu-item.ant-menu-item-selected),
-.navigation-menu :deep(.ant-menu-inline .ant-menu-item-selected) {
-  background: var(--color-surface) !important;
-  color: var(--color-primary) !important;
-  border-color: var(--color-border) !important;
-}
-
-/* 选中状态再悬浮 - 保持相同的颜色，避免任何视觉变化 */
-.navigation-menu :deep(.ant-menu-item-selected:hover),
-.navigation-menu :deep(.ant-menu-item.ant-menu-item-selected:hover),
-.navigation-menu :deep(.ant-menu-inline .ant-menu-item-selected:hover) {
-  background: var(--color-surface) !important;
-  color: var(--color-primary) !important;
-  border-color: var(--color-border) !important;
-}
-
-/* 强制覆盖Ant Design的悬浮文字颜色样式 */
-.navigation-menu :deep(.ant-menu-item:hover .ant-menu-title-content),
-.navigation-menu :deep(.ant-menu-item:hover .anticon),
-.navigation-menu :deep(.ant-menu-item:hover span) {
-  color: var(--color-primary) !important;
-}
-
-/* 选中状态下的文字颜色也要强制覆盖 */
-.navigation-menu :deep(.ant-menu-item-selected .ant-menu-title-content),
-.navigation-menu :deep(.ant-menu-item-selected .anticon),
-.navigation-menu :deep(.ant-menu-item-selected span) {
-  color: var(--color-primary) !important;
-}
-
-/* 选中指示器样式 */
-.navigation-menu :deep(.ant-menu-item-selected::after) {
-  display: none !important;
-}
-
-.navigation-menu :deep(.ant-menu-item-icon) {
-  font-size: 16px;
-}
-
-/* SubMenu 样式对齐 */
-.navigation-menu :deep(.ant-menu-submenu-title) {
-  margin: 2px 0;
-  border-radius: var(--border-radius-md);
-  color: var(--color-text);
-  border: 0.5px solid transparent;
-  transition: background-color var(--transition-fast) ease, color var(--transition-fast) ease;
-}
-
-.navigation-menu :deep(.ant-menu-submenu-title:hover) {
-  background: var(--color-surface) !important;
-  color: var(--color-primary) !important;
-}
-
-.navigation-menu :deep(.ant-menu-submenu .ant-menu-item) {
-  padding-left: 48px !important;
-}
-
-.navigation-menu :deep(.ant-menu-submenu-arrow) {
+/* 导航条目（原型 nav-item）：30px 行高、7px 圆角胶囊、单色语言 */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
   color: var(--color-text-secondary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--transition-fast) ease, color var(--transition-fast) ease;
 }
 
-/* Collapsed state adjustments - 完全复制 a-button type="text" 的样式 */
-.navigation-menu :deep(.ant-menu-inline-collapsed) {
-  .ant-menu-item {
-    padding: 0 !important;
-    padding-inline-start: 0 !important;
-    padding-inline-end: 0 !important;
-    margin: 2px 14px;
-    width: 32px !important;
-    height: 32px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    border-radius: 6px !important;
-    border: 1px solid transparent !important;
-    background-color: transparent !important;
-    color: var(--color-text-secondary) !important;
-    line-height: 1.5714285714285714 !important;
-    font-size: 14px !important;
-    transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1) !important;
-    cursor: pointer !important;
-  }
-
-  /* 悬浮状态 */
-  .ant-menu-item:hover {
-    background: var(--color-hover) !important;
-    border-color: transparent !important;
-    color: var(--color-primary) !important;
-  }
-
-  /* 选中状态 */
-  .ant-menu-item-selected,
-  .ant-menu-item-selected:hover {
-    background: var(--color-hover) !important;
-    border-color: transparent !important;
-    color: var(--color-primary) !important;
-  }
-
-  /* 图标样式 */
-  .ant-menu-item-icon {
-    font-size: 16px !important;
-    margin: 0 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  .ant-menu-title-content {
-    display: none !important;
-  }
-
-  /* 隐藏所有指示器 */
-  .ant-menu-item-selected::after,
-  .ant-menu-item::before,
-  .ant-menu-item::after {
-    display: none !important;
-  }
+.nav-item:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
 }
 
-/* Removed dark theme adjustments - now handled by global CSS variables */
+.nav-item.active {
+  background: var(--color-active);
+  color: var(--color-text);
+}
+
+.nav-ic {
+  font-size: 15px;
+  color: var(--color-text-muted);
+  flex: none;
+  transition: color var(--transition-fast) ease;
+}
+
+.nav-item:hover .nav-ic,
+.nav-item.active .nav-ic {
+  color: var(--color-text);
+}
+
+.nav-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 折叠态：图标居中的方形按钮 */
+.collapsed-item {
+  justify-content: center;
+  padding: 0;
+}
 </style>

@@ -1,17 +1,17 @@
 <template>
   <div class="sidebar">
-    <!-- Logo Section -->
+    <!-- Logo -->
     <div class="sidebar-logo">
       <div class="logo-content">
         <div class="logo-icon" :class="{ collapsed: layoutStore.sidebarCollapsed }">
           <svg
-            width="32"
-            height="32"
+            width="28"
+            height="28"
             viewBox="0 0 32 32"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <rect width="32" height="32" rx="6" fill="url(#brandGradient)" />
+            <rect width="32" height="32" rx="7" fill="url(#brandGradient)" />
             <rect x="8" y="6" width="12" height="16" rx="1" fill="#ffffff" />
             <path d="M18 6 L18 10 L22 10 Z" fill="#e6f7ff" />
             <rect x="10" y="10" width="6" height="1" fill="#52c41a" />
@@ -36,12 +36,9 @@
             </defs>
           </svg>
         </div>
-        <transition name="fade">
-          <div v-show="!layoutStore.sidebarCollapsed" class="logo-text">
-            <span class="logo-main">Template <span class="brand-accent">Studio</span></span>
-            <span class="logo-shadow">Template <span class="brand-accent">Studio</span></span>
-          </div>
-        </transition>
+        <div v-show="!layoutStore.sidebarCollapsed" class="logo-text">
+          Template <span class="brand-accent">Studio</span>
+        </div>
       </div>
     </div>
 
@@ -64,20 +61,6 @@
           >
             <template #icon>
               <QuestionCircleOutlined />
-            </template>
-          </a-button>
-        </div>
-
-        <!-- Settings -->
-        <div class="action-item">
-          <a-button
-            type="text"
-            class="sidebar-action-button"
-            @click="openSettings"
-            :title="layoutStore.sidebarCollapsed ? 'Settings' : ''"
-          >
-            <template #icon>
-              <SettingOutlined />
             </template>
           </a-button>
         </div>
@@ -107,7 +90,6 @@ import { useRouter } from 'vue-router'
 import { useLayoutStore } from '@/stores/layout'
 import {
   QuestionCircleOutlined,
-  SettingOutlined,
   StarOutlined,
   BulbOutlined
 } from '@ant-design/icons-vue'
@@ -139,217 +121,73 @@ const openSettings = () => {
   background: var(--color-sidebar);
 }
 
+/* Logo 区：小标 + 文字（单层，无动画） */
 .sidebar-logo {
-  padding: var(--spacing-md);
+  padding: 12px 14px 4px;
   flex-shrink: 0;
 }
 
 .logo-content {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 10px;
 }
 
 .logo-icon {
-  margin-right: 12px;
   display: flex;
   align-items: center;
-  transition: all 0.3s ease;
+  flex: none;
 }
 
 .logo-icon.collapsed {
-  margin-right: 0;
-}
-
-.logo-icon svg {
-  transition: all 0.3s ease;
-}
-
-.logo-content:hover .logo-icon svg {
-  transform: scale(1.1) rotate(5deg);
+  margin: 0 auto;
 }
 
 .logo-text {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.logo-main {
-  font-size: 1.1rem;
-  font-weight: 800;
-  letter-spacing: 1px;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
   color: var(--color-text);
-  font-family: 'Fira Code', 'Lato', 'Segoe UI', 'Arial', sans-serif;
-  background: linear-gradient(90deg, #18a058 0%, #2196f3 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  position: relative;
-  z-index: 2;
-  animation: float 3s ease-in-out infinite;
-  transition: all 0.3s ease;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   white-space: nowrap;
 }
 
-.logo-shadow {
-  font-size: 1.1rem;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: var(--color-text-muted);
-  opacity: 0.3;
-  font-family: 'Fira Code', 'Lato', 'Segoe UI', 'Arial', sans-serif;
-  position: absolute;
-  top: 2px;
-  left: 0;
-  right: 0;
-  z-index: 1;
-  animation: float-shadow 3s ease-in-out infinite;
-  transition: all 0.3s ease;
-  filter: blur(1px);
-  white-space: nowrap;
-}
-
-.brand-accent {
-  color: #18a058;
-  -webkit-text-fill-color: #18a058;
-  background: none;
-  font-weight: 900;
-}
-
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-
-  50% {
-    transform: translateY(-3px);
-  }
-}
-
-@keyframes float-shadow {
-  0%,
-  100% {
-    transform: translateY(2px);
-    opacity: 0.2;
-  }
-
-  50% {
-    transform: translateY(5px);
-    opacity: 0.3;
-  }
+.logo-text .brand-accent {
+  color: var(--color-brand);
 }
 
 .sidebar-nav {
   flex: 1;
-  overflow-y: auto;
-  padding: var(--spacing-sm) 12px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
+/* 底部动作条：帮助 + 主题切换 */
 .sidebar-bottom {
-  padding: 0 var(--spacing-md);
-  height: 56px;
-  border-top: 1px solid var(--color-border);
   flex-shrink: 0;
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--color-border-light);
   display: flex;
-  align-items: center;
+  gap: 6px;
 }
 
-/* Settings Section */
-.settings-section {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-sm);
-  flex-wrap: wrap;
+.sidebar-bottom .action-item {
+  flex: 1;
+  min-width: 0;
 }
 
-/* Divider */
-.sidebar-divider {
-  height: 1px;
-  background: var(--color-border);
-  margin: var(--spacing-xs) 0;
-}
-
-.action-item {
-  display: flex;
-  align-items: center;
-}
-
-.sidebar-action-button {
+.sidebar-bottom :deep(.sidebar-action-button) {
+  width: 100%;
+  height: 30px;
+  border-radius: 7px;
   color: var(--color-text-secondary);
-  width: 32px;
-  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  outline: none; /* 移除默认焦点轮廓 */
 }
 
-.sidebar-action-button:hover {
-  color: var(--color-primary);
-  background: var(--color-hover);
-}
-
-/* Transitions */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity var(--transition-fast);
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-/* Scrollbar styling */
-.sidebar-nav::-webkit-scrollbar {
-  width: 4px;
-}
-
-.sidebar-nav::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sidebar-nav::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 2px;
-}
-
-.sidebar-nav::-webkit-scrollbar-thumb:hover {
-  background: var(--color-hover);
-}
-
-/* Dark theme adjustments now handled by global CSS variables */
-
-/* Responsive behavior */
-@media (max-width: 768px) {
-  .sidebar {
-    position: relative;
-  }
-
-  .settings-section {
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .action-item {
-    flex: 1;
-    justify-content: center;
-  }
-}
-
-/* Collapsed state adjustments */
-.sidebar[data-collapsed="true"] .settings-section {
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
-.sidebar[data-collapsed="true"] .sidebar-divider {
-  width: 80%;
-  margin: var(--spacing-xs) auto;
+.sidebar-bottom :deep(.sidebar-action-button:hover) {
+  background: var(--color-hover) !important;
+  color: var(--color-text) !important;
 }
 </style>

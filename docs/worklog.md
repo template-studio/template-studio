@@ -586,3 +586,11 @@
 **涉及文件：** `apps/desktop/src/assets/styles/{variables,themes}.css`、`src/App.vue`、`src/components/layout/AppLayout.vue` + 蓝色清理涉及的 18 个组件/视图
 
 **验收结果：** `pnpm build` 通过；计算样式实测浅/暗两主题的关键令牌（画布/面板/主操作/品牌绿）与浮卡几何（三卡 top 8px、圆角 14、动画运行）全部正确；视觉走查发现的「推荐徽标蓝残留」已修。遗留：ProjectWorkspaceLayout（/project/* 工作区）暂未浮卡化，见 `dev-docs/desktop-visual-refactor.md`。
+
+## 2026-08-31 侧边栏重构：自绘导航替换 AntD 菜单
+
+**变更内容：** 按原型侧栏模式重写导航。① `NavigationMenu.vue` 整体重写：抛弃 `a-menu`（此前靠约百行 `!important` 覆盖 AntD 默认样式，呈现"两不像"），改为自绘导航——三个小节（工作台/代码生成/系统，11px 小节标题）+ 平铺条目（30px 行高、7px 圆角胶囊、图标灰/选中深、单色语言）；「代码生成器」折叠子菜单拍平为小节分组（菜单量少，常显优于折叠）；「设置」并入系统小节；折叠态收为图标条目 + tooltip。② `Sidebar.vue` 简化：logo 去掉双层文字/渐变蓝（#2196f3 残留）/浮动动画，底部动作条只留帮助 + 主题切换（设置按钮移除，避免与导航重复）。③ 侧栏底色调为原型的 `#fbfbfa`（暗色 `#1c1d21`），与内容卡的纯白拉开微妙层次。
+
+**涉及文件：** `apps/desktop/src/components/layout/NavigationMenu.vue`（重写）、`apps/desktop/src/components/layout/Sidebar.vue`、`apps/desktop/src/assets/styles/variables.css`
+
+**验收结果：** DOM 实测——三小节 8 条目结构正确、路由选中态（/templates → 脚手架）正确、nav-item 规格 30px/7px 符合原型、无 AntD 菜单残留、折叠态 8 个图标条目且小节标题隐藏、宽度 60px 可还原；`pnpm build` 通过。
