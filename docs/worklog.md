@@ -530,3 +530,11 @@
 **涉及文件：** `apps/desktop/src/services/**`、`apps/desktop/src/views/editor/**`（28 文件）、`apps/desktop/src/icons/ionicons5.ts`、`apps/desktop/src/stores/templateFileStore.ts`、`apps/desktop/src/composables/useRenderService.ts`、`apps/desktop/src/router/index.js`、`apps/desktop/src/App.vue`、`apps/desktop/package.json`
 
 **验收结果：** `pnpm build` 全量通过；浏览器冒烟（vite dev + hash 路由 `/#/editor/1770799783109`）：编辑器完整渲染（文件树/变量/设置侧栏、编辑面板、空态），无 Tauri 环境下 401 引导文案精确显示——验证了路由、独立布局分支、运行时无导入错误、CORS 放行、信封错误路径与引擎回退。数据成功路径待真实 Tauri 环境（阶段6）。
+
+## 2026-08-31 桌面端编辑器阶段5：模板广场编辑入口
+
+**变更内容：** ① `contribution.ts`（我的模板 API：列表/创建/更新/删除/提交审核）移植到 `api/editor/templates/contribution.ts`（apiRequest 版，路径 `/api/v1/admin/my/templates/*`）。② 模板广场（`views/templates/index.vue`）新增编辑入口：工具栏「新建模板」按钮 + 卡片「编辑」图标，均以 `configStore.hasApiKey`（设置页已配置 API Token）为显隐条件。③ 新建模板弹窗：名称/类型（`getTemplateTypes` 动态加载）/分类/主语言/描述，创建成功取 `data.id` 跳转 `/editor/:id`；载荷对齐后端 `CreateTemplateRequest`（visibility private、languages 数组）。
+
+**涉及文件：** `apps/desktop/src/api/editor/templates/contribution.ts`（新增）、`apps/desktop/src/views/templates/index.vue`
+
+**验收结果：** 表单载荷实测往返——创建（code:0 得到新模板 id）→ 删除（code:0）验证载荷形状正确；类型接口返回 `templateTypes: [{value,label,description}]` 与下拉渲染匹配；浏览器验证广场正常渲染（分类/语言/4 张模板卡片）、无 PAT 时新入口按设计隐藏。带 PAT 的入口展示待真实 Tauri 环境（阶段6）。
