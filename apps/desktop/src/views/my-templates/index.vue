@@ -44,9 +44,9 @@
             @click="goEditor(tmpl.id)"
             @contextmenu.prevent="(e) => showContextMenu(e, tmpl)"
           >
-            <!-- 顶部视觉区域 -->
-            <div class="card-visual-area">
-              <div class="visual-bg"><div class="code-snippet">{{ getCodeSnippet(tmpl) }}</div></div>
+            <!-- 顶部视觉区域（与模板广场同款） -->
+            <div class="card-visual">
+              <div class="visual-bg"><div class="code-preview">{{ getCodeSnippet(tmpl) }}</div></div>
               <div class="status-badge" :class="getStatusClass(tmpl.visibility)">
                 {{ getStatusLabel(tmpl.visibility) }}
               </div>
@@ -68,13 +68,16 @@
                 </a-tooltip>
               </div>
             </div>
-            <!-- 内容区域 -->
-            <div class="card-content-area">
-              <h4 class="card-title">{{ tmpl.name }}</h4>
-              <p class="card-desc">{{ tmpl.description }}</p>
+            <!-- 内容区域（与模板广场同款排版） -->
+            <div class="card-content">
+              <h3 class="template-name">{{ tmpl.name }}</h3>
+              <p class="template-desc">{{ tmpl.description }}</p>
+              <div class="template-languages">
+                <span v-for="lang in (tmpl.languages || []).slice(0, 3)" :key="lang.languageId" class="template-tag">{{ getLanguageName(lang.languageId) }}</span>
+              </div>
               <div class="card-footer">
                 <span class="card-type">{{ getTypeLabel(tmpl.templateType) }}</span>
-                <span class="card-time">{{ formatDate(tmpl.createdAt) }}</span>
+                <span class="creation-time">{{ formatDate(tmpl.createdAt) }}</span>
               </div>
             </div>
           </div>
@@ -443,9 +446,20 @@ function getTypeLabel(t) {
   return { basic: '基础模板', scaffold: '脚手架', data_driven: '数据驱动' }[t] || t
 }
 
+function getLanguageName(languageId) {
+  return languageOptions.value.find((l) => l.value === languageId)?.label || languageId
+}
+
+// 与模板广场同款：按模板主语言生成对应风格的代码片段
 function getCodeSnippet(tmpl) {
   const name = tmpl.name || 'Template'
-  return `// ${name}\nclass ${name.replace(/\s+/g, '')} {\n  constructor() {\n    this.name = '${name}'\n  }\n\n  init() {\n    console.log('Initializing...')\n    this.run()\n  }\n\n  run() {\n    console.log('Running', this.name)\n  }\n}`
+  const lang = (tmpl.languages || []).map((l) => getLanguageName(l.languageId)).join(' ')
+  if (lang.includes('Rust') || lang.includes('rust')) return `fn main() {\n    println!("Hello, ${name}!");\n}`
+  if (lang.includes('Go') || lang.includes('go') || lang.includes('Golang')) return `package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Printf("Hello, ${name}!\\n")\n}`
+  if (lang.includes('Python') || lang.includes('python')) return `def main():\n    print(f"Hello, ${name}!")\n\nif __name__ == "__main__":\n    main()`
+  if (lang.includes('JavaScript') || lang.includes('javascript')) return `function main() {\n  console.log('Hello, ${name}!');\n}\n\nmain();`
+  if (lang.includes('TypeScript') || lang.includes('typescript')) return `function main(): void {\n  console.log('Hello, ${name}!');\n}\n\nmain();`
+  return `// ${name}\nclass App {\n  constructor() {\n    this.name = '${name}';\n  }\n\n  run() {\n    console.log('Running', this.name);\n  }\n}`
 }
 
 function getStatusLabel(v) {
@@ -478,36 +492,46 @@ function formatDate(d) {
 .filter-chip.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
 
 .templates-content { flex: 1; overflow-y: auto; min-height: 0; padding: 0 var(--spacing-lg); }
-.template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--spacing-md); }
+.template-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--spacing-md); }
 
 .template-card {
   background: var(--color-background); border: 1px solid var(--color-border);
   border-radius: var(--border-radius-lg); overflow: hidden; cursor: pointer;
-  transition: all 0.25s ease-out; position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative;
 }
 .template-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12); border-color: var(--color-primary); }
 
-.card-visual-area { position: relative; height: 110px; overflow: hidden; }
+/* 视觉区与模板广场同款：深色渐变 + 微光 */
+.card-visual { height: 140px; position: relative; overflow: hidden; }
 .visual-bg {
-  height: 100%; background: linear-gradient(135deg, var(--color-surface), var(--color-hover));
-  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;
 }
-.code-snippet {
-  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace; font-size: 9px; line-height: 1.5;
-  color: var(--color-text-secondary); opacity: 0.5; white-space: pre; padding: 12px 16px;
-  text-align: left; overflow: hidden;
+.visual-bg::before {
+  content: ''; position: absolute; top: 0; left: -100%; width: 200%; height: 100%;
+  background: linear-gradient(90deg, transparent 0%, rgba(24,144,255,0.03) 45%, rgba(24,144,255,0.08) 50%, rgba(24,144,255,0.03) 55%, transparent 100%);
+  animation: shimmer 4s ease-in-out infinite;
 }
+@keyframes shimmer { 0% { transform: translateX(0); } 100% { transform: translateX(50%); } }
+.code-preview {
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace; font-size: 10px; line-height: 1.5;
+  color: rgba(148, 163, 184, 0.4); white-space: pre; padding: 16px 20px;
+  text-align: left; position: relative; z-index: 1; overflow: hidden;
+}
+
+/* 状态徽章：同 template-badge 的玻璃质感，按状态着色 */
 .status-badge {
-  position: absolute; top: 10px; right: 10px; padding: 2px 10px; border-radius: 12px;
-  font-size: 11px; font-weight: 500; color: #fff;
+  position: absolute; top: 10px; right: 10px; padding: 3px 10px; border-radius: 6px;
+  font-size: 11px; font-weight: 600; color: #fff; z-index: 2; letter-spacing: 0.3px;
+  backdrop-filter: blur(8px);
 }
-.status-badge.draft { background: #94a3b8; }
-.status-badge.pending { background: #f59e0b; }
-.status-badge.published { background: #22c55e; }
-.status-badge.rejected { background: #ef4444; }
+.status-badge.draft { background: rgba(100, 116, 139, 0.9); }
+.status-badge.pending { background: rgba(245, 158, 11, 0.9); }
+.status-badge.published { background: rgba(34, 197, 94, 0.9); }
+.status-badge.rejected { background: rgba(239, 68, 68, 0.9); }
 
 .card-hover-actions {
-  position: absolute; top: 10px; left: 10px; display: flex; gap: 6px;
+  position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; z-index: 2;
   opacity: 0; transition: opacity 0.2s;
 }
 .template-card:hover .card-hover-actions { opacity: 1; }
@@ -517,15 +541,28 @@ function formatDate(d) {
 }
 .hover-action-btn:hover { background: var(--color-primary); }
 
-.card-content-area { padding: 14px 16px 16px; }
-.card-title { margin: 0 0 6px; font-size: 15px; font-weight: 600; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.card-desc {
-  margin: 0 0 12px; font-size: 12px; color: var(--color-text-secondary);
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 34px;
+/* 内容区与模板广场同款排版 */
+.card-content { padding: 16px 20px 20px; }
+.template-name {
+  margin: 0 0 6px 0; font-size: 16px; font-weight: 600; color: var(--color-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -0.2px;
 }
-.card-footer { display: flex; justify-content: space-between; align-items: center; }
+.template-card:hover .template-name { color: var(--color-primary); }
+.template-desc {
+  margin: 0 0 12px 0; font-size: 13px; color: var(--color-text-secondary); line-height: 1.6;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  min-height: 42px;
+}
+.template-languages { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.template-tag {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  color: var(--color-text-secondary); font-size: 11px; padding: 2px 8px; border-radius: 4px;
+  transition: all 0.2s ease;
+}
+.template-card:hover .template-tag { background: rgba(24,144,255,0.08); border-color: rgba(24,144,255,0.2); color: var(--color-primary); }
+.card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--color-border-light); }
 .card-type { font-size: 11px; color: var(--color-primary); background: var(--color-hover); padding: 1px 8px; border-radius: 10px; }
-.card-time { font-size: 11px; color: var(--color-text-secondary); }
+.creation-time { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-text-muted); }
 
 .pagination { display: flex; justify-content: center; padding: var(--spacing-md) 0; flex-shrink: 0; }
 
