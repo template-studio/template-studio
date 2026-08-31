@@ -1,6 +1,7 @@
 use std::path::Path;
 use template_studio_template_core::{
-    filter_files_by_conditions, render_string, render_tree, ConditionsYaml, TemplateFile, Variables,
+    filter_files_by_conditions, render_string, render_tree, Condition, ConditionsYaml,
+    TemplateFile, Variables,
 };
 
 use crate::config::Config;
@@ -178,15 +179,16 @@ pub async fn render_template(
         serde_json::from_str(&result_json).map_err(|e| format!("解析渲染结果失败: {}", e))?;
     Ok(rendered
         .into_iter()
-        .filter(|f| f.get("isDirectory").and_then(|v| v.as_i64()) == Some(0))
+        // core::RenderedFile 序列化为 snake_case（is_directory/file_path/file_content）
+        .filter(|f| f.get("is_directory").and_then(|v| v.as_i64()) == Some(0))
         .map(|f| RenderedFile {
             path: f
-                .get("filePath")
+                .get("file_path")
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string(),
             content: f
-                .get("fileContent")
+                .get("file_content")
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string(),
@@ -251,6 +253,105 @@ pub async fn render_template_preview(
         serde_json::to_string(&rendered_tree).map_err(|e| format!("序列化结果失败: {}", e))?;
 
     Ok(result_json)
+}
+
+// ---------------------------------------------------------------------------
+// 编辑器内存渲染（模板编辑器方案A：渲染未保存的内存文件集，与 WASM 引擎同构）
+// ---------------------------------------------------------------------------
+
+/// 编辑器前端传入的内存文件（字段与 WASM 端 WasmTemplateFile 一致）
+#[derive(serde::Deserialize)]
+pub struct EditorFile {
+    pub id: i64,
+    pub file_path: String,
+    pub file_name: String,
+    pub file_content: String,
+    pub is_directory: i32,
+    pub parent_id: i64,
+    pub filesize: i32,
+    #[serde(default)]
+    pub condition: Option<Condition>,
+}
+
+/// 引擎初始化只做一次（注册过滤器/内置函数）
+fn ensure_engine_initialized() {
+    static INIT: std::sync::Once = std::sync::Once::new();
+    INIT.call_once(template_studio_template_core::initialize);
+}
+
+/// 渲染内存文件集（编辑器未保存内容的实时预览）
+///
+/// 输入文件先按生成条件过滤（与服务端/WASM 渲染语义一致），再整树渲染。
+/// 返回 core::RenderedFile 树（snake_case 字段，错误字段为 error.type）。
+#[tauri::command]
+pub async fn render_files(
+    files: Vec<EditorFile>,
+    variables: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    ensure_engine_initialized();
+
+    let vars = Variables::from_value(variables);
+
+    let core_files: Vec<TemplateFile> = files
+        .into_iter()
+        .map(|f| TemplateFile {
+            id: f.id,
+            file_path: f.file_path,
+            file_name: f.file_name,
+            file_content: f.file_content,
+            is_directory: f.is_directory,
+            parent_id: f.parent_id,
+            filesize: f.filesize,
+            extends: None,
+            includes: None,
+            imports: None,
+            condition: f.condition,
+            is_dependency: false,
+            required_by: None,
+        })
+        .collect();
+
+    let filtered = filter_files_by_conditions(core_files, &vars);
+    let rendered = render_tree(filtered, &vars).map_err(|e| format!("渲染失败: {}", e))?;
+
+    serde_json::to_value(rendered).map_err(|e| format!("序列化结果失败: {}", e))
+}
+
+/// 渲染单个模板字符串（编辑器单文件预览，无文件依赖场景）
+#[tauri::command]
+pub async fn render_string_content(
+    template: String,
+    variables: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    ensure_engine_initialized();
+
+    let vars = Variables::from_value(variables);
+    let result = render_string(&template, &vars, None).map_err(|e| format!("渲染失败: {}", e))?;
+
+    serde_json::to_value(result).map_err(|e| format!("序列化结果失败: {}", e))
+}
+
+/// 获取渲染引擎信息（版本/过滤器/内置函数，供编辑器引擎管理器展示）
+#[tauri::command]
+pub fn get_render_engine_info() -> Result<serde_json::Value, String> {
+    ensure_engine_initialized();
+
+    let filters: Vec<String> = template_studio_template_core::get_available_filters()
+        .into_iter()
+        .map(|f| f.name)
+        .collect();
+    let functions: Vec<String> =
+        template_studio_template_core::get_builtin_function_categories()
+            .into_iter()
+            .flat_map(|cat| cat.functions.into_iter().map(|f| f.name))
+            .collect();
+
+    Ok(serde_json::json!({
+        "version": template_studio_template_core::VERSION,
+        "buildTime": "native",
+        "filters": filters,
+        "functions": functions,
+    }))
 }
 
 /// 渲染并导出模板到指定目录
@@ -801,4 +902,88 @@ fn scan_directory_recursive(
     }
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// 编辑器内存渲染命令测试
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod editor_render_tests {
+    use super::*;
+
+    fn file(id: i64, path: &str, content: &str, condition: Option<Condition>) -> EditorFile {
+        EditorFile {
+            id,
+            file_path: path.to_string(),
+            file_name: path.rsplit('/').next().unwrap_or(path).to_string(),
+            file_content: content.to_string(),
+            is_directory: 0,
+            parent_id: 0,
+            filesize: content.len() as i32,
+            condition,
+        }
+    }
+
+    #[tokio::test]
+    async fn render_files_renders_variables_and_filters_by_condition() {
+        let files = vec![
+            file(1, "README.md", "# {{ name }}", None),
+            file(
+                2,
+                "optional.txt",
+                "should not appear",
+                Some(Condition::new_if(
+                    "enable".to_string(),
+                    template_studio_template_core::Operator::Eq,
+                    serde_json::json!(true),
+                )),
+            ),
+        ];
+
+        let result = render_files(files, serde_json::json!({ "name": "demo", "enable": false }))
+            .await
+            .unwrap();
+
+        let rendered = result.as_array().unwrap();
+        // 条件不满足的 optional.txt 被过滤，仅剩 README.md
+        assert_eq!(rendered.len(), 1);
+        assert_eq!(rendered[0]["file_path"], "README.md");
+        assert_eq!(rendered[0]["file_content"], "# demo");
+        assert!(rendered[0]["error"].is_null());
+    }
+
+    #[tokio::test]
+    async fn render_files_reports_per_file_error_without_breaking_tree() {
+        let files = vec![
+            file(1, "good.txt", "ok: {{ v }}", None),
+            file(2, "bad.txt", "{% if unclosed", None),
+        ];
+
+        let result = render_files(files, serde_json::json!({ "v": 1 })).await.unwrap();
+        let rendered = result.as_array().unwrap();
+
+        let good = rendered.iter().find(|f| f["file_path"] == "good.txt").unwrap();
+        assert_eq!(good["file_content"], "ok: 1");
+        let bad = rendered.iter().find(|f| f["file_path"] == "bad.txt").unwrap();
+        assert!(bad["error"].is_object(), "语法错误应记录在 error 字段");
+    }
+
+    #[tokio::test]
+    async fn render_string_content_returns_core_result_shape() {
+        let result = render_string_content("Hello {{ name }}!".to_string(), serde_json::json!({ "name": "World" }))
+            .await
+            .unwrap();
+
+        assert_eq!(result["success"], true);
+        assert_eq!(result["content"], "Hello World!");
+    }
+
+    #[test]
+    fn engine_info_reports_core_version_and_filters() {
+        let info = get_render_engine_info().unwrap();
+        assert_eq!(info["version"], template_studio_template_core::VERSION);
+        let filters = info["filters"].as_array().unwrap();
+        assert!(!filters.is_empty(), "过滤器应已注册（initialize 生效）");
+    }
 }

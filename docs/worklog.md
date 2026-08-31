@@ -506,3 +506,11 @@
 **涉及文件：** `dev-docs/desktop-editor-plan.md`、`apps/desktop/src/utils/apiRequest.js`（新增）、`apps/desktop/src/views/settings/WebServerSettings.vue`、`apps/desktop/package.json`
 
 **验收结果：** PAT 全链路实测——创建 PAT（全 7 scope）→ `token` 头调编辑器真实端点 `/api/v1/editor/templateFiles/fileTree` 返回 200（12 文件），无 token 401；`pnpm build`（桌面前端）通过。
+
+## 2026-08-31 桌面端编辑器阶段2：Tauri 内存渲染引擎
+
+**变更内容：** ① Rust 侧新增三个 Tauri 命令：`render_files`（内存文件集整树渲染——先按生成条件过滤再 render_tree，与 WASM/服务端语义一致）、`render_string_content`（单字符串渲染）、`get_render_engine_info`（版本/过滤器/内置函数）；引擎 `initialize()` 经 `Once` 保证单次注册。② `template_core` 新增 `VERSION` 常量导出（引擎信息上报引擎自身版本而非宿主版本）。③ 前端新增 `apps/desktop/src/services/render/TauriEngine.ts`（implements RenderEngine，与 WasmEngine 同构；错误类型字段为 core 原生 `type` 而非 WASM 包装层 `error_type`）+ 移植 `services/types.ts`。④ 修复存量 bug：桌面 `render_template` 命令按驼峰读 `isDirectory`/`filePath`/`fileContent`，而 core::RenderedFile 序列化为 snake_case，导致 PreviewPane 预览永远为空——改为 snake_case 字段名。
+
+**涉及文件：** `apps/desktop/src-tauri/src/commands/template.rs`、`apps/desktop/src-tauri/src/lib.rs`、`crates/template_core/src/lib.rs`、`apps/desktop/src/services/types.ts`（新增）、`apps/desktop/src/services/render/TauriEngine.ts`（新增）
+
+**验收结果：** 命令级单测 4/4 通过（render_files 变量渲染+条件剔除、单文件语法错误不破坏整树、render_string_content 结果形状、引擎信息含过滤器注册）；`cargo check`（desktop）零错误；桌面前端 `pnpm build` 通过。

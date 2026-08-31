@@ -77,6 +77,9 @@ pub use parallel::render_tree_batch;
 // 导出依赖分析相关类型和函数
 pub use dependency_analyzer::{FileDependencies, ImportDependency, TeraDependencyAnalyzer};
 
+/// 引擎自身版本号（供各宿主——服务端/WASM/桌面——上报引擎信息）
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 // 导出树构建器相关类型和函数
 pub use tree_builder::filter_files_by_conditions;
 pub use tree_builder::TreeBuilder;
