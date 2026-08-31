@@ -1,23 +1,47 @@
 <template>
-  <!-- 登录态身份锚点：配置 API Token 后显示（头像 + 用户名 + 连接点）；
-       Token 失效转警示态；点击跳转凭据设置页 -->
-  <a-tooltip v-if="collapsed" :title="tooltipText" placement="right">
-    <button class="user-chip collapsed-item" :class="{ error: isError }" @click="goSettings">
+  <!-- 登录态身份锚点：配置 API Token 后显示；点击弹出用户信息与凭据管理 -->
+  <a-popover v-model:open="menuOpen" trigger="click" placement="rightBottom" :overlay-class-name="'user-card-popover'">
+    <button class="user-chip" :class="{ error: isError, collapsed: collapsed }">
       <img v-if="avatarUrl" :src="avatarUrl" class="avatar" alt="" @error="avatarUrl = ''" />
       <span v-else class="avatar avatar-fallback">{{ initial }}</span>
+      <template v-if="!collapsed">
+        <span class="name">{{ displayName }}</span>
+        <span class="dot" :class="isError ? 'dot-error' : 'dot-ok'" :title="isError ? 'Token 无效' : '已连接'"></span>
+      </template>
     </button>
-  </a-tooltip>
-  <button v-else class="user-chip" :class="{ error: isError }" @click="goSettings">
-    <img v-if="avatarUrl" :src="avatarUrl" class="avatar" alt="" @error="avatarUrl = ''" />
-    <span v-else class="avatar avatar-fallback">{{ initial }}</span>
-    <span class="name">{{ displayName }}</span>
-    <span class="dot" :class="isError ? 'dot-error' : 'dot-ok'" :title="isError ? 'Token 无效' : '已连接'"></span>
-  </button>
+
+    <template #content>
+      <div class="user-menu">
+        <div class="user-menu-head">
+          <img v-if="avatarUrl" :src="avatarUrl" class="menu-avatar" alt="" />
+          <span v-else class="menu-avatar avatar-fallback">{{ initial }}</span>
+          <div class="menu-head-info">
+            <div class="menu-name">{{ username || '未连接' }}</div>
+            <div v-if="email" class="menu-email">{{ email }}</div>
+          </div>
+          <span class="dot dot-ok menu-dot" v-if="!isError" title="已连接"></span>
+        </div>
+        <div v-if="roles.length" class="menu-roles">
+          <span v-for="r in roles.slice(0, 3)" :key="r" class="role-tag">{{ r }}</span>
+        </div>
+        <div class="menu-divider"></div>
+        <button class="menu-item" @click="goTokenSettings">
+          <KeyOutlined class="menu-item-ic" />
+          <span>API Token 管理</span>
+        </button>
+        <button v-if="isError" class="menu-item menu-item-warn" @click="goTokenSettings">
+          <WarningOutlined class="menu-item-ic" />
+          <span>Token 已失效，点击重新配置</span>
+        </button>
+      </div>
+    </template>
+  </a-popover>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { KeyOutlined, WarningOutlined } from '@ant-design/icons-vue'
 import apiRequest from '@/utils/apiRequest'
 import { useConfigStore } from '@/stores/config'
 import { useLayoutStore } from '@/stores/layout'
@@ -27,8 +51,11 @@ const configStore = useConfigStore()
 const layoutStore = useLayoutStore()
 
 const username = ref('')
+const email = ref('')
+const roles = ref([])
 const avatarUrl = ref('')
 const isError = ref(false)
+const menuOpen = ref(false)
 
 const collapsed = computed(() => layoutStore.sidebarCollapsed)
 
@@ -37,11 +64,10 @@ const displayName = computed(() => {
   return username.value || '已连接'
 })
 
-const tooltipText = computed(() => (isError.value ? 'Token 无效，点击配置' : displayName.value))
-
 const initial = computed(() => (username.value ? username.value[0].toUpperCase() : '·'))
 
-const goSettings = () => {
+const goTokenSettings = () => {
+  menuOpen.value = false
   router.push('/settings/web-server')
 }
 
@@ -52,6 +78,8 @@ onMounted(async () => {
     const user = res?.data?.data
     if (!user?.username) throw new Error('empty user')
     username.value = user.username
+    email.value = user.email || ''
+    roles.value = (user.roles || []).map(r => (typeof r === 'string' ? r : r?.name || r?.roleName || '')).filter(Boolean)
     if (user.avatar) {
       avatarUrl.value = `${configStore.baseURL.replace(/\/$/, '')}${user.avatar}`
     }
@@ -133,8 +161,112 @@ onMounted(async () => {
   background: var(--color-warning);
 }
 
-.collapsed-item {
+.user-chip.collapsed {
   justify-content: center;
   padding: 0;
+}
+
+/* ---------- 弹层内容 ---------- */
+.user-menu {
+  min-width: 220px;
+  margin: -4px -8px;
+}
+
+.user-menu-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.menu-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
+
+.menu-head-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-email {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-dot {
+  width: 7px;
+  height: 7px;
+}
+
+.menu-roles {
+  display: flex;
+  gap: 4px;
+  padding: 0 12px 10px;
+  flex-wrap: wrap;
+}
+
+.role-tag {
+  font-size: 10.5px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.menu-divider {
+  height: 1px;
+  background: var(--color-border-light);
+  margin: 2px 0;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.menu-item:hover {
+  background: var(--color-nav-hover);
+  color: var(--color-text);
+}
+
+.menu-item-ic {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.menu-item:hover .menu-item-ic {
+  color: var(--color-text);
+}
+
+.menu-item-warn {
+  color: var(--color-warning);
 }
 </style>
