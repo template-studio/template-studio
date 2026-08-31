@@ -221,17 +221,3 @@ export const deleteTemplateExpose = (params) => {
   });
 };
 
-/**
- * 获取模板暴露字段历史版本列表
- * @param {Object} params - 参数对象
- * @param {number} params.templateId - 模板ID
- * @returns {Promise}
- */
-export const getTemplateExposeVersions = (params) => {
-  const { templateId } = params;
-
-  return request({
-    url: `/api/v1/editor/templates/${templateId}/expose/versions`,
-    method: 'GET',
-  });
-};

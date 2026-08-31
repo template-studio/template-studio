@@ -294,6 +294,10 @@ pub fn create_app(
             tower_http::services::ServeDir::new("data/avatars"),
         )
         .layer(cors_layer(config))
+        // 请求日志 + trace-id（后加的 layer 更外层，认证/CORS 拒绝的请求也会被记录）
+        .layer(axum::middleware::from_fn(
+            middleware::request_log::request_log_middleware,
+        ))
         .with_state(state)
 }
 
@@ -319,6 +323,8 @@ fn cors_layer(config: &template_studio_infrastructure::config::settings::AppConf
         // 前端使用自定义 token 头认证，预检必须放行对应方法与头
         .allow_methods(tower_http::cors::Any)
         .allow_headers(tower_http::cors::Any)
+        // 允许跨域前端读取 x-trace-id（报障时提供给后端定位请求）
+        .expose_headers([axum::http::HeaderName::from_static("x-trace-id")])
 }
 
 /// 模板路由

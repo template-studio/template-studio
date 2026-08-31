@@ -570,3 +570,11 @@
 **涉及文件：** `apps/desktop/src/stores/uiSettings.js`（新增）、`apps/desktop/src/stores/index.js`、`apps/desktop/src/views/settings/{AdvancedSecurity,AdvancedNetwork,GeneralBehavior,AdvancedDeveloperDebug,AdvancedDeveloperExperimental}Settings.vue`
 
 **验收结果：** 浏览器实测闭环——默认值渲染 → 点击开关 localStorage 立即写入完整状态（含全部 5 个分区）→ 刷新后开关状态保留；`pnpm build` 通过。注：部分开关（沙盒/CSP/代理/调试端口）当前仅存储偏好，生效逻辑待功能实现时接线。
+
+## 2026-08-31 小批三件：死代码清理 / 连接池调优（#14）/ 请求日志与 trace-id（#15）
+
+**变更内容：** ① 清理 `getTemplateExposeVersions` 死函数——指向后端不存在的 `/expose/versions` 路由且无调用方，web 与桌面两份模块同步删除。② 连接池显式调优：`MySqlPool::connect`（全默认）改为 `MySqlPoolOptions`——配置里的 `max_connections` 首次真正生效（此前被静默忽略），另加 acquire 5s 超时、连接最长寿命 30min、空闲 10min 回收。③ 新增 `request_log` 中间件：每请求生成 trace-id（UUID v4）放入 `request` span（handler 日志自动内联关联）并经 `x-trace-id` 响应头回传，记录 method/path/status/耗时；`/health` 不记日志；CORS 补 `Access-Control-Expose-Headers` 让跨域前端可读取该头；中间件注册在 CORS 层之外（认证/CORS 拒绝的请求也有日志）。
+
+**涉及文件：** `web/src/api/templateExpose/index.ts`、`apps/desktop/src/api/editor/templateExpose/index.ts`（删除死函数）；`crates/infrastructure/src/database/pool.rs`；`apps/web/src/middleware/request_log.rs`（新增）、`apps/web/src/middleware/mod.rs`、`apps/web/src/main.rs`
+
+**验收结果：** cargo check 零错误、web 测试 3/3 通过；后端重启实测——响应头 `x-trace-id` 返回且同 ID 出现在 handler 日志 span、请求日志含 `status=200 elapsed_ms`、`access-control-expose-headers: x-trace-id` 生效、/health 无日志噪音。

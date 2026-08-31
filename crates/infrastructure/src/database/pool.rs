@@ -1,5 +1,7 @@
 use crate::config::settings::DatabaseConfig;
+use sqlx::mysql::MySqlPoolOptions;
 use sqlx::{MySql, Pool};
+use std::time::Duration;
 
 /// 数据库连接池管理器
 pub struct DatabasePool {
@@ -8,8 +10,18 @@ pub struct DatabasePool {
 
 impl DatabasePool {
     /// 创建新的连接池
+    ///
+    /// 池参数显式化：`max_connections` 来自配置（此前 `MySqlPool::connect` 走默认值，
+    /// 配置项被静默忽略）；获取连接 5s 超时避免请求无限堆积；连接 30min 最大寿命、
+    /// 10min 空闲回收，降低长连接被服务端/中间设备静默断掉后首次使用的失败率。
     pub async fn new(config: &DatabaseConfig) -> anyhow::Result<Self> {
-        let pool = sqlx::MySqlPool::connect(&config.url).await?;
+        let pool = MySqlPoolOptions::new()
+            .max_connections(config.max_connections)
+            .acquire_timeout(Duration::from_secs(5))
+            .max_lifetime(Duration::from_secs(30 * 60))
+            .idle_timeout(Duration::from_secs(10 * 60))
+            .connect(&config.url)
+            .await?;
 
         Ok(Self { pool })
     }
