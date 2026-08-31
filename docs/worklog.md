@@ -498,3 +498,11 @@
 **涉及文件：** `crates/services/src/{category,language,var_preset,template_analysis}_service.rs`、`crates/repositories/src/template_repository.rs`、`apps/web/src/{main,handlers/template}.rs`（自动修复涉及面更广）
 
 **验收结果：** 全部测试通过（template_core 52 + services 2 + web 3）；编译零警告零错误；变量分析接口回归 200（正则提升后功能不变）。
+
+## 2026-08-31 桌面端模板编辑器立项（方案 A）+ 阶段1：API 客户端与认证打通
+
+**变更内容：** ① 立项文档 `dev-docs/desktop-editor-plan.md`（现状盘点、三项关键决策：PAT+token 头双客户端并存 / Tauri 内存渲染引擎 / 独立顶层路由，六阶段拆分）；② 新增 `apps/desktop/src/utils/apiRequest.js`——语义与 web 端 `utils/request.ts` 对齐（`token` 头注入、`code!==0` 拦截、blob 透传、qs 序列化、401 引导到设置页而非跳登录），存量 `utils/request.js` 契约不动；③ 设置页 API 密钥字段改为 API Token 说明（指引 Web 端「个人中心」创建 ts_pat_ 令牌）；④ 修复桌面端幽灵依赖：`qs` 新增、`lodash-es` 与 `@lezer/highlight` 补声明（后者导致 vite build 失败）。
+
+**涉及文件：** `dev-docs/desktop-editor-plan.md`、`apps/desktop/src/utils/apiRequest.js`（新增）、`apps/desktop/src/views/settings/WebServerSettings.vue`、`apps/desktop/package.json`
+
+**验收结果：** PAT 全链路实测——创建 PAT（全 7 scope）→ `token` 头调编辑器真实端点 `/api/v1/editor/templateFiles/fileTree` 返回 200（12 文件），无 token 401；`pnpm build`（桌面前端）通过。

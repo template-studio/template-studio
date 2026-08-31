@@ -20,13 +20,13 @@
 
       <div class="setting-row">
         <div class="setting-row-content">
-          <div class="setting-row-title">API 密钥</div>
-          <div class="setting-row-description">用于身份验证的 API 密钥（可选）</div>
+          <div class="setting-row-title">API Token</div>
+          <div class="setting-row-description">在 Web 端「个人中心」创建的访问令牌（ts_pat_ 开头）；编辑模板等写操作必填，留空仅可浏览公开内容</div>
         </div>
         <a-input
           v-model:value="config.api_key"
           type="password"
-          placeholder="留空表示不需要验证"
+          placeholder="ts_pat_..."
           style="width: 300px"
         />
       </div>
