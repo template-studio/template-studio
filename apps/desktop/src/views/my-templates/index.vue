@@ -491,7 +491,7 @@ function formatDate(d) {
 .filter-chip:hover { border-color: var(--color-primary); color: var(--color-primary); }
 .filter-chip.active { background: var(--color-primary); color: var(--color-canvas); border-color: var(--color-primary); }
 
-.templates-content { flex: 1; overflow-y: auto; min-height: 0; padding: 0 var(--spacing-lg); }
+.templates-content { flex: 1; overflow-y: auto; min-height: 0; padding: 4px var(--spacing-lg) 0; }
 /* 加载时网格为空导致高度塌陷，Spin 贴顶；给容器最小高度使其在内容区垂直居中 */
 .templates-content :deep(.ant-spin-nested-loading),
 .templates-content :deep(.ant-spin-container) { min-height: 320px; }
