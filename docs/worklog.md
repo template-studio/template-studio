@@ -618,3 +618,11 @@
 **涉及文件：** `apps/desktop/src/components/icons/AiIcon.vue`（新增）、`components/AiAssistant.vue`、`components/settings/{SettingsSidebar,SettingsSubSidebar}.vue`、`views/project/tables/index.vue`、`views/template-render/components/AiVariablePanel.vue`
 
 **验收结果：** `pnpm build` 通过；全仓 `RobotOutlined` 残留清零；设置页实测 AiIcon 渲染正确（14px 高按 48:22 比例、currentColor 生效）。
+
+## 2026-08-31 主题切换移顶栏 + 底部条收敛（含误恢复找回）
+
+**变更内容：** ① 新增 `ThemeToggleButton.vue`：自绘太阳/月亮细线条 SVG（currentColor、16px、1.8 描边），接入主顶栏右上角（通知中心左侧）与工作区顶栏（窗口控制左侧），浅色显太阳、深色显月亮，tooltip 提示目标主题。② 侧栏底部收敛：主侧栏移除「帮助」与「主题切换」条目（帮助整体去掉，主题移至顶栏），底部仅剩登录态身份卡，未配置 Token 时整个底部区隐藏；工作区侧栏保留「设置」（其导航无此项）+ 身份卡，同样移除帮助/主题。③ 清理随之失效的图标导入与死代码（openHelp/goToHelp/toggleTheme/isDark/themeStore 引用）。④ 找回此前 git 误恢复的损失：`</>` logo（两处侧栏）与身份卡接线（两处）重新应用。
+
+**涉及文件：** `apps/desktop/src/components/layout/ThemeToggleButton.vue`（新增）、`Navbar.vue`、`workspace/WorkspaceHeader.vue`、`Sidebar.vue`、`ProjectWorkspaceLayout.vue`
+
+**验收结果：** `pnpm build` 通过；实测：主题按钮位于顶栏右上（浅色态太阳图形）、底部帮助/主题条目清零、身份卡隐藏逻辑保持、logo 为干净字标。

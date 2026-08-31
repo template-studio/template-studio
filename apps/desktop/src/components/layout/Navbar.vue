@@ -44,6 +44,9 @@
     </div>
 
     <div class="navbar-right">
+      <!-- Theme Toggle -->
+      <ThemeToggleButton />
+
       <!-- Notification Center -->
       <NotificationCenter />
 
@@ -90,6 +93,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useLayoutStore } from '@/stores/layout'
 import { tauriApi } from '@/utils/tauriApi'
 import NotificationCenter from '@/components/common/NotificationCenter.vue'
+import ThemeToggleButton from './ThemeToggleButton.vue'
 import {
   MenuOutlined,
   MenuFoldOutlined,

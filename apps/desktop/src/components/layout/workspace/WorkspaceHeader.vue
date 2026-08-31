@@ -42,6 +42,8 @@
         </template>
       </a-button>
 
+      <ThemeToggleButton />
+
       <div class="window-controls titlebar-no-drag">
         <a-button
           type="text"
@@ -79,6 +81,7 @@
 </template>
 
 <script setup>
+import ThemeToggleButton from '../ThemeToggleButton.vue'
 import {
   TableOutlined,
   DatabaseOutlined,

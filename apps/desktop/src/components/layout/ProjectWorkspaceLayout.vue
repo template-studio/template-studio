@@ -68,18 +68,7 @@
       </div>
 
       <div class="sidebar-bottom">
-      <!-- 帮助 -->
-      <a-tooltip v-if="layoutStore.sidebarCollapsed" title="帮助" placement="right">
-        <button class="nav-item collapsed-item" @click="goToHelp">
-          <QuestionCircleOutlined class="nav-ic" />
-        </button>
-      </a-tooltip>
-      <button v-else class="nav-item" @click="goToHelp">
-        <QuestionCircleOutlined class="nav-ic" />
-        <span class="nav-text">帮助</span>
-      </button>
-
-      <!-- 设置 -->
+      <!-- 设置（工作区导航无设置项；帮助已移除，主题切换移至顶栏） -->
       <a-tooltip v-if="layoutStore.sidebarCollapsed" title="设置" placement="right">
         <button class="nav-item collapsed-item" @click="goToSettings">
           <SettingOutlined class="nav-ic" />
@@ -90,20 +79,7 @@
         <span class="nav-text">设置</span>
       </button>
 
-      <!-- 主题切换 -->
-      <a-tooltip v-if="layoutStore.sidebarCollapsed" :title="isDark ? '切换浅色' : '切换深色'" placement="right">
-        <button class="nav-item collapsed-item" @click="toggleTheme">
-          <StarOutlined v-if="isDark" class="nav-ic" />
-          <BulbOutlined v-else class="nav-ic" />
-        </button>
-      </a-tooltip>
-      <button v-else class="nav-item" @click="toggleTheme">
-        <StarOutlined v-if="isDark" class="nav-ic" />
-        <BulbOutlined v-else class="nav-ic" />
-        <span class="nav-text">{{ isDark ? '切换浅色' : '切换深色' }}</span>
-      </button>
-
-      <!-- 登录态身份锚点（配置 API Token 后显示） -->
+      <!-- 登录态身份锚点 -->
       <SidebarUserCard v-if="configStore.hasApiKey" />
     </div>
     </div>
@@ -136,16 +112,12 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLayoutStore } from '@/stores/layout'
 import { useConfigStore } from '@/stores/config'
-import { useThemeStore } from '@/stores/theme'
 import { invoke } from '@tauri-apps/api/core'
 import { tauriApi } from '@/utils/tauriApi'
 import * as projectsApi from '@/api/projects'
 import {
   TableOutlined,
-  QuestionCircleOutlined,
   SettingOutlined,
-  StarOutlined,
-  BulbOutlined,
   SwapOutlined,
   DashboardOutlined
 } from '@ant-design/icons-vue'
@@ -158,7 +130,6 @@ const router = useRouter()
 const route = useRoute()
 const layoutStore = useLayoutStore()
 const configStore = useConfigStore()
-const themeStore = useThemeStore()
 
 const projectId = computed(() => route.params.id || '')
 
@@ -195,7 +166,6 @@ onMounted(() => {
   loadProjectInfo()
 })
 
-const isDark = computed(() => themeStore.isDark)
 
 // 自绘导航：条目定义与激活态（替代 a-menu 的 selectedKeys）
 const navItems = [
@@ -235,16 +205,8 @@ const goBack = () => {
   router.push('/projects')
 }
 
-const toggleTheme = () => {
-  themeStore.toggleTheme()
-}
-
 const goToSettings = () => {
   router.push('/settings')
-}
-
-const goToHelp = () => {
-  router.push('/help')
 }
 
 const minimizeWindow = async () => {
