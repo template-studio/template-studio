@@ -19,6 +19,7 @@
   --color-text-muted: #97999d;
   --color-border: #e9e9e7;
   --color-border-light: #f0f0ee;
+  --color-border-strong: #d6d6d3;   /* hover 边框强调：深一档的中性灰，不做黑白跳变 */
   --color-accent: #16a34a;
   --color-overlay: rgba(24, 24, 22, 0.32);
   --color-code-bg: #1e1e1e;
@@ -44,6 +45,7 @@
   --color-text-muted-dark: #6b6e75;
   --color-border-dark: #2c2e35;
   --color-border-light-dark: #262830;
+  --color-border-strong-dark: #43464e;
   --color-accent-dark: #22c55e;
   --color-overlay-dark: rgba(0, 0, 0, 0.6);
   --color-code-bg-dark: #17181c;
@@ -129,6 +131,7 @@
   --color-text-muted: var(--color-text-muted-dark);
   --color-border: var(--color-border-dark);
   --color-border-light: var(--color-border-light-dark);
+  --color-border-strong: var(--color-border-strong-dark);
   --color-accent: var(--color-accent-dark);
   --color-overlay: var(--color-overlay-dark);
   --color-code-bg: var(--color-code-bg-dark);

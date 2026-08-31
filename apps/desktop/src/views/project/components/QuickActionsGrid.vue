@@ -76,7 +76,7 @@ defineEmits(['navigate'])
 }
 
 .action-card:hover {
-  border-color: var(--color-primary);
+  border-color: var(--color-border-strong);
   background: var(--color-hover);
 }
 

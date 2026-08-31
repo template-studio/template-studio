@@ -316,8 +316,8 @@ onMounted(async () => {
 .edit-entry { color: var(--color-text-secondary); }
 .edit-entry:hover { color: var(--color-primary) !important; }
 .template-card { background: var(--color-background); border: 1px solid var(--color-border); border-radius: var(--border-radius-lg); overflow: hidden; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.template-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12); border-color: var(--color-primary); }
-.template-card.selected { border-color: var(--color-primary); box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1); }
+.template-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12); border-color: var(--color-border-strong); }
+.template-card.selected { border-color: var(--color-border-strong); box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1); }
 .card-visual { height: 140px; position: relative; overflow: hidden; }
 .visual-bg { width: 100%; height: 100%; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
 .visual-bg::before { content: ''; position: absolute; top: 0; left: -100%; width: 200%; height: 100%; background: linear-gradient(90deg, transparent 0%, rgba(28,29,31,0.04) 45%, rgba(28,29,31,0.06) 50%, rgba(28,29,31,0.04) 55%, transparent 100%); animation: shimmer 4s ease-in-out infinite; }

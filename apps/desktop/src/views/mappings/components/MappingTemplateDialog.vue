@@ -179,7 +179,7 @@ const mappingTemplates = [
 <style scoped>
 .template-list { display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow-y: auto; }
 .template-card { border: 1px solid var(--color-border); border-radius: var(--border-radius-md); padding: 16px; cursor: pointer; transition: all 0.2s; }
-.template-card:hover { border-color: var(--color-primary); background: var(--color-hover); }
+.template-card:hover { border-color: var(--color-border-strong); background: var(--color-hover); }
 .template-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .template-name { margin: 0; font-size: 15px; font-weight: 600; color: var(--color-text); }
 .template-desc { margin: 0 0 12px; font-size: 13px; color: var(--color-text-secondary); }

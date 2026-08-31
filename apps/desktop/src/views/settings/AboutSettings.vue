@@ -415,7 +415,7 @@ onMounted(() => {
 }
 
 .link-button:hover {
-  border-color: var(--color-primary);
+  border-color: var(--color-border-strong);
   color: var(--color-primary);
 }
 

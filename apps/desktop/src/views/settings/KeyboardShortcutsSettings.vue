@@ -218,7 +218,7 @@ onUnmounted(() => {
 }
 
 .shortcut-key :deep(.ant-input.recording) {
-  border-color: var(--color-primary);
+  border-color: var(--color-border-strong);
   box-shadow: 0 0 0 2px rgba(28, 29, 31, 0.14);
   animation: pulse 1s infinite;
 }

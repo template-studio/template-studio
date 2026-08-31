@@ -380,7 +380,7 @@ onMounted(async () => {
 .scope-tab.active {
   color: var(--color-primary);
   background: var(--color-primary-bg);
-  border-color: var(--color-primary);
+  border-color: var(--color-border-strong);
   font-weight: 500;
 }
 .scope-tab .ant-badge {

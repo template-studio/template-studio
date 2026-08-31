@@ -488,7 +488,7 @@ function formatDate(d) {
   color: var(--color-text-secondary); background: var(--color-surface);
   border: 1px solid var(--color-border); cursor: pointer; transition: all 0.15s;
 }
-.filter-chip:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.filter-chip:hover { border-color: var(--color-border-strong); color: var(--color-primary); }
 .filter-chip.active { background: var(--color-primary); color: var(--color-canvas); border-color: var(--color-primary); }
 
 .templates-content { flex: 1; overflow-y: auto; min-height: 0; padding: 4px var(--spacing-lg) 0; }
@@ -502,7 +502,7 @@ function formatDate(d) {
   border-radius: var(--border-radius-lg); overflow: hidden; cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative;
 }
-.template-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12); border-color: var(--color-primary); }
+.template-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12); border-color: var(--color-border-strong); }
 
 /* 视觉区与模板广场同款：深色渐变 + 微光 */
 .card-visual { height: 140px; position: relative; overflow: hidden; }

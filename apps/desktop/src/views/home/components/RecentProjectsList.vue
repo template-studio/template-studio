@@ -115,7 +115,7 @@ const formatDate = (dateStr) => {
 }
 
 .project-item:hover {
-  border-color: var(--color-primary);
+  border-color: var(--color-border-strong);
   background: var(--color-hover);
 }
 

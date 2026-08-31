@@ -310,7 +310,7 @@ onMounted(async () => {
 .template-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
-  border-color: var(--color-primary);
+  border-color: var(--color-border-strong);
 }
 
 .card-visual {

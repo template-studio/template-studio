@@ -281,11 +281,11 @@ onMounted(() => {
 }
 
 .color-option:hover {
-  border-color: var(--color-primary);
+  border-color: var(--color-border-strong);
 }
 
 .color-option.active {
-  border-color: var(--color-primary);
+  border-color: var(--color-border-strong);
   background: var(--color-active);
 }
 

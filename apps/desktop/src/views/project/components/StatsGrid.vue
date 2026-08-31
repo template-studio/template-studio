@@ -75,7 +75,7 @@ defineEmits(['navigate'])
 }
 
 .stat-card:hover {
-  border-color: var(--color-primary);
+  border-color: var(--color-border-strong);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 

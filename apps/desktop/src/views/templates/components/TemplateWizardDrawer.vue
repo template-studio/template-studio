@@ -362,7 +362,7 @@ onBeforeUnmount(() => { if (editorView) editorView.destroy(); if (jsonEditor) js
 .wz-name { font-size: 16px; font-weight: 600; color: var(--color-text); }
 .wizard-header-actions { display: flex; align-items: center; gap: 12px; }
 .wizard-header-actions .ant-btn { font-size: 14px; height: 32px; padding: 4px 16px; border-radius: 6px; font-weight: 500; }
-.wizard-header-actions .ant-btn-primary { background: var(--color-primary); border-color: var(--color-primary); }
+.wizard-header-actions .ant-btn-primary { background: var(--color-primary); border-color: var(--color-border-strong); }
 .steps-compact { display: flex; align-items: center; gap: 24px; }
 .step-item { display: flex; align-items: center; gap: 8px; transition: all 0.3s ease; }
 .step-dot { width: 28px; height: 28px; border-radius: 50%; background: var(--color-border); color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; transition: all 0.3s ease; flex-shrink: 0; }
