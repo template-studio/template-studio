@@ -169,6 +169,10 @@ function go(path) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* 光学补偿：13px 中文字形重心在 em 盒内天然偏高，几何居中会看起来上浮，
+   * 下移半像素修正（Linear/Notion 对小号 CJK 文本的常规做法） */
+  position: relative;
+  top: 1px;
 }
 
 /* 折叠态：图标居中的方形按钮 */

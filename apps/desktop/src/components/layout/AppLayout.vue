@@ -90,7 +90,6 @@ const updateWindowSize = () => {
 }
 
 /* 悬浮面板通用：圆角卡片 + 细边框 + 呼吸阴影 */
-.app-sidebar,
 .app-navbar,
 .app-content {
   background: var(--color-background);
@@ -99,6 +98,10 @@ const updateWindowSize = () => {
   box-shadow: var(--shadow-panel);
   transition: box-shadow 0.35s ease;
   animation: panelBreathe 8s ease-in-out infinite;
+}
+
+.app-sidebar {
+  background: var(--color-sidebar);
 }
 
 .app-sidebar:hover,

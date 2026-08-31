@@ -46,6 +46,7 @@
       </div>
 
       <div class="sidebar-nav">
+        <div v-if="!layoutStore.sidebarCollapsed" class="side-label">项目</div>
         <template v-for="item in navItems" :key="item.key">
           <a-tooltip v-if="layoutStore.sidebarCollapsed" :title="item.label" placement="right">
             <button class="nav-item collapsed-item" :class="{ active: activeKey === item.key }" @click="go(item.key)">
@@ -359,6 +360,15 @@ const closeWindow = async () => {
   padding: 4px 10px 12px;
 }
 
+/* 小节标题（与主侧栏同规格）：给导航与 logo 带之间留出呼吸 */
+.side-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 14px 8px 4px;
+  user-select: none;
+}
+
 .nav-item {
   display: flex;
   align-items: center;
@@ -409,6 +419,10 @@ const closeWindow = async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* 光学补偿：13px 中文字形重心在 em 盒内天然偏高，几何居中会看起来上浮，
+   * 下移半像素修正（Linear/Notion 对小号 CJK 文本的常规做法） */
+  position: relative;
+  top: 1px;
 }
 
 .collapsed-item {
