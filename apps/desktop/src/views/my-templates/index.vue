@@ -287,8 +287,10 @@ async function loadTemplates() {
     const params = { page: currentPage.value, pageSize }
     if (currentFilter.value !== 'all') params.visibility = currentFilter.value
     const res = await listMyTemplates(params)
-    templates.value = res?.data?.templatesList || []
-    total.value = res?.data?.total || 0
+    // apiRequest 返回 axios response：res.data = 信封 {code,message,data}，
+    // 业务数据在 res.data.data（templatesList/total）
+    templates.value = res?.data?.data?.templatesList || []
+    total.value = res?.data?.data?.total || 0
   } catch {
     message.error('加载模板失败')
   } finally {
