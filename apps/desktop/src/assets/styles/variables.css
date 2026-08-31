@@ -60,6 +60,13 @@
   --color-active: #e8e8e6;
   --color-active-dark: #32343b;
 
+  /* 导航专用：悬浮约 5% / 选中约 9%（Notion/Linear 式低透明度层次，
+   * 悬浮轻于选中；全局 hover/active 被按钮等组件共用，不挪用） */
+  --color-nav-hover: #ececea;
+  --color-nav-hover-dark: #2c2e34;
+  --color-nav-active: #e3e3df;
+  --color-nav-active-dark: #373941;
+
   /* Layout Dimensions */
   --sidebar-width: 60px;
   --sidebar-width-expanded: 240px;
@@ -129,6 +136,8 @@
   --color-navbar: var(--color-navbar-dark);
   --color-hover: var(--color-hover-dark);
   --color-active: var(--color-active-dark);
+  --color-nav-hover: var(--color-nav-hover-dark);
+  --color-nav-active: var(--color-nav-active-dark);
   --shadow-panel: var(--shadow-panel-dark);
   --shadow-panel-breathe: var(--shadow-panel-breathe-dark);
   --shadow-panel-hover: var(--shadow-panel-hover-dark);

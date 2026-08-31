@@ -131,26 +131,31 @@ function go(path) {
   background: transparent;
   color: var(--color-text-secondary);
   font-size: 13px;
+  font-weight: 450;
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--transition-fast) ease, color var(--transition-fast) ease;
+  /* 柔和无感：120ms 快速淡入淡出，不加位移/缩放 */
+  transition: background-color 120ms ease, color 120ms ease;
 }
 
+/* 悬浮轻于选中（约 5% 灰），文字微微加深 */
 .nav-item:hover {
-  background: var(--color-hover);
+  background: var(--color-nav-hover);
   color: var(--color-text);
 }
 
+/* 选中：低透明度底（约 9%）+ 文字加重表达位置，不与内容抢注意力 */
 .nav-item.active {
-  background: var(--color-active);
+  background: var(--color-nav-active);
   color: var(--color-text);
+  font-weight: 550;
 }
 
 .nav-ic {
   font-size: 15px;
   color: var(--color-text-muted);
   flex: none;
-  transition: color var(--transition-fast) ease;
+  transition: color 120ms ease;
 }
 
 .nav-item:hover .nav-ic,

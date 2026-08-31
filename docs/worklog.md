@@ -602,3 +602,11 @@
 **涉及文件：** `apps/desktop/src/components/layout/ProjectWorkspaceLayout.vue`
 
 **验收结果：** DOM 实测——画布色 #f1f1ee、三张浮卡（圆角 14、sidebar 240px 文档流、呼吸动画运行）、4 个导航条目且路由选中态（/project/:id/tables → 表管理）正确、无 AntD 菜单残留；`pnpm build` 通过。数据链路（项目加载）在真实 Tauri 环境随日常使用观察。
+
+## 2026-08-31 导航选中/悬浮态定稿：柔和层次（调研驱动）
+
+**变更内容：** 用户反馈黑色实心选中胶囊"太突兀"，调研 Notion/Linear/Vercel 的侧栏选中范式后定稿：**低透明度底色 + 文字加重表达位置，不用色块**。落地：新增导航专用令牌 `--color-nav-hover`（约 5% 灰，浅 `#ececea`/暗 `#2c2e34`）与 `--color-nav-active`（约 9% 灰，浅 `#e3e3df`/暗 `#373941`）——不挪用全局 hover/active（被按钮等组件共用）；选中态字重 550、悬浮轻于选中一档、过渡 120ms、无位移缩放。主侧栏与工作区侧栏两处同步。
+
+**涉及文件：** `apps/desktop/src/assets/styles/variables.css`、`apps/desktop/src/components/layout/{NavigationMenu,ProjectWorkspaceLayout}.vue`
+
+**验收结果：** 计算样式实测两主题选中色正确（浅 `#e3e3df`/暗 `#373941`，120ms 过渡）；期间发现的"暗色不翻转"经最小探针证实为内嵌浏览器渲染同步假象（CSSOM 与变量链路均正确），非代码问题。
