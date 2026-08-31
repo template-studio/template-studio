@@ -9,14 +9,14 @@
       class="trigger-btn"
       @click="isExpanded = true"
     >
-      <template #icon><RobotOutlined /></template>
+      <template #icon><AiIcon :size="14" /></template>
     </a-button>
 
     <!-- 对话面板 -->
     <div v-show="isExpanded" class="chat-panel">
       <div class="panel-header">
         <div class="header-left">
-          <RobotOutlined class="ai-icon" />
+          <AiIcon :size="18" />
           <span class="title">AI 助手</span>
         </div>
         <a-space>
@@ -37,7 +37,7 @@
           :class="['message', msg.role]"
         >
           <div class="message-avatar">
-            <RobotOutlined v-if="msg.role === 'assistant'" />
+            <AiIcon v-if="msg.role === 'assistant'" :size="14" />
             <UserOutlined v-else />
           </div>
           <div class="message-content">
@@ -61,7 +61,7 @@
         <!-- 加载状态 -->
         <div v-if="loading" class="message assistant">
           <div class="message-avatar">
-            <RobotOutlined />
+            <AiIcon :size="14" />
           </div>
           <div class="message-content">
             <a-spin size="small" />
@@ -96,8 +96,9 @@
 
 <script setup lang="ts">
 import { ref, nextTick, watch } from 'vue'
+import AiIcon from '@/components/icons/AiIcon.vue'
 import {
-  RobotOutlined,
+
   UserOutlined,
   SendOutlined,
   CloseOutlined,

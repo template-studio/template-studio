@@ -9,7 +9,7 @@
       </div>
       <div class="header-right">
         <a-button type="primary" @click="aiCreateTableVisible = true">
-          <template #icon><RobotOutlined /></template>AI 建表
+          <template #icon><AiIcon :size="14" /></template>AI 建表
         </a-button>
         <a-button type="primary" @click="showAddTableDialog">
           <template #icon><PlusOutlined /></template>新增表
@@ -92,12 +92,13 @@
 </template>
 
 <script setup>
+import AiIcon from '@/components/icons/AiIcon.vue'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLayoutStore } from '@/stores/layout'
 import {
   ImportOutlined, MoreOutlined, ReloadOutlined, TableOutlined,
-  SearchOutlined, PlusOutlined, FileTextOutlined, RobotOutlined,
+  SearchOutlined, PlusOutlined, FileTextOutlined,
   SettingOutlined, ExportOutlined, DiffOutlined
 } from '@ant-design/icons-vue'
 import { TableConfigDrawer } from '@/components/tableConfig'

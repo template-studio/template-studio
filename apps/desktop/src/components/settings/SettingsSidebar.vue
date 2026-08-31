@@ -38,7 +38,7 @@
           :class="{ active: currentMainTab === 'ai-services' }"
           @click="switchMainTab('ai-services')"
         >
-          <RobotOutlined />
+          <AiIcon :size="14" />
           <span>AI 服务</span>
         </a>
       </li>
@@ -57,12 +57,12 @@
 </template>
 
 <script setup>
+import AiIcon from '@/components/icons/AiIcon.vue'
 import {
   SettingOutlined,
   CloudServerOutlined,
   ApiOutlined,
   InfoCircleOutlined,
-  RobotOutlined
 } from '@ant-design/icons-vue'
 
 const props = defineProps({

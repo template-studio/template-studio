@@ -118,11 +118,12 @@
 </template>
 
 <script setup>
+import AiIcon from '@/components/icons/AiIcon.vue'
 import { ref, computed, onMounted } from 'vue'
 import {
   CloudServerOutlined,
   DatabaseOutlined,
-  RobotOutlined,
+
   FireOutlined,
   StarOutlined
 } from '@ant-design/icons-vue'
@@ -163,9 +164,9 @@ const getProviderIcon = (providerType) => {
     case 'deepseek':
       return FireOutlined
     case 'glm':
-      return RobotOutlined
+      return AiIcon
     default:
-      return RobotOutlined
+      return AiIcon
   }
 }
 

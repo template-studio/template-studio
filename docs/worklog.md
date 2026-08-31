@@ -610,3 +610,11 @@
 **涉及文件：** `apps/desktop/src/assets/styles/variables.css`、`apps/desktop/src/components/layout/{NavigationMenu,ProjectWorkspaceLayout}.vue`
 
 **验收结果：** 计算样式实测两主题选中色正确（浅 `#e3e3df`/暗 `#373941`，120ms 过渡）；期间发现的"暗色不翻转"经最小探针证实为内嵌浏览器渲染同步假象（CSSOM 与变量链路均正确），非代码问题。
+
+## 2026-08-31 AI 品牌图标：SVG 字标替换机器人图标
+
+**变更内容：** 用户提供「✦ AI」品牌 SVG（48x22，currentColor），新增组件 `components/icons/AiIcon.vue`（size 属性控制高度、宽度按比例、颜色跟随文字色），替换全部 9 处机器人图标：AI 助手面板（触发按钮/头部/消息头像/发送位）、设置主侧栏「AI 服务」入口、设置子侧栏 AI 提供商图标映射（glm 与 default 兜底分支）、表管理页「AI 建表」按钮、模板渲染 AI 变量面板。
+
+**涉及文件：** `apps/desktop/src/components/icons/AiIcon.vue`（新增）、`components/AiAssistant.vue`、`components/settings/{SettingsSidebar,SettingsSubSidebar}.vue`、`views/project/tables/index.vue`、`views/template-render/components/AiVariablePanel.vue`
+
+**验收结果：** `pnpm build` 通过；全仓 `RobotOutlined` 残留清零；设置页实测 AiIcon 渲染正确（14px 高按 48:22 比例、currentColor 生效）。

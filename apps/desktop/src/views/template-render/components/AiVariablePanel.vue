@@ -2,7 +2,7 @@
   <div class="ai-variable-panel">
     <div class="panel-header">
       <div class="header-left">
-        <RobotOutlined class="ai-icon" />
+        <AiIcon :size="18" />
         <span class="title">AI 变量填充</span>
       </div>
       <a-button
@@ -104,9 +104,10 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import AiIcon from '@/components/icons/AiIcon.vue'
 import { message } from 'ant-design-vue'
 import {
-  RobotOutlined,
+
   SearchOutlined,
   ThunderboltOutlined,
   SaveOutlined,
