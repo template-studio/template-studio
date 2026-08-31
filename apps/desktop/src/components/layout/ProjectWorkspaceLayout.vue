@@ -286,7 +286,7 @@ const closeWindow = async () => {
 /* ---------- 侧栏：悬浮卡片 ---------- */
 .sidebar {
   flex: none;
-  width: 240px;
+  width: var(--sidebar-width-expanded);
   display: flex;
   flex-direction: column;
   background: var(--color-sidebar);
