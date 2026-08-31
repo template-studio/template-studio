@@ -36,6 +36,11 @@ const isProjectWorkspace = computed(() => {
   return route.path.startsWith('/project/')
 })
 
+// 独立全屏页（模板编辑器等）：不套布局，直接渲染路由组件
+const isStandalonePage = computed(() => {
+  return route.path.startsWith('/editor/')
+})
+
 // 全局右键菜单禁用
 const handleGlobalContextMenu = (event) => {
   // 检查是否在编辑器区域内
@@ -86,10 +91,13 @@ onBeforeUnmount(() => {
   <a-config-provider :locale="zhCN" :theme="antTheme">
     <div id="app">
       <!-- 主应用布局 -->
-      <AppLayout v-if="!isProjectWorkspace" />
+      <AppLayout v-if="!isProjectWorkspace && !isStandalonePage" />
 
       <!-- 项目工作区布局 -->
-      <ProjectWorkspaceLayout v-else />
+      <ProjectWorkspaceLayout v-else-if="isProjectWorkspace" />
+
+      <!-- 独立全屏页（编辑器） -->
+      <router-view v-else />
 
       <!-- 全局搜索 -->
       <GlobalSearch ref="globalSearchRef" />

@@ -18,6 +18,13 @@ const routes = [
     component: () => import('@/views/templates/index.vue')
   },
   {
+    // 模板编辑器：独立全屏页（与 web 端形态一致，不进侧边栏布局）
+    path: '/editor/:id',
+    name: 'TemplateEditor',
+    component: () => import('@/views/editor/index.vue'),
+    props: { mode: 'user' }
+  },
+  {
     path: '/datasource',
     name: 'DataSource',
     component: () => import('@/views/datasource/index.vue')

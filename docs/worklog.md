@@ -522,3 +522,11 @@
 **涉及文件：** `apps/desktop/src/api/editor/**`（8 个模块新增）
 
 **验收结果：** 全部模块 TS 语法批检通过；每模块抽一个端点带 PAT 实测——detail(fileTree/variables/data/variables/test/preset-variables/file-conditions/releases/builtin-functions) 均 200 code:0，backup 以缺参请求证实路由与认证可达（400 missing templateId）。发现并记录：`templateExpose` 模块内 `expose/versions` 函数指向后端不存在的路由（web 端遗留，编辑器视图未引用）。
+
+## 2026-08-31 桌面端编辑器阶段4：services 层与编辑器视图族移植
+
+**变更内容：** ① services 层：`EngineManager` 桌面版（TauriEngine 占据 web 版 WASM 的本地引擎槽位，公共 API 沿用 wasm 命名以零改动复用视图）、`BackendEngine` 适配（服务端地址从 configStore 动态解析、请求带 token 头）、`RenderService`/`types`/`useRenderService` 原样移植；`storage/`（IndexedDB WASM 缓存）不适用桌面未移植。② 视图族 28 文件整体复制至 `apps/desktop/src/views/editor/`，导入改写：`@/api/*` → `@/api/editor/*`、`@/store/modules/templateFileStore` → `@/stores/templateFileStore`。③ 桌面适配三处：`App.vue` 增加独立全屏页分支（编辑器不套 AppLayout）、编辑器关闭统一返回 `/templates`（桌面无后台管理页）、AdvancedDrawer 引擎名判断与文案（WASM→本地引擎）。④ 补齐 4 个幽灵依赖：@codemirror/search、@codemirror/autocomplete、js-yaml、file-saver。
+
+**涉及文件：** `apps/desktop/src/services/**`、`apps/desktop/src/views/editor/**`（28 文件）、`apps/desktop/src/icons/ionicons5.ts`、`apps/desktop/src/stores/templateFileStore.ts`、`apps/desktop/src/composables/useRenderService.ts`、`apps/desktop/src/router/index.js`、`apps/desktop/src/App.vue`、`apps/desktop/package.json`
+
+**验收结果：** `pnpm build` 全量通过；浏览器冒烟（vite dev + hash 路由 `/#/editor/1770799783109`）：编辑器完整渲染（文件树/变量/设置侧栏、编辑面板、空态），无 Tauri 环境下 401 引导文案精确显示——验证了路由、独立布局分支、运行时无导入错误、CORS 放行、信封错误路径与引擎回退。数据成功路径待真实 Tauri 环境（阶段6）。
