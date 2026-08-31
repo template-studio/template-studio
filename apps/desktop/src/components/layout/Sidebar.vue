@@ -5,8 +5,8 @@
       <div class="logo-content">
         <div class="logo-icon" :class="{ collapsed: layoutStore.sidebarCollapsed }">
           <svg
-            width="28"
-            height="28"
+            width="24"
+            height="24"
             viewBox="0 0 32 32"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -122,9 +122,15 @@ const openSettings = () => {
 }
 
 /* Logo 区：小标 + 文字（单层，无动画） */
+/* Logo 行：与顶栏严格等高的标题行（跨卡顶部视觉带），底部细分隔线 */
 .sidebar-logo {
-  padding: 12px 14px 4px;
+  height: 45px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .logo-content {
