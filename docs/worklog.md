@@ -514,3 +514,11 @@
 **涉及文件：** `apps/desktop/src-tauri/src/commands/template.rs`、`apps/desktop/src-tauri/src/lib.rs`、`crates/template_core/src/lib.rs`、`apps/desktop/src/services/types.ts`（新增）、`apps/desktop/src/services/render/TauriEngine.ts`（新增）
 
 **验收结果：** 命令级单测 4/4 通过（render_files 变量渲染+条件剔除、单文件语法错误不破坏整树、render_string_content 结果形状、引擎信息含过滤器注册）；`cargo check`（desktop）零错误；桌面前端 `pnpm build` 通过。
+
+## 2026-08-31 桌面端编辑器阶段3：编辑器 API 模块移植
+
+**变更内容：** ① web 端 8 个编辑器 API 模块移植至 `apps/desktop/src/api/editor/`（templates / templateFiles / templateExpose / templateVariablePresets / conditions / releases / builtinFunctions / backup），请求层统一换 `utils/apiRequest.js`（与 web 端信封语义一致）；与桌面存量旧客户端同名模块（templates/releases/templateFiles）以子目录隔离。② `templates/exportTemplate` 适配桌面差异：页面与 API 不同源，导出直链改为拼接服务端绝对地址、token 取自设置页 API Token。③ `templates/contribution.ts`（我的模板管理，Alova 客户端）编辑器未引用，留待阶段5 入口需要时移植。
+
+**涉及文件：** `apps/desktop/src/api/editor/**`（8 个模块新增）
+
+**验收结果：** 全部模块 TS 语法批检通过；每模块抽一个端点带 PAT 实测——detail(fileTree/variables/data/variables/test/preset-variables/file-conditions/releases/builtin-functions) 均 200 code:0，backup 以缺参请求证实路由与认证可达（400 missing templateId）。发现并记录：`templateExpose` 模块内 `expose/versions` 函数指向后端不存在的路由（web 端遗留，编辑器视图未引用）。
