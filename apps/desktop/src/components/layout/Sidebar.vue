@@ -49,37 +49,29 @@
 
     <!-- Bottom Section -->
     <div class="sidebar-bottom">
-      <!-- Settings Section -->
-      <div class="settings-section">
-        <!-- Help -->
-        <div class="action-item">
-          <a-button
-            type="text"
-            class="sidebar-action-button"
-            @click="openHelp"
-            :title="layoutStore.sidebarCollapsed ? 'Help' : ''"
-          >
-            <template #icon>
-              <QuestionCircleOutlined />
-            </template>
-          </a-button>
-        </div>
+      <!-- 帮助 -->
+      <a-tooltip v-if="layoutStore.sidebarCollapsed" title="帮助" placement="right">
+        <button class="bottom-item collapsed-item" @click="openHelp">
+          <QuestionCircleOutlined class="bottom-ic" />
+        </button>
+      </a-tooltip>
+      <button v-else class="bottom-item" @click="openHelp">
+        <QuestionCircleOutlined class="bottom-ic" />
+        <span class="bottom-text">帮助</span>
+      </button>
 
-        <!-- Theme Toggle -->
-        <div class="action-item">
-          <a-button
-            type="text"
-            class="sidebar-action-button"
-            @click="themeStore.toggleTheme()"
-            :title="layoutStore.sidebarCollapsed ? 'Toggle Theme' : ''"
-          >
-            <template #icon>
-              <StarOutlined v-if="themeStore.isDark" />
-              <BulbOutlined v-else />
-            </template>
-          </a-button>
-        </div>
-      </div>
+      <!-- 主题切换 -->
+      <a-tooltip v-if="layoutStore.sidebarCollapsed" :title="themeStore.isDark ? '切换浅色' : '切换深色'" placement="right">
+        <button class="bottom-item collapsed-item" @click="themeStore.toggleTheme()">
+          <StarOutlined v-if="themeStore.isDark" class="bottom-ic" />
+          <BulbOutlined v-else class="bottom-ic" />
+        </button>
+      </a-tooltip>
+      <button v-else class="bottom-item" @click="themeStore.toggleTheme()">
+        <StarOutlined v-if="themeStore.isDark" class="bottom-ic" />
+        <BulbOutlined v-else class="bottom-ic" />
+        <span class="bottom-text">{{ themeStore.isDark ? '切换浅色' : '切换深色' }}</span>
+      </button>
     </div>
   </div>
 </template>
@@ -168,32 +160,60 @@ const openSettings = () => {
   flex-direction: column;
 }
 
-/* 底部动作条：帮助 + 主题切换 */
+/* 底部动作条：与导航条目同款规格（图标+文字，折叠态图标） */
 .sidebar-bottom {
   flex-shrink: 0;
-  padding: 8px 10px 10px;
+  padding: 6px 10px 10px;
   border-top: 1px solid var(--color-border-light);
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.sidebar-bottom .action-item {
-  flex: 1;
-  min-width: 0;
-}
-
-.sidebar-bottom :deep(.sidebar-action-button) {
-  width: 100%;
-  height: 30px;
-  border-radius: 7px;
-  color: var(--color-text-secondary);
+.bottom-item {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
 }
 
-.sidebar-bottom :deep(.sidebar-action-button:hover) {
-  background: var(--color-hover) !important;
-  color: var(--color-text) !important;
+.bottom-item:hover {
+  background: var(--color-nav-hover);
+  color: var(--color-text);
+}
+
+.bottom-ic {
+  font-size: 15px;
+  color: var(--color-text-muted);
+  flex: none;
+}
+
+.bottom-item:hover .bottom-ic {
+  color: var(--color-text);
+}
+
+.bottom-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  position: relative;
+  top: 0.5px;
+}
+
+.collapsed-item {
+  justify-content: center;
+  padding: 0;
 }
 </style>

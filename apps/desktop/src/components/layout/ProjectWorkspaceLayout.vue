@@ -61,48 +61,41 @@
       </div>
 
       <div class="sidebar-bottom">
-        <div class="settings-section">
-          <div class="action-item">
-            <a-button
-              type="text"
-              class="sidebar-action-button"
-              @click="goToHelp"
-              :title="layoutStore.sidebarCollapsed ? 'Help' : ''"
-            >
-              <template #icon>
-                <QuestionCircleOutlined />
-              </template>
-            </a-button>
-          </div>
+      <!-- 帮助 -->
+      <a-tooltip v-if="layoutStore.sidebarCollapsed" title="帮助" placement="right">
+        <button class="nav-item collapsed-item" @click="goToHelp">
+          <QuestionCircleOutlined class="nav-ic" />
+        </button>
+      </a-tooltip>
+      <button v-else class="nav-item" @click="goToHelp">
+        <QuestionCircleOutlined class="nav-ic" />
+        <span class="nav-text">帮助</span>
+      </button>
 
-          <div class="action-item">
-            <a-button
-              type="text"
-              class="sidebar-action-button"
-              @click="goToSettings"
-              :title="layoutStore.sidebarCollapsed ? 'Settings' : ''"
-            >
-              <template #icon>
-                <SettingOutlined />
-              </template>
-            </a-button>
-          </div>
+      <!-- 设置 -->
+      <a-tooltip v-if="layoutStore.sidebarCollapsed" title="设置" placement="right">
+        <button class="nav-item collapsed-item" @click="goToSettings">
+          <SettingOutlined class="nav-ic" />
+        </button>
+      </a-tooltip>
+      <button v-else class="nav-item" @click="goToSettings">
+        <SettingOutlined class="nav-ic" />
+        <span class="nav-text">设置</span>
+      </button>
 
-          <div class="action-item">
-            <a-button
-              type="text"
-              class="sidebar-action-button"
-              @click="toggleTheme"
-              :title="layoutStore.sidebarCollapsed ? 'Toggle Theme' : ''"
-            >
-              <template #icon>
-                <StarOutlined v-if="isDark" />
-                <BulbOutlined v-else />
-              </template>
-            </a-button>
-          </div>
-        </div>
-      </div>
+      <!-- 主题切换 -->
+      <a-tooltip v-if="layoutStore.sidebarCollapsed" :title="isDark ? '切换浅色' : '切换深色'" placement="right">
+        <button class="nav-item collapsed-item" @click="toggleTheme">
+          <StarOutlined v-if="isDark" class="nav-ic" />
+          <BulbOutlined v-else class="nav-ic" />
+        </button>
+      </a-tooltip>
+      <button v-else class="nav-item" @click="toggleTheme">
+        <StarOutlined v-if="isDark" class="nav-ic" />
+        <BulbOutlined v-else class="nav-ic" />
+        <span class="nav-text">{{ isDark ? '切换浅色' : '切换深色' }}</span>
+      </button>
+    </div>
     </div>
 
     <div class="main-area">
@@ -430,33 +423,14 @@ const closeWindow = async () => {
   padding: 0;
 }
 
-/* ---------- 底部动作条 ---------- */
+/* ---------- 底部动作条：纵向导航同款条目 ---------- */
 .sidebar-bottom {
   flex-shrink: 0;
-  padding: 8px 10px 10px;
+  padding: 6px 10px 10px;
   border-top: 1px solid var(--color-border-light);
   display: flex;
-  gap: 6px;
-}
-
-.sidebar-bottom .action-item {
-  flex: 1;
-  min-width: 0;
-}
-
-.sidebar-bottom :deep(.sidebar-action-button) {
-  width: 100%;
-  height: 30px;
-  border-radius: 7px;
-  color: var(--color-text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.sidebar-bottom :deep(.sidebar-action-button:hover) {
-  background: var(--color-hover) !important;
-  color: var(--color-text) !important;
+  flex-direction: column;
+  gap: 2px;
 }
 
 /* ---------- 主区：顶栏卡 + 内容卡 ---------- */
