@@ -131,8 +131,16 @@ function formatTime(time) {
   cursor: pointer;
 }
 
+.notification-trigger :deep(.ant-btn-icon) .bell-icon,
+.notification-trigger .bell-icon {
+  font-size: 16px !important;
+}
+
 .bell-badge {
+  font-size: 16px;
   display: flex;
+  /* AntD badge 外层自带 scale(1.143) zoom 动画基准，会把 16px 图标撑到 18px，与顶栏其它图标不齐 */
+  transform: none !important;
   align-items: center;
   justify-content: center;
   cursor: pointer;

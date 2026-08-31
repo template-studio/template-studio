@@ -200,7 +200,7 @@ const closeWindow = async () => {
 .navbar-right {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 6px;
   flex: 1;
   justify-content: flex-end;
 }
@@ -239,7 +239,9 @@ const closeWindow = async () => {
 .window-controls {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 6px;
+  /* 与左侧应用按钮群（主题/通知）拉开分组间隔 */
+  margin-left: 6px;
 }
 
 .window-control {
