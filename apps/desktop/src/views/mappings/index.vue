@@ -449,7 +449,7 @@ onMounted(async () => {
 .lang-tab-item:hover { color: var(--color-text); background: var(--color-hover); }
 .lang-tab-item.active { color: var(--color-primary); background: var(--color-primary-bg); font-weight: 500; }
 .lang-count { font-size: 11px; background: var(--color-bg-base); padding: 1px 5px; border-radius: 8px; }
-.lang-tab-item.active .lang-count { background: var(--color-primary); color: #fff; }
+.lang-tab-item.active .lang-count { background: var(--color-primary); color: var(--color-canvas); }
 .lang-tab-item.disabled { cursor: not-allowed; opacity: 0.6; color: var(--color-text-secondary); }
 .lang-tab-item.disabled:hover { background: var(--color-bg-secondary); }
 .lang-tabs-empty { color: var(--color-text-secondary); font-size: 13px; }

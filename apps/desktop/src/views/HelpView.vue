@@ -384,7 +384,7 @@ const shortcuts = [
   height: 24px;
   border-radius: 50%;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-canvas);
   font-size: 12px;
   font-weight: 700;
   display: flex;

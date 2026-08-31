@@ -489,7 +489,7 @@ function formatDate(d) {
   border: 1px solid var(--color-border); cursor: pointer; transition: all 0.15s;
 }
 .filter-chip:hover { border-color: var(--color-primary); color: var(--color-primary); }
-.filter-chip.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+.filter-chip.active { background: var(--color-primary); color: var(--color-canvas); border-color: var(--color-primary); }
 
 .templates-content { flex: 1; overflow-y: auto; min-height: 0; padding: 0 var(--spacing-lg); }
 /* 加载时网格为空导致高度塌陷，Spin 贴顶；给容器最小高度使其在内容区垂直居中 */
