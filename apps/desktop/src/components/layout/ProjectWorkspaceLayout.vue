@@ -8,13 +8,13 @@
         <div class="logo-content">
           <div class="logo-icon" :class="{ collapsed: layoutStore.sidebarCollapsed }">
             <svg
-              width="32"
-              height="32"
+              width="28"
+              height="28"
               viewBox="0 0 32 32"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <rect width="32" height="32" rx="6" fill="url(#brandGradient)" />
+              <rect width="32" height="32" rx="7" fill="url(#brandGradient)" />
               <rect x="8" y="6" width="12" height="16" rx="1" fill="#ffffff" />
               <path d="M18 6 L18 10 L22 10 Z" fill="#e6f7ff" />
               <rect x="10" y="10" width="6" height="1" fill="#52c41a" />
@@ -39,47 +39,24 @@
               </defs>
             </svg>
           </div>
-          <transition name="fade">
-            <div v-show="!layoutStore.sidebarCollapsed" class="logo-text">
-              <span class="logo-main">Template <span class="brand-accent">Studio</span></span>
-              <span class="logo-shadow">Template <span class="brand-accent">Studio</span></span>
-            </div>
-          </transition>
+          <div v-show="!layoutStore.sidebarCollapsed" class="logo-text">
+            Template <span class="brand-accent">Studio</span>
+          </div>
         </div>
       </div>
 
       <div class="sidebar-nav">
-        <a-menu
-          v-model:selectedKeys="selectedKeys"
-          mode="inline"
-          class="navigation-menu"
-          @click="handleMenuClick"
-        >
-          <a-menu-item key="overview">
-            <template #icon>
-              <DashboardOutlined />
-            </template>
-            <span>工作台</span>
-          </a-menu-item>
-          <a-menu-item key="tables">
-            <template #icon>
-              <TableOutlined />
-            </template>
-            <span>表管理</span>
-          </a-menu-item>
-          <a-menu-item key="preferences">
-            <template #icon>
-              <SettingOutlined />
-            </template>
-            <span>规范管理</span>
-          </a-menu-item>
-          <a-menu-item key="mappings">
-            <template #icon>
-              <SwapOutlined />
-            </template>
-            <span>映射管理</span>
-          </a-menu-item>
-        </a-menu>
+        <template v-for="item in navItems" :key="item.key">
+          <a-tooltip v-if="layoutStore.sidebarCollapsed" :title="item.label" placement="right">
+            <button class="nav-item collapsed-item" :class="{ active: activeKey === item.key }" @click="go(item.key)">
+              <component :is="item.icon" class="nav-ic" />
+            </button>
+          </a-tooltip>
+          <button v-else class="nav-item" :class="{ active: activeKey === item.key }" @click="go(item.key)">
+            <component :is="item.icon" class="nav-ic" />
+            <span class="nav-text">{{ item.label }}</span>
+          </button>
+        </template>
       </div>
 
       <div class="sidebar-bottom">
@@ -127,7 +104,7 @@
       </div>
     </div>
 
-    <div class="main-area" :style="{ marginLeft: layoutStore.sidebarCollapsed ? '60px' : '240px' }">
+    <div class="main-area">
       <WorkspaceHeader
         :sidebar-collapsed="layoutStore.sidebarCollapsed"
         :project-name="projectName"
@@ -151,7 +128,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLayoutStore } from '@/stores/layout'
 import { useThemeStore } from '@/stores/theme'
@@ -213,7 +190,29 @@ onMounted(() => {
 
 const isDark = computed(() => themeStore.isDark)
 
-const selectedKeys = ref(['tables'])
+// 自绘导航：条目定义与激活态（替代 a-menu 的 selectedKeys）
+const navItems = [
+  { key: 'overview', label: '工作台', icon: DashboardOutlined },
+  { key: 'tables', label: '表管理', icon: TableOutlined },
+  { key: 'preferences', label: '规范管理', icon: SettingOutlined },
+  { key: 'mappings', label: '映射管理', icon: SwapOutlined },
+]
+
+const activeKey = computed(() => {
+  const base = `/project/${projectId.value}`
+  const sub = route.path.slice(base.length).replace(/^\/+/, '')
+  if (!sub) return 'overview'
+  const first = sub.split('/')[0]
+  return ['tables', 'preferences', 'mappings'].includes(first) ? first : 'tables'
+})
+
+const go = (key) => {
+  if (key === 'overview') {
+    router.push(`/project/${projectId.value}`)
+  } else {
+    router.push(`/project/${projectId.value}/${key}`)
+  }
+}
 
 const currentPageTitle = computed(() => {
   const titleMap = {
@@ -222,35 +221,8 @@ const currentPageTitle = computed(() => {
     preferences: '规范管理',
     mappings: '映射管理'
   }
-  return titleMap[selectedKeys.value[0]] || ''
+  return titleMap[activeKey.value] || ''
 })
-
-watch(
-  () => route.path,
-  (newPath) => {
-    const match = newPath.match(/\/project\/[^/]+\/(.+)/)
-    if (match) {
-      const subRoute = match[1]
-      const pathToKey = {
-        'tables': 'tables',
-        'preferences': 'preferences',
-        'mappings': 'mappings'
-      }
-      selectedKeys.value = [pathToKey[subRoute] || 'tables']
-    } else if (newPath.match(/\/project\/[^/]+$/)) {
-      selectedKeys.value = ['overview']
-    }
-  },
-  { immediate: true }
-)
-
-const handleMenuClick = ({ key }) => {
-  if (key === 'overview') {
-    router.push(`/project/${projectId.value}`)
-  } else {
-    router.push(`/project/${projectId.value}/${key}`)
-  }
-}
 
 const goBack = () => {
   router.push('/projects')
@@ -296,367 +268,207 @@ const closeWindow = async () => {
 </script>
 
 <style scoped>
+/* ============================================================
+ * 项目工作区壳层：画布 + 悬浮面板（与主壳层 AppLayout 同语言）
+ * ============================================================ */
 .project-workspace-layout {
   width: 100%;
-  min-height: 100vh;
-}
-
-.main-area {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-.sidebar {
   height: 100vh;
+  overflow: hidden;
+  background: var(--color-canvas);
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px 10px;
+  box-sizing: border-box;
+}
+
+/* ---------- 侧栏：悬浮卡片 ---------- */
+.sidebar {
+  flex: none;
   width: 240px;
   display: flex;
   flex-direction: column;
   background: var(--color-sidebar);
-  position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  transition: width 0.2s ease, box-shadow 0.35s ease;
+  animation: panelBreathe 8s ease-in-out infinite;
   overflow: hidden;
-  transition: width 0.2s;
-  border-right: 1px solid var(--color-border);
-  box-shadow: 1px 0 4px rgba(0, 0, 0, 0.1);
 }
 
-.sidebar[data-collapsed="true"] {
+.sidebar:hover {
+  animation: none;
+  box-shadow: var(--shadow-panel-hover);
+}
+
+.sidebar[data-collapsed='true'] {
   width: 60px;
 }
 
+@keyframes panelBreathe {
+  0%, 100% { box-shadow: var(--shadow-panel); }
+  50%      { box-shadow: var(--shadow-panel-breathe); }
+}
+
 .sidebar-logo {
-  padding: var(--spacing-md);
+  padding: 12px 14px 4px;
   flex-shrink: 0;
 }
 
 .logo-content {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 10px;
 }
 
 .logo-icon {
-  margin-right: 12px;
   display: flex;
   align-items: center;
-  transition: all 0.3s ease;
+  flex: none;
 }
 
 .logo-icon.collapsed {
-  margin-right: 0;
-}
-
-.logo-icon svg {
-  transition: all 0.3s ease;
-}
-
-.logo-content:hover .logo-icon svg {
-  transform: scale(1.1) rotate(5deg);
+  margin: 0 auto;
 }
 
 .logo-text {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.logo-main {
-  font-size: 1.1rem;
-  font-weight: 800;
-  letter-spacing: 1px;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
   color: var(--color-text);
-  font-family: 'Fira Code', 'Lato', 'Segoe UI', 'Arial', sans-serif;
-  background: linear-gradient(90deg, #18a058 0%, #2196f3 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  position: relative;
-  z-index: 2;
-  animation: float 3s ease-in-out infinite;
-  transition: all 0.3s ease;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   white-space: nowrap;
 }
 
-.logo-shadow {
-  font-size: 1.1rem;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: var(--color-text-muted);
-  opacity: 0.3;
-  font-family: 'Fira Code', 'Lato', 'Segoe UI', 'Arial', sans-serif;
-  position: absolute;
-  top: 2px;
-  left: 0;
-  right: 0;
-  z-index: 1;
-  animation: float-shadow 3s ease-in-out infinite;
-  transition: all 0.3s ease;
-  filter: blur(1px);
-  white-space: nowrap;
+.logo-text :deep(.brand-accent),
+.logo-text .brand-accent {
+  color: var(--color-brand);
 }
 
-.brand-accent {
-  color: #18a058;
-  -webkit-text-fill-color: #18a058;
-  background: none;
-  font-weight: 900;
-}
-
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-
-  50% {
-    transform: translateY(-3px);
-  }
-}
-
-@keyframes float-shadow {
-  0%,
-  100% {
-    transform: translateY(2px);
-    opacity: 0.2;
-  }
-
-  50% {
-    transform: translateY(5px);
-    opacity: 0.3;
-  }
-}
-
+/* ---------- 自绘导航（与主侧栏同规格） ---------- */
 .sidebar-nav {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: var(--spacing-sm) 12px;
+  padding: 4px 10px 12px;
 }
 
-.navigation-menu {
-  border: none !important;
-  border-right: none !important;
-  background: transparent !important;
-}
-
-.navigation-menu :deep(.ant-menu),
-.navigation-menu :deep(.ant-menu-inline),
-.navigation-menu :deep(.ant-menu-root) {
-  border-right: none !important;
-  background: transparent !important;
-}
-
-.navigation-menu :deep(.ant-menu-sub),
-.navigation-menu :deep(.ant-menu-submenu) {
-  background: transparent !important;
-}
-
-.navigation-menu :deep(.ant-menu-submenu-title) {
-  background: transparent !important;
-}
-
-.navigation-menu :deep(.ant-menu-item) {
-  margin: 2px 0;
-  border-radius: var(--border-radius-md);
-  color: var(--color-text);
-  border: 0.5px solid transparent;
-  transition: background-color var(--transition-fast) ease;
-  position: relative;
-}
-
-.navigation-menu :deep(.ant-menu-item) {
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
   transition: background-color var(--transition-fast) ease, color var(--transition-fast) ease;
 }
 
-.navigation-menu :deep(.ant-menu-item::after) {
-  transition: none !important;
-}
-
-.navigation-menu :deep(.ant-menu-item-selected::after) {
-  transition: none !important;
-}
-
-.navigation-menu :deep(.ant-menu-item:hover),
-.navigation-menu :deep(.ant-menu-item.ant-menu-item:hover),
-.navigation-menu :deep(.ant-menu-inline .ant-menu-item:hover) {
-  background: var(--color-surface) !important;
-  color: var(--color-primary) !important;
-  border-color: transparent !important;
-}
-
-.navigation-menu :deep(.ant-menu-item-selected),
-.navigation-menu :deep(.ant-menu-item.ant-menu-item-selected),
-.navigation-menu :deep(.ant-menu-inline .ant-menu-item-selected) {
-  background: var(--color-surface) !important;
-  color: var(--color-primary) !important;
-  border-color: var(--color-border) !important;
-}
-
-.navigation-menu :deep(.ant-menu-item-selected:hover),
-.navigation-menu :deep(.ant-menu-item.ant-menu-item-selected:hover),
-.navigation-menu :deep(.ant-menu-inline .ant-menu-item-selected:hover) {
-  background: var(--color-surface) !important;
-  color: var(--color-primary) !important;
-  border-color: var(--color-border) !important;
-}
-
-.navigation-menu :deep(.ant-menu-item:hover .ant-menu-title-content),
-.navigation-menu :deep(.ant-menu-item:hover .anticon),
-.navigation-menu :deep(.ant-menu-item:hover span) {
-  color: var(--color-primary) !important;
-}
-
-.navigation-menu :deep(.ant-menu-item-selected .ant-menu-title-content),
-.navigation-menu :deep(.ant-menu-item-selected .anticon),
-.navigation-menu :deep(.ant-menu-item-selected span) {
-  color: var(--color-primary) !important;
-}
-
-.navigation-menu :deep(.ant-menu-item-selected::after) {
-  display: none !important;
-}
-
-.navigation-menu :deep(.ant-menu-item-icon) {
-  font-size: 16px;
-}
-
-.navigation-menu :deep(.ant-menu-inline-collapsed) {
-  .ant-menu-item {
-    padding: 0 !important;
-    padding-inline-start: 0 !important;
-    padding-inline-end: 0 !important;
-    margin: 2px auto !important;
-    width: 32px !important;
-    max-width: calc(100% - 16px) !important;
-    height: 32px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    border-radius: 6px !important;
-    border: none !important;
-    background-color: transparent !important;
-    color: var(--color-text-secondary) !important;
-    line-height: 1.5714285714285714 !important;
-    font-size: 14px !important;
-    transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1) !important;
-    cursor: pointer !important;
-  }
-
-  .ant-menu-item:hover {
-    background: var(--color-hover) !important;
-    color: var(--color-primary) !important;
-  }
-
-  .ant-menu-item-selected,
-  .ant-menu-item-selected:hover {
-    background: var(--color-hover) !important;
-    color: var(--color-primary) !important;
-    box-shadow: 0 0 0 1px var(--color-border) inset !important;
-  }
-
-  .ant-menu-item-icon {
-    font-size: 16px !important;
-    margin: 0 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  .ant-menu-title-content {
-    display: none !important;
-  }
-
-  .ant-menu-item-selected::after,
-  .ant-menu-item::before,
-  .ant-menu-item::after {
-    display: none !important;
-  }
-}
-
-.sidebar-bottom {
-  height: 56px;
-  padding: 0 var(--spacing-md);
-  border-top: 1px solid var(--color-border);
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.settings-section {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-sm);
-}
-
-.action-item {
-  display: flex;
-  align-items: center;
-}
-
-.sidebar-action-button {
-  color: var(--color-text-secondary);
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  outline: none;
-}
-
-.sidebar-action-button:hover {
-  color: var(--color-primary);
+.nav-item:hover {
   background: var(--color-hover);
+  color: var(--color-text);
 }
 
-.sidebar[data-collapsed="true"] .sidebar-bottom {
+.nav-item.active {
+  background: var(--color-active);
+  color: var(--color-text);
+}
+
+.nav-ic {
+  font-size: 15px;
+  color: var(--color-text-muted);
+  flex: none;
+  transition: color var(--transition-fast) ease;
+}
+
+.nav-item:hover .nav-ic,
+.nav-item.active .nav-ic {
+  color: var(--color-text);
+}
+
+.nav-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collapsed-item {
+  justify-content: center;
   padding: 0;
 }
 
-.sidebar[data-collapsed="true"] .settings-section {
+/* ---------- 底部动作条 ---------- */
+.sidebar-bottom {
+  flex-shrink: 0;
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--color-border-light);
+  display: flex;
+  gap: 6px;
+}
+
+.sidebar-bottom .action-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-bottom :deep(.sidebar-action-button) {
+  width: 100%;
+  height: 30px;
+  border-radius: 7px;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-bottom :deep(.sidebar-action-button:hover) {
+  background: var(--color-hover) !important;
+  color: var(--color-text) !important;
+}
+
+/* ---------- 主区：顶栏卡 + 内容卡 ---------- */
+.main-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: 8px;
 }
 
-.sidebar-nav::-webkit-scrollbar {
-  width: 4px;
-}
-
-.sidebar-nav::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sidebar-nav::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 2px;
-}
-
-.sidebar-nav::-webkit-scrollbar-thumb:hover {
-  background: var(--color-hover);
-}
-
-.sidebar[data-collapsed="true"] .sidebar-nav {
-  padding: var(--spacing-sm) 0;
+.main-area :deep(.header) {
+  flex: none;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
 }
 
 .content {
-  background: var(--color-background);
-  padding: var(--spacing-lg);
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  overflow: auto;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  animation: panelBreathe 8s ease-in-out infinite;
 }
 
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity var(--transition-fast);
+.content:hover {
+  animation: none;
+  box-shadow: var(--shadow-panel-hover);
 }
 
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+/* 底部信息条跟随画布（透明浮在画布上） */
+.main-area :deep(.workspace-footer) {
+  background: transparent;
 }
 </style>

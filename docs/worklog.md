@@ -594,3 +594,11 @@
 **涉及文件：** `apps/desktop/src/components/layout/NavigationMenu.vue`（重写）、`apps/desktop/src/components/layout/Sidebar.vue`、`apps/desktop/src/assets/styles/variables.css`
 
 **验收结果：** DOM 实测——三小节 8 条目结构正确、路由选中态（/templates → 脚手架）正确、nav-item 规格 30px/7px 符合原型、无 AntD 菜单残留、折叠态 8 个图标条目且小节标题隐藏、宽度 60px 可还原；`pnpm build` 通过。
+
+## 2026-08-31 项目工作区布局适配视觉语言
+
+**变更内容：** `ProjectWorkspaceLayout.vue`（/project/* 路由的独立壳层）对齐主壳层浮卡语言：① 壳层改为画布底 + 侧栏/顶栏/内容三张悬浮圆角卡（8px 缝隙、panelBreathe 呼吸、侧栏 240/60px 折叠保留）；侧栏从 fixed 定位改回文档流（去掉 main-area 的内联 marginLeft 补偿）。② 菜单 a-menu → 自绘导航（与主侧栏同规格 30px/7px 胶囊），selectedKeys + watch 路由同步逻辑简化为 activeKey 计算属性；logo 同步简化（去双层/渐变蓝残留）。③ 底部动作条/页脚跟随新样式。
+
+**涉及文件：** `apps/desktop/src/components/layout/ProjectWorkspaceLayout.vue`
+
+**验收结果：** DOM 实测——画布色 #f1f1ee、三张浮卡（圆角 14、sidebar 240px 文档流、呼吸动画运行）、4 个导航条目且路由选中态（/project/:id/tables → 表管理）正确、无 AntD 菜单残留；`pnpm build` 通过。数据链路（项目加载）在真实 Tauri 环境随日常使用观察。
