@@ -8,36 +8,43 @@
         <div class="logo-content">
           <div class="logo-icon" :class="{ collapsed: layoutStore.sidebarCollapsed }">
             <svg
-              width="24"
-              height="24"
-              viewBox="0 0 32 32"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect width="24" height="24" rx="6.5" fill="url(#brandGradient)" />
+            <path
+              d="M9.2 8.4 L6 12 L9.2 15.6"
+              stroke="#ffffff"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
               fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <rect width="32" height="32" rx="7" fill="url(#brandGradient)" />
-              <rect x="8" y="6" width="12" height="16" rx="1" fill="#ffffff" />
-              <path d="M18 6 L18 10 L22 10 Z" fill="#e6f7ff" />
-              <rect x="10" y="10" width="6" height="1" fill="#52c41a" />
-              <rect x="10" y="12" width="4" height="1" fill="#16a34a" />
-              <rect x="10" y="14" width="5" height="1" fill="#722ed1" />
-              <circle cx="11" cy="17" r="0.5" fill="#ff4d4f" />
-              <circle cx="13" cy="17" r="0.5" fill="#ff4d4f" />
-              <rect x="14.5" y="16.5" width="2" height="1" fill="#ff4d4f" />
-              <path
-                d="M22 20 L26 24 L22 28"
-                stroke="#52c41a"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                fill="none"
-              />
-              <defs>
-                <linearGradient id="brandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" style="stop-color: #16a34a; stop-opacity: 1" />
-                  <stop offset="100%" style="stop-color: #18a058; stop-opacity: 1" />
-                </linearGradient>
-              </defs>
-            </svg>
+            />
+            <path
+              d="M13.8 7.2 L10.8 16.8"
+              stroke="#ffffff"
+              stroke-width="2"
+              stroke-linecap="round"
+              fill="none"
+            />
+            <path
+              d="M14.8 8.4 L18 12 L14.8 15.6"
+              stroke="#ffffff"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              fill="none"
+            />
+            <defs>
+              <linearGradient id="brandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color: #16a34a; stop-opacity: 1" />
+                <stop offset="100%" style="stop-color: #18a058; stop-opacity: 1" />
+              </linearGradient>
+            </defs>
+          </svg>
           </div>
           <div v-show="!layoutStore.sidebarCollapsed" class="logo-text">
             Template <span class="brand-accent">Studio</span>
@@ -95,6 +102,9 @@
         <BulbOutlined v-else class="nav-ic" />
         <span class="nav-text">{{ isDark ? '切换浅色' : '切换深色' }}</span>
       </button>
+
+      <!-- 登录态身份锚点（配置 API Token 后显示） -->
+      <SidebarUserCard v-if="configStore.hasApiKey" />
     </div>
     </div>
 
@@ -125,6 +135,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLayoutStore } from '@/stores/layout'
+import { useConfigStore } from '@/stores/config'
 import { useThemeStore } from '@/stores/theme'
 import { invoke } from '@tauri-apps/api/core'
 import { tauriApi } from '@/utils/tauriApi'
@@ -140,11 +151,13 @@ import {
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import WorkspaceHeader from './workspace/WorkspaceHeader.vue'
+import SidebarUserCard from './SidebarUserCard.vue'
 import WorkspaceFooter from './workspace/WorkspaceFooter.vue'
 
 const router = useRouter()
 const route = useRoute()
 const layoutStore = useLayoutStore()
+const configStore = useConfigStore()
 const themeStore = useThemeStore()
 
 const projectId = computed(() => route.params.id || '')
