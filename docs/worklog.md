@@ -626,3 +626,11 @@
 **涉及文件：** `apps/desktop/src/components/layout/ThemeToggleButton.vue`（新增）、`Navbar.vue`、`workspace/WorkspaceHeader.vue`、`Sidebar.vue`、`ProjectWorkspaceLayout.vue`
 
 **验收结果：** `pnpm build` 通过；实测：主题按钮位于顶栏右上（浅色态太阳图形）、底部帮助/主题条目清零、身份卡隐藏逻辑保持、logo 为干净字标。
+
+## 2026-08-31 卡片样式全局统一
+
+**变更内容：** 用户反馈「卡片样式全局不一致（模板渲染页不一样、有的有作者头像有的没有）」。盘点全应用卡片家族后统一到以模板广场为规范的基准：① 模板渲染页卡片对齐规范（圆角 8→令牌 12、视觉区 120→140、内容内距/字号全套对齐、修掉未定义变量 `--color-bg-container` 与残留蓝 hover 背景）；② 悬浮交互统一（projects/datasource 的 -6px 位移→规范 -4px，补齐 hover 边框强调 border-strong）；③ 卡片静止阴影全部移除（统一由边框承托，悬浮时出阴影——原先 6px16/12px24/2px8/8px24 四种写法并存）；④ 硬编码圆角（8px/12px）收敛到令牌。作者头像策略：仅模板广场（市场语义，展示属主）保留，渲染页结构同源保留，我的模板（全是本人）不展示——此为有意设计而非遗漏。
+
+**涉及文件：** `views/template-render/index.vue`、`views/projects/index.vue`、`views/datasource/index.vue`、`views/languages/components/LanguageCard.vue`、`views/home/components/{StatsSection,RecentProjectsList}.vue`、`views/project/components/StatsGrid.vue`
+
+**验收结果：** `pnpm build` 通过；模板渲染页卡片与广场卡同构（视觉区/内距/字号/圆角一致）。

@@ -299,9 +299,9 @@ onMounted(async () => {
 }
 
 .template-card {
-  background: var(--color-bg-container);
+  background: var(--color-background);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--border-radius-lg);
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -314,7 +314,7 @@ onMounted(async () => {
 }
 
 .card-visual {
-  height: 120px;
+  height: 140px;
   position: relative;
   overflow: hidden;
 }
@@ -374,12 +374,13 @@ onMounted(async () => {
 }
 
 .card-content {
-  padding: 14px 16px 16px;
+  padding: 16px 20px 20px;
 }
 
 .template-name {
   margin: 0 0 6px 0;
-  font-size: 15px;
+  font-size: 16px;
+  letter-spacing: -0.2px;
   font-weight: 600;
   color: var(--color-text);
   overflow: hidden;
@@ -392,8 +393,8 @@ onMounted(async () => {
 }
 
 .template-desc {
-  margin: 0 0 10px 0;
-  font-size: 12px;
+  margin: 0 0 12px 0;
+  font-size: 13px;
   color: var(--color-text-secondary);
   line-height: 1.6;
   display: -webkit-box;
@@ -420,7 +421,7 @@ onMounted(async () => {
 }
 
 .template-card:hover .template-tag {
-  background: rgba(24, 144, 255, 0.08);
+  background: rgba(28, 29, 31, 0.06);
   border-color: rgba(28, 29, 31, 0.14);
   color: var(--color-primary);
 }

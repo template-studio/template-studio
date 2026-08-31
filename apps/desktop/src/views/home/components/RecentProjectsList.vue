@@ -122,7 +122,7 @@ const formatDate = (dateStr) => {
 .project-icon {
   width: 40px;
   height: 40px;
-  border-radius: 8px;
+  border-radius: var(--border-radius-lg);
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;

@@ -554,7 +554,6 @@ function formatDate(d) {
 .template-desc {
   margin: 0 0 12px 0; font-size: 13px; color: var(--color-text-secondary); line-height: 1.6;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-  min-height: 42px;
 }
 .template-languages { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 .template-tag {
