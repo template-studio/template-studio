@@ -43,7 +43,7 @@
                       style="width: 120px"
                       placeholder="30"
                     />
-                    <span style="margin-left: 8px; color: #666">秒</span>
+                    <span style="margin-left: 8px; color: var(--editor-muted, #666)">秒</span>
                   </div>
                 </div>
 
@@ -60,7 +60,7 @@
                       style="width: 120px"
                       placeholder="14"
                     />
-                    <span style="margin-left: 8px; color: #666">px</span>
+                    <span style="margin-left: 8px; color: var(--editor-muted, #666)">px</span>
                   </div>
                 </div>
 
@@ -138,7 +138,7 @@
                       style="width: 120px"
                       placeholder="500"
                     />
-                    <span style="margin-left: 8px; color: #666">ms</span>
+                    <span style="margin-left: 8px; color: var(--editor-muted, #666)">ms</span>
                   </div>
                 </div>
               </a-card>
@@ -480,7 +480,7 @@
               <a-card title="关于 .tsbk 格式" :bordered="true" class="settings-card">
                 <a-collapse>
                   <a-collapse-panel key="structure" header="备份文件结构">
-                    <pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; margin: 0; font-size: 13px">{{ backupFormatInfo }}</pre>
+                    <pre style="background: var(--editor-inset-bg, #f5f5f5); padding: 12px; border-radius: 4px; margin: 0; font-size: 13px">{{ backupFormatInfo }}</pre>
                   </a-collapse-panel>
                   <a-collapse-panel key="security" header="安全说明">
                     <span>
@@ -965,11 +965,11 @@
     border-radius: 8px;
     transition: all 0.2s ease;
     font-size: 14px;
-    color: #64748b;
+    color: var(--editor-muted, #64748b);
   }
 
   .advanced-drawer :deep(.ant-tabs-tab:hover) {
-    background: #f1f5f9;
+    background: var(--editor-inset-bg, #f1f5f9);
     color: #334155;
   }
 
@@ -1025,7 +1025,7 @@
   .settings-card :deep(.ant-card-head-title) {
     font-size: 15px;
     font-weight: 600;
-    color: #1e293b;
+    color: var(--editor-primary, #1e293b);
   }
 
   .settings-card :deep(.ant-card-body) {
@@ -1044,7 +1044,7 @@
   }
 
   .setting-item:hover {
-    background: #fafbfc;
+    background: var(--editor-inset-bg, #fafbfc);
   }
 
   .setting-item:last-child {
@@ -1060,7 +1060,7 @@
     display: block;
     font-size: 14px;
     font-weight: 500;
-    color: #1e293b;
+    color: var(--editor-primary, #1e293b);
     margin-bottom: 4px;
     line-height: 1.4;
   }
@@ -1068,7 +1068,7 @@
   .setting-description {
     display: block;
     font-size: 12px;
-    color: #94a3b8;
+    color: var(--editor-muted, #94a3b8);
     line-height: 1.5;
   }
 
@@ -1103,7 +1103,7 @@
   }
 
   .info-row:hover {
-    background: #fafbfc;
+    background: var(--editor-inset-bg, #fafbfc);
     margin: 0 -20px;
     padding: 12px 20px;
   }
@@ -1116,13 +1116,13 @@
     flex-shrink: 0;
     width: 90px;
     font-size: 13px;
-    color: #64748b;
+    color: var(--editor-muted, #64748b);
     font-weight: 500;
   }
 
   .info-value {
     font-size: 13px;
-    color: #1e293b;
+    color: var(--editor-primary, #1e293b);
   }
 
   .info-tags {
@@ -1193,7 +1193,7 @@
     }
 
     .setting-description {
-      color: #64748b;
+      color: var(--editor-muted, #64748b);
     }
 
     .setting-item:hover {

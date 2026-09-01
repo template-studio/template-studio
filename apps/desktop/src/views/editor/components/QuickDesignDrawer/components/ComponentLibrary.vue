@@ -66,7 +66,7 @@
     border-right: 1px solid #e0e0e0;
     display: flex;
     flex-direction: column;
-    background: #fafafa;
+    background: var(--editor-inset-bg, #fafafa);
     min-height: 0;
     overflow: hidden;
   }
@@ -97,7 +97,7 @@
   .category-title {
     font-size: 12px;
     font-weight: 600;
-    color: #666;
+    color: var(--editor-muted, #666);
     margin-bottom: 8px;
     padding: 0 4px;
     text-transform: uppercase;
@@ -139,7 +139,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f5f5f5;
+    background: var(--editor-inset-bg, #f5f5f5);
     border-radius: 8px;
   }
 
@@ -151,13 +151,13 @@
   .component-name {
     font-size: 14px;
     font-weight: 500;
-    color: #333;
+    color: var(--editor-primary, #333);
     margin-bottom: 2px;
   }
 
   .component-desc {
     font-size: 12px;
-    color: #999;
+    color: var(--editor-muted, #999);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

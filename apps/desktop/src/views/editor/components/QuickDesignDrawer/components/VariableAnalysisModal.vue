@@ -26,7 +26,7 @@
               v-if="analysisResult.missingVariables && analysisResult.missingVariables.length > 0"
             >
               <div style="margin-bottom: 16px">
-                <span style="color: #999">模板中使用但未定义的变量：</span>
+                <span style="color: var(--editor-muted, #999)">模板中使用但未定义的变量：</span>
                 <a-button
                   size="small"
                   type="primary"
@@ -58,7 +58,7 @@
               "
             >
               <div style="margin-bottom: 16px">
-                <span style="color: #999">模板中检测到的所有变量：</span>
+                <span style="color: var(--editor-muted, #999)">模板中检测到的所有变量：</span>
               </div>
               <a-table
                 :columns="detectedColumns"
@@ -78,7 +78,7 @@
             </template>
             <div v-if="analysisResult.conflictVariables?.length > 0">
               <div style="margin-bottom: 16px">
-                <span style="color: #999">已定义但类型可能不匹配的变量：</span>
+                <span style="color: var(--editor-muted, #999)">已定义但类型可能不匹配的变量：</span>
               </div>
               <a-table
                 :columns="conflictColumns"
@@ -100,7 +100,7 @@
               v-if="analysisResult.unusedVariables && analysisResult.unusedVariables.length > 0"
             >
               <div style="margin-bottom: 16px">
-                <span style="color: #999">已定义但模板中未使用的变量：</span>
+                <span style="color: var(--editor-muted, #999)">已定义但模板中未使用的变量：</span>
                 <a-button
                   size="small"
                   danger
@@ -161,7 +161,7 @@
 
             <!-- 快速操作 -->
             <div style="margin-top: 24px">
-              <span style="color: #999; margin-bottom: 12px; display: block">快速操作：</span>
+              <span style="color: var(--editor-muted, #999); margin-bottom: 12px; display: block">快速操作：</span>
               <a-space>
                 <a-button
                   size="small"

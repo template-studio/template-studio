@@ -1,7 +1,7 @@
 <template>
   <div class="drawer-header">
     <div class="header-left">
-      <span style="font-size: 18px; color: #666">
+      <span style="font-size: 18px; color: var(--editor-muted, #666)">
         <CodeOutline />
       </span>
       <span class="header-title">Variable Studio</span>
@@ -164,7 +164,7 @@
     justify-content: space-between;
     padding: 12px 16px;
     border-bottom: 1px solid #e0e0e0;
-    background: #fafafa;
+    background: var(--editor-inset-bg, #fafafa);
     flex-shrink: 0;
   }
 
@@ -177,7 +177,7 @@
   .header-title {
     font-size: 14px;
     font-weight: 500;
-    color: #666;
+    color: var(--editor-muted, #666);
   }
 
   .header-actions {
@@ -193,6 +193,6 @@
   }
 
   .close-button:hover {
-    background-color: #f0f0f0;
+    background-color: var(--editor-inset-bg, #f0f0f0);
   }
 </style>

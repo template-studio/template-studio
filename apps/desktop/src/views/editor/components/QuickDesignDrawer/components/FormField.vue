@@ -290,7 +290,7 @@
 
   .nested-fields {
     padding: 8px 0;
-    background: #fafafa;
+    background: var(--editor-inset-bg, #fafafa);
     border-radius: 4px;
   }
 
@@ -304,7 +304,7 @@
 
   .empty-array {
     padding: 16px;
-    background: #fafafa;
+    background: var(--editor-inset-bg, #fafafa);
     border-radius: 4px;
     text-align: center;
   }
@@ -317,7 +317,7 @@
 
   .array-item {
     padding: 12px;
-    background: #fafafa;
+    background: var(--editor-inset-bg, #fafafa);
     border: 1px solid #e8e8e8;
     border-radius: 4px;
   }

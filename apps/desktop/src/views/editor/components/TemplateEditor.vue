@@ -988,7 +988,7 @@
   /* 文件头部样式 */
   .file-header {
     height: 48px;
-    background: #f8f9fa;
+    background: var(--editor-inset-bg, #f8f9fa);
     border-bottom: 1px solid #e0e0e0;
     display: flex;
     align-items: center;
@@ -1004,7 +1004,7 @@
   .file-name {
     font-size: 14px;
     font-weight: bold;
-    color: #333;
+    color: var(--editor-primary, #333);
   }
 
   .file-actions {
@@ -1030,7 +1030,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #999;
+    color: var(--editor-muted, #999);
     background: var(--editor-panel-bg, #fff);
   }
 
@@ -1040,7 +1040,7 @@
 
   .no-file-text {
     font-size: 16px;
-    color: #999;
+    color: var(--editor-muted, #999);
   }
 
   /* 模态框样式 */

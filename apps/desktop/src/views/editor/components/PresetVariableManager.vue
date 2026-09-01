@@ -347,12 +347,12 @@
 
   .header-left h3 {
     margin: 0 0 4px 0;
-    color: #333;
+    color: var(--editor-primary, #333);
   }
 
   .header-left .description {
     margin: 0;
-    color: #666;
+    color: var(--editor-muted, #666);
     font-size: 14px;
   }
 
@@ -379,7 +379,7 @@
 
   .preset-name {
     font-weight: 500;
-    color: #333;
+    color: var(--editor-primary, #333);
   }
 
   .item-actions {
@@ -401,13 +401,13 @@
   .mapping-info .label,
   .info-row .label {
     width: 60px;
-    color: #666;
+    color: var(--editor-muted, #666);
     font-size: 12px;
   }
 
   .mapping-info .value,
   .info-row .value {
-    color: #333;
+    color: var(--editor-primary, #333);
     font-size: 12px;
   }
 
@@ -429,12 +429,12 @@
 
   .preset-header h4 {
     margin: 0 0 8px 0;
-    color: #333;
+    color: var(--editor-primary, #333);
   }
 
   .preset-description {
     margin: 0 0 16px 0;
-    color: #666;
+    color: var(--editor-muted, #666);
     font-size: 14px;
   }
 
@@ -460,20 +460,20 @@
 
   .path {
     font-family: monospace;
-    color: #333;
-    background: #f5f5f5;
+    color: var(--editor-primary, #333);
+    background: var(--editor-inset-bg, #f5f5f5);
     padding: 2px 6px;
     border-radius: 4px;
     font-size: 12px;
   }
 
   .display-name {
-    color: #666;
+    color: var(--editor-muted, #666);
     font-size: 12px;
   }
 
   .variable-desc {
-    color: #999;
+    color: var(--editor-muted, #999);
     font-size: 12px;
     line-height: 1.4;
   }
@@ -564,7 +564,7 @@
     align-items: center;
     padding: 12px 16px;
     border-bottom: 1px solid #f0f0f0;
-    background: #fafafa;
+    background: var(--editor-inset-bg, #fafafa);
     border-radius: 8px 8px 0 0;
   }
 
@@ -576,11 +576,11 @@
 
   .preset-name {
     font-weight: 500;
-    color: #333;
+    color: var(--editor-primary, #333);
   }
 
   .variable-count {
-    color: #666;
+    color: var(--editor-muted, #666);
     font-size: 12px;
   }
 
@@ -593,7 +593,7 @@
     border: 1px solid #f0f0f0;
     border-radius: 6px;
     margin-bottom: 8px;
-    background: #fafafa;
+    background: var(--editor-inset-bg, #fafafa);
   }
 
   .variable-item:last-child {
@@ -624,9 +624,9 @@
   }
 
   .variable-type {
-    color: #666;
+    color: var(--editor-muted, #666);
     font-size: 11px;
-    background: #f5f5f5;
+    background: var(--editor-inset-bg, #f5f5f5);
     padding: 1px 4px;
     border-radius: 3px;
   }
@@ -636,14 +636,14 @@
   }
 
   .variable-display-name {
-    color: #333;
+    color: var(--editor-primary, #333);
     font-size: 13px;
     font-weight: 500;
     margin-bottom: 2px;
   }
 
   .variable-description {
-    color: #666;
+    color: var(--editor-muted, #666);
     font-size: 12px;
     line-height: 1.4;
     margin-bottom: 4px;
@@ -657,13 +657,13 @@
   }
 
   .variable-default .label {
-    color: #999;
+    color: var(--editor-muted, #999);
   }
 
   .variable-default .value {
-    color: #666;
+    color: var(--editor-muted, #666);
     font-family: monospace;
-    background: #f5f5f5;
+    background: var(--editor-inset-bg, #f5f5f5);
     padding: 1px 4px;
     border-radius: 3px;
   }

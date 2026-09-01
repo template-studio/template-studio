@@ -61,7 +61,7 @@
               @mouseleave="handleHideFunctionDetail"
             >
               <div class="variable-info">
-                <CodeSlash style="font-size: 16px; color: #64748b" />
+                <CodeSlash style="font-size: 16px; color: var(--editor-muted, #64748b)" />
                 <span class="variable-name">{{ syntax.display_name || syntax.name }}</span>
               </div>
             </div>
@@ -1218,7 +1218,7 @@
     width: 80px;
     min-width: 80px;
     border-right: 1px solid var(--editor-border, #e2e8f0);
-    background: #fafafa;
+    background: var(--editor-inset-bg, #fafafa);
     overflow-y: auto;
     scrollbar-width: none !important; /* Firefox */
     -ms-overflow-style: none !important; /* IE/Edge */
@@ -1240,7 +1240,7 @@
     cursor: pointer;
     user-select: none;
     transition: all 0.2s;
-    color: #666;
+    color: var(--editor-muted, #666);
     border-left: 2px solid transparent;
     text-align: center;
     position: relative;
@@ -1309,7 +1309,7 @@
     justify-content: space-between;
     padding: 8px 12px;
     margin: 8px 0 8px 0;
-    background: linear-gradient(180deg, #f8f9fa 0%, #f0f0f0 100%);
+    background: var(--editor-inset-bg, #f8f9fa);
     border-left: 3px solid #18a058;
     border-radius: 4px;
   }
@@ -1321,13 +1321,13 @@
   .category-name {
     font-size: 12px;
     font-weight: 600;
-    color: #333;
+    color: var(--editor-primary, #333);
   }
 
   .category-count {
     font-size: 11px;
-    color: #666;
-    background: #e8e8e8;
+    color: var(--editor-muted, #666);
+    background: var(--editor-inset-bg, #e8e8e8);
     padding: 2px 6px;
     border-radius: 10px;
   }
@@ -1350,7 +1350,7 @@
   }
 
   .variable-item:hover {
-    background: #f0f9ff;
+    background: var(--editor-hover-bg, #f0f9ff);
     border-left: 2px solid #18a058;
   }
 
@@ -1365,7 +1365,7 @@
   .variable-name {
     font-size: 12px;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-    color: #333;
+    color: var(--editor-primary, #333);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1373,7 +1373,7 @@
 
   /* 预设变量特殊样式 */
   .preset-item.parent-variable {
-    background: #f9f0ff;
+    background: rgba(114, 46, 209, 0.07);
     border-left: 2px solid #722ed1;
     font-weight: 500;
   }
@@ -1384,11 +1384,11 @@
 
   /* 订阅管理项样式 */
   .preset-subscription-item {
-    background: #fafafa;
+    background: var(--editor-inset-bg, #fafafa);
   }
 
   .preset-subscription-item:hover {
-    background: #f0f9ff;
+    background: var(--editor-hover-bg, #f0f9ff);
   }
 
   .preset-subscription-item .variable-info {
@@ -1408,7 +1408,7 @@
     align-items: center;
     justify-content: center;
     padding: 40px 20px;
-    color: #999;
+    color: var(--editor-muted, #999);
     font-size: 13px;
     flex-direction: column;
     gap: 8px;
@@ -1472,14 +1472,14 @@
 
   .preset-info-modal .preset-name {
     margin: 0 0 8px 0;
-    color: #333;
+    color: var(--editor-primary, #333);
     font-weight: 500;
     font-size: 14px;
   }
 
   .preset-info-modal .preset-description {
     margin: 0;
-    color: #666;
+    color: var(--editor-muted, #666);
     font-size: 13px;
   }
 
@@ -1536,7 +1536,7 @@
     gap: 6px;
     font-weight: 600;
     font-size: 14px;
-    color: #333;
+    color: var(--editor-primary, #333);
   }
 
   .function-icon {
@@ -1546,9 +1546,9 @@
   .detail-type {
     font-size: 11px;
     padding: 2px 8px;
-    background: #f0f0f0;
+    background: var(--editor-inset-bg, #f0f0f0);
     border-radius: 4px;
-    color: #666;
+    color: var(--editor-muted, #666);
     font-weight: 500;
   }
 
@@ -1559,7 +1559,7 @@
   }
 
   .detail-description {
-    color: #666;
+    color: var(--editor-muted, #666);
     line-height: 1.6;
     font-size: 13px;
   }
@@ -1575,7 +1575,7 @@
     align-items: center;
     gap: 6px;
     font-weight: 500;
-    color: #333;
+    color: var(--editor-primary, #333);
     font-size: 12px;
   }
 
@@ -1585,7 +1585,7 @@
 
   .section-content {
     padding: 8px 12px;
-    background: #f8f9fa;
+    background: var(--editor-inset-bg, #f8f9fa);
     border-radius: 4px;
     font-size: 12px;
     line-height: 1.5;
@@ -1594,7 +1594,7 @@
 
   .code-content {
     font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
-    background: #f0f0f0;
+    background: var(--editor-inset-bg, #f0f0f0);
     color: #d73a49;
     word-break: break-all;
   }
@@ -1626,7 +1626,7 @@
 
   .param-name {
     font-weight: 600;
-    color: #333;
+    color: var(--editor-primary, #333);
     font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
     font-size: 12px;
   }
@@ -1643,7 +1643,7 @@
   .param-required {
     font-size: 10px;
     padding: 2px 6px;
-    background: #fff1f0;
+    background: rgba(229, 72, 77, 0.09);
     color: #ff4d4f;
     border-radius: 3px;
     font-weight: 500;
@@ -1652,14 +1652,14 @@
   .param-optional {
     font-size: 10px;
     padding: 2px 6px;
-    background: #f6ffed;
+    background: rgba(34, 197, 94, 0.1);
     color: #52c41a;
     border-radius: 3px;
     font-weight: 500;
   }
 
   .param-description {
-    color: #666;
+    color: var(--editor-muted, #666);
     font-size: 12px;
     line-height: 1.4;
     margin: 4px 0;
@@ -1672,7 +1672,7 @@
   }
 
   .param-default code {
-    background: #f0f0f0;
+    background: var(--editor-inset-bg, #f0f0f0);
     padding: 2px 4px;
     border-radius: 3px;
     font-family: 'Monaco', 'Consolas', 'Courier New', monospace;

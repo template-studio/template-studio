@@ -1,7 +1,7 @@
 <template>
   <div class="container-children">
     <div class="children-header">
-      <span style="color: #999; font-size: 11px">
+      <span style="color: var(--editor-muted, #999); font-size: 11px">
         {{ isNested ? '子字段' : '子字段（右键复杂组件可进入内部编辑）' }}
       </span>
     </div>

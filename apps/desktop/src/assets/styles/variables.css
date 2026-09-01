@@ -109,6 +109,7 @@
      使独立全屏的编辑器页与壳层同语言，且暗色主题可用） */
   --editor-bg: var(--color-canvas);
   --editor-panel-bg: var(--color-background);
+  --editor-inset-bg: var(--color-surface);
   --editor-border: var(--color-border);
   --editor-hover-bg: var(--color-nav-hover);
   --editor-active-bg: var(--color-nav-active);
@@ -158,6 +159,7 @@
 
   --editor-bg: var(--color-canvas-dark);
   --editor-panel-bg: var(--color-background-dark);
+  --editor-inset-bg: var(--color-surface-dark);
   --editor-border: var(--color-border-dark);
   --editor-hover-bg: var(--color-nav-hover-dark);
   --editor-active-bg: var(--color-nav-active-dark);

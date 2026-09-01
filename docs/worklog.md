@@ -634,3 +634,11 @@
 **涉及文件：** `views/template-render/index.vue`、`views/projects/index.vue`、`views/datasource/index.vue`、`views/languages/components/LanguageCard.vue`、`views/home/components/{StatsSection,RecentProjectsList}.vue`、`views/project/components/StatsGrid.vue`
 
 **验收结果：** `pnpm build` 通过；模板渲染页卡片与广场卡同构（视觉区/内距/字号/圆角一致）。
+
+## 2026-09-01 编辑器暗色主题修复：变量族接管全部硬编码
+
+**变更内容：** 用户反馈暗色下编辑器（含变量栏）仍有白底。首轮已定义 `--editor-*` 变量族映射应用令牌，但编辑器视图还有约 180 处 web 移植带来的硬编码色。本轮按语义全量映射（仅 background/border/color 声明位，彩色语义标记与渐变不动）：浅底（#fafafa/#f5f5f5/#f1f5f9/#f8f9fa/#fafbfc/#f0f0f0）→ 新增 `--editor-inset-bg`；白底 → panel；边框灰（#e0e0e0/#e2e8f0/#e8e8e8）→ border；文字灰（#333/#1e293b → primary，#666/#64748b/#999/#94a3b8 → muted）。24 个文件映射 + 4 处边角（滚动条/标签/hover）补齐；有意保留的彩色设计（蓝色激活标签、深色 settings-card）不动。
+
+**涉及文件：** `apps/desktop/src/assets/styles/variables.css`、`apps/desktop/src/views/editor/**`（28 文件）
+
+**验收结果：** `pnpm build` 通过；全量正则核查编辑器内浅色声明已全部走变量（含兜底）；暗色下编辑器各面板（文件树/变量栏/预览/抽屉）随主题翻转。

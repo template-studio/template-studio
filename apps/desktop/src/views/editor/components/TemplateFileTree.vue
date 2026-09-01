@@ -1531,17 +1531,17 @@
     padding: 8px 12px;
     cursor: pointer;
     font-size: 13px;
-    color: #333;
+    color: var(--editor-primary, #333);
     transition: background 0.15s;
   }
 
   .context-menu-item:hover {
-    background: #f5f5f5;
+    background: var(--editor-inset-bg, #f5f5f5);
   }
 
   .context-menu-divider {
     height: 1px;
-    background: #e8e8e8;
+    background: var(--editor-inset-bg, #e8e8e8);
     margin: 4px 0;
   }
 

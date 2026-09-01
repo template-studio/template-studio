@@ -105,7 +105,7 @@
         <p>
           确定要删除变量 <strong>{{ deletingNode?.label }}</strong> 吗？
         </p>
-        <span style="color: #999" v-if="deletingNode?.hasChildren">
+        <span style="color: var(--editor-muted, #999)" v-if="deletingNode?.hasChildren">
           此变量包含子变量，删除后所有子变量也会被删除。
         </span>
       </div>
@@ -556,7 +556,7 @@
     border-right: 1px solid #e0e0e0;
     display: flex;
     flex-direction: column;
-    background: #fafafa;
+    background: var(--editor-inset-bg, #fafafa);
     height: 100%;
     min-height: 0;
     overflow: hidden;
@@ -614,7 +614,7 @@
   }
 
   :deep(.vscode-tree-input::placeholder) {
-    color: #999999;
+    color: var(--editor-muted, #999999);
     font-style: italic;
   }
 
@@ -651,12 +651,12 @@
     padding: 6px 12px;
     cursor: pointer;
     font-size: 13px;
-    color: #333;
+    color: var(--editor-primary, #333);
     transition: background 0.2s;
   }
 
   .context-menu-item:hover {
-    background: #f5f5f5;
+    background: var(--editor-inset-bg, #f5f5f5);
   }
 
   .context-menu-item-danger {
@@ -664,6 +664,6 @@
   }
 
   .context-menu-item-danger:hover {
-    background: #fff1f0;
+    background: rgba(229, 72, 77, 0.09);
   }
 </style>

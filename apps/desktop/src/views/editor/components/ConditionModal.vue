@@ -273,12 +273,12 @@
   .condition-modal-header .modal-title {
     font-size: 16px;
     font-weight: 600;
-    color: #333;
+    color: var(--editor-primary, #333);
   }
 
   .condition-modal-header .file-path {
     font-size: 12px;
-    color: #999;
+    color: var(--editor-muted, #999);
     font-weight: normal;
   }
 
@@ -305,7 +305,7 @@
     border: 1px solid #e0e0e0;
     border-radius: 4px;
     padding: 16px;
-    background-color: #fafafa;
+    background-color: var(--editor-inset-bg, #fafafa);
     overflow: visible; /* 确保下拉菜单不被裁剪 */
   }
 

@@ -9,7 +9,7 @@
   >
     <a-space direction="vertical" style="width: 100%">
       <div style="margin-bottom: 12px">
-        <span style="color: #999">
+        <span style="color: var(--editor-muted, #999)">
           基于当前变量定义自动生成的测试数据，你可以直接编辑这些数据用于测试模板。
         </span>
       </div>
@@ -62,7 +62,7 @@
 
     <template #footer>
       <div style="display: flex; justify-content: space-between; align-items: center">
-        <span style="color: #999; font-size: 12px">
+        <span style="color: var(--editor-muted, #999); font-size: 12px">
           数据将保存到服务器，模板ID：{{ templateId }}
         </span>
         <div style="display: flex; gap: 12px">

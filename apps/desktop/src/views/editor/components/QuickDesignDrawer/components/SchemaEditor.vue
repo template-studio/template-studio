@@ -184,7 +184,7 @@
     display: flex;
     flex-direction: column;
     border-left: 1px solid #e0e0e0;
-    background: #fafafa;
+    background: var(--editor-inset-bg, #fafafa);
     min-height: 0;
     overflow: hidden;
   }

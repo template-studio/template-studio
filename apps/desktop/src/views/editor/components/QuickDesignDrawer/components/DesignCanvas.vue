@@ -12,7 +12,7 @@
               <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
             </svg>
           </template>
-          <span style="color: #999"> 从左侧拖拽组件到画布，或点击组件添加 </span>
+          <span style="color: var(--editor-muted, #999)"> 从左侧拖拽组件到画布，或点击组件添加 </span>
         </a-empty>
       </div>
 
@@ -200,7 +200,7 @@
     padding: 16px;
     overflow-y: auto;
     overflow-x: hidden;
-    background: #f5f5f5;
+    background: var(--editor-inset-bg, #f5f5f5);
     min-height: 0;
   }
 
@@ -242,12 +242,12 @@
     padding: 6px 12px;
     cursor: pointer;
     font-size: 13px;
-    color: #333;
+    color: var(--editor-primary, #333);
     transition: background 0.2s;
   }
 
   .context-menu-item:hover {
-    background: #f5f5f5;
+    background: var(--editor-inset-bg, #f5f5f5);
   }
 
   .context-menu-item-danger {
@@ -255,6 +255,6 @@
   }
 
   .context-menu-item-danger:hover {
-    background: #fff1f0;
+    background: rgba(229, 72, 77, 0.09);
   }
 </style>

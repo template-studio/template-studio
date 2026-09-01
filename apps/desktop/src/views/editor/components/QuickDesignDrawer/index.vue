@@ -1482,7 +1482,7 @@
     height: 100% !important;
     display: flex !important;
     flex-direction: column !important;
-    background: #fafafa;
+    background: var(--editor-inset-bg, #fafafa);
     min-height: 0 !important;
     overflow: hidden !important;
   }

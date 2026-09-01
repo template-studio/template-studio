@@ -310,7 +310,7 @@
   .condition-label {
     min-width: 60px;
     font-size: 13px;
-    color: #666;
+    color: var(--editor-muted, #666);
   }
 
   .empty-hint {
@@ -342,7 +342,7 @@
   .condition-index {
     font-size: 12px;
     font-weight: 600;
-    color: #666;
+    color: var(--editor-muted, #666);
   }
 
   .switch-case {
@@ -356,7 +356,7 @@
     align-items: center;
     justify-content: space-between;
     font-size: 13px;
-    color: #666;
+    color: var(--editor-muted, #666);
   }
 
   .case-value {
@@ -373,7 +373,7 @@
 
   .quick-conditions-label {
     font-size: 12px;
-    color: #666;
+    color: var(--editor-muted, #666);
     margin-bottom: 8px;
     font-weight: 500;
   }

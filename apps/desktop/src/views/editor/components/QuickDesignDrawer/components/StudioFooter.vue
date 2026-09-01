@@ -2,7 +2,7 @@
   <div class="drawer-footer">
     <div class="footer-content">
       <div class="footer-stats">
-        <span style="color: #999"> 已添加 {{ componentCount }} 个组件 </span>
+        <span style="color: var(--editor-muted, #999)"> 已添加 {{ componentCount }} 个组件 </span>
         <span v-if="hasUnsavedChanges" style="margin-left: 12px; color: #faad14">
           ⚠️ 有未保存的更改
         </span>
@@ -36,7 +36,7 @@
   .drawer-footer {
     width: 100%;
     border-top: 1px solid #e0e0e0;
-    background: #fafafa;
+    background: var(--editor-inset-bg, #fafafa);
     flex-shrink: 0;
   }
 

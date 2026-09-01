@@ -34,7 +34,7 @@
 
     <!-- 数据预览对话框 -->
     <a-modal v-model:open="showDataModal" title="表单数据" :width="600" :footer="null">
-      <pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; overflow: auto; max-height: 400px"><code>{{ JSON.stringify(formData, null, 2) }}</code></pre>
+      <pre style="background: var(--editor-inset-bg, #f5f5f5); padding: 12px; border-radius: 4px; overflow: auto; max-height: 400px"><code>{{ JSON.stringify(formData, null, 2) }}</code></pre>
       <template #footer>
         <a-space style="justify-content: flex-end">
           <a-button @click="handleCopyData">复制</a-button>

@@ -40,7 +40,7 @@
       </div>
 
       <div class="component-preview">
-        <span style="color: #999; font-size: 12px"> 字段名: {{ component.fieldName }} </span>
+        <span style="color: var(--editor-muted, #999); font-size: 12px"> 字段名: {{ component.fieldName }} </span>
         <span v-if="component.schema.required" style="color: #ff4d4f; font-size: 12px">
           必填
         </span>

@@ -745,7 +745,7 @@
   }
 
   .engine-tag:hover {
-    background: #e2e8f0;
+    background: var(--editor-hover-bg, #e2e8f0);
   }
 
   .engine-tag.wasm {
@@ -783,7 +783,7 @@
   }
 
   .collapse-btn.collapsed:hover {
-    background-color: #f0f0f0;
+    background-color: var(--editor-inset-bg, #f0f0f0);
   }
 
   .preview-content {
@@ -911,7 +911,7 @@
   }
 
   .error-type-unknown_error {
-    background: #f8f9fa;
+    background: var(--editor-inset-bg, #f8f9fa);
     color: #495057;
     border: 1px solid #dee2e6;
   }
@@ -923,7 +923,7 @@
 
   .error-message {
     padding: 12px;
-    background: #f8f9fa;
+    background: var(--editor-inset-bg, #f8f9fa);
     border-left: 4px solid #ff4757;
     border-radius: 4px;
     font-family: 'Courier New', monospace;
@@ -939,7 +939,7 @@
   .context-label {
     font-size: 13px;
     font-weight: 500;
-    color: #666;
+    color: var(--editor-muted, #666);
     margin-bottom: 8px;
   }
 

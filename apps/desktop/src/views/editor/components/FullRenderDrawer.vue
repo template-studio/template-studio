@@ -160,7 +160,7 @@
           <a-tag v-else-if="renderStats.totalFiles > 0" color="success" size="small">
             渲染成功
           </a-tag>
-          <span v-if="renderStats.totalFiles > 0" style="font-size: 12px; color: #999">
+          <span v-if="renderStats.totalFiles > 0" style="font-size: 12px; color: var(--editor-muted, #999)">
             {{ renderStats.totalFiles }} 个文件 | {{ formatFileSize(renderStats.totalSize) }} |
             耗时 {{ renderTime }}ms
           </span>
@@ -730,7 +730,7 @@
     padding: 12px 16px;
     font-size: 14px;
     font-weight: 500;
-    color: #333;
+    color: var(--editor-primary, #333);
     border-bottom: 1px solid #e8e8e8;
     background: var(--editor-panel-bg, #fff);
     display: flex;
@@ -769,7 +769,7 @@
   /* 分隔条 */
   .divider {
     width: 1px;
-    background: #e8e8e8;
+    background: var(--editor-inset-bg, #e8e8e8);
   }
 
   /* 编辑器面板 */

@@ -58,7 +58,7 @@
                 style="width: 120px"
                 placeholder="30"
               />
-              <span style="margin-left: 8px; color: #666">秒</span>
+              <span style="margin-left: 8px; color: var(--editor-muted, #666)">秒</span>
             </div>
           </div>
 
@@ -75,7 +75,7 @@
                 style="width: 120px"
                 placeholder="14"
               />
-              <span style="margin-left: 8px; color: #666">px</span>
+              <span style="margin-left: 8px; color: var(--editor-muted, #666)">px</span>
             </div>
           </div>
 
@@ -157,7 +157,7 @@
                 style="width: 120px"
                 placeholder="500"
               />
-              <span style="margin-left: 8px; color: #666">ms</span>
+              <span style="margin-left: 8px; color: var(--editor-muted, #666)">ms</span>
             </div>
           </div>
         </div>
@@ -316,7 +316,7 @@
   .modal-title {
     font-size: 16px;
     font-weight: 600;
-    color: #333;
+    color: var(--editor-primary, #333);
   }
 
   .settings-container {
@@ -342,13 +342,13 @@
     border-radius: 6px;
     transition: all 0.2s;
     font-size: 14px;
-    color: #666;
+    color: var(--editor-muted, #666);
     margin-bottom: 4px;
   }
 
   .menu-item:hover {
-    background: #f5f5f5;
-    color: #333;
+    background: var(--editor-inset-bg, #f5f5f5);
+    color: var(--editor-primary, #333);
   }
 
   .menu-item.active {
@@ -370,7 +370,7 @@
   .section-title {
     font-size: 16px;
     font-weight: 600;
-    color: #333;
+    color: var(--editor-primary, #333);
     margin: 0 0 24px 0;
     padding-bottom: 8px;
     border-bottom: 1px solid #f0f0f0;
@@ -397,13 +397,13 @@
   .setting-label > span:first-child {
     font-size: 14px;
     font-weight: 500;
-    color: #333;
+    color: var(--editor-primary, #333);
     margin-bottom: 4px;
   }
 
   .setting-description {
     font-size: 12px;
-    color: #666;
+    color: var(--editor-muted, #666);
     line-height: 1.4;
   }
 
