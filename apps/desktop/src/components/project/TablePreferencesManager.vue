@@ -270,7 +270,7 @@ defineExpose({ savePreferences })
   align-items: center;
   padding: 10px 12px;
   margin-bottom: 4px;
-  border-radius: 6px;
+  border-radius: var(--border-radius-md);
   cursor: pointer;
   transition: all 0.2s;
   color: var(--color-text);
@@ -315,7 +315,7 @@ defineExpose({ savePreferences })
   margin-bottom: 16px;
   padding: 4px;
   background: var(--color-bg-secondary);
-  border-radius: 6px;
+  border-radius: var(--border-radius-md);
 }
 
 .inner-tab-item {

@@ -114,7 +114,7 @@ onMounted(async () => {
   margin-top: 4px;
   padding: 0 8px;
   border: none;
-  border-radius: 7px;
+  border-radius: 8px;
   background: transparent;
   color: var(--color-text-secondary);
   font-size: 13px;

@@ -337,7 +337,7 @@ watch(() => [props.templateId, props.variables], () => {
 
 /* 文件树优化 */
 :deep(.n-tree-node-content) {
-  border-radius: 6px;
+  border-radius: var(--border-radius-md);
   padding: 4px 8px;
   transition: all 0.2s ease;
   margin: 2px 0;
@@ -372,7 +372,7 @@ watch(() => [props.templateId, props.variables], () => {
 
 /* 标签优化 */
 :deep(.n-tag) {
-  border-radius: 6px;
+  border-radius: var(--border-radius-md);
   font-weight: 500;
   transition: all 0.2s ease;
 }

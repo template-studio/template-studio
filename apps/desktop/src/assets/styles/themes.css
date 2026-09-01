@@ -342,9 +342,7 @@
 }
 
 /* Small button radius */
-.ant-btn-sm {
-  border-radius: 6px !important;
-}
+
 
 /* --- Dark mode primary button --- */
 [data-theme="dark"] .ant-btn-primary {
@@ -998,9 +996,7 @@
   transform: translateY(-1px);
 }
 
-.ant-btn-sm {
-  border-radius: 6px !important;
-}
+
 
 /* Dark mode buttons */
 [data-theme="dark"] .ant-btn-primary {

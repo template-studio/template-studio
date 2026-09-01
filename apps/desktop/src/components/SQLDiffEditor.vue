@@ -240,7 +240,7 @@ onBeforeUnmount(() => {
   flex: 1;
   background: var(--color-border);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--border-radius-md);
   overflow: hidden;
 }
 

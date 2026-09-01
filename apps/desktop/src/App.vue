@@ -34,6 +34,7 @@ const antTheme = computed(() => ({
     colorWarning: '#f5a623',
     colorInfo: '#3e7bfa',
     borderRadius: 8,
+    borderRadiusSM: 8,
     controlItemBgActive: themeStore.isDark ? '#32343b' : '#e8e8e6',
     controlItemBgHover: themeStore.isDark ? '#2a2c32' : '#f1f1ef',
   }

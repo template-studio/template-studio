@@ -89,7 +89,8 @@ const updateWindowSize = () => {
   background: transparent;
 }
 
-/* 悬浮面板通用：圆角卡片 + 细边框 + 呼吸阴影 */
+/* 悬浮面板通用：圆角卡片 + 细边框 + 呼吸阴影（三件套必须同组，侧栏仅覆盖底色） */
+.app-sidebar,
 .app-navbar,
 .app-content {
   background: var(--color-background);
