@@ -124,7 +124,7 @@
   import { computed, ref, h, onMounted, onUnmounted } from 'vue';
 
 // 面板宽度（右缘拖拽调节，范围 160–420）
-const panelWidth = ref(240)
+const panelWidth = ref(190)
 const startResize = (e) => {
   e.preventDefault()
   const startX = e.clientX

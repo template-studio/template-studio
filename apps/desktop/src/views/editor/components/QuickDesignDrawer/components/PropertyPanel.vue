@@ -122,7 +122,7 @@
 
 <script setup>
 // 面板宽度（左缘拖拽调节，范围 200–420）
-const panelWidth = ref(300)
+const panelWidth = ref(280)
 const startResize = (e) => {
   e.preventDefault()
   const startX = e.clientX

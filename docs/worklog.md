@@ -674,3 +674,11 @@
 **涉及文件：** `views/editor/components/QuickDesignDrawer/index.vue`、`components/{PropertyPanel,ComponentLibrary,DesignCanvas}.vue`
 
 **验收结果：** `pnpm build` 通过；实测抽屉内 3 个拖拽手柄就位、Schema 列内联 width 260 生效、拖拽逻辑（mousedown/mousemove/mouseup + 范围钳制 + body 光标）完整。
+
+## 2026-09-01 Variable Studio 布局体系定稿：v-show 修复 + 全栏可拖 + 内容驱动默认值
+
+**变更内容：** 多轮宽度反馈后的系统性定稿。① 修复关键 bug：`.layout-column { display: flex !important }` 压过 v-show 的内联 display:none，导致点掉 Schema/表单后列壳残留占位、空间不重分配（用户反馈"凭空消失"）——去掉该 !important。② 全栏可拖拽：变量树（右缘手柄，160-420）、属性面板（180-440）、Schema 列与表单列（左缘手柄，160-560）。③ 内容驱动默认值：变量树 240→190（节点=缩进+图标+短名，190 充裕）、属性 300→280（label+控件+内距）、Schema 列 260→200（纯文本预览）、表单预览 300→320（需按真实表单宽度渲染）、组件库 220（卡片单列）、画布弹性吃余量。④ 设计模式默认收起 Schema/表单两栏（设计优先），空画布为整幅虚线拖放区。
+
+**涉及文件：** `views/editor/components/QuickDesignDrawer/index.vue`、`components/{VariableTree,PropertyPanel,ComponentLibrary,DesignCanvas}.vue`
+
+**验收结果：** `pnpm build` 通过；实测点掉两栏后设计列 720→1280 吃满全宽（display:none 真生效、offsetWidth 0）；四个拖拽手柄与范围钳制就位。

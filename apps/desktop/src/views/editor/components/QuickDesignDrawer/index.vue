@@ -272,8 +272,8 @@
   const expandedKeys = ref([]); // 变量树展开的节点
   const showDesign = ref(true);
   // 预览列宽度（可拖拽调节，范围 220–520）
-  const schemaColWidth = ref(220);
-  const formColWidth = ref(300);
+  const schemaColWidth = ref(200);
+  const formColWidth = ref(320);
 
   const startColResize = (e, which) => {
     e.preventDefault();
