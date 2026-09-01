@@ -803,28 +803,32 @@
     background: #282a36; /* Dracula theme background */
   }
 
-  /* 错误面板 */
+  /* 错误面板：透明底 + 半透明琥珀强调（双主题可读），去掉 collapse 默认圆角盒 */
   .error-panel {
-    border-top: 1px solid #e8e8e8;
-    background: #fffaf0;
+    border-top: 1px solid var(--editor-border, #e8e8e8);
+    background: rgba(245, 166, 35, 0.06);
   }
 
-  :deep(.error-panel .ant-collapse) {
+  .error-panel :deep(.ant-collapse) {
     border: none;
+    border-radius: 0;
+    background: transparent;
   }
 
-  :deep(.error-panel .ant-collapse-item) {
+  .error-panel :deep(.ant-collapse-item) {
     border: none;
+    border-radius: 0;
   }
 
-  :deep(.error-panel .ant-collapse-header) {
+  .error-panel :deep(.ant-collapse-header) {
     padding: 12px 16px;
-    background: #fffaf0;
-    color: #d03050;
+    background: transparent;
+    color: var(--color-error, #d03050);
     font-weight: 500;
+    border-radius: 0;
   }
 
-  :deep(.error-panel .ant-collapse-content-box) {
+  .error-panel :deep(.ant-collapse-content-box) {
     padding: 0 16px 12px;
   }
 
