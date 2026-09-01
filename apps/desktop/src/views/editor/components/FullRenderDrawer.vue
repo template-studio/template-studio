@@ -727,7 +727,9 @@
   }
 
   .panel-title {
-    padding: 12px 16px;
+    /* 定高：文件名条内的「复制」按钮按需出现，不定高会撑高标题导致底边框错位 */
+    height: 45px;
+    padding: 0 16px;
     font-size: 14px;
     font-weight: 500;
     color: var(--editor-primary, #333);
@@ -737,6 +739,14 @@
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
+  }
+
+  .panel-title > span:first-child {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .tree-container {
