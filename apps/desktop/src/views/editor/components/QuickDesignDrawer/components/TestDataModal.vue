@@ -256,7 +256,7 @@
         },
         '.cm-editor': {
           borderRadius: '6px',
-          border: '1px solid #e0e0e6',
+          border: '1px solid var(--editor-border, #e0e0e6)',
         },
         '.cm-focused': {
           outline: 'none',

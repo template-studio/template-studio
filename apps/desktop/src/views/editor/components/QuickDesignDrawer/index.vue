@@ -1474,7 +1474,7 @@
   }
 
   .breadcrumb-nav :deep(.ant-breadcrumb-link:hover) {
-    color: #18a058;
+    color: var(--editor-accent, #18a058);
   }
 
   /* 表单预览容器 */
@@ -1499,7 +1499,7 @@
     overflow-y: auto !important;
     overflow-x: hidden !important;
     padding: 16px;
-    background: #f9f9f9;
+    background: var(--editor-inset-bg, #f9f9f9);
     min-height: 0 !important;
   }
 </style>

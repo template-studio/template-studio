@@ -144,7 +144,7 @@
 
 <style scoped>
   .container-children {
-    background: #f9f9f9;
+    background: var(--editor-inset-bg, #f9f9f9);
     border: 2px solid var(--editor-border, #e0e0e0);
     border-top: none;
     border-radius: 0 0 8px 8px;
@@ -171,7 +171,7 @@
   }
 
   .child-component:hover {
-    border-color: #18a058;
+    border-color: var(--editor-accent, #18a058);
     box-shadow: 0 1px 4px rgba(24, 160, 88, 0.1);
   }
 

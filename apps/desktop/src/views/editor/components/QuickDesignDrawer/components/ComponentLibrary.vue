@@ -123,7 +123,7 @@
   }
 
   .component-item:hover {
-    border-color: #18a058;
+    border-color: var(--editor-accent, #18a058);
     box-shadow: 0 2px 8px rgba(24, 160, 88, 0.15);
     transform: translateY(-1px);
   }

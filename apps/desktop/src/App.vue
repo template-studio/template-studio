@@ -17,6 +17,12 @@ const configStore = useConfigStore()
 // Ant Design 主题配置（视觉语言：AgentHub/HiFox——单色主操作 + 品牌绿强调）
 const antTheme = computed(() => ({
   algorithm: themeStore.isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+  components: {
+    // 开关是状态指示器：开启=品牌绿（惯例彩色语义），不用单色主操作（黑/白开关难以辨认）
+    Switch: {
+      colorPrimary: themeStore.isDark ? '#22c55e' : '#16a34a',
+    },
+  },
   token: {
     colorBgContainer: themeStore.isDark ? '#1d1e23' : '#ffffff',
     colorBgElevated: themeStore.isDark ? '#24262b' : '#ffffff',

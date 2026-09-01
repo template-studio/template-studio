@@ -650,3 +650,11 @@
 **涉及文件：** `views/editor/**`（约 25 文件）、`assets/styles/variables.css`
 
 **验收结果：** `pnpm build` 通过；抽屉内分隔线全量枚举验证：旧 #e8e8e8 全部收敛到编辑器边框变量（浅 #e9e9e7/暗 #2c2e35），残留未包裹计数 0。
+
+## 2026-09-01 快速设计器（Variable Studio）颜色体系收编
+
+**变更内容：** 用户反馈快速设计器（Variable Studio，QuickDesignDrawer 组件族）暗色下白色浅色混合割裂。审计发现两类残留：CSS 声明里的非灰阶色（绿色文字/边框 #18a058、蓝边框 #007acc 等此前灰阶映射不覆盖）与模板内联样式（此前正则只扫 CSS 块）。专项清理：绿色 → `--editor-accent`、蓝 → `--color-info`、灰阶文字/边框/浅底 → 对应编辑器变量、浅绿底 → 半透明绿，共 12 处替换 + 2 处收尾（JS 对象样式、空状态图标）。语义色（红 #ff4d4f/琥珀 #faad14）保留。
+
+**涉及文件：** `views/editor/components/QuickDesignDrawer/**`（7 文件）
+
+**验收结果：** `pnpm build` 通过；目录内非语义色声明全部走变量（含内联样式）。

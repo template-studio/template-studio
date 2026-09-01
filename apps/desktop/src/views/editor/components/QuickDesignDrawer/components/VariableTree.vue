@@ -578,7 +578,7 @@
     padding: 16px;
     overflow-y: auto;
     overflow-x: hidden;
-    background: #f9f9f9;
+    background: var(--editor-inset-bg, #f9f9f9);
     position: relative;
     min-height: 0;
   }
@@ -609,7 +609,7 @@
   }
 
   :deep(.vscode-tree-input:focus) {
-    border-color: #007acc;
+    border-color: var(--color-info, #007acc);
     box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.25);
   }
 

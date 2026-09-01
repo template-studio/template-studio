@@ -8,7 +8,7 @@
       <div v-if="components.length === 0" class="empty-canvas">
         <a-empty description="暂无组件">
           <template #image>
-            <svg viewBox="0 0 24 24" width="64" height="64" style="color: #ccc">
+            <svg viewBox="0 0 24 24" width="64" height="64" style="color: var(--editor-muted, #ccc)">
               <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
             </svg>
           </template>

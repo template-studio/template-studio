@@ -190,13 +190,13 @@
   }
 
   .canvas-component:hover {
-    border-color: #18a058;
+    border-color: var(--editor-accent, #18a058);
     box-shadow: 0 2px 8px rgba(24, 160, 88, 0.1);
   }
 
   .canvas-component.is-selected {
-    border-color: #18a058;
-    background: #f0f9f4;
+    border-color: var(--editor-accent, #18a058);
+    background: rgba(34, 197, 94, 0.07);
   }
 
   .canvas-component.is-container {
