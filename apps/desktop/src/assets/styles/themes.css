@@ -1,5 +1,10 @@
 /* Theme transitions and animations - removed global rules to prevent glass effects */
 
+/* 滚动条预留固定槽位：弹层锁定 body 滚动时滚动条消失不再引起页面横向抖动 */
+html {
+  scrollbar-gutter: stable;
+}
+
 /* 画布底：整个应用铺画布色，面板浮于其上（壳层细节见 AppLayout） */
 [data-theme="light"],
 [data-theme="dark"] {

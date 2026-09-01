@@ -21,7 +21,7 @@
           </a-button>
         </a-space>
       </div>
-      <a-space :size="8">
+      <a-space :size="8" wrap>
         <a-button size="small" @click="handleReset"> 重置 </a-button>
         <a-button size="small" @click="handleFormat">
           <template #icon><RefreshOutline /></template>

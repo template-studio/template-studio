@@ -145,27 +145,27 @@
           </div>
 
           <!-- 右栏：表单预览（宽度可拖拽调节） -->
-          <div
-            v-show="showForm"
-            class="layout-column form-column"
-            :style="{ width: formColWidth + 'px' }"
-          >
-            <div class="col-resize-handle" @mousedown="startColResize($event, 'form')"></div>
-            <div class="form-preview-container">
-              <div class="preview-header">
-                <strong>表单预览</strong>
-              </div>
-              <div class="preview-content">
-                <FormPreview
-                  v-if="showForm"
-                  :schema="currentSchemaForPreview"
-                  @change="handleFormChange"
-                />
-              </div>
-            </div>
-          </div>
         </div>
       </div>
+
+      <!-- 表单预览：自绘右侧滑出面板（fixed 定位，不走 antd 抽屉——嵌套抽屉的
+           推挤机制会平移父级且关闭后位移残留，实测 translateX(-180) 粘滞） -->
+      <teleport to="body">
+        <transition name="form-panel">
+          <div v-if="showForm" class="form-slide-panel">
+            <div class="form-slide-head">
+              <strong>表单预览</strong>
+              <button class="form-slide-close" @click="showForm = false">✕</button>
+            </div>
+            <div class="form-slide-body">
+              <FormPreview
+                :schema="currentSchemaForPreview"
+                @change="handleFormChange"
+              />
+            </div>
+          </div>
+        </transition>
+      </teleport>
 
       <!-- Footer -->
       <StudioFooter :component-count="componentCount" :has-unsaved-changes="hasUnsavedChanges" />
@@ -272,8 +272,7 @@
   const expandedKeys = ref([]); // 变量树展开的节点
   const showDesign = ref(true);
   // 预览列宽度（可拖拽调节，范围 220–520）
-  const schemaColWidth = ref(200);
-  const formColWidth = ref(320);
+  const schemaColWidth = ref(240);
 
   const startColResize = (e, which) => {
     e.preventDefault();
@@ -286,7 +285,7 @@
       .reduce((sum, c) => sum + c.offsetWidth, 0);
     const maxW = Math.max(200, layout.clientWidth - fixedSiblingsW - 660);
     const startX = e.clientX;
-    const startW = which === 'schema' ? schemaColWidth.value : formColWidth.value;
+    const startW = schemaColWidth.value;
     const onMove = (ev) => {
       const w = Math.min(Math.min(560, maxW), Math.max(160, startW - (ev.clientX - startX)));
       if (which === 'schema') schemaColWidth.value = w;
@@ -1595,5 +1594,69 @@
   .drawer-container {
     max-height: 100vh !important;
     overflow: hidden !important;
+  }
+
+  /* ---------- 表单预览滑出面板（自绘，替代嵌套抽屉） ---------- */
+  .form-slide-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 460px;
+    background: var(--editor-panel-bg, #ffffff);
+    border-left: 1px solid var(--editor-border, #e0e0e0);
+    box-shadow: -12px 0 32px -12px rgba(19, 19, 22, 0.18);
+    z-index: 1200;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .form-slide-head {
+    height: 45px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px 0 16px;
+    border-bottom: 1px solid var(--editor-border, #e0e0e0);
+  }
+
+  .form-slide-head strong {
+    font-size: 13px;
+    color: var(--editor-primary, #333);
+  }
+
+  .form-slide-close {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--editor-muted, #999);
+    cursor: pointer;
+    font-size: 13px;
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+
+  .form-slide-close:hover {
+    background: var(--editor-hover-bg, #f1f5f9);
+    color: var(--editor-primary, #333);
+  }
+
+  .form-slide-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  .form-panel-enter-active,
+  .form-panel-leave-active {
+    transition: transform 0.28s ease;
+  }
+
+  .form-panel-enter-from,
+  .form-panel-leave-to {
+    transform: translateX(100%);
   }
 </style>

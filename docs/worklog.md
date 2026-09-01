@@ -690,3 +690,11 @@
 **涉及文件：** `views/editor/components/QuickDesignDrawer/index.vue`、`components/{PropertyPanel,VariableTree}.vue`
 
 **验收结果：** `pnpm build` 通过。
+
+## 2026-09-01 表单预览改按需抽屉 + Schema 工具栏溢出修复
+
+**变更内容：** ① 应用户建议，表单预览从常驻列改为**按需抽屉**（顶栏「表单」按钮开关，左侧滑出 460px、无遮罩），三栏布局简化为两栏，永久释放 320px 空间；表单预览在抽屉中获得比原窄列更大的渲染宽度。② Schema 列内容溢出修复：工具栏 6 按钮（重置/格式化/复制/导入/导出/同步）加 `wrap` 换行，列宽再窄按钮也只是换行不再被裁；默认宽 200→240。③ 拖拽上限计算修正（弹性兄弟按保底计入而非当前宽，修复预览列永远拖不大）；设计列保底 420→660（组件库+画布最小+属性，防极限拖宽时属性被裁）。
+
+**涉及文件：** `views/editor/components/QuickDesignDrawer/index.vue`、`components/SchemaEditor.vue`
+
+**验收结果：** `pnpm build` 通过。
