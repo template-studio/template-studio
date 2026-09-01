@@ -194,7 +194,7 @@
 </template>
 
 <script setup>
-  import { ref, computed, watch, onMounted, provide, readonly, toRef, nextTick } from 'vue';
+  import { ref, computed, watch, onMounted, onUnmounted, provide, readonly, toRef, nextTick } from 'vue';
   import { message } from 'ant-design-vue';
   import { ChevronForwardOutline } from '@/icons/ionicons5';
   import { useSchemaStore } from './composables/useSchemaStore';
@@ -310,6 +310,16 @@
   const showForm = ref(false);
 
   // 表单预览浮层宽度调节（左缘拖动，范围 300-700px）
+  // ESC 优先关闭表单预览浮层（再按才关父抽屉）
+  const onFormPanelKeydown = (e) => {
+    if (e.key === 'Escape' && showForm.value) {
+      e.stopPropagation()
+      showForm.value = false
+    }
+  }
+  onMounted(() => document.addEventListener('keydown', onFormPanelKeydown, true))
+  onUnmounted(() => document.removeEventListener('keydown', onFormPanelKeydown, true))
+
   const formPanelWidth = ref(460)
   const startPanelResize = (e) => {
     e.preventDefault()
