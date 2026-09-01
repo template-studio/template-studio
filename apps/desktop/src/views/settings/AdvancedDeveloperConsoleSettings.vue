@@ -89,7 +89,9 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { reactive, watch, onMounted, onUnmounted } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
+import { message } from 'ant-design-vue'
 
 const settings = reactive({
   enableConsole: false,
@@ -107,3 +109,27 @@ const settings = reactive({
 <style scoped>
 @import '@/assets/styles/settings.css';
 </style>
+
+// 切换开关 → 调 Tauri 开/关 DevTools
+watch(() => settings.enableConsole, async (val) => {
+  try {
+    const opened = await invoke('toggle_devtools')
+    if (opened !== val) {
+      // 状态不同步（如 F12 已手动开），以 DevTools 实际状态为准
+      settings.enableConsole = opened
+    }
+  } catch (e) {
+    message.error('控制台切换失败: ' + e)
+    settings.enableConsole = false
+  }
+})
+
+// F12 快捷键
+const onKeydown = (e) => {
+  if (e.key === 'F12') {
+    e.preventDefault()
+    settings.enableConsole = !settings.enableConsole
+  }
+}
+onMounted(() => document.addEventListener('keydown', onKeydown))
+onUnmounted(() => document.removeEventListener('keydown', onKeydown))

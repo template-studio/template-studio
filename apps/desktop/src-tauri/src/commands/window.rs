@@ -30,6 +30,21 @@ pub fn window_maximize(app: tauri::AppHandle) {
     }
 }
 
+/// 切换 DevTools（开发者控制台）
+#[tauri::command]
+pub fn toggle_devtools(app: tauri::AppHandle) -> Result<bool, String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "主窗口不存在".to_string())?;
+    if window.is_devtools_open() {
+        window.close_devtools();
+        Ok(false)
+    } else {
+        window.open_devtools();
+        Ok(true)
+    }
+}
+
 /// 关闭窗口
 #[tauri::command]
 pub fn window_close(app: tauri::AppHandle) {

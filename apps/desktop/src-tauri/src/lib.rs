@@ -45,6 +45,7 @@ pub fn run() {
             commands::window::window_close,
             commands::window::get_username,
             commands::window::get_system_theme,
+            commands::window::toggle_devtools,
             // 模板命令
             commands::template::list_templates,
             commands::template::get_template_variables,
