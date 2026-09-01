@@ -192,7 +192,7 @@
   .preview-header {
     padding: 16px;
     border-bottom: 1px solid #e0e0e0;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -203,7 +203,7 @@
     flex: 1;
     overflow-y: auto !important;
     overflow-x: hidden !important;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     min-height: 0;
   }
 

@@ -250,7 +250,7 @@
   .panel-header {
     padding: 16px;
     border-bottom: 1px solid #e0e0e0;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     display: flex;
     align-items: center;
     min-height: 56px;

@@ -1380,7 +1380,7 @@
   :deep(.preview-header) {
     padding: 16px;
     border-bottom: 1px solid #e0e0e0;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     display: flex;
     align-items: center;
     height: 56px;
@@ -1456,7 +1456,7 @@
   /* 面包屑导航 */
   .breadcrumb-nav {
     padding: 8px 16px;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     border-bottom: 1px solid #e0e0e0;
     flex-shrink: 0;
     display: flex;
@@ -1490,7 +1490,7 @@
   .preview-header {
     padding: 16px;
     border-bottom: 1px solid #e0e0e0;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     flex-shrink: 0 !important;
   }
 

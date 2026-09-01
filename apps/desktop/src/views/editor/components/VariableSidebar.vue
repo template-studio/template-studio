@@ -1140,7 +1140,7 @@
   /* 侧边栏容器 */
   .variable-sidebar {
     position: relative;
-    background: #ffffff;
+    background: var(--editor-panel-bg, #ffffff);
     border-right: 1px solid var(--editor-border, #e2e8f0);
     display: flex;
     flex-direction: column;
@@ -1252,7 +1252,7 @@
   }
 
   .tab-item.active {
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     color: #722ed1;
     border-left-color: #722ed1;
     font-weight: 500;
@@ -1500,7 +1500,7 @@
 
   /* ========== 悬浮卡片样式 ========== */
   .function-detail-card {
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     border: 1px solid var(--editor-border, #e2e8f0);
     border-radius: 8px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
@@ -1612,7 +1612,7 @@
 
   .param-item {
     padding: 8px;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     border: 1px solid var(--editor-border, #e2e8f0);
     border-radius: 4px;
   }

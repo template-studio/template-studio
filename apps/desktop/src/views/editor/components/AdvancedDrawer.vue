@@ -933,7 +933,7 @@
   }
 
   .advanced-drawer :deep(.ant-tabs-nav) {
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     border-right: 1px solid #e2e8f0;
     padding: 12px 0;
     flex-shrink: 0;
@@ -1002,7 +1002,7 @@
     border: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     transition: all 0.3s ease;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     overflow: hidden;
   }
 
@@ -1086,7 +1086,7 @@
     gap: 12px;
     padding: 12px 24px;
     border-top: 1px solid #e2e8f0;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
   }
 
   /* 引擎管理样式 */
@@ -1146,7 +1146,7 @@
   }
 
   .backup-preview :deep(.ant-descriptions) {
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     border-radius: 8px;
     overflow: hidden;
   }

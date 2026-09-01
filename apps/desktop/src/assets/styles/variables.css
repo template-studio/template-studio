@@ -105,6 +105,17 @@
   --transition-normal: 300ms ease;
   --transition-slow: 500ms ease;
 
+  /* 编辑器变量族（编辑器视图以 var(--editor-*, 兜底) 消费；此处映射到应用令牌，
+     使独立全屏的编辑器页与壳层同语言，且暗色主题可用） */
+  --editor-bg: var(--color-canvas);
+  --editor-panel-bg: var(--color-background);
+  --editor-border: var(--color-border);
+  --editor-hover-bg: var(--color-nav-hover);
+  --editor-active-bg: var(--color-nav-active);
+  --editor-primary: var(--color-text);
+  --editor-muted: var(--color-text-secondary);
+  --editor-accent: var(--color-brand);
+
   /* Z-index */
   --z-dropdown: 1000;
   --z-sticky: 1020;
@@ -144,4 +155,13 @@
   --shadow-panel: var(--shadow-panel-dark);
   --shadow-panel-breathe: var(--shadow-panel-breathe-dark);
   --shadow-panel-hover: var(--shadow-panel-hover-dark);
+
+  --editor-bg: var(--color-canvas-dark);
+  --editor-panel-bg: var(--color-background-dark);
+  --editor-border: var(--color-border-dark);
+  --editor-hover-bg: var(--color-nav-hover-dark);
+  --editor-active-bg: var(--color-nav-active-dark);
+  --editor-primary: var(--color-text-dark);
+  --editor-muted: var(--color-text-secondary-dark);
+  --editor-accent: var(--color-brand-dark);
 }

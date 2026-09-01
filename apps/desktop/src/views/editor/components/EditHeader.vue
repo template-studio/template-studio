@@ -114,7 +114,7 @@
 <style scoped>
   .edit-header {
     height: 48px;
-    background: #ffffff;
+    background: var(--editor-panel-bg, #ffffff);
     border-bottom: 1px solid var(--editor-border, #e2e8f0);
     display: flex;
     align-items: center;

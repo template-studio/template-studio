@@ -700,7 +700,7 @@
   .drawer-toolbar {
     padding: 12px 16px;
     border-bottom: 1px solid #e8e8e8;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
 
@@ -716,7 +716,7 @@
   .file-tree-panel {
     min-width: 120px;
     max-width: 600px;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     border-right: 1px solid #e0e0e0;
     display: flex;
     flex-direction: column;
@@ -732,7 +732,7 @@
     font-weight: 500;
     color: #333;
     border-bottom: 1px solid #e8e8e8;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     display: flex;
     justify-content: space-between;
     align-items: center;

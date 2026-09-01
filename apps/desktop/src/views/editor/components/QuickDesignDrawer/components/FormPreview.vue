@@ -158,7 +158,7 @@
 <style scoped>
   .form-preview {
     padding: 16px;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     border-radius: 4px;
   }
 

@@ -668,7 +668,7 @@
 
 <style scoped>
   .template-preview {
-    background: #ffffff;
+    background: var(--editor-panel-bg, #ffffff);
     border-left: 1px solid var(--editor-border, #e2e8f0);
     display: flex;
     flex-direction: column;
@@ -851,7 +851,7 @@
   .error-display {
     height: 100%;
     padding: 16px;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     overflow-y: auto;
   }
 

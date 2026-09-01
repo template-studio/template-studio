@@ -982,7 +982,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
   }
 
   /* 文件头部样式 */
@@ -1031,7 +1031,7 @@
     align-items: center;
     justify-content: center;
     color: #999;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
   }
 
   .no-file-icon {

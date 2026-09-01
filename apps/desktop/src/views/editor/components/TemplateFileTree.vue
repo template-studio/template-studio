@@ -1417,7 +1417,7 @@
   .template-explorer {
     min-width: 120px;
     max-width: 1000px;
-    background: #ffffff;
+    background: var(--editor-panel-bg, #ffffff);
     border-right: 1px solid var(--editor-border, #e2e8f0);
     padding: 0;
     display: flex;
@@ -1516,7 +1516,7 @@
 
   .context-menu {
     position: fixed;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     border: 1px solid #e8e8e8;
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -1552,7 +1552,7 @@
     padding: 1px 4px;
     font-size: 13px;
     font-family: 'Segoe UI', 'Consolas', 'Monaco', monospace;
-    background: #ffffff;
+    background: var(--editor-panel-bg, #ffffff);
     border: 1px solid var(--editor-accent, #22c55e);
     border-radius: 0;
     outline: none;

@@ -163,7 +163,7 @@
 
   .child-component {
     padding: 8px 12px;
-    background: #fff;
+    background: var(--editor-panel-bg, #fff);
     border: 1px solid #e0e0e0;
     border-radius: 6px;
     cursor: pointer;
