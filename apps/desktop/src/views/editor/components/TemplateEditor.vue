@@ -988,7 +988,7 @@
   /* 文件头部样式 */
   .file-header {
     height: 48px;
-    background: var(--editor-inset-bg, #f8f9fa);
+    background: var(--editor-panel-bg, #ffffff);
     border-bottom: 1px solid var(--editor-border, #e0e0e0);
     display: flex;
     align-items: center;

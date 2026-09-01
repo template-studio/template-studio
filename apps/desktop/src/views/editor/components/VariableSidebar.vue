@@ -1154,6 +1154,7 @@
     align-items: center;
     justify-content: space-between;
     height: 48px;
+    background: var(--editor-panel-bg, #ffffff);
     padding: 0 12px;
     border-bottom: 1px solid var(--editor-border, #e2e8f0);
   }

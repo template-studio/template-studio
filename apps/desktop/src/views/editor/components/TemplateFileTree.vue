@@ -1430,6 +1430,7 @@
   .explorer-title {
     height: 48px;
     padding: 0 12px;
+    background: var(--editor-panel-bg, #ffffff);
     margin-bottom: 0;
     border-bottom: 1px solid var(--editor-border, #e2e8f0);
     font-size: 12px;
