@@ -328,7 +328,7 @@
 
   .settings-menu {
     width: 160px;
-    border-right: 1px solid #f0f0f0;
+    border-right: 1px solid var(--editor-border, #f0f0f0);
     padding-right: 16px;
     overflow-y: auto;
     flex-shrink: 0;
@@ -373,7 +373,7 @@
     color: var(--editor-primary, #333);
     margin: 0 0 24px 0;
     padding-bottom: 8px;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--editor-border, #f0f0f0);
   }
 
   .setting-item {

@@ -699,7 +699,7 @@
   /* 工具栏 */
   .drawer-toolbar {
     padding: 12px 16px;
-    border-bottom: 1px solid #e8e8e8;
+    border-bottom: 1px solid var(--editor-border, #e8e8e8);
     background: var(--editor-panel-bg, #fff);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
@@ -717,7 +717,7 @@
     min-width: 120px;
     max-width: 600px;
     background: var(--editor-panel-bg, #fff);
-    border-right: 1px solid #e0e0e0;
+    border-right: 1px solid var(--editor-border, #e0e0e0);
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -731,7 +731,7 @@
     font-size: 14px;
     font-weight: 500;
     color: var(--editor-primary, #333);
-    border-bottom: 1px solid #e8e8e8;
+    border-bottom: 1px solid var(--editor-border, #e8e8e8);
     background: var(--editor-panel-bg, #fff);
     display: flex;
     justify-content: space-between;

@@ -183,7 +183,7 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    border-left: 1px solid #e0e0e0;
+    border-left: 1px solid var(--editor-border, #e0e0e0);
     background: var(--editor-inset-bg, #fafafa);
     min-height: 0;
     overflow: hidden;
@@ -191,7 +191,7 @@
 
   .preview-header {
     padding: 16px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--editor-border, #e0e0e0);
     background: var(--editor-panel-bg, #fff);
     display: flex;
     align-items: center;

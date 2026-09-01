@@ -1379,7 +1379,7 @@
   :deep(.canvas-header),
   :deep(.preview-header) {
     padding: 16px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--editor-border, #e0e0e0);
     background: var(--editor-panel-bg, #fff);
     display: flex;
     align-items: center;
@@ -1413,7 +1413,7 @@
   }
 
   .layout-column {
-    border-right: 1px solid #e0e0e0;
+    border-right: 1px solid var(--editor-border, #e0e0e0);
     transition: all 0.3s;
     min-height: 0 !important;
     overflow: hidden !important;
@@ -1457,7 +1457,7 @@
   .breadcrumb-nav {
     padding: 8px 16px;
     background: var(--editor-panel-bg, #fff);
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--editor-border, #e0e0e0);
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -1489,7 +1489,7 @@
 
   .preview-header {
     padding: 16px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--editor-border, #e0e0e0);
     background: var(--editor-panel-bg, #fff);
     flex-shrink: 0 !important;
   }

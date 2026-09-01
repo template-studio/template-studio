@@ -318,7 +318,7 @@
   .array-item {
     padding: 12px;
     background: var(--editor-inset-bg, #fafafa);
-    border: 1px solid #e8e8e8;
+    border: 1px solid var(--editor-border, #e8e8e8);
     border-radius: 4px;
   }
 

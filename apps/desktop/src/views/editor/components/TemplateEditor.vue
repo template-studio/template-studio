@@ -989,7 +989,7 @@
   .file-header {
     height: 48px;
     background: var(--editor-inset-bg, #f8f9fa);
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--editor-border, #e0e0e0);
     display: flex;
     align-items: center;
     justify-content: space-between;

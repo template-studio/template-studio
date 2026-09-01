@@ -183,7 +183,7 @@
   .canvas-component {
     padding: 12px;
     background: var(--editor-panel-bg, #fff);
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--editor-border, #e0e0e0);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;

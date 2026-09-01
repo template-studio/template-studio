@@ -145,7 +145,7 @@
 <style scoped>
   .container-children {
     background: #f9f9f9;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--editor-border, #e0e0e0);
     border-top: none;
     border-radius: 0 0 8px 8px;
     padding: 12px;
@@ -164,7 +164,7 @@
   .child-component {
     padding: 8px 12px;
     background: var(--editor-panel-bg, #fff);
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--editor-border, #e0e0e0);
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s;

@@ -553,7 +553,7 @@
 <style scoped>
   .tree-panel {
     width: 240px;
-    border-right: 1px solid #e0e0e0;
+    border-right: 1px solid var(--editor-border, #e0e0e0);
     display: flex;
     flex-direction: column;
     background: var(--editor-inset-bg, #fafafa);
@@ -564,7 +564,7 @@
 
   .panel-header {
     padding: 16px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--editor-border, #e0e0e0);
     background: var(--editor-panel-bg, #fff);
     display: flex;
     align-items: center;
@@ -599,7 +599,7 @@
     width: 100%;
     height: 22px;
     padding: 1px 4px;
-    border: 1px solid #d9d9d9;
+    border: 1px solid var(--editor-border, #d9d9d9);
     border-radius: 2px;
     font-size: 13px;
     font-family: inherit;
@@ -637,7 +637,7 @@
   .context-menu {
     position: fixed;
     background: var(--editor-panel-bg, #fff);
-    border: 1px solid #e8e8e8;
+    border: 1px solid var(--editor-border, #e8e8e8);
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     padding: 4px 0;

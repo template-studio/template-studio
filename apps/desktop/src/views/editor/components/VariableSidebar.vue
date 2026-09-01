@@ -1495,7 +1495,7 @@
     align-items: center;
     margin-bottom: 16px;
     padding-bottom: 8px;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--editor-border, #f0f0f0);
   }
 
   /* ========== 悬浮卡片样式 ========== */
@@ -1527,7 +1527,7 @@
     justify-content: space-between;
     margin-bottom: 12px;
     padding-bottom: 8px;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--editor-border, #f0f0f0);
   }
 
   .detail-title {

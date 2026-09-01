@@ -357,7 +357,7 @@
   }
 
   .subscribed-list .list-item {
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--editor-border, #e0e0e0);
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 12px;
@@ -421,7 +421,7 @@
   }
 
   .preset-item {
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--editor-border, #e0e0e0);
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 16px;
@@ -440,7 +440,7 @@
 
   .variable-item {
     padding: 8px 0;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--editor-border, #f0f0f0);
   }
 
   .variable-item:last-child {
@@ -552,7 +552,7 @@
 
   /* 预设变量组样式 */
   .preset-group {
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--editor-border, #e0e0e0);
     border-radius: 8px;
     margin-bottom: 16px;
     background: var(--editor-panel-bg, #fff);
@@ -563,7 +563,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--editor-border, #f0f0f0);
     background: var(--editor-inset-bg, #fafafa);
     border-radius: 8px 8px 0 0;
   }
@@ -590,7 +590,7 @@
 
   .variable-item {
     padding: 8px 12px;
-    border: 1px solid #f0f0f0;
+    border: 1px solid var(--editor-border, #f0f0f0);
     border-radius: 6px;
     margin-bottom: 8px;
     background: var(--editor-inset-bg, #fafafa);

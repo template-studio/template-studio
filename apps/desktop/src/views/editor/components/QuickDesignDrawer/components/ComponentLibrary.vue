@@ -63,7 +63,7 @@
   .component-library-panel {
     width: 240px;
     height: 100%;
-    border-right: 1px solid #e0e0e0;
+    border-right: 1px solid var(--editor-border, #e0e0e0);
     display: flex;
     flex-direction: column;
     background: var(--editor-inset-bg, #fafafa);
@@ -73,7 +73,7 @@
 
   .panel-header {
     padding: 16px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--editor-border, #e0e0e0);
     background: var(--editor-panel-bg, #fff);
     flex-shrink: 0;
   }
@@ -116,7 +116,7 @@
     gap: 12px;
     padding: 12px;
     background: var(--editor-panel-bg, #fff);
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--editor-border, #e0e0e0);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;

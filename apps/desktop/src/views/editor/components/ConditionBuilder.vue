@@ -324,7 +324,7 @@
     flex-direction: column;
     gap: 12px;
     padding-left: 16px;
-    border-left: 2px solid #e0e0e0;
+    border-left: 2px solid var(--editor-border, #e0e0e0);
   }
 
   .nested-condition {

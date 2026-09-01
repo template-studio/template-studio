@@ -233,7 +233,7 @@
 <style scoped>
   .property-panel {
     width: 320px;
-    border-left: 1px solid #e0e0e0;
+    border-left: 1px solid var(--editor-border, #e0e0e0);
     display: flex;
     flex-direction: column;
     background: var(--editor-inset-bg, #fafafa);
@@ -249,7 +249,7 @@
 
   .panel-header {
     padding: 16px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--editor-border, #e0e0e0);
     background: var(--editor-panel-bg, #fff);
     display: flex;
     align-items: center;

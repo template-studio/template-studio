@@ -934,7 +934,7 @@
 
   .advanced-drawer :deep(.ant-tabs-nav) {
     background: var(--editor-panel-bg, #fff);
-    border-right: 1px solid #e2e8f0;
+    border-right: 1px solid var(--editor-border, #e2e8f0);
     padding: 12px 0;
     flex-shrink: 0;
     height: 100%;
@@ -999,7 +999,7 @@
   .settings-card {
     margin-bottom: 20px;
     border-radius: 12px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--editor-border, #e2e8f0);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     transition: all 0.3s ease;
     background: var(--editor-panel-bg, #fff);
@@ -1018,7 +1018,7 @@
   .settings-card :deep(.ant-card-head) {
     padding: 16px 20px;
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--editor-border, #e2e8f0);
     min-height: auto;
   }
 
@@ -1085,7 +1085,7 @@
     justify-content: flex-end;
     gap: 12px;
     padding: 12px 24px;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid var(--editor-border, #e2e8f0);
     background: var(--editor-panel-bg, #fff);
   }
 
@@ -1142,7 +1142,7 @@
     padding: 16px;
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
     border-radius: 8px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--editor-border, #e2e8f0);
   }
 
   .backup-preview :deep(.ant-descriptions) {

@@ -861,7 +861,7 @@
     gap: 8px;
     margin-bottom: 16px;
     padding-bottom: 12px;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--editor-border, #f0f0f0);
   }
 
   .error-title {

@@ -187,7 +187,7 @@
 
   .canvas-header {
     padding: 16px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid var(--editor-border, #e0e0e0);
     background: var(--editor-panel-bg, #fff);
     display: flex;
     align-items: center;
@@ -228,7 +228,7 @@
   .context-menu {
     position: fixed;
     background: var(--editor-panel-bg, #fff);
-    border: 1px solid #e8e8e8;
+    border: 1px solid var(--editor-border, #e8e8e8);
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     padding: 4px 0;

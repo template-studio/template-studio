@@ -463,6 +463,6 @@
     justify-content: space-between;
     align-items: center;
     padding-bottom: 12px;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--editor-border, #f0f0f0);
   }
 </style>

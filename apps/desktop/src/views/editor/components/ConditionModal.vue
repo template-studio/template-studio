@@ -302,7 +302,7 @@
   }
 
   .condition-editor {
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--editor-border, #e0e0e0);
     border-radius: 4px;
     padding: 16px;
     background-color: var(--editor-inset-bg, #fafafa);
