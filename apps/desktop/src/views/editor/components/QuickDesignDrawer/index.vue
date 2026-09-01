@@ -151,11 +151,15 @@
       <!-- 表单预览：自绘右侧滑出面板（fixed 定位，不走 antd 抽屉——嵌套抽屉的
            推挤机制会平移父级且关闭后位移残留，实测 translateX(-180) 粘滞） -->
       <teleport to="body">
-        <transition name="form-panel">
-          <div v-if="showForm" class="form-slide-panel">
+          <div
+            v-if="showForm"
+            class="form-slide-panel"
+            :style="{ width: formPanelWidth + 'px' }"
+          >
+            <div class="form-resize-handle" @mousedown="startPanelResize"></div>
             <div class="form-slide-head">
               <strong>表单预览</strong>
-              <button class="form-slide-close" @click="showForm = false">✕</button>
+              <button class="form-slide-close" @click="showForm = false" @mousedown.stop>✕</button>
             </div>
             <div class="form-slide-body">
               <FormPreview
@@ -164,7 +168,6 @@
               />
             </div>
           </div>
-        </transition>
       </teleport>
 
       <!-- Footer -->
@@ -272,7 +275,7 @@
   const expandedKeys = ref([]); // 变量树展开的节点
   const showDesign = ref(true);
   // 预览列宽度（可拖拽调节，范围 220–520）
-  const schemaColWidth = ref(240);
+  const schemaColWidth = ref(320);
 
   const startColResize = (e, which) => {
     e.preventDefault();
@@ -305,6 +308,28 @@
   // 表单预览已改为浮层不占布局空间，两栏共存宽裕：默认全展开
   const showSchema = ref(true);
   const showForm = ref(false);
+
+  // 表单预览浮层宽度调节（左缘拖动，范围 300-700px）
+  const formPanelWidth = ref(460)
+  const startPanelResize = (e) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = formPanelWidth.value
+    const onMove = (ev) => {
+      formPanelWidth.value = Math.min(700, Math.max(300, startW + (startX - ev.clientX)))
+    }
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
   const saving = ref(false);
   const isLoading = ref(false); // 防止加载时触发无限循环
   let isUpdating = false; // 非响应式标志，防止属性更新时触发无限循环
@@ -1597,66 +1622,102 @@
   }
 
   /* ---------- 表单预览滑出面板（自绘，替代嵌套抽屉） ---------- */
-  .form-slide-panel {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 460px;
-    background: var(--editor-panel-bg, #ffffff);
-    border-left: 1px solid var(--editor-border, #e0e0e0);
-    box-shadow: -12px 0 32px -12px rgba(19, 19, 22, 0.18);
-    z-index: 1200;
-    display: flex;
-    flex-direction: column;
-  }
+  
 
-  .form-slide-head {
-    height: 45px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 12px 0 16px;
-    border-bottom: 1px solid var(--editor-border, #e0e0e0);
-  }
+  
 
-  .form-slide-head strong {
-    font-size: 13px;
-    color: var(--editor-primary, #333);
-  }
+  
 
-  .form-slide-close {
-    width: 28px;
-    height: 28px;
-    border: none;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--editor-muted, #999);
-    cursor: pointer;
-    font-size: 13px;
-    transition: background-color 120ms ease, color 120ms ease;
-  }
+  
 
-  .form-slide-close:hover {
-    background: var(--editor-hover-bg, #f1f5f9);
-    color: var(--editor-primary, #333);
-  }
+  
 
-  .form-slide-body {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding: 16px;
-  }
+  
 
-  .form-panel-enter-active,
-  .form-panel-leave-active {
-    transition: transform 0.28s ease;
-  }
+  
 
-  .form-panel-enter-from,
-  .form-panel-leave-to {
-    transform: translateX(100%);
-  }
+  
+</style>
+<style>
+/* 表单预览浮层样式（非 scoped：teleport 到 body 的内容脱离 scoped 属性作用域） */
+.form-slide-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  min-width: 300px;
+  background: var(--editor-panel-bg, #ffffff);
+  border-left: 1px solid var(--editor-border, #e0e0e0);
+  box-shadow: -12px 0 32px -12px rgba(19, 19, 22, 0.18);
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-resize-handle {
+  pointer-events: auto;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+  z-index: 10;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.form-resize-handle:hover {
+  background: var(--editor-accent, #18a058);
+  opacity: 0.5;
+}
+
+.form-slide-head {
+  height: 45px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px 0 16px;
+  border-bottom: 1px solid var(--editor-border, #e0e0e0);
+}
+
+.form-slide-head strong {
+  font-size: 13px;
+  color: var(--editor-primary, #333);
+}
+
+.form-slide-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--editor-muted, #999);
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.form-slide-close:hover {
+  background: var(--editor-hover-bg, #f1f5f9);
+  color: var(--editor-primary, #333);
+}
+
+.form-slide-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.form-panel-enter-active,
+.form-panel-leave-active {
+  transition: transform 0.28s ease;
+}
+
+.form-panel-enter-from,
+.form-panel-leave-to {
+  transform: translateX(100%);
+}
 </style>
