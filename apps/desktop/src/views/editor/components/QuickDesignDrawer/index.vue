@@ -1443,7 +1443,7 @@
     transition: all 0.3s;
     min-height: 0 !important;
     overflow: hidden !important;
-    display: flex !important;
+    display: flex; /* 不能加 !important：会压过 v-show 的内联 display:none，列壳子将无法隐藏 */
     flex-direction: column !important;
   }
 
