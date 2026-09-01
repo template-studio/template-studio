@@ -658,3 +658,19 @@
 **涉及文件：** `views/editor/components/QuickDesignDrawer/**`（7 文件）
 
 **验收结果：** `pnpm build` 通过；目录内非语义色声明全部走变量（含内联样式）。
+
+## 2026-09-01 Variable Studio 三栏布局重构与面板宽度再平衡
+
+**变更内容：** 用户反馈 Variable Studio（快速设计器）中变量栏被挤压 / 设计模式下面板过宽。根因：`calculateColumnWidth()` 把三栏一律 JS 三等分（每栏 33.33%），设计列被压到 426px，内部面板连环挤压。重构为角色分配：设计列 `flex:1` 弹性生长（保底 420px），Schema/表单预览列固定 300px，删除三处内联三等分宽度；内部面板再平衡——变量树 240px 不可压缩（顺带修复其未消费父组件 width prop 导致拖拽宽度刷新丢失的 bug）、组件库 240→220px 不可压缩、属性面板 320→260px 可压缩（保底 200px）、Schema 编辑器补 min-width:0 自行滚动。
+
+**涉及文件：** `views/editor/components/QuickDesignDrawer/index.vue`、`components/{VariableTree,ComponentLibrary,PropertyPanel}.vue`
+
+**验收结果：** 实测设计模式分配：设计列 680（库 220 / 属性 260 / 画布 199→弹性）+ 预览列各 300；变量树模式：树 240 稳定 + Schema 编辑器弹性。窄窗口下牺牲顺序为预览栏→属性面板，工作区最后。
+
+## 2026-09-01 Variable Studio 列宽可拖拽 + 空画布拖放区
+
+**变更内容：** 用户多轮反馈列宽不合适（组件库/变量栏"太大"、面板间"间距"），静态数值调整无法收敛，改为用户自调节：① Schema 列与表单预览列增加左缘拖拽手柄（5px 热区、悬停品牌绿高亮、拖拽范围 220-520px，默认 Schema 260/表单 300）；② 属性面板同款手柄（范围 200-420，默认 260）；③ 组件库 220→190px；④ 空画布改为整幅虚线拖放区（原居中小空态在宽画布中呈现为莫名空白——用户感知的"属性与预览之间的间距"实为空画布/空内容列）。设计模式默认仅设计区全宽（Schema/表单按需点开）。
+
+**涉及文件：** `views/editor/components/QuickDesignDrawer/index.vue`、`components/{PropertyPanel,ComponentLibrary,DesignCanvas}.vue`
+
+**验收结果：** `pnpm build` 通过；实测抽屉内 3 个拖拽手柄就位、Schema 列内联 width 260 生效、拖拽逻辑（mousedown/mousemove/mouseup + 范围钳制 + body 光标）完整。

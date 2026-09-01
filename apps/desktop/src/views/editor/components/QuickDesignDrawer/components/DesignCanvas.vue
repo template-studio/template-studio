@@ -206,9 +206,19 @@
 
   .empty-canvas {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 400px;
+    height: 100%;
+    min-height: 360px;
+    border: 2px dashed var(--editor-border, #e0e0e0);
+    border-radius: 12px;
+    background: var(--editor-panel-bg, #fff);
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+
+    .empty-canvas:hover {
+    border-color: var(--editor-accent, #18a058);
   }
 
   .canvas-components {

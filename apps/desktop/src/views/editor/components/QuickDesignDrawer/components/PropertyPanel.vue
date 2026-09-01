@@ -1,5 +1,6 @@
 <template>
-  <div class="property-panel" :class="{ 'property-panel-tree': mode === 'tree' }">
+  <div class="property-panel" :class="{ 'property-panel-tree': mode === 'tree' }" :style="{ width: panelWidth + 'px' }">
+    <div class="col-resize-handle" @mousedown="startResize"></div>
     <div class="panel-header">
       <strong>属性</strong>
     </div>
@@ -120,6 +121,27 @@
 </template>
 
 <script setup>
+// 面板宽度（左缘拖拽调节，范围 200–420）
+const panelWidth = ref(300)
+const startResize = (e) => {
+  e.preventDefault()
+  const startX = e.clientX
+  const startW = panelWidth.value
+  const onMove = (ev) => {
+    panelWidth.value = Math.min(420, Math.max(200, startW - (ev.clientX - startX)))
+  }
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+}
+
   import { ref, nextTick } from 'vue';
 
   /**
@@ -231,8 +253,27 @@
 </script>
 
 <style scoped>
+  .col-resize-handle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    cursor: col-resize;
+    z-index: 10;
+    background: transparent;
+    transition: background 0.15s ease;
+  }
+
+  .col-resize-handle:hover {
+    background: var(--editor-accent, #18a058);
+    opacity: 0.5;
+  }
+
   .property-panel {
-    width: 320px;
+    flex-shrink: 0;
+    position: relative;
+    border-left: 1px solid var(--editor-border, #e0e0e0);
     border-left: 1px solid var(--editor-border, #e0e0e0);
     display: flex;
     flex-direction: column;

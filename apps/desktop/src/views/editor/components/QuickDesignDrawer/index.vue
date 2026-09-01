@@ -126,11 +126,13 @@
             </div>
           </div>
 
-          <!-- 中栏：Schema 预览 -->
+          <!-- 中栏：Schema 预览（宽度可拖拽调节） -->
           <div
             v-show="showSchema"
             class="layout-column schema-column"
+            :style="{ width: schemaColWidth + 'px' }"
           >
+            <div class="col-resize-handle" @mousedown="startColResize($event, 'schema')"></div>
             <SchemaEditor
               ref="schemaEditorRef"
               v-if="showSchema"
@@ -142,11 +144,13 @@
             />
           </div>
 
-          <!-- 右栏：表单预览 -->
+          <!-- 右栏：表单预览（宽度可拖拽调节） -->
           <div
             v-show="showForm"
             class="layout-column form-column"
+            :style="{ width: formColWidth + 'px' }"
           >
+            <div class="col-resize-handle" @mousedown="startColResize($event, 'form')"></div>
             <div class="form-preview-container">
               <div class="preview-header">
                 <strong>表单预览</strong>
@@ -267,8 +271,33 @@
   const editMode = ref('design'); // 'design' | 'tree'
   const expandedKeys = ref([]); // 变量树展开的节点
   const showDesign = ref(true);
-  const showSchema = ref(true);
-  const showForm = ref(true);
+  // 预览列宽度（可拖拽调节，范围 220–520）
+  const schemaColWidth = ref(220);
+  const formColWidth = ref(300);
+
+  const startColResize = (e, which) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = which === 'schema' ? schemaColWidth.value : formColWidth.value;
+    const onMove = (ev) => {
+      const w = Math.min(520, Math.max(220, startW - (ev.clientX - startX)));
+      if (which === 'schema') schemaColWidth.value = w;
+      else formColWidth.value = w;
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+  // 设计优先：画布需要空间，Schema/表单预览默认收起，经顶部切换按需展开
+  const showSchema = ref(false);
+  const showForm = ref(false);
   const saving = ref(false);
   const isLoading = ref(false); // 防止加载时触发无限循环
   let isUpdating = false; // 非响应式标志，防止属性更新时触发无限循环
@@ -1431,8 +1460,26 @@
 
   .schema-column,
   .form-column {
-    flex: 0 0 360px !important;
-    width: 360px !important;
+    flex: 0 0 auto !important;
+    position: relative;
+  }
+
+  /* 列宽拖拽手柄：左缘 5px 热区 */
+  .col-resize-handle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    cursor: col-resize;
+    z-index: 10;
+    background: transparent;
+    transition: background 0.15s ease;
+  }
+
+  .col-resize-handle:hover {
+    background: var(--editor-accent, #18a058);
+    opacity: 0.5;
   }
 
   /* 设计模式容器 */

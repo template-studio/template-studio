@@ -61,7 +61,8 @@
 
 <style scoped>
   .component-library-panel {
-    width: 240px;
+    width: 190px;
+    flex-shrink: 0;
     height: 100%;
     border-right: 1px solid var(--editor-border, #e0e0e0);
     display: flex;
