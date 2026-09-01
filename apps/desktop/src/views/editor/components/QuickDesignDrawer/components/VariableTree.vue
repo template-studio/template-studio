@@ -553,6 +553,8 @@
 <style scoped>
   .tree-panel {
     width: 240px;
+    flex-shrink: 0;
+    min-width: 200px;
     border-right: 1px solid var(--editor-border, #e0e0e0);
     display: flex;
     flex-direction: column;

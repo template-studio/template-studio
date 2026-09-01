@@ -478,6 +478,10 @@
       type: Array,
       default: () => [],
     },
+    width: {
+      type: Number,
+      default: 280,
+    },
     templateSyntaxCategories: {
       type: Array,
       default: () => [],
@@ -512,7 +516,8 @@
 
   // 状态
   const activeTab = ref('syntax');
-  const sidebarWidth = ref(280);
+  const sidebarWidth = ref(props.width);
+watch(() => props.width, (v) => { if (v && v !== sidebarWidth.value) sidebarWidth.value = v });
   const isResizing = ref(false);
 
   // 变量定义相关状态
@@ -1140,6 +1145,8 @@
   /* 侧边栏容器 */
   .variable-sidebar {
     position: relative;
+    flex-shrink: 0;
+    min-width: 220px;
     background: var(--editor-panel-bg, #ffffff);
     border-right: 1px solid var(--editor-border, #e2e8f0);
     display: flex;

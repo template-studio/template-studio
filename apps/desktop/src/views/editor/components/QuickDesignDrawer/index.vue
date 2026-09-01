@@ -29,7 +29,6 @@
           <div
             v-show="showDesign"
             class="layout-column design-column"
-            :style="{ width: calculateColumnWidth() }"
           >
             <!-- 设计模式 -->
             <div v-if="editMode === 'design'" class="design-canvas-container">
@@ -131,7 +130,6 @@
           <div
             v-show="showSchema"
             class="layout-column schema-column"
-            :style="{ width: calculateColumnWidth() }"
           >
             <SchemaEditor
               ref="schemaEditorRef"
@@ -148,7 +146,6 @@
           <div
             v-show="showForm"
             class="layout-column form-column"
-            :style="{ width: calculateColumnWidth() }"
           >
             <div class="form-preview-container">
               <div class="preview-header">
@@ -1425,6 +1422,19 @@
     border-right: none;
   }
 
+  /* 角色分配：设计列是工作区（弹性生长、保底宽度），Schema/表单列是预览栏（固定窄栏）。
+   * 此前 JS 三等分把设计列也压到 1/3，内部面板连环挤压。 */
+  .design-column {
+    flex: 1 1 auto !important;
+    min-width: 420px !important;
+  }
+
+  .schema-column,
+  .form-column {
+    flex: 0 0 360px !important;
+    width: 360px !important;
+  }
+
   /* 设计模式容器 */
   .design-canvas-container {
     display: flex !important;
@@ -1441,6 +1451,11 @@
     height: 100% !important;
     min-height: 0 !important;
     overflow: hidden !important;
+  }
+
+  .tree-editor-container > :deep(.schema-editor),
+  .tree-editor-container > .schema-editor {
+    min-width: 0;
   }
 
   /* 画布包装器（包含面包屑和画布） */
