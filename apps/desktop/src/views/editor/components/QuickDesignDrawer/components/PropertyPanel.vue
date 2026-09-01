@@ -128,7 +128,7 @@ const startResize = (e) => {
   const startX = e.clientX
   const startW = panelWidth.value
   const onMove = (ev) => {
-    panelWidth.value = Math.min(420, Math.max(200, startW - (ev.clientX - startX)))
+    panelWidth.value = Math.min(440, Math.max(180, startW - (ev.clientX - startX)))
   }
   const onUp = () => {
     document.removeEventListener('mousemove', onMove)

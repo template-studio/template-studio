@@ -280,7 +280,7 @@
     const startX = e.clientX;
     const startW = which === 'schema' ? schemaColWidth.value : formColWidth.value;
     const onMove = (ev) => {
-      const w = Math.min(520, Math.max(220, startW - (ev.clientX - startX)));
+      const w = Math.min(560, Math.max(160, startW - (ev.clientX - startX)));
       if (which === 'schema') schemaColWidth.value = w;
       else formColWidth.value = w;
     };

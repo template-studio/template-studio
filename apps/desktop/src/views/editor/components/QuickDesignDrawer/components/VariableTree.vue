@@ -1,8 +1,9 @@
 <template>
-  <div class="tree-panel">
+  <div class="tree-panel" :style="{ width: panelWidth + 'px' }">
     <div class="panel-header">
       <strong>变量树</strong>
     </div>
+    <div class="col-resize-handle" @mousedown="startResize"></div>
     <div class="tree-content" @contextmenu="onTreeAreaContextMenu">
       <a-tree
         v-if="treeData.length > 0"
@@ -121,6 +122,28 @@
 
 <script setup>
   import { computed, ref, h, onMounted, onUnmounted } from 'vue';
+
+// 面板宽度（右缘拖拽调节，范围 160–420）
+const panelWidth = ref(240)
+const startResize = (e) => {
+  e.preventDefault()
+  const startX = e.clientX
+  const startW = panelWidth.value
+  const onMove = (ev) => {
+    panelWidth.value = Math.min(420, Math.max(160, startW + (ev.clientX - startX)))
+  }
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+}
+
   import {
     TextOutline,
     EllipsisHorizontalOutline,
@@ -551,10 +574,26 @@
 </script>
 
 <style scoped>
+    .col-resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    cursor: col-resize;
+    z-index: 10;
+    background: transparent;
+    transition: background 0.15s ease;
+  }
+
+  .col-resize-handle:hover {
+    background: var(--editor-accent, #18a058);
+    opacity: 0.5;
+  }
+
   .tree-panel {
-    width: 240px;
     flex-shrink: 0;
-    min-width: 200px;
+    position: relative;
     border-right: 1px solid var(--editor-border, #e0e0e0);
     display: flex;
     flex-direction: column;
