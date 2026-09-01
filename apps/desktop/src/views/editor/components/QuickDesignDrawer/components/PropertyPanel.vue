@@ -125,10 +125,16 @@
 const panelWidth = ref(280)
 const startResize = (e) => {
   e.preventDefault()
+  const container = e.target.parentElement.parentElement
+  // 弹性兄弟（画布/编辑器）按保底计入，不吃它的当前宽
+  const fixedSiblingsW = [...container.children]
+    .filter((c) => !c.classList.contains('property-panel') && getComputedStyle(c).flexGrow === '0')
+    .reduce((sum, c) => sum + c.offsetWidth, 0)
+  const maxW = Math.max(200, container.clientWidth - fixedSiblingsW - 200)
   const startX = e.clientX
   const startW = panelWidth.value
   const onMove = (ev) => {
-    panelWidth.value = Math.min(440, Math.max(180, startW - (ev.clientX - startX)))
+    panelWidth.value = Math.min(Math.min(440, maxW), Math.max(180, startW - (ev.clientX - startX)))
   }
   const onUp = () => {
     document.removeEventListener('mousemove', onMove)

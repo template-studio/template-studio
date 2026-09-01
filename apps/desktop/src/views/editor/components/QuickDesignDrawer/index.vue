@@ -277,10 +277,18 @@
 
   const startColResize = (e, which) => {
     e.preventDefault();
+    const column = e.target.parentElement;
+    const layout = column.parentElement;
+    // 弹性列（设计区）按最小保底计入而非当前宽——否则它吃满的空间会
+    // 把可拖列上限压死（预览列永远拖不大、画布相对永远最宽）
+    const fixedSiblingsW = [...layout.children]
+      .filter((c) => c !== column && getComputedStyle(c).display !== 'none' && getComputedStyle(c).flexGrow === '0')
+      .reduce((sum, c) => sum + c.offsetWidth, 0);
+    const maxW = Math.max(200, layout.clientWidth - fixedSiblingsW - 660);
     const startX = e.clientX;
     const startW = which === 'schema' ? schemaColWidth.value : formColWidth.value;
     const onMove = (ev) => {
-      const w = Math.min(560, Math.max(160, startW - (ev.clientX - startX)));
+      const w = Math.min(Math.min(560, maxW), Math.max(160, startW - (ev.clientX - startX)));
       if (which === 'schema') schemaColWidth.value = w;
       else formColWidth.value = w;
     };
@@ -1455,7 +1463,8 @@
    * 此前 JS 三等分把设计列也压到 1/3，内部面板连环挤压。 */
   .design-column {
     flex: 1 1 auto !important;
-    min-width: 420px !important;
+    /* 保底 = 组件库 220 + 画布最小 160 + 属性 280：预览列拖到最大时三者不被裁 */
+    min-width: 660px !important;
   }
 
   .schema-column,

@@ -682,3 +682,11 @@
 **涉及文件：** `views/editor/components/QuickDesignDrawer/index.vue`、`components/{VariableTree,PropertyPanel,ComponentLibrary,DesignCanvas}.vue`
 
 **验收结果：** `pnpm build` 通过；实测点掉两栏后设计列 720→1280 吃满全宽（display:none 真生效、offsetWidth 0）；四个拖拽手柄与范围钳制就位。
+
+## 2026-09-01 拖拽动态上限：单列调整不再破坏整体布局
+
+**变更内容：** 用户反馈拖拽影响整体布局。根因：四个可拖列的上限各自独立写死（如 Schema/表单各 560），同时拖宽时总需求远超抽屉宽度（约 2200 > 1280），布局溢出错乱。修复：拖拽上限改为**动态计算**——开始拖拽时取「所在布局总宽 − 兄弟列实际宽 − 弹性区保底（设计列 440 / 画布 220 / Schema 编辑器 220）」，与原静态上限取小。效果：拖任何一列只会压缩弹性画布到保底为止，其他列宽度永不被挤、整体永不溢出。
+
+**涉及文件：** `views/editor/components/QuickDesignDrawer/index.vue`、`components/{PropertyPanel,VariableTree}.vue`
+
+**验收结果：** `pnpm build` 通过。
