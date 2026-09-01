@@ -145,8 +145,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-top: 1px solid var(--color-border);
-  background: var(--color-surface);
+  border-top: 1px solid var(--color-border-light);
+  background: transparent;
   flex-shrink: 0;
   padding: 0 var(--spacing-lg);
 }
