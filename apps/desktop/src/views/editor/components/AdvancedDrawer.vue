@@ -912,7 +912,7 @@
   /* 抽屉基础样式 */
   .advanced-drawer :deep(.ant-drawer-body) {
     padding: 0;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    background: var(--editor-inset-bg, #f8fafc);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -969,12 +969,12 @@
   }
 
   .advanced-drawer :deep(.ant-tabs-tab:hover) {
-    background: var(--editor-inset-bg, #f1f5f9);
-    color: #334155;
+    background: var(--editor-hover-bg, #f1f5f9);
+    color: var(--editor-primary, #334155);
   }
 
   .advanced-drawer :deep(.ant-tabs-tab-active) {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    background: linear-gradient(135deg, #3e7bfa 0%, #2f63d8 100%);
     color: #fff !important;
     font-weight: 500;
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
@@ -1017,7 +1017,7 @@
 
   .settings-card :deep(.ant-card-head) {
     padding: 16px 20px;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    background: var(--editor-inset-bg, #f8fafc);
     border-bottom: 1px solid var(--editor-border, #e2e8f0);
     min-height: auto;
   }
@@ -1038,7 +1038,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 16px 20px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--editor-border, #f1f5f9);
     transition: all 0.2s ease;
     gap: 20px;
   }
@@ -1098,7 +1098,7 @@
     display: flex;
     align-items: flex-start;
     padding: 12px 0;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--editor-border, #f1f5f9);
     transition: background 0.2s ease;
   }
 
@@ -1140,7 +1140,7 @@
   .backup-preview {
     margin-top: 16px;
     padding: 16px;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    background: var(--editor-inset-bg, #f8fafc);
     border-radius: 8px;
     border: 1px solid var(--editor-border, #e2e8f0);
   }
@@ -1173,31 +1173,4 @@
     }
   }
 
-  /* 暗色模式支持 */
-  @media (prefers-color-scheme: dark) {
-    .advanced-drawer :deep(.ant-drawer-body) {
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    }
-
-    .settings-card {
-      background: #1e293b;
-      border-color: #334155;
-    }
-
-    .settings-card:hover {
-      border-color: #475569;
-    }
-
-    .setting-label > span:first-child {
-      color: #f1f5f9;
-    }
-
-    .setting-description {
-      color: var(--editor-muted, #64748b);
-    }
-
-    .setting-item:hover {
-      background: #334155;
-    }
-  }
 </style>
