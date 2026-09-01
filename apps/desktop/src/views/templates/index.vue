@@ -308,9 +308,9 @@ onMounted(async () => {
 .page-title { margin: 0; font-size: 24px; font-weight: 600; color: var(--color-text); }
 .result-count { color: var(--color-text-secondary); font-size: 14px; }
 .toolbar-right { display: flex; align-items: center; gap: var(--spacing-md); }
-.filter-bar { margin-bottom: var(--spacing-lg); padding: var(--spacing-md); background: var(--color-surface); border-radius: var(--border-radius-lg); border: 1px solid var(--color-border); }
+.filter-bar { margin-bottom: var(--spacing-md); padding: 0 var(--spacing-lg); }
 .filter-row { display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-xs) 0; }
-.filter-row:not(:last-child) { margin-bottom: var(--spacing-md); border-bottom: 1px solid var(--color-border); padding-bottom: var(--spacing-md); }
+.filter-row:not(:last-child) { margin-bottom: var(--spacing-xs); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--spacing-xs); }
 .filter-label { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); white-space: nowrap; min-width: 50px; }
 .templates-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--spacing-md); }
 .edit-entry { color: var(--color-text-secondary); }
