@@ -25,22 +25,8 @@
         </a-button>
       </a-space>
 
-      <!-- 显示开关 -->
+      <!-- 表单预览浮层开关（列显隐已移除：布局角色固定，全部常驻） -->
       <a-space :size="4" style="margin-right: 16px">
-        <a-button
-          size="small"
-          :type="showDesign ? 'primary' : 'default'"
-          @click="handleToggleDesign"
-        >
-          左栏
-        </a-button>
-        <a-button
-          size="small"
-          :type="showSchema ? 'primary' : 'default'"
-          @click="handleToggleSchema"
-        >
-          Schema
-        </a-button>
         <a-button
           size="small"
           :type="showForm ? 'primary' : 'default'"
@@ -124,14 +110,8 @@
     emit('update:editMode', mode);
   };
 
-  const handleToggleDesign = () => {
-    emit('update:showDesign', !props.showDesign);
-  };
-
-  const handleToggleSchema = () => {
-    emit('update:showSchema', !props.showSchema);
-  };
-
+  
+  
   const handleToggleForm = () => {
     emit('update:showForm', !props.showForm);
   };

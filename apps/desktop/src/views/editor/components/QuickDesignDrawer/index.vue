@@ -302,8 +302,8 @@
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   };
-  // 设计优先：画布需要空间，Schema/表单预览默认收起，经顶部切换按需展开
-  const showSchema = ref(false);
+  // 表单预览已改为浮层不占布局空间，两栏共存宽裕：默认全展开
+  const showSchema = ref(true);
   const showForm = ref(false);
   const saving = ref(false);
   const isLoading = ref(false); // 防止加载时触发无限循环

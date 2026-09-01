@@ -698,3 +698,11 @@
 **涉及文件：** `views/editor/components/QuickDesignDrawer/index.vue`、`components/SchemaEditor.vue`
 
 **验收结果：** `pnpm build` 通过。
+
+## 2026-09-01 表单预览面板：滚动条槽位 + 嵌套推挤根治（自绘滑出面板）
+
+**变更内容：** 表单预览打开时页面左移问题历经三修：① `scrollbar-gutter: stable`（全局滚动条槽位，防弹层锁定滚动引起的布局抖动，保留为通用防御）；② `teleport` + `:push="false"` 无效——实测量化发现 ant-design-vue 嵌套抽屉推挤按**组件上下文**（provide/inject）识别而非 DOM 位置，teleport 后仍被推且关闭后 `translateX(-180px)` 位移粘滞残留；③ 最终根治：抛弃嵌套 a-drawer，改**自绘滑出面板**（fixed 定位 + Vue transition 280ms 右滑入、460px、自带标题栏/关闭按钮、样式走编辑器变量族暗色自适应）。同时 Schema 列默认改为显示（表单浮层化后两栏共存宽裕），StudioHeader 三个切换按钮保留但默认全展开。
+
+**涉及文件：** `views/editor/components/QuickDesignDrawer/index.vue`、`assets/styles/themes.css`
+
+**验收结果：** `pnpm build` 通过；实测开启面板前后父抽屉 transform 完全一致、left 恒为 0（零位移），面板 460px 正常渲染。
