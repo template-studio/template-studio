@@ -107,15 +107,11 @@ const emit = defineEmits(['toggle-sidebar', 'go-back', 'minimize', 'maximize', '
 
 <style scoped>
 .header {
-  background: var(--color-navbar);
-  border-bottom: 1px solid var(--color-border);
   padding: 0 var(--spacing-lg);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
   height: var(--navbar-height);
-  line-height: var(--navbar-height);
 }
 
 .header-left {

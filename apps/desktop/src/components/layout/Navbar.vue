@@ -168,7 +168,6 @@ const closeWindow = async () => {
   justify-content: space-between;
   padding: 0 var(--spacing-md);
   height: 100%;
-  background: var(--color-navbar);
   user-select: none; /* Prevent text selection in title bar */
 }
 

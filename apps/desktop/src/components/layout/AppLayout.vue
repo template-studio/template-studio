@@ -125,6 +125,7 @@ const updateWindowSize = () => {
 
 .app-navbar {
   padding: 0;
+  overflow: hidden;
   height: var(--navbar-height);
   line-height: var(--navbar-height);
   width: 100%;
