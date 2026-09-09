@@ -527,3 +527,463 @@ fn get_default_endpoint(provider: &str) -> String {
         _ => "https://api.openai.com/v1".to_string(),
     }
 }
+
+// ===== AI 助手与变量命令（ai_runtime 统一执行层） =====
+
+use crate::ai_runtime::{call_target_from_provider, CallTarget, Protocol};
+
+/// 解析默认调用目标(默认提供商 + 其第一个模型)
+async fn default_call_target(db: &crate::database::Database) -> Result<CallTarget, String> {
+    let provider = db
+        .get_default_ai_provider()
+        .await
+        .map_err(|e| format!("获取默认提供商失败: {}", e))?
+        .ok_or_else(|| "未配置可用的 AI 提供商，请先在设置中配置".to_string())?;
+
+    let provider_name = provider["providerName"].as_str().unwrap_or_default().to_string();
+    let model = db
+        .get_first_chat_model(&provider_name)
+        .await
+        .map_err(|e| format!("获取模型失败: {}", e))?
+        .ok_or_else(|| "默认提供商下没有模型，请先在设置中添加".to_string())?;
+
+    let protocol = Protocol::parse(provider["protocol"].as_str().unwrap_or("openai_compatible"));
+    call_target_from_provider(&provider, &model, protocol)
+}
+
+/// 从模板内容提取 {{ 变量 }} 占位符(去过滤器、去重、保留点路径)
+fn extract_placeholders(content: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut rest = content;
+    while let Some(start) = rest.find("{{") {
+        rest = &rest[start + 2..];
+        let end = match rest.find("}}") {
+            Some(e) => e,
+            None => break,
+        };
+        let expr = rest[..end].trim();
+        rest = &rest[end + 2..];
+        let path = expr.split('|').next().unwrap_or("").trim();
+        let valid = !path.is_empty()
+            && path.chars().next().map_or(false, |c| c.is_alphabetic() || c == '_')
+            && path.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '.');
+        if valid && !out.iter().any(|v| v == path) {
+            out.push(path.to_string());
+        }
+    }
+    out
+}
+
+/// 遍历模板目录收集文本文件样本(扩展名白名单 + 大小/数量/深度上限)
+fn collect_template_samples(root: &std::path::Path) -> Vec<(String, String)> {
+    const EXTS: [&str; 24] = [
+        "rs", "ts", "js", "vue", "java", "kt", "go", "py", "cs", "php", "rb", "sql", "yml",
+        "yaml", "json", "toml", "xml", "html", "css", "scss", "md", "txt", "sh", "properties",
+    ];
+    const SKIP_DIRS: [&str; 7] = ["node_modules", ".git", "target", "dist", "build", ".venv", "__pycache__"];
+    const MAX_FILE: u64 = 128 * 1024;
+    const MAX_TOTAL: usize = 512 * 1024;
+    const MAX_FILES: usize = 200;
+    const MAX_DEPTH: usize = 6;
+
+    let mut files: Vec<(String, String)> = Vec::new();
+    let mut total = 0usize;
+    let mut stack: Vec<(std::path::PathBuf, usize)> = vec![(root.to_path_buf(), 0)];
+
+    while let Some((dir, depth)) = stack.pop() {
+        if depth > MAX_DEPTH || files.len() >= MAX_FILES || total >= MAX_TOTAL {
+            break;
+        }
+        let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().to_string();
+            if path.is_dir() {
+                if !SKIP_DIRS.contains(&name.as_str()) && !name.starts_with('.') {
+                    stack.push((path, depth + 1));
+                }
+            } else {
+                let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                if !EXTS.contains(&ext) {
+                    continue;
+                }
+                let Ok(meta) = entry.metadata() else { continue };
+                if meta.len() > MAX_FILE || total >= MAX_TOTAL {
+                    continue;
+                }
+                let rel = path.strip_prefix(root).unwrap_or(&path).to_string_lossy().replace('\\', "/");
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    total += content.len();
+                    files.push((rel, content));
+                    if files.len() >= MAX_FILES {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    files
+}
+
+/// 从 AI 回复中剥离代码围栏提取 JSON 对象
+fn parse_json_reply(reply: &str) -> Option<serde_json::Value> {
+    let cleaned = reply
+        .trim()
+        .trim_start_matches("```json")
+        .trim_start_matches("```")
+        .trim_end_matches("```")
+        .trim();
+    if let Ok(v) = serde_json::from_str::<serde_json::Value>(cleaned) {
+        return Some(v);
+    }
+    let start = cleaned.find('{')?;
+    let end = cleaned.rfind('}')?;
+    serde_json::from_str::<serde_json::Value>(&cleaned[start..=end]).ok()
+}
+
+/// 项目上下文:表与字段概览(用于变量填充/助手)
+async fn project_schema_summary(
+    db: &crate::database::Database,
+    project_id: i64,
+) -> Result<String, String> {
+    let rows = sqlx::query(
+        "SELECT t.name AS table_name, t.comment AS table_comment,
+                c.name AS col_name, c.data_type AS col_type, c.comment AS col_comment
+         FROM db_tables t LEFT JOIN db_columns c ON c.table_id = t.id
+         WHERE t.project_id = ?1 AND t.table_type = 'table'
+         ORDER BY t.id, c.ordinal_position",
+    )
+    .bind(project_id)
+    .fetch_all(db.pool())
+    .await
+    .map_err(|e| format!("读取项目表结构失败: {}", e))?;
+
+    use sqlx::Row;
+    let mut out = String::new();
+    let mut cur_table = String::new();
+    let mut table_count = 0;
+    for r in rows {
+        let t: String = r.get("table_name");
+        if t != cur_table {
+            table_count += 1;
+            if table_count > 40 {
+                break;
+            }
+            cur_table = t.clone();
+            let tc: Option<String> = r.get("table_comment");
+            out.push_str(&format!(
+                "\n表 {}{}:",
+                t,
+                tc.map(|c| format!("({})", c)).unwrap_or_default()
+            ));
+        }
+        let cn: Option<String> = r.get("col_name");
+        if let Some(cn) = cn {
+            let ct: Option<String> = r.get("col_type");
+            let cc: Option<String> = r.get("col_comment");
+            out.push_str(&format!(
+                "\n  {} {}{}",
+                cn,
+                ct.unwrap_or_default(),
+                cc.map(|c| format!("  // {}", c)).unwrap_or_default()
+            ));
+        }
+    }
+    Ok(out)
+}
+
+/// AI 助手对话(单轮;上下文=模板变量与/或项目表结构)
+#[tauri::command]
+pub async fn ai_chat(
+    message: String,
+    template_path: Option<String>,
+    project_id: Option<i64>,
+    database: tauri::State<'_, DbState>,
+) -> Result<String, String> {
+    let db = database.as_ref();
+    let target = default_call_target(db).await?;
+
+    let mut context = String::from(
+        "你是 Template Studio 桌面端的内置助手,熟悉代码模板、变量设计与数据库建模。用简洁的中文回答。",
+    );
+    if let Some(tp) = &template_path {
+        let root = std::path::Path::new(tp);
+        if root.is_dir() {
+            let samples = collect_template_samples(root);
+            let mut vars: Vec<String> = Vec::new();
+            let mut file_list = String::new();
+            for (i, (rel, content)) in samples.iter().enumerate() {
+                if i < 30 {
+                    file_list.push_str(&format!("\n- {}", rel));
+                }
+                for v in extract_placeholders(content) {
+                    if !vars.contains(&v) && vars.len() < 60 {
+                        vars.push(v);
+                    }
+                }
+            }
+            context.push_str(&format!(
+                "\n\n用户当前模板目录({} 个文件):{}",
+                samples.len(),
+                file_list
+            ));
+            if !vars.is_empty() {
+                context.push_str(&format!("\n模板中的变量占位符: {}", vars.join(", ")));
+            }
+        }
+    }
+    if let Some(pid) = project_id {
+        if let Ok(schema) = project_schema_summary(db, pid).await {
+            context.push_str(&format!("\n\n用户当前项目的表结构:{}", schema));
+        }
+    }
+
+    let reply = crate::ai_runtime::chat(&target, Some(&context), &message, &[]).await?;
+    serde_json::to_string(&serde_json::json!({ "response": reply, "tool_calls": [] }))
+        .map_err(|e| format!("序列化失败: {}", e))
+}
+
+/// AI 分析模板变量:提取占位符并由 AI 推断类型/标题/描述;未配置 AI 时纯提取降级
+#[tauri::command]
+pub async fn ai_analyze_variables(
+    template_path: String,
+    database: tauri::State<'_, DbState>,
+) -> Result<String, String> {
+    let root = std::path::PathBuf::from(&template_path);
+    if !root.is_dir() {
+        return Err("模板路径不存在或不是目录".to_string());
+    }
+
+    let samples = collect_template_samples(&root);
+    let mut vars: Vec<String> = Vec::new();
+    let mut snippet = String::new();
+    for (rel, content) in &samples {
+        for v in extract_placeholders(content) {
+            if !vars.contains(&v) {
+                vars.push(v);
+            }
+        }
+        if snippet.len() < 12000 {
+            snippet.push_str(&format!("\n--- {} ---\n{}\n", rel, content));
+        }
+    }
+
+    if vars.is_empty() {
+        return Ok(serde_json::json!({ "variables": [] }).to_string());
+    }
+
+    // 降级路径:无可用 provider 时返回基础信息
+    let target = match default_call_target(database.as_ref()).await {
+        Ok(t) => t,
+        Err(_) => {
+            let list: Vec<serde_json::Value> = vars
+                .iter()
+                .map(|v| {
+                    serde_json::json!({ "name": v, "type": "string", "title": v, "description": "", "required": true })
+                })
+                .collect();
+            return Ok(serde_json::json!({ "variables": list }).to_string());
+        }
+    };
+
+    let mut target = target;
+    target.temperature = 0.2;
+
+    let system = "你是代码模板变量分析师。根据模板代码片段与占位符列表,推断每个变量的类型(string/number/boolean/array/object)、中文标题、一句话描述、是否必填、合理的默认值。只返回 JSON,不要解释。";
+    let prompt = format!(
+        "占位符列表:\n{}\n\n模板代码片段:\n{}\n\n返回格式:{{\"variables\":[{{\"name\":\"...\",\"type\":\"...\",\"title\":\"...\",\"description\":\"...\",\"required\":true,\"default\":\"...\"}}]}}",
+        vars.join(", "),
+        snippet
+    );
+
+    let reply = crate::ai_runtime::chat(&target, Some(system), &prompt, &[]).await?;
+    let parsed = parse_json_reply(&reply);
+    let list = parsed
+        .and_then(|v| v.get("variables").cloned())
+        .and_then(|v| v.as_array().cloned())
+        .unwrap_or_default();
+
+    // 校验:只保留模板中真实存在的变量,缺失字段补默认
+    let list: Vec<serde_json::Value> = list
+        .into_iter()
+        .filter(|v| vars.contains(&v["name"].as_str().unwrap_or("").to_string()))
+        .map(|v| {
+            serde_json::json!({
+                "name": v["name"],
+                "type": v.get("type").and_then(|t| t.as_str()).unwrap_or("string"),
+                "title": v.get("title").and_then(|t| t.as_str()).unwrap_or(v["name"].as_str().unwrap_or("")),
+                "description": v.get("description").and_then(|t| t.as_str()).unwrap_or(""),
+                "required": v.get("required").and_then(|t| t.as_bool()).unwrap_or(true),
+                "default": v.get("default").cloned().unwrap_or(serde_json::json!("")),
+            })
+        })
+        .collect();
+
+    Ok(serde_json::json!({ "variables": list }).to_string())
+}
+
+/// AI 填充变量值:依据项目表结构为模板变量生成合理取值
+#[tauri::command]
+pub async fn ai_fill_variables(
+    template_path: String,
+    project_id: i64,
+    database: tauri::State<'_, DbState>,
+) -> Result<String, String> {
+    let db = database.as_ref();
+    let target = default_call_target(db).await?;
+
+    let root = std::path::PathBuf::from(&template_path);
+    if !root.is_dir() {
+        return Err("模板路径不存在或不是目录".to_string());
+    }
+
+    let samples = collect_template_samples(&root);
+    let vars: Vec<String> = {
+        let mut v: Vec<String> = Vec::new();
+        for (_, content) in &samples {
+            for p in extract_placeholders(content) {
+                if !v.contains(&p) {
+                    v.push(p);
+                }
+            }
+        }
+        v
+    };
+    if vars.is_empty() {
+        return Ok(serde_json::json!({ "filled": [] }).to_string());
+    }
+
+    let schema = project_schema_summary(db, project_id).await?;
+    let mut target = target;
+    target.temperature = 0.3;
+
+    let system = "你是代码生成变量填充器。根据项目表结构与模板变量列表,为每个变量给出贴合业务语义的具体取值(不要用占位符文本)。confidence 为 0-1 的置信度小数。只返回 JSON。";
+    let prompt = format!(
+        "变量列表:\n{}\n\n项目表结构:{}\n\n返回格式:{{\"filled\":[{{\"name\":\"...\",\"value\":\"...\",\"confidence\":0.8}}]}}",
+        vars.join(", "),
+        schema
+    );
+
+    let reply = crate::ai_runtime::chat(&target, Some(system), &prompt, &[]).await?;
+    let filled = parse_json_reply(&reply)
+        .and_then(|v| v.get("filled").cloned())
+        .and_then(|v| v.as_array().cloned())
+        .unwrap_or_default();
+
+    let filled: Vec<serde_json::Value> = filled
+        .into_iter()
+        .filter(|v| vars.contains(&v["name"].as_str().unwrap_or("").to_string()))
+        .collect();
+
+    Ok(serde_json::json!({ "filled": filled }).to_string())
+}
+
+/// 将变量值写入模板目录下的 variables.json(纯文件写入,不走 AI)
+#[tauri::command]
+pub async fn ai_write_variables(
+    template_path: String,
+    variables: String,
+) -> Result<(), String> {
+    let root = std::path::PathBuf::from(&template_path);
+    if !root.is_dir() {
+        return Err("模板路径不存在或不是目录".to_string());
+    }
+
+    let map: serde_json::Map<String, serde_json::Value> = serde_json::from_str(&variables)
+        .map_err(|e| format!("变量 JSON 解析失败: {}", e))?;
+
+    let out = root.join("variables.json");
+    let pretty = serde_json::to_string_pretty(&map).map_err(|e| format!("序列化失败: {}", e))?;
+    std::fs::write(&out, pretty).map_err(|e| format!("写入失败: {}", e))?;
+
+    Ok(())
+}
+
+/// AI 建议变量:根据模板文件内容为指定变量名推断类型/标题/描述/默认值。
+/// 编辑器场景:文件在前端内存中(服务端模板),由前端随调用传入。
+#[tauri::command]
+pub async fn ai_suggest_variables(
+    files: serde_json::Value,
+    variable_names: Vec<String>,
+    database: tauri::State<'_, DbState>,
+) -> Result<String, String> {
+    if variable_names.is_empty() {
+        return Ok(serde_json::json!({ "suggestions": [] }).to_string());
+    }
+
+    // 构建命中目标变量的文件片段(总量截断,给 AI 用法上下文)
+    let file_list = files.as_array().cloned().unwrap_or_default();
+    let mut snippet = String::new();
+    for f in &file_list {
+        let path = f["path"].as_str().or_else(|| f["filePath"].as_str()).unwrap_or("");
+        let content = f["content"].as_str().or_else(|| f["fileContent"].as_str()).unwrap_or("");
+        if content.is_empty() {
+            continue;
+        }
+        let hit = variable_names
+            .iter()
+            .any(|v| content.contains(&format!("{{{{{}}}", v)) || content.contains(v.as_str()));
+        if hit {
+            snippet.push_str(&format!("\n--- {} ---\n{}\n", path, content));
+            if snippet.len() >= 12000 {
+                break;
+            }
+        }
+    }
+
+    // 降级路径:无可用 provider 时返回基础建议
+    let target = match default_call_target(database.as_ref()).await {
+        Ok(t) => t,
+        Err(_) => {
+            let list: Vec<serde_json::Value> = variable_names
+                .iter()
+                .map(|v| {
+                    serde_json::json!({
+                        "name": v, "type": "string", "title": v,
+                        "description": "", "default": ""
+                    })
+                })
+                .collect();
+            return Ok(serde_json::json!({ "suggestions": list }).to_string());
+        }
+    };
+
+    let mut target = target;
+    target.temperature = 0.2;
+
+    let system = "你是代码模板变量设计师。根据变量在模板代码中的用法,推断每个变量的类型(string/number/boolean/array/object)、中文标题、一句话描述、合理的默认值。只返回 JSON,不要解释。";
+    let prompt = format!(
+        "变量列表:\n{}\n\n模板代码片段:\n{}\n\n返回格式:{{\"suggestions\":[{{\"name\":\"...\",\"type\":\"...\",\"title\":\"...\",\"description\":\"...\",\"default\":\"...\"}}]}}",
+        variable_names.join(", "),
+        snippet
+    );
+
+    let reply = crate::ai_runtime::chat(&target, Some(system), &prompt, &[]).await?;
+    let list = parse_json_reply(&reply)
+        .and_then(|v| v.get("suggestions").cloned())
+        .and_then(|v| v.as_array().cloned())
+        .unwrap_or_default();
+
+    // 校验:只保留请求的变量;类型归一到已知集合
+    let known = ["string", "number", "boolean", "array", "object"];
+    let list: Vec<serde_json::Value> = list
+        .into_iter()
+        .filter(|v| {
+            variable_names
+                .contains(&v["name"].as_str().unwrap_or("").to_string())
+        })
+        .map(|v| {
+            let t = v.get("type").and_then(|t| t.as_str()).unwrap_or("string");
+            let t = if known.contains(&t) { t } else { "string" };
+            serde_json::json!({
+                "name": v["name"],
+                "type": t,
+                "title": v.get("title").and_then(|t| t.as_str()).unwrap_or(v["name"].as_str().unwrap_or("")),
+                "description": v.get("description").and_then(|t| t.as_str()).unwrap_or(""),
+                "default": v.get("default").and_then(|t| t.as_str()).unwrap_or(""),
+            })
+        })
+        .collect();
+
+    Ok(serde_json::json!({ "suggestions": list }).to_string())
+}

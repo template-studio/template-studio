@@ -786,3 +786,19 @@
 **涉及文件：** `apps/desktop/src-tauri/src/{ai_runtime.rs, commands/ai.rs}`
 
 **验收结果：** `cargo build` 零新增警告；tauri dev 自动重编译重启正常。
+
+## 2026-09-09 补齐 4 个 AI 命令 + 孤儿组件发现（任务 #67）
+
+**变更内容：** `commands/ai.rs` 新增并注册 `ai_chat`/`ai_analyze_variables`/`ai_fill_variables`/`ai_write_variables`：自行解析默认提供商（is_default 优先→首个启用）+ 其第一个模型；占位符手写扫描（去过滤器/去重/点路径）；目录采样含白名单与四重上限（128KB/文件、512KB 总量、200 文件、6 深度）；AI JSON 回复剥围栏解析并按模板真实变量过滤；analyze 无 provider 时降级为纯提取；write 为纯文件 IO。`database/ai.rs` 配套 `get_default_ai_provider`/`get_first_chat_model`。**发现**：原调用方 `AiAssistant.vue`/`AiVariablePanel.vue` 是从未挂载的孤儿组件，template-render 实际用非 AI 的 `VariableConfigPanel`——后端能力已就绪，UI 挂载转入 #68（建议直接集成进编辑器）。
+
+**涉及文件：** `apps/desktop/src-tauri/src/{commands/ai.rs, lib.rs, database/ai.rs}`
+
+**验收结果：** `cargo build` 通过零新增警告；应用自动重编译重启；命令经编译期注册生效。
+
+## 2026-09-09 编辑器 AI 建议变量（任务 #68）
+
+**变更内容：** 编辑器「分析变量」弹窗（已有服务端缺失变量检测）接入 AI 补全：① 新命令 `ai_suggest_variables`——文件由前端传入（服务端模板在内存），命中片段截 12KB 喂 AI 推断类型/中文标题/描述/默认值，无 provider 降级、结果过滤归一；② 弹窗新增「AI 补全建议」按钮：按缺失变量出现的文件去重拉内容（≤30 个/单文件 64KB），合并 `suggestedType`（array→object_arr）/`aiTitle`/`aiDescription` 进缺失变量，表格补类型/标题/说明列；③ `handleAddDetectedComponents` AI 字段优先、启发式回落，已存在变量不覆盖。使用路径：编辑器 → QuickDesign → 分析变量 → AI 补全建议 → 添加全部到变量树。
+
+**涉及文件：** `apps/desktop/src-tauri/src/{commands/ai.rs, lib.rs}`、`views/editor/components/QuickDesignDrawer/{index.vue, components/VariableAnalysisModal.vue}`
+
+**验收结果：** `cargo build` + `pnpm build` 通过，应用自动重启；真实 AI 链路待用户在编辑器按使用路径验证。

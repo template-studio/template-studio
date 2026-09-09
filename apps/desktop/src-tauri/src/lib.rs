@@ -151,6 +151,12 @@ pub fn run() {
             commands::ai::ai_test_connection,
             commands::ai::parse_ai_sql,
             commands::ai::execute_ai_sql,
+            // AI 助手与变量命令
+            commands::ai::ai_chat,
+            commands::ai::ai_analyze_variables,
+            commands::ai::ai_fill_variables,
+            commands::ai::ai_write_variables,
+            commands::ai::ai_suggest_variables,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

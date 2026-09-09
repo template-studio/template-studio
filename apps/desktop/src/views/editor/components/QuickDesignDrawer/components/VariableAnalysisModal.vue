@@ -29,8 +29,16 @@
                 <span style="color: var(--editor-muted, #999)">模板中使用但未定义的变量：</span>
                 <a-button
                   size="small"
-                  type="primary"
+                  :loading="aiEnriching"
                   style="margin-left: 12px"
+                  @click="handleAiEnrich"
+                >
+                  AI 补全建议
+                </a-button>
+                <a-button
+                  size="small"
+                  type="primary"
+                  style="margin-left: 8px"
                   @click="handleAddAllMissing"
                 >
                   添加全部到变量树
@@ -203,8 +211,10 @@
 <script setup>
   import { ref, watch, h } from 'vue';
   import { message } from 'ant-design-vue';
+  import { invoke } from '@tauri-apps/api/core';
   import { CloseOutline } from '@/icons/ionicons5';
   import { analyzeTemplateVariables } from '@/api/editor/templates';
+  import { getTemplateFileContent } from '@/api/editor/templateFiles';
 
   /**
    * VariableAnalysisModal 组件
@@ -244,9 +254,22 @@
       width: 150,
     },
     {
-      title: '推测类型',
+      title: '类型',
       dataIndex: 'type',
-      width: 100,
+      width: 90,
+      customRender: ({ record }) => record.suggestedType || record.type || 'string',
+    },
+    {
+      title: '标题',
+      dataIndex: 'aiTitle',
+      width: 140,
+      customRender: ({ text }) => text || '-',
+    },
+    {
+      title: '说明',
+      dataIndex: 'aiDescription',
+      ellipsis: true,
+      customRender: ({ text }) => text || '-',
     },
     {
       title: '出现文件',
@@ -369,6 +392,60 @@
     emit('add-components', missingVars);
     analysisResult.value.missingVariables = [];
     message.success(`已添加 ${missingVars.length} 个变量到变量树`);
+  };
+
+  // AI 补全:按缺失变量出现的文件拉取内容,由桌面端 AI 推断类型/标题/描述
+  const aiEnriching = ref(false);
+  const handleAiEnrich = async () => {
+    const missing = analysisResult.value?.missingVariables;
+    if (!missing || missing.length === 0) {
+      message.warning('没有缺失的变量可补全');
+      return;
+    }
+
+    aiEnriching.value = true;
+    try {
+      const paths = [...new Set(missing.flatMap((v) => v.files || []))].slice(0, 30);
+      const files = [];
+      for (const p of paths) {
+        try {
+          const res = await getTemplateFileContent(props.templateId, p);
+          const content = res.data?.data?.content ?? res.data?.data?.fileContent ?? '';
+          if (content) {
+            files.push({ path: p, content: String(content).slice(0, 64 * 1024) });
+          }
+        } catch (e) {
+          // 单文件拉取失败不影响整体
+        }
+        if (files.length >= 30) break;
+      }
+
+      const result = await invoke('ai_suggest_variables', {
+        files,
+        variableNames: missing.map((v) => v.name),
+      });
+      const data = JSON.parse(result);
+      const byName = new Map((data.suggestions || []).map((s) => [s.name, s]));
+
+      let enriched = 0;
+      for (const v of missing) {
+        const s = byName.get(v.name);
+        if (s) {
+          v.suggestedType = s.type === 'array' ? 'object_arr' : s.type;
+          v.aiTitle = s.title || '';
+          v.aiDescription = s.description || '';
+          enriched += 1;
+        }
+      }
+
+      // 浅拷贝触发表格刷新
+      analysisResult.value = { ...analysisResult.value };
+      message.success(`AI 已补全 ${enriched} 个变量的建议`);
+    } catch (e) {
+      message.error('AI 补全失败: ' + (e.message || e));
+    } finally {
+      aiEnriching.value = false;
+    }
   };
 
   const handleDeleteVariable = (variableName) => {

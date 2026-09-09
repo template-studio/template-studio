@@ -1133,8 +1133,8 @@
       const exists = components.value.some((c) => c.fieldName === detectedVar.name);
       if (exists) return;
 
-      // 智能类型推断
-      const smartType = getSuggestedType(detectedVar);
+      // 智能类型推断(AI 建议优先)
+      const smartType = detectedVar.suggestedType || getSuggestedType(detectedVar);
       const template = templateMap.get(smartType);
 
       if (!template) return;
@@ -1146,8 +1146,9 @@
         type: smartType,
         schema: {
           type: smartType,
-          title: detectedVar.name,
-          description: `模板变量: 在${detectedVar.files?.length || 0}个文件中使用`,
+          title: detectedVar.aiTitle || detectedVar.name,
+          description:
+            detectedVar.aiDescription || `模板变量: 在${detectedVar.files?.length || 0}个文件中使用`,
           required: false,
           default: getDefaultValueForType(smartType),
           insertText: `{{ ${detectedVar.name} }}`,

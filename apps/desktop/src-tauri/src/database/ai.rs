@@ -162,6 +162,54 @@ impl Database {
         Ok(())
     }
 
+    /// 默认提供商:优先 is_default 且启用,否则首个启用者
+    pub async fn get_default_ai_provider(&self) -> Result<Option<serde_json::Value>, sqlx::Error> {
+        let row = sqlx::query(
+            "SELECT id, provider_name, display_name, provider_type, api_key, api_endpoint,
+                    is_enabled, is_default, temperature, max_tokens, timeout_seconds,
+                    protocol, created_at, updated_at
+             FROM ai_providers
+             WHERE is_enabled = 1
+             ORDER BY is_default DESC, id ASC
+             LIMIT 1",
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| {
+            serde_json::json!({
+                "id": r.get::<i64, _>("id"),
+                "providerName": r.get::<String, _>("provider_name"),
+                "displayName": r.get::<String, _>("display_name"),
+                "providerType": r.get::<String, _>("provider_type"),
+                "apiKey": r
+                    .get::<Option<String>, _>("api_key")
+                    .map(|k| crate::database::credential::decrypt(&k).unwrap_or_default()),
+                "apiEndpoint": r.get::<Option<String>, _>("api_endpoint"),
+                "isEnabled": r.get::<i32, _>("is_enabled") == 1,
+                "isDefault": r.get::<i32, _>("is_default") == 1,
+                "temperature": r.get::<f64, _>("temperature"),
+                "maxTokens": r.get::<i32, _>("max_tokens"),
+                "timeoutSeconds": r.get::<i32, _>("timeout_seconds"),
+                "protocol": r.get::<String, _>("protocol"),
+            })
+        }))
+    }
+
+    /// 提供商下第一个对话模型(model_id)
+    pub async fn get_first_chat_model(
+        &self,
+        provider_name: &str,
+    ) -> Result<Option<String>, sqlx::Error> {
+        let row: Option<(String,)> = sqlx::query_as(
+            "SELECT model_id FROM ai_models WHERE provider_name = ?1 ORDER BY id ASC LIMIT 1",
+        )
+        .bind(provider_name)
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(row.map(|(m,)| m))
+    }
+
     /// 获取提供商的所有模型（分组）
     pub async fn get_ai_provider_models_grouped(
         &self,
