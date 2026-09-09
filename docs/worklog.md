@@ -746,3 +746,11 @@
 **涉及文件：** `views/languages/{index.vue,components/LanguageDialog.vue}`、`views/mappings/index.vue`、`views/my-templates/index.vue`、`views/project/tables/components/TableDialog.vue`
 
 **验收结果：** `pnpm build` 通过；grep 复查顶层实体按钮无"添加"残留，编辑器容器类"添加X"与"添加映射"按约定保留。
+
+## 2026-09-09 设置页分组卡质感升级
+
+**变更内容：** 设置分组卡原为灰底（#f8f8f7）+ 8px 圆角 + 零阴影的平面样式，与全应用"白色浮卡"语言脱节。升级：分组卡改白色浮卡（`--color-card-bg` + 发丝边 + `--shadow-panel` 柔和双层阴影 + 12px 卡片级圆角）；组标题从 14px 粗体降为 13px/600/次级色 + 0.3px 字距的安静标签，与 14px/500 的行标题形成层级；分隔线改 `--color-border-light` 更轻；设置行 32→36px 行高；容器内边距 20→24。同时清除 settings.css 中冗余的 `[data-theme=dark]` 覆盖段（令牌已自适配暗色）。布局结构未动（用户满意）。
+
+**涉及文件：** `assets/styles/settings.css`（所有设置子页共用 `.setting-group` 一处生效）
+
+**验收结果：** `pnpm build` 通过；浏览器实测分组卡 computed 样式为白色背景 + 12px 圆角 + 双层柔和阴影，标题/分隔线/行高细节全部按新规格生效。

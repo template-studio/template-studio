@@ -1,12 +1,12 @@
-/* Cherry Studio 风格的设置组件样式 */
+/* 设置组件样式：白色浮卡分组，与全应用卡片语言一致（令牌自适配暗色） */
 
 .setting-container {
   display: flex;
   flex-direction: column;
   flex: 1;
   height: 100%;
-  padding: 20px;
-  padding-top: 15px;
+  padding: 24px;
+  padding-bottom: 32px;
   overflow-y: auto;
   background: var(--color-background);
 }
@@ -16,11 +16,12 @@
 }
 
 .setting-group {
-  margin-bottom: 20px;
-  border-radius: 8px;
+  margin-bottom: 16px;
+  border-radius: var(--border-radius-lg);
   border: 1px solid var(--color-border);
-  padding: 16px;
-  background: var(--color-surface);
+  padding: 18px 20px;
+  background: var(--color-card-bg);
+  box-shadow: var(--shadow-panel);
 }
 
 .setting-title {
@@ -28,28 +29,30 @@
   justify-content: space-between;
   align-items: center;
   user-select: none;
-  font-size: 14px;
-  font-weight: bold;
-  color: var(--color-text);
-  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--color-text-secondary);
+  margin-bottom: 14px;
 }
 
 .setting-divider {
-  margin: 10px 0;
-  border-top: 1px solid var(--color-border);
+  margin: 12px 0;
+  border-top: 1px solid var(--color-border-light);
 }
 
 .setting-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 32px;
-  padding: 4px 0;
+  min-height: 36px;
+  padding: 6px 0;
 }
 
 .setting-row-title {
   font-size: 14px;
-  line-height: 18px;
+  font-weight: 500;
+  line-height: 20px;
   color: var(--color-text);
 }
 
@@ -57,38 +60,12 @@
   font-size: 12px;
   color: var(--color-text-secondary);
   margin-top: 4px;
-  opacity: 0.8;
+  line-height: 1.5;
 }
 
 .setting-description {
   font-size: 12px;
   color: var(--color-text-secondary);
   margin-top: 8px;
-  line-height: 1.4;
-}
-
-/* 深色主题调整 */
-[data-theme="dark"] .setting-group {
-  background: var(--color-surface-dark);
-  border-color: var(--color-border-dark);
-}
-
-[data-theme="dark"] .setting-title {
-  color: var(--color-text-dark);
-}
-
-[data-theme="dark"] .setting-row-title {
-  color: var(--color-text-dark);
-}
-
-[data-theme="dark"] .setting-help-text {
-  color: var(--color-text-secondary-dark);
-}
-
-[data-theme="dark"] .setting-description {
-  color: var(--color-text-secondary-dark);
-}
-
-[data-theme="dark"] .setting-divider {
-  border-top-color: var(--color-border-dark);
+  line-height: 1.5;
 }
