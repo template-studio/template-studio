@@ -1333,3 +1333,166 @@ fn sanitize_var_name(value: &str, fallback: &str) -> String {
     }
     name
 }
+
+// ===== agent 编辑轮次(工具协议核心,前端执行工具) =====
+
+/// edit_agent 系统提示词(资产化,git 版本化)
+pub const EDIT_AGENT_PROMPT: &str = include_str!("../../prompts/edit_agent.md");
+
+/// 前端会话消息 → rig Message。
+/// 线协议(前端 JSON):
+///   {role:"system", content}
+///   {role:"user", content}
+///   {role:"assistant", content?, tool_calls?:[{id,name,arguments}]}
+///   {role:"tool_result", tool_call_id, content}
+use rig_core::message::Message;
+
+fn agent_messages_to_rig(messages: &serde_json::Value) -> Result<Vec<Message>, String> {
+    use rig_core::message::{
+        AssistantContent, Text, ToolCall, ToolCallId, ToolFunction, ToolResult,
+        ToolResultContent, UserContent,
+    };
+
+    let arr = messages
+        .as_array()
+        .ok_or_else(|| "messages 格式错误:应为数组".to_string())?;
+    let mut out = Vec::new();
+    for m in arr {
+        let role = m.get("role").and_then(|r| r.as_str()).unwrap_or("user");
+        match role {
+            "system" => {
+                let c = m.get("content").and_then(|c| c.as_str()).unwrap_or("");
+                out.push(Message::System { content: c.to_string() });
+            }
+            "assistant" => {
+                let mut content: Vec<AssistantContent> = Vec::new();
+                if let Some(t) = m.get("content").and_then(|c| c.as_str()).filter(|s| !s.is_empty()) {
+                    content.push(AssistantContent::Text(Text { text: t.to_string(), ..Default::default() }));
+                }
+                if let Some(calls) = m.get("tool_calls").and_then(|c| c.as_array()) {
+                    for c in calls {
+                        content.push(AssistantContent::ToolCall(ToolCall {
+                            id: ToolCallId::new_or_mint(c.get("id").and_then(|v| v.as_str()).unwrap_or("")),
+                            provider: None,
+                            function: ToolFunction {
+                                name: c.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                                arguments: c.get("arguments").cloned().unwrap_or(serde_json::json!({})),
+                            },
+                            signature: None,
+                            additional_params: None,
+                        }));
+                    }
+                }
+                if !content.is_empty() {
+                    out.push(Message::Assistant { id: None, content });
+                }
+            }
+            "tool_result" => {
+                out.push(Message::User {
+                    content: vec![UserContent::ToolResult(ToolResult {
+                        call: ToolCallId::new_or_mint(
+                            m.get("tool_call_id").and_then(|v| v.as_str()).unwrap_or(""),
+                        ),
+                        provider: None,
+                        name: m.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                        content: vec![ToolResultContent::Text(Text {
+                            text: m.get("content").and_then(|c| c.as_str()).unwrap_or("").to_string(),
+                            ..Default::default()
+                        })],
+                    })],
+                });
+            }
+            _ => {
+                out.push(Message::User {
+                    content: vec![UserContent::Text(Text {
+                        text: m.get("content").and_then(|c| c.as_str()).unwrap_or("").to_string(),
+                        ..Default::default()
+                    })],
+                });
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// agent 单轮:消息 + 工具 schema 进,返回最终文本或待执行工具调用。
+/// 工具由前端执行(工作副本在 JS 侧),结果以 role:"tool_result" 消息回传下一轮。
+/// P0 仅支持 OpenAI 兼容协议(当前全部预置 provider 均属此类)。
+#[tauri::command]
+pub async fn ai_agent_turn(
+    messages: serde_json::Value,
+    tools: serde_json::Value,
+    database: tauri::State<'_, DbState>,
+) -> Result<String, String> {
+    use rig_core::client::CompletionClient;
+    use rig_core::completion::{AssistantContent, ToolDefinition};
+    use rig_core::completion::CompletionModel as _;
+
+    let target = default_call_target(database.as_ref()).await?;
+    let mut target = target;
+    target.temperature = 0.2;
+
+    let mut defs = Vec::new();
+    for t in tools.as_array().cloned().unwrap_or_default() {
+        let name = t.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        if name.is_empty() {
+            continue;
+        }
+        defs.push(ToolDefinition {
+            name,
+            description: t.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+            parameters: t.get("parameters").cloned().unwrap_or(serde_json::json!({})),
+        });
+    }
+
+    if target.protocol != Protocol::OpenAiCompatible {
+        return Err("agent 模式暂仅支持 OpenAI 兼容协议的 provider".to_string());
+    }
+
+    let client = crate::ai_runtime::openai_client(&target)?;
+    let model = client.completion_model(target.model.clone());
+    let rig_messages = agent_messages_to_rig(&messages)?;
+
+    // 会话全在 messages,空 prompt 仅占位(prompt 与 messages 一并序列化)
+    let mut req = model
+        .completion_request(String::new())
+        .temperature(target.temperature)
+        .max_tokens(target.max_tokens)
+        .messages(rig_messages);
+    if !defs.is_empty() {
+        req = req.tools(defs);
+    }
+
+    let resp = model
+        .completion(req.build())
+        .await
+        .map_err(|e| format!("AI 调用失败: {}", e))?;
+
+    let mut calls = Vec::new();
+    let mut text = String::new();
+    for c in resp.choice {
+        match c {
+            AssistantContent::Text(t) => text.push_str(&t.text),
+            AssistantContent::ToolCall(tc) => {
+                calls.push(serde_json::json!({
+                    "id": tc.id.to_string(),
+                    "name": tc.function.name,
+                    "arguments": tc.function.arguments,
+                }));
+            }
+            _ => {}
+        }
+    }
+
+    if calls.is_empty() {
+        Ok(serde_json::json!({ "type": "final", "text": text }).to_string())
+    } else {
+        Ok(serde_json::json!({ "type": "tool_calls", "calls": calls }).to_string())
+    }
+}
+
+/// 返回 edit_agent 系统提示词(前端组装 agent 会话用)
+#[tauri::command]
+pub fn ai_get_agent_prompt() -> String {
+    EDIT_AGENT_PROMPT.to_string()
+}

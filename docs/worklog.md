@@ -914,3 +914,43 @@
 **涉及文件：** `views/editor/components/TemplateFileTree.vue`
 
 **验收结果：** `pnpm build` 通过；浏览器实测两键 28px/`opacity:1` 常显。
+
+## 2026-09-09 AI 编辑工具面与提示词架构设计（任务 #84）
+
+**变更内容：** 方向文档增补第 8/9 节。§8 AI 参与模板编辑：前端执行工具 + Rust 模型轮次的混合架构（PAT 留 JS 零迁移）；最小工具集（list_files/read_file/propose_edit/render_file/list_variables）；草稿-确认两段式安全模型，render_file 本地渲染让 AI 自验证闭环；停靠栏升级 agent 控制台。§9 提示词架构（参考 pi-agent）：系统提示+工具定义 <1000 token、prompts/*.md 资产化（include_str! + git 版本化）、TaskSpec 场景注册表收编现有内联提示词、XML 标签上下文注入、输出契约+解析失败自修复重试、模板作者规则注入。
+
+**涉及文件：** `dev-docs/ai-desktop-integration.md`
+
+**验收结果：** 设计产出，bcode #84 带产物完成待审。
+
+## 2026-09-09 修订 §8：patch 原语与工作副本单一事实源（任务 #85）
+
+**变更内容：** 复审反馈成立：全量保存不可取、直写远端有双写者同步冲突。方向文档 §8 修订——① 编辑对象定为**当前编辑器会话工作副本**（打开缓冲区 + 惰性缓存）：读含未保存修改、写只进工作副本、落库走既有唯一保存通道，架构上消灭双写者；② 编辑原语改 **exact-match patch**（`edit_file(old_string,new_string)`/`insert_lines`/`create_file`）：小 diff 省 token，匹配失败即天然并发守卫（内容变了→重读重试）；③ render_file 按工作副本当前内容本地渲染（render_string_content），AI 自验证闭环不经服务端。
+
+**涉及文件：** `dev-docs/ai-desktop-integration.md`
+
+**验收结果：** 设计修订产出，bcode #85 带产物完成待审。
+
+## 2026-09-09 §8.6 WebSocket 协作编辑兼容性（任务 #86）
+
+**变更内容：** 方向文档增补 §8.6：现有 AI 编辑设计对 WS 协作的兼容性——工具面向工作副本抽象（传输层替换零影响）、exact-match patch 内容锚定（与 OT/CRDT 契合、并发下安全降级）；P2 实现时补 `DocumentSync` 薄接口缝（自动保存与 AI patch 同走，HTTP 先行、WS/CRDT 将来只换一处）；协作态语义延伸（AI=另一参与者、ops 广播带归属、冲突从文件级 LWW 升级 CRDT 融合）。
+
+**涉及文件：** `dev-docs/ai-desktop-integration.md`
+
+**验收结果：** 设计产出，bcode #86 带产物完成待审。
+
+## 2026-09-09 §8.5 读前置与新鲜度守卫（任务 #87）
+
+**变更内容：** 方向文档新增 §8.5（原 8.5/8.6 顺移 8.6/8.7）。① 读前置：edit/insert/create 前强制校验本会话已 read，未读即结构化错误拒绝（模型自然补救），工具层硬校验为准、提示词仅引导；② 改动戳：工作副本 per-path `contentVersion`——用户编辑 bump、AI patch（`origin: 'ai-tool'`）与自动保存不 bump，read 记快照、edit 比对，过期拒绝并要求重读（全文件级，比 exact-match 片段级更严）；③ 外部改动提示：agent 循环中改动以 `file-changed` 系统消息注入下一轮、循环外改动下次工具调用返回 stale 标记，两级覆盖全部时序。
+
+**涉及文件：** `dev-docs/ai-desktop-integration.md`
+
+**验收结果：** 设计产出，章节编号校正（8.1-8.7 连续），bcode #87 带产物完成待审。
+
+## 2026-09-09 AI 编辑代理落地（任务 #88-#91）
+
+**变更内容：** §8/§9 设计全量实施。① `ai_agent_turn` 命令（#88）：前端 JSON 线协议 → rig Message，工具 schema 注入 `completion_request.tools`，choice 解析返回 tool_calls 或 final；rig 0.42 适配（`rig_core::message` 顶层路径、ToolCall 显式字段、`ToolCallId::new_or_mint`）；P0 仅 OpenAI 兼容协议。② 提示词资产化起步（#91）：`src-tauri/prompts/edit_agent.md`（include_str!，七条工作规则）+ `ai_get_agent_prompt`。③ 前端工作副本与七工具（#89）：path→{content,base,version,readVersion,hasRead}，打开文件 watch 实现改动戳；list/read/edit/insert/create/render/list_variables；读前置+新鲜度+old_string 唯一性三重守卫，结构化错误引导模型自补救；render_file 走本地渲染闭环自验证。④ agent 控制台（#90）：停靠栏双模式（对话/编辑代理）、工具调用时间线、diff 卡片（行级差异+预览）、应用全部（走既有 editTemplateFile 通道，新文件先建条目；buffer-replace 回填打开缓冲区、files-updated 刷新树）、全部放弃；循环 12 轮上限、工具结果 8KB 截断。
+
+**涉及文件：** `src-tauri/{prompts/edit_agent.md(新增), src/commands/ai.rs, src/ai_runtime.rs, src/lib.rs}`、`views/editor/{index.vue, components/EditorAiAssistant.vue}`
+
+**验收结果：** `cargo build` + `pnpm build` 零错误；agent 真实链路（需 provider+登录态）在桌面端验证：编辑器 → AI 助手 → 编辑代理。

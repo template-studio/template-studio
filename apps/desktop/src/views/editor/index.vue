@@ -99,7 +99,11 @@
       <EditorAiAssistant
         v-model:open="aiDockOpen"
         :current-file-path="currentFilePath"
+        :current-file-content="currentFileContent"
         :template-variables="templateVariables"
+        :template-id="route.params.id"
+        @buffer-replace="onAgentBufferReplace"
+        @files-updated="onAgentFilesUpdated"
       />
     </div>
 
@@ -358,6 +362,17 @@
   const showFullRenderDrawer = ref(false);
   const aiDockOpen = ref(false);
   const showReleasesModal = ref(false);
+
+  // AI 代理应用后的回填:打开中的文件直接换缓冲区,其余刷新文件树
+  const onAgentBufferReplace = ({ path, content }) => {
+    if (path === currentFilePath.value) {
+      currentFileContent.value = content;
+      hasUnsavedChanges.value = false;
+    }
+  };
+  const onAgentFilesUpdated = () => {
+    onTreeReload();
+  };
 
   const editorSettings = ref({
     autoSave: {

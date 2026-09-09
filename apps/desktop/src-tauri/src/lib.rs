@@ -157,6 +157,8 @@ pub fn run() {
             commands::ai::ai_fill_variables,
             commands::ai::ai_write_variables,
             commands::ai::ai_suggest_variables,
+            commands::ai::ai_agent_turn,
+            commands::ai::ai_get_agent_prompt,
             // 模板提取向导
             commands::ai::extract_scan_dir,
             commands::ai::extract_read_files,

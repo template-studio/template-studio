@@ -188,7 +188,7 @@ async fn run_chat<M: CompletionModel + Clone>(
 
 // ---- 各协议 client 构造 ----
 
-fn openai_client(target: &CallTarget) -> Result<rig_core::providers::openai::Client, String> {
+pub(crate) fn openai_client(target: &CallTarget) -> Result<rig_core::providers::openai::Client, String> {
     let mut b = rig_core::providers::openai::Client::builder().api_key(target.api_key.clone());
     if let Some(u) = &target.base_url {
         b = b.base_url(u.clone());
