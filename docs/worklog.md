@@ -842,3 +842,19 @@
 **涉及文件：** `views/editor/{index.vue, components/EditHeader.vue, components/EditorAiAssistant.vue}`
 
 **验收结果：** `pnpm build` 通过；浏览器实测 7 键就位、拖拽区生效、星光开关联动停靠栏与激活态、FAB 已移除；窗口三键真实效果在桌面端生效。
+
+## 2026-09-09 编辑器头部关闭按钮去重（任务 #75）
+
+**变更内容：** #74 复审反馈：「关闭编辑器」与「关闭窗口」同为 X 图标语义重复。前者改为返回语义（左箭头 + 「返回模板列表」提示），X 图标仅保留给关窗；清理失宿主的 `.action-close` 红悬停样式（危险悬停由 `.win-close` 承担）。
+
+**涉及文件：** `views/editor/components/EditHeader.vue`
+
+**验收结果：** `pnpm build` 通过；浏览器实测 7 键中「关闭」语义唯一（关窗），返回箭头就位。
+
+## 2026-09-09 全量渲染图标重设计（任务 #76）
+
+**变更内容：** 新建 `RenderIcon.vue`（文档折角轮廓 + 内部 `</>` 代码括号，"模板产出为代码"语义、呼应 logo 母题；1.8/1.6 线宽圆头线形风格，currentColor 深浅自适应），EditHeader 全量渲染按钮由 `PlayOutline` 播放三角替换为该图标。
+
+**涉及文件：** `components/icons/RenderIcon.vue(新增)`、`views/editor/components/EditHeader.vue`
+
+**验收结果：** `pnpm build` 通过；浏览器实测图标 5 路径就位、play 三角清除。

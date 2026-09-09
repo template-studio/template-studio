@@ -47,13 +47,13 @@
       <a-tooltip>
         <template #title>全量渲染</template>
         <button class="action-icon" @click="$emit('full-render')">
-          <PlayOutline style="font-size: 18px" />
+          <RenderIcon :size="18" />
         </button>
       </a-tooltip>
       <a-tooltip>
-        <template #title>关闭编辑器</template>
-        <button class="action-icon action-close" @click="$emit('close-edit')">
-          <CloseOutline style="font-size: 18px" />
+        <template #title>返回模板列表</template>
+        <button class="action-icon" @click="$emit('close-edit')">
+          <ArrowLeftOutlined style="font-size: 16px" />
         </button>
       </a-tooltip>
 
@@ -81,8 +81,9 @@
     PlayOutline,
     CloseOutline,
   } from '@/icons/ionicons5';
-  import { MinusOutlined, BorderOutlined } from '@ant-design/icons-vue';
+  import { MinusOutlined, BorderOutlined, ArrowLeftOutlined } from '@ant-design/icons-vue';
   import AiIcon from '@/components/icons/AiIcon.vue';
+  import RenderIcon from '@/components/icons/RenderIcon.vue';
   import { tauriApi } from '@/utils/tauriApi';
 
   const VariablesOutline = () =>
@@ -290,11 +291,6 @@
   .action-icon:hover {
     background: var(--editor-hover-bg, #f1f5f9);
     color: var(--editor-primary, #1e293b);
-  }
-
-  .action-icon.action-close:hover {
-    background: #fef2f2;
-    color: #ef4444;
   }
 
   .action-icon.ai-active {
