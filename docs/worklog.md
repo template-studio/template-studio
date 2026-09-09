@@ -1050,3 +1050,11 @@
 **涉及文件：** `src-tauri/prompts/edit_agent.md`、`views/editor/components/EditorAiAssistant.vue`
 
 **验收结果：** 双端构建零错误。
+
+## 2026-09-10 @ 文件引用补全（任务 #104）
+
+**变更内容：** agent 输入框支持 `@` 引用模板文件：聚焦时惰性加载文件树路径清单，输入尾部 `@xxx` 实时过滤（包含匹配，至多 8 项），点击替换为 `@完整路径␣`（mousedown 防失焦）；路径随任务进入上下文，配合 read_file 工具使用。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** `pnpm build` 通过。

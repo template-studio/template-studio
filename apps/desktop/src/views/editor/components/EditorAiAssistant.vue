@@ -82,9 +82,12 @@
           <a-button type="primary" size="small" :loading="applying" @click="applyAll">应用全部修改({{ dirtyFiles.length }})</a-button>
           <a-button size="small" :disabled="applying" @click="discardAll">全部放弃</a-button>
         </div>
+        <div v-if="atMatches.length > 0" class="at-panel">
+          <button v-for="p in atMatches" :key="p" class="at-item" @mousedown.prevent="pickAt(p)">{{ p }}</button>
+        </div>
         <Sender v-model:value="agentInput" :loading="agentRunning" :disabled="applying"
-          placeholder="描述编辑任务,如:把端口 8080 提取为变量"
-          submit-type="enter" @submit="runAgent" @cancel="abortAgent" />
+          placeholder="描述编辑任务,如:把端口 8080 提取为变量(@ 引用文件)"
+          submit-type="enter" @submit="runAgent" @cancel="abortAgent" @focus="loadFilePaths" />
       </div>
     </template>
   </div>
@@ -201,6 +204,29 @@ const agentSummary = ref('')
 const abortFlag = ref(false)
 const taskMessages = ref([])
 const todos = ref([])
+const filePaths = ref([])
+const loadFilePaths = async () => {
+  if (filePaths.value.length > 0) return
+  try {
+    const res = await getTemplateFileTree(tid())
+    const paths = []
+    const walk = (nodes) => nodes.forEach((n) => {
+      if (n.isDirectory || n.is_directory) { walk(n.children || []) } else { paths.push(n.filePath || n.file_path) }
+    })
+    walk(res.data?.data?.tree || [])
+    filePaths.value = paths
+  } catch {}
+}
+const atSuffix = computed(() => {
+  const m = /(^|\s)@([\w\/.\-]*)$/.exec(agentInput.value || '')
+  return m ? m[2] : null
+})
+const atMatches = computed(() =>
+  atSuffix.value === null ? [] : filePaths.value.filter((p) => p.includes(atSuffix.value)).slice(0, 8)
+)
+const pickAt = (path) => {
+  agentInput.value = (agentInput.value || '').replace(/@([\w\/.\-]*)$/, '@' + path + ' ')
+}
 
 // ===== 会话持久化(localStorage,按模板隔离;续跑时工具结果已裁剪) =====
 let sessionName = null  // 当前会话时间戳名;null=新会话
