@@ -954,3 +954,11 @@
 **涉及文件：** `src-tauri/{prompts/edit_agent.md(新增), src/commands/ai.rs, src/ai_runtime.rs, src/lib.rs}`、`views/editor/{index.vue, components/EditorAiAssistant.vue}`
 
 **验收结果：** `cargo build` + `pnpm build` 零错误；agent 真实链路（需 provider+登录态）在桌面端验证：编辑器 → AI 助手 → 编辑代理。
+
+## 2026-09-09 修复 rig 默认 Responses API 解析失败（任务 #92）
+
+**变更内容：** 实测报 `JsonError: missing field cached_tokens`。根因：rig-core 0.42 的 `openai::Client` 默认 ext 为 OpenAIResponsesExt（请求走 `/responses`），GLM 等兼容端点返回的 usage 结构不合其 Responses 模型。修复：`ai_runtime::openai_client` 构造后链 `.completions_api()` 切为 CompletionsClient（传统 `/chat/completions`，所有 OpenAI 兼容端点通用），chat 与 agent 链路一并受益。
+
+**涉及文件：** `apps/desktop/src-tauri/src/ai_runtime.rs`
+
+**验收结果：** `cargo build` 零错误；tauri dev 自动重编译重启，用户重试编辑代理验证。

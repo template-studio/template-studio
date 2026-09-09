@@ -188,12 +188,19 @@ async fn run_chat<M: CompletionModel + Clone>(
 
 // ---- 各协议 client 构造 ----
 
-pub(crate) fn openai_client(target: &CallTarget) -> Result<rig_core::providers::openai::Client, String> {
+/// OpenAI 兼容客户端,走传统 /chat/completions。
+/// rig 0.42 的 openai::Client 默认是 Responses API(/responses)——多数兼容端点
+/// (GLM/DeepSeek 等)不实现或返回结构不合其模型(如 missing cached_tokens),
+/// 故统一切到 Chat Completions。
+pub(crate) fn openai_client(
+    target: &CallTarget,
+) -> Result<rig_core::providers::openai::CompletionsClient, String> {
     let mut b = rig_core::providers::openai::Client::builder().api_key(target.api_key.clone());
     if let Some(u) = &target.base_url {
         b = b.base_url(u.clone());
     }
-    b.build().map_err(|e| format!("OpenAI 兼容客户端构造失败: {}", e))
+    let client = b.build().map_err(|e| format!("OpenAI 兼容客户端构造失败: {}", e))?;
+    Ok(client.completions_api())
 }
 
 fn anthropic_client(target: &CallTarget) -> Result<rig_core::providers::anthropic::Client, String> {
