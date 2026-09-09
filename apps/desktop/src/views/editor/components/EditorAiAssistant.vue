@@ -1,63 +1,42 @@
 <template>
-  <!-- 停靠式右侧 AI 栏;两种模式:对话 / 编辑代理 -->
+  <!-- 停靠式右侧 AI 栏:单一对话窗口(问答/编辑任务同管线,问答不触发写工具) -->
   <div v-show="open" class="ai-dock" :style="{ width: width + 'px' }">
     <div class="ai-resize-handle" @mousedown="startResize"></div>
 
     <div class="ai-dock-head">
       <div class="ai-dock-title">
         <AiIcon :size="16" class="ai-title-icon" />
-        <a-radio-group v-model:value="mode" size="small" button-style="solid" :disabled="busy">
-          <a-radio-button value="chat">对话</a-radio-button>
-          <a-radio-button value="agent">编辑代理</a-radio-button>
-        </a-radio-group>
+        <span>AI 助手</span>
       </div>
       <div class="ai-dock-head-right">
-        <span v-if="mode === 'agent' && totalTokens > 0" class="ai-token-meter" :title="`累计 token(入 ${tokIn}/出 ${tokOut})`">
+        <span v-if="totalTokens > 0" class="ai-token-meter" :title="`累计 token(入 ${tokIn}/出 ${tokOut})`">
           {{ (totalTokens / 1000).toFixed(1) }}k tok
         </span>
-        <a-button v-if="mode === 'agent' && !busy" type="text" size="small" title="会话历史" @click="toggleHistory">
+        <a-button v-if="!busy" type="text" size="small" title="会话历史" @click="toggleHistory">
           <template #icon><HistoryOutlined /></template>
         </a-button>
-        <a-button v-if="mode === 'agent' && !busy && timeline.length > 0" type="text" size="small" @click="resetAgent">重置</a-button>
-        <a-button v-if="mode === 'chat' && !loading" type="text" size="small" @click="clearChat">清空</a-button>
+        <a-button v-if="!busy && timeline.length > 0" type="text" size="small" @click="resetAgent">重置</a-button>
         <a-button type="text" size="small" @click="open = false">
           <template #icon><CloseOutlined /></template>
         </a-button>
       </div>
     </div>
 
-    <!-- ===== 对话模式 ===== -->
-    <template v-if="mode === 'chat'">
-      <div class="ai-body">
-        <Welcome v-if="messages.length === 0" class="ai-welcome"
-          :icon="() => h('span', { class: 'ai-welcome-icon' }, [h(AiIcon, { size: 36 })])"
-          title="AI 助手" description="问我关于当前模板、变量或代码的问题" />
-        <BubbleList v-else :items="chatItems" :roles="chatRoles" class="ai-bubble-list" />
-        <div v-if="loading" class="ai-loading-row"><Bubble :loading="true" /></div>
-      </div>
-      <div class="ai-sender-wrap">
-        <Sender v-model:value="input" :loading="loading" placeholder="输入问题,Enter 发送"
-          submit-type="enter" @submit="send" />
-      </div>
-    </template>
-
-    <!-- ===== 编辑代理模式 ===== -->
-    <template v-else>
-      <div class="ai-body">
-        <!-- 会话历史列表 -->
-        <div v-if="historyOpen" class="history-box">
-          <div class="history-head">
-            <span>会话历史</span>
-            <span class="history-count">{{ historyList.length }}</span>
-          </div>
-          <div v-if="historyLoading" class="history-empty">加载中…</div>
-          <div v-else-if="historyList.length === 0" class="history-empty">暂无历史会话</div>
-          <template v-else>
-            <div
-              v-for="s in historyList" :key="s.name"
-              class="history-item"
-              :class="{ cur: s.name === (sessionName ? sessionName + '.jsonl' : '') }"
-              @click="switchSession(s.name)"
+    <div class="ai-body">
+      <!-- 会话历史列表 -->
+      <div v-if="historyOpen" class="history-box">
+        <div class="history-head">
+          <span>会话历史</span>
+          <span class="history-count">{{ historyList.length }}</span>
+        </div>
+        <div v-if="historyLoading" class="history-empty">加载中…</div>
+        <div v-else-if="historyList.length === 0" class="history-empty">暂无历史会话</div>
+        <template v-else>
+          <div
+            v-for="s in historyList" :key="s.name"
+            class="history-item"
+            :class="{ cur: s.name === (sessionName ? sessionName + '.jsonl' : '') }"
+            @click="switchSession(s.name)"
             >
               <span class="history-time">{{ fmtTime(s.mtimeMs) }}</span>
               <span class="history-size">{{ fmtSize(s.size) }}</span>
@@ -69,18 +48,21 @@
         </div>
         <Welcome v-if="timeline.length === 0" class="ai-welcome"
           :icon="() => h('span', { class: 'ai-welcome-icon' }, [h(AiIcon, { size: 36 })])"
-          title="编辑代理" description="给 AI 一个编辑任务,它会读取文件、打补丁、渲染验证" />
+          title="AI 助手" description="提问或下达编辑任务,支持 @ 引用文件" />
         <div v-else class="agent-stream">
           <!-- 工作计时(ZCode 式) -->
           <div v-if="agentRunning && elapsedText" class="working-row">{{ elapsedText }}</div>
-          <!-- 紧凑步骤行(终端式:单行折叠,点击展开) -->
+          <!-- 紧凑步骤行(终端式:单行折叠,点击展开);answer 为 AI 文本回复 -->
           <div class="steps">
-            <div v-for="(e, i) in timeline" :key="i" class="step" :class="[e.kind, { open: expandedStep === i }]" @click="toggleStep(i)">
-              <span class="step-dot"></span>
-              <span class="step-title">{{ e.title }}</span>
-              <span v-if="e.detail" class="step-detail">{{ e.detail }}</span>
-              <span v-if="e.full" class="step-chev">›</span>
-            </div>
+            <template v-for="(e, i) in timeline" :key="i">
+              <div v-if="e.kind === 'answer'" class="answer">{{ e.text }}</div>
+              <div v-else class="step" :class="[e.kind, { open: expandedStep === i }]" @click="toggleStep(i)">
+                <span class="step-dot"></span>
+                <span class="step-title">{{ e.title }}</span>
+                <span v-if="e.detail" class="step-detail">{{ e.detail }}</span>
+                <span v-if="e.full" class="step-chev">›</span>
+              </div>
+            </template>
             <div v-if="expandedStep !== null && timeline[expandedStep]?.full" class="step-full">{{ timeline[expandedStep].full }}</div>
           </div>
 
@@ -121,8 +103,6 @@
               <a-button size="small" danger :loading="undoing">撤销</a-button>
             </a-popconfirm>
           </div>
-
-          <Bubble v-if="agentSummary" :content="agentSummary" class="ai-summary" />
         </div>
       </div>
 
@@ -135,10 +115,9 @@
           <button v-for="p in atMatches" :key="p" class="at-item" @mousedown.prevent="pickAt(p)">{{ p }}</button>
         </div>
         <Sender v-model:value="agentInput" :loading="agentRunning" :disabled="applying"
-          placeholder="描述编辑任务,如:把端口 8080 提取为变量(@ 引用文件)"
+          placeholder="提问或描述编辑任务,支持 @ 引用文件"
           submit-type="enter" @submit="runAgent" @cancel="abortAgent" @focus="loadFilePaths" />
       </div>
-    </template>
 
     <!-- composer 底栏:模型 / 思考级别 / 权限访问模式(向上弹出) -->
     <div class="ai-composer-bar">
@@ -181,7 +160,7 @@
         <button class="chip" title="思考级别"><BulbOutlined class="chip-ico" />思考·{{ THINKS.find((t) => t.v === thinkLevel)?.label }}<span class="chip-caret">▾</span></button>
       </a-popover>
 
-      <a-popover v-if="mode === 'agent'" trigger="click" placement="topLeft">
+      <a-popover trigger="click" placement="topLeft">
         <template #content>
           <div class="mp-list">
             <div v-for="pm in PERMS" :key="pm.v" class="mp-item" :class="{ cur: permMode === pm.v }" @click="permMode = pm.v">
@@ -215,7 +194,7 @@ import { ref, watch, nextTick, reactive, computed, onMounted, onUnmounted, h } f
 import { message, Modal } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
 import { CloseOutlined, HistoryOutlined, DeleteOutlined, SafetyOutlined, BulbOutlined } from '@ant-design/icons-vue'
-import { Bubble, BubbleList, Sender, Welcome } from 'ant-design-x-vue'
+import { Sender, Welcome } from 'ant-design-x-vue'
 import { useAIConfigStore } from '@/stores/ai-config'
 import AiIcon from '@/components/icons/AiIcon.vue'
 import { getTemplateFileTree, getTemplateFileContent, editTemplateFile, addTemplateFile } from '@/api/editor/templateFiles'
@@ -270,20 +249,7 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', onDragEnd)
 })
 
-// ===== 对话模式 =====
-const mode = ref('chat')
-const input = ref('')
-const loading = ref(false)
-const messages = ref([])
-
-const chatItems = computed(() =>
-  messages.value.map((m, i) => ({ key: String(i), role: m.role, content: m.content }))
-)
-const chatRoles = {
-  user: { placement: 'end', variant: 'filled' },
-  assistant: { placement: 'start' },
-}
-
+// ===== 单一对话窗口(问答与编辑任务同走 agent 管线) =====
 const buildExtraContext = () => {
   const parts = []
   if (props.currentFilePath) parts.push(`当前打开的文件: ${props.currentFilePath}`)
@@ -292,31 +258,7 @@ const buildExtraContext = () => {
   return parts.join('\n')
 }
 
-const send = async (textArg) => {
-  const text = (typeof textArg === 'string' ? textArg : input.value).trim()
-  if (!text || loading.value) return
-  messages.value.push({ role: 'user', content: text })
-  input.value = ''
-  loading.value = true
-  try {
-    const history = messages.value.slice(0, -1).slice(-20).map((m) => ({ role: m.role, content: m.content }))
-    const result = await invoke('ai_chat', {
-      message: text, templatePath: null, projectId: null,
-      extraContext: buildExtraContext(), history,
-      provider: selProvider.value || null, model: selModel.value || null,
-      thinking: thinkLevel.value === 'auto' ? null : thinkLevel.value,
-    })
-    const data = JSON.parse(result)
-    messages.value.push({ role: 'assistant', content: data.response || '抱歉,没有拿到有效回复。' })
-  } catch (e) {
-    messages.value.push({ role: 'assistant', content: `调用失败: ${e.message || e}` })
-  } finally {
-    loading.value = false
-  }
-}
-const clearChat = () => { messages.value = [] }
-
-// ===== 编辑代理模式 =====
+// ===== 编辑代理管线 =====
 const agentInput = ref('')
 const agentRunning = ref(false)
 const applying = ref(false)
@@ -388,7 +330,7 @@ const modelLabel = () => selModel.value || '默认模型'
 // 切换留痕:agent 模式下写入时间线(ZCode 式居中分隔事件)
 const pushModelEvent = (from) => {
   const to = modelLabel()
-  if (mode.value !== 'agent' || from === to) return
+  if (from === to) return
   timeline.value.push({ kind: 'tool', title: '模型已切换', detail: `${from} → ${to}` })
 }
 const pickModel = (pn, m) => {
@@ -406,7 +348,6 @@ const pickDefaultModel = () => {
   pushModelEvent(from)
 }
 const timeline = ref([])
-const agentSummary = ref('')
 const abortFlag = ref(false)
 const taskMessages = ref([])
 const todos = ref([])
@@ -494,7 +435,7 @@ const scheduleSave = () => {
 const saveSession = async () => {
   // 全空态不落盘:避免重置/删当前会话后被 watcher 复活成空会话文件
   if (
-    taskMessages.value.length === 0 && messages.value.length === 0 &&
+    taskMessages.value.length === 0 &&
     timeline.value.length === 0 && todos.value.length === 0 && workset.size === 0
   ) return
   try {
@@ -507,7 +448,6 @@ const saveSession = async () => {
     const line = (o) => JSON.stringify(o)
     const lines = [
       line({ t: 'meta', tokIn: tokIn.value, tokOut: tokOut.value, savedAt: Date.now() }),
-      ...messages.value.map((m) => line({ t: 'chat', m })),
       ...todos.value.map((td) => line({ t: 'todo', td })),
       ...timeline.value.map((e) => line({ t: 'tl', e: { ...e, full: e.full ? String(e.full).slice(0, 4000) : undefined } })),
       ...trimmed.map((m) => line({ t: 'task', m })),
@@ -529,13 +469,11 @@ const restoreSession = (raw) => {
     try { const o = JSON.parse(l); (d[o.t] || (d[o.t] = [])).push(o.m ?? o.e ?? o.f ?? o) } catch {}
   }
   const meta = (d.meta && d.meta[0]) || {}
-  messages.value = d.chat || []
   todos.value = (d.todo || []).map((x) => x.td || x).filter((x) => x && x.title)
   timeline.value = d.tl || []
   taskMessages.value = d.task || []
   tokIn.value = meta.tokIn || 0
   tokOut.value = meta.tokOut || 0
-  agentSummary.value = ''
   appliedInfo.value = null
   workset.clear()
   for (const item of d.file || []) {
@@ -604,7 +542,6 @@ const removeSession = async (name) => {
       workset.clear()
       dirtyFiles.value = []
       appliedInfo.value = null
-      agentSummary.value = ''
       tokIn.value = 0
       tokOut.value = 0
     }
@@ -858,8 +795,9 @@ const runAgent = async (textArg) => {
         tokOut.value += res.usage.output || 0
       }
       if (res.type === 'final') {
-        agentSummary.value = res.text || '(无总结)'
-        timeline.value.push({ kind: 'done', title: '完成' })
+        const text = res.text || '(无总结)'
+        taskMessages.value.push({ role: 'assistant', content: text })
+        timeline.value.push({ kind: 'answer', text })
         break
       }
       taskMessages.value.push({ role: 'assistant', tool_calls: res.calls })
@@ -992,14 +930,13 @@ const resetAgent = () => {
   dirtyFiles.value = []
   appliedInfo.value = null
   timeline.value = []
-  agentSummary.value = ''
   tokIn.value = 0
   tokOut.value = 0
 }
 // 状态全部声明后恢复会话并挂自动保存(避免 TDZ)
 loadSession()
 const persistWatch = watch(
-  [messages, timeline, agentSummary, tokIn, tokOut, workset, taskMessages, todos],
+  [timeline, tokIn, tokOut, workset, taskMessages, todos],
   scheduleSave,
   { deep: true }
 )
@@ -1018,9 +955,7 @@ onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop(); clearInterva
 .ai-token-meter { font-size: 11.5px; color: var(--editor-muted, #999); padding: 0 6px; cursor: default; }
 
 .ai-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-.ai-bubble-list { flex: 1; min-height: 0; padding: 12px 10px; }
 .agent-stream { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 14px 10px; display: flex; flex-direction: column; gap: 12px; }
-.ai-loading-row { padding: 0 14px 10px; }
 .ai-welcome { flex: 1; justify-content: center; }
 .ai-welcome-icon { color: var(--editor-accent, #16a34a); opacity: 0.7; display: inline-flex; }
 
@@ -1080,6 +1015,9 @@ onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop(); clearInterva
 .step.open .step-chev { transform: rotate(90deg); }
 .step-full { margin: 2px 6px 6px 20px; padding: 8px 10px; background: var(--editor-inset-bg, #f4f4f2); border-radius: 6px; font-family: var(--editor-mono, monospace); font-size: 11px; line-height: 1.5; color: var(--editor-muted, #666); white-space: pre-wrap; word-break: break-all; max-height: 260px; overflow: auto; }
 
+/* AI 文本回复(内联在步骤流中) */
+.answer { padding: 8px 10px; border-left: 3px solid var(--editor-accent, #16a34a); border-radius: 6px; background: var(--editor-inset-bg, #f4f4f2); font-size: 12.5px; line-height: 1.65; color: var(--editor-primary, #1b1c1f); white-space: pre-wrap; word-break: break-word; }
+
 /* 计划清单 */
 .todo-box { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1px solid var(--editor-border, #e0e0e6); border-radius: 8px; }
 .todo-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--editor-primary, #1b1c1f); }
@@ -1092,9 +1030,6 @@ onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop(); clearInterva
 .at-panel { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; border: 1px solid var(--editor-border, #e0e0e6); border-radius: 8px; background: var(--editor-panel-bg, #fff); }
 .at-item { border: none; background: var(--editor-inset-bg, #f4f4f2); border-radius: 6px; padding: 3px 8px; font-size: 11.5px; color: var(--editor-primary, #333); cursor: pointer; font-family: var(--editor-mono, monospace); }
 .at-item:hover { color: var(--editor-accent, #16a34a); }
-
-/* 总结气泡 */
-.ai-summary { margin: 0; }
 
 /* 收起态迷你徽标 */
 .ai-mini { position: fixed; right: 18px; bottom: 18px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--editor-border, #e0e0e6); background: var(--editor-panel-bg, #fff); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--editor-accent, #16a34a); z-index: 100; transition: transform 0.15s ease; }

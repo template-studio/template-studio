@@ -1130,3 +1130,11 @@
 **涉及文件：** `views/editor/components/EditorAiAssistant.vue`、`dev-docs/agent-console-todos.md`
 
 **验收结果：** `pnpm build` 通过。
+
+## 2026-09-10 AI 面板合并为单一对话窗口（任务 #114）
+
+**变更内容：** 采纳用户决策——问答不触发写工具，无需「对话/编辑代理」双 tab。移除模式切换，所有输入统一走 agent 管线：纯提问由模型直接文本作答（仍可调用 list_files/read_file 等只读工具感知上下文），编辑任务照常走工具循环与 diff 审查。AI 回答以 answer 条目内联进步骤流（左缘品牌绿样式）替代原单个总结气泡，并回填 taskMessages 为 assistant 文本消息（此前答案不入线程，多轮追问缺上下文，顺带修复）。清理 chat 模式全部代码（messages/send/chatItems/clearChat/agentSummary/Bubble/BubbleList）与相关样式；composer 模型/思考/权限三 chip、历史/重置按钮、token 计量全时可用；旧会话 JSONL 中的 chat 行恢复时安全忽略。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`、`dev-docs/agent-console-todos.md`
+
+**验收结果：** `pnpm build` 通过。
