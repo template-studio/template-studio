@@ -1042,3 +1042,11 @@
 **涉及文件：** `views/editor/components/EditorAiAssistant.vue`
 
 **验收结果：** `pnpm build` 通过；`taskMessages` 声明唯一。
+
+## 2026-09-10 todo 计划跟踪（任务 #103）
+
+**变更内容：** agent 进度可视（控制台二批）。新工具 `update_todo`（整体替换式计划清单）+ 提示词规则（多步任务先列计划、每步更新状态）；时间线上方渲染紧凑清单（○ 待办 / ◐ 进行中品牌绿 / ● 完成划线）；JSONL 持久化增加 `t:todo` 行，恢复与重置联动。
+
+**涉及文件：** `src-tauri/prompts/edit_agent.md`、`views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** 双端构建零错误。

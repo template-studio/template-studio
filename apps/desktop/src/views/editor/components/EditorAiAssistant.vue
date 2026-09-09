@@ -56,6 +56,14 @@
             <div v-if="expandedStep !== null && timeline[expandedStep]?.full" class="step-full">{{ timeline[expandedStep].full }}</div>
           </div>
 
+          <!-- 计划清单 -->
+          <div v-if="todos.length > 0" class="todo-box">
+            <div v-for="(td, i) in todos" :key="i" class="todo-item" :class="td.status">
+              <span class="todo-dot">{{ td.status === 'done' ? '●' : td.status === 'in_progress' ? '◐' : '○' }}</span>
+              <span class="todo-title">{{ td.title }}</span>
+            </div>
+          </div>
+
           <!-- diff 卡片 -->
           <div v-for="(d, i) in dirtyFiles" :key="'d' + i" class="diff-card">
             <div class="diff-head">
@@ -192,6 +200,7 @@ const timeline = ref([])
 const agentSummary = ref('')
 const abortFlag = ref(false)
 const taskMessages = ref([])
+const todos = ref([])
 
 // ===== 会话持久化(localStorage,按模板隔离;续跑时工具结果已裁剪) =====
 let sessionName = null  // 当前会话时间戳名;null=新会话
@@ -212,6 +221,7 @@ const saveSession = async () => {
     const lines = [
       line({ t: 'meta', tokIn: tokIn.value, tokOut: tokOut.value, savedAt: Date.now() }),
       ...messages.value.map((m) => line({ t: 'chat', m })),
+      ...todos.value.map((td) => line({ t: 'todo', td })),
       ...timeline.value.map((e) => line({ t: 'tl', e: { ...e, full: e.full ? String(e.full).slice(0, 4000) : undefined } })),
       ...trimmed.map((m) => line({ t: 'task', m })),
       ...[...workset.entries()].map(([path, f]) => line({ t: 'file', path, f: { ...f } })),
@@ -228,13 +238,14 @@ const loadSession = async () => {
     const raw = await invoke('ai_session_load', { templateId: Number(props.templateId) })
     if (!raw || !raw.data) return
     sessionName = raw.name.replace('.jsonl', '')
-    const d = { chat: [], tl: [], task: [], file: [], meta: {} }
+    const d = { chat: [], tl: [], task: [], file: [], todo: [], meta: {} }
     for (const l of raw.data.split('\n')) {
       if (!l.trim()) continue
       try { const o = JSON.parse(l); (d[o.t] || (d[o.t] = [])).push(o.m ?? o.e ?? o.f ?? o) } catch {}
     }
     const meta = (d.meta && d.meta[0]) || {}
     messages.value = d.chat || []
+    todos.value = (d.todo || []).map((x) => x.td || x).filter((x) => x && x.title)
     timeline.value = d.tl || []
     taskMessages.value = d.task || []
     tokIn.value = meta.tokIn || 0
@@ -290,6 +301,7 @@ const TOOLS = [
   { name: 'create_file', description: '创建新文件(全量内容)', parameters: { type: 'object', properties: { path: str('新文件相对路径'), content: str('文件全量内容') }, required: ['path', 'content'] } },
   { name: 'render_file', description: '按工作副本当前内容本地渲染验证语法', parameters: { type: 'object', properties: { path: str('文件相对路径') }, required: ['path'] } },
   { name: 'list_variables', description: '列出模板已定义的变量', parameters: { type: 'object', properties: {}, required: [] } },
+  { name: 'update_todo', description: '维护任务计划清单(整体替换)', parameters: { type: 'object', properties: { items: { type: 'array', description: '计划项列表', items: { type: 'object', properties: { title: { type: 'string' }, status: { type: 'string', description: 'pending|in_progress|done' } }, required: ['title', 'status'] } } }, required: ['items'] } },
 ]
 
 // ---- 工具执行(读前置/新鲜度守卫) ----
@@ -351,6 +363,11 @@ async function execTool(name, args) {
       const r = await invoke('render_string_content', { template: f.content, variables: vars })
       if (r && r.success) return `渲染成功(${r.content?.length ?? 0} 字符)`
       return `渲染失败: ${r?.error?.message || r?.error?.type || '未知错误'}`
+    }
+    case 'update_todo': {
+      const items = Array.isArray(args.items) ? args.items : []
+      todos.value = items.filter((x) => x && x.title).map((x) => ({ title: String(x.title), status: x.status || 'pending' }))
+      return `计划已更新(${todos.value.length} 项)`
     }
     case 'list_variables': {
       const names = props.templateVariables.map((v) => v.fieldName || v.name).filter(Boolean)
@@ -506,6 +523,7 @@ const discardAll = () => {
 const resetAgent = () => {
   clearSession()
   taskMessages.value = []
+  todos.value = []
   workset.clear()
   dirtyFiles.value = []
   timeline.value = []
@@ -516,7 +534,7 @@ const resetAgent = () => {
 // 状态全部声明后恢复会话并挂自动保存(避免 TDZ)
 loadSession()
 const persistWatch = watch(
-  [messages, timeline, agentSummary, tokIn, tokOut, workset, taskMessages],
+  [messages, timeline, agentSummary, tokIn, tokOut, workset, taskMessages, todos],
   scheduleSave,
   { deep: true }
 )
