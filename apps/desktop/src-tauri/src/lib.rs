@@ -161,6 +161,7 @@ pub fn run() {
             commands::ai::ai_get_agent_prompt,
             commands::ai::ai_session_save,
             commands::ai::ai_session_load,
+            commands::ai::ai_session_list,
             commands::ai::ai_session_clear,
             // 模板提取向导
             commands::ai::extract_scan_dir,

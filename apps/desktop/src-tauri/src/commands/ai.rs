@@ -1525,24 +1525,64 @@ pub fn ai_session_save(template_id: i64, name: String, data: String) -> Result<(
     Ok(())
 }
 
-/// 加载最近一个会话(按文件名时间戳排序),返回 {name, data}
+/// 加载会话;name 为 None 时取最近一个(按文件名时间戳排序),返回 {name, data}
 #[tauri::command]
-pub fn ai_session_load(template_id: i64) -> Result<Option<serde_json::Value>, String> {
+pub fn ai_session_load(
+    template_id: i64,
+    name: Option<String>,
+) -> Result<Option<serde_json::Value>, String> {
     let dir = ai_session_dir(template_id)?;
-    let mut names: Vec<String> = std::fs::read_dir(&dir)
+    let target = match name {
+        Some(n) => n,
+        None => {
+            let mut names: Vec<String> = std::fs::read_dir(&dir)
+                .map(|rd| {
+                    rd.flatten()
+                        .filter_map(|e| {
+                            let n = e.file_name().to_string_lossy().to_string();
+                            n.ends_with(".jsonl").then(|| n)
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            names.sort();
+            let Some(latest) = names.last() else { return Ok(None) };
+            latest.clone()
+        }
+    };
+    let data = std::fs::read_to_string(dir.join(&target)).unwrap_or_default();
+    Ok(Some(serde_json::json!({ "name": target, "data": data })))
+}
+
+/// 列出全部会话(按修改时间倒序),返回 [{name, mtimeMs, size}]
+#[tauri::command]
+pub fn ai_session_list(template_id: i64) -> Result<Vec<serde_json::Value>, String> {
+    let dir = ai_session_dir(template_id)?;
+    let mut items: Vec<(u64, serde_json::Value)> = std::fs::read_dir(&dir)
         .map(|rd| {
             rd.flatten()
                 .filter_map(|e| {
                     let n = e.file_name().to_string_lossy().to_string();
-                    n.ends_with(".jsonl").then(|| n)
+                    if !n.ends_with(".jsonl") {
+                        return None;
+                    }
+                    let meta = e.metadata().ok()?;
+                    let mtime = meta
+                        .modified()
+                        .ok()
+                        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                        .map(|d| d.as_millis() as u64)
+                        .unwrap_or(0);
+                    Some((
+                        mtime,
+                        serde_json::json!({ "name": n, "mtimeMs": mtime, "size": meta.len() }),
+                    ))
                 })
                 .collect()
         })
         .unwrap_or_default();
-    names.sort();
-    let Some(latest) = names.last() else { return Ok(None) };
-    let data = std::fs::read_to_string(dir.join(latest)).unwrap_or_default();
-    Ok(Some(serde_json::json!({ "name": latest, "data": data })))
+    items.sort_by(|a, b| b.0.cmp(&a.0));
+    Ok(items.into_iter().map(|(_, v)| v).collect())
 }
 
 /// 删除指定会话(重置当前)

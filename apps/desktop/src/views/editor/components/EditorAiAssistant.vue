@@ -15,6 +15,9 @@
         <span v-if="mode === 'agent' && totalTokens > 0" class="ai-token-meter" :title="`累计 token(入 ${tokIn}/出 ${tokOut})`">
           {{ (totalTokens / 1000).toFixed(1) }}k tok
         </span>
+        <a-button v-if="mode === 'agent' && !busy" type="text" size="small" title="会话历史" @click="toggleHistory">
+          <template #icon><HistoryOutlined /></template>
+        </a-button>
         <a-button v-if="mode === 'agent' && !busy && timeline.length > 0" type="text" size="small" @click="resetAgent">重置</a-button>
         <a-button v-if="mode === 'chat' && !loading" type="text" size="small" @click="clearChat">清空</a-button>
         <a-button type="text" size="small" @click="open = false">
@@ -41,6 +44,29 @@
     <!-- ===== 编辑代理模式 ===== -->
     <template v-else>
       <div class="ai-body">
+        <!-- 会话历史列表 -->
+        <div v-if="historyOpen" class="history-box">
+          <div class="history-head">
+            <span>会话历史</span>
+            <span class="history-count">{{ historyList.length }}</span>
+          </div>
+          <div v-if="historyLoading" class="history-empty">加载中…</div>
+          <div v-else-if="historyList.length === 0" class="history-empty">暂无历史会话</div>
+          <template v-else>
+            <div
+              v-for="s in historyList" :key="s.name"
+              class="history-item"
+              :class="{ cur: s.name === (sessionName ? sessionName + '.jsonl' : '') }"
+              @click="switchSession(s.name)"
+            >
+              <span class="history-time">{{ fmtTime(s.mtimeMs) }}</span>
+              <span class="history-size">{{ fmtSize(s.size) }}</span>
+              <span class="history-del" title="删除会话" @click.stop="removeSession(s.name)">
+                <DeleteOutlined />
+              </span>
+            </div>
+          </template>
+        </div>
         <Welcome v-if="timeline.length === 0" class="ai-welcome"
           :icon="() => h('span', { class: 'ai-welcome-icon' }, [h(AiIcon, { size: 36 })])"
           title="编辑代理" description="给 AI 一个编辑任务,它会读取文件、打补丁、渲染验证" />
@@ -73,11 +99,26 @@
             <pre class="diff-body">{{ d.preview }}</pre>
           </div>
 
+          <!-- 应用即 checkpoint:快照锚点与一键撤销 -->
+          <div v-if="appliedInfo && appliedInfo.count > 0" class="applied-bar">
+            <span class="applied-text">已应用 {{ appliedInfo.count }} 个文件 · 修改前快照 <b>{{ appliedInfo.version }}</b></span>
+            <a-popconfirm
+              title="回滚将丢弃该快照之后的全部更改（含手动修改），确定？"
+              ok-text="回滚" cancel-text="取消" @confirm="undoApply"
+            >
+              <a-button size="small" danger :loading="undoing">撤销</a-button>
+            </a-popconfirm>
+          </div>
+
           <Bubble v-if="agentSummary" :content="agentSummary" class="ai-summary" />
         </div>
       </div>
 
       <div class="ai-sender-wrap">
+        <div class="ai-auto-row" title="开启后 AI 新建的文件立即写入模板;对既有文件的修改仍需手动应用">
+          <a-switch v-model:checked="autoApplyNew" size="small" :disabled="busy" />
+          <span>自动应用新文件(低风险)</span>
+        </div>
         <div v-if="dirtyFiles.length > 0 && !busy" class="ai-apply-row">
           <a-button type="primary" size="small" :loading="applying" @click="applyAll">应用全部修改({{ dirtyFiles.length }})</a-button>
           <a-button size="small" :disabled="applying" @click="discardAll">全部放弃</a-button>
@@ -91,16 +132,29 @@
       </div>
     </template>
   </div>
+
+  <!-- 收起态迷你徽标:运行中转圈点/有未应用修改绿点 -->
+  <button
+    v-if="!open && (busy || dirtyFiles.length > 0)"
+    class="ai-mini"
+    :title="busy ? 'AI 代理执行中' : '有未应用的修改'"
+    @click="open = true"
+  >
+    <AiIcon :size="16" />
+    <span v-if="busy" class="ai-mini-dot spin"></span>
+    <span v-else class="ai-mini-dot"></span>
+  </button>
 </template>
 
 <script setup>
 import { ref, watch, nextTick, reactive, computed, onMounted, onUnmounted, h } from 'vue'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
-import { CloseOutlined } from '@ant-design/icons-vue'
+import { CloseOutlined, HistoryOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import { Bubble, BubbleList, Sender, Welcome } from 'ant-design-x-vue'
 import AiIcon from '@/components/icons/AiIcon.vue'
 import { getTemplateFileTree, getTemplateFileContent, editTemplateFile, addTemplateFile } from '@/api/editor/templateFiles'
+import { createRelease, rollbackVersion } from '@/api/editor/releases'
 
 const props = defineProps({
   currentFilePath: { type: String, default: '' },
@@ -199,6 +253,9 @@ const clearChat = () => { messages.value = [] }
 const agentInput = ref('')
 const agentRunning = ref(false)
 const applying = ref(false)
+// 应用即 checkpoint:最近一次应用的修改前快照锚点({ count, version })
+const appliedInfo = ref(null)
+const undoing = ref(false)
 const timeline = ref([])
 const agentSummary = ref('')
 const abortFlag = ref(false)
@@ -224,7 +281,7 @@ const atSuffix = computed(() => {
 const atMatches = computed(() =>
   atSuffix.value === null ? [] : filePaths.value.filter((p) => p.includes(atSuffix.value)).slice(0, 8)
 )
-// ---- 上下文预算与修剪(先修剪后压缩的"修剪"层;模型摘要压缩后续) ----
+// ---- 上下文预算与修剪(压缩层:模型摘要优先,失败回落规则折叠) ----
 const CTX_BUDGET = 40000  // 安全窗 token(粗估)
 const estTokens = (arr) => Math.ceil(JSON.stringify(arr).length / 3)
 const trimContext = () => {
@@ -242,25 +299,62 @@ const trimContext = () => {
   return true
 }
 
+// 模型生成结构化交接摘要,替换整个被折叠中段(摘要本身作为普通消息,后续压缩会再次吸收它)
+const compactContext = async () => {
+  const arr = taskMessages.value
+  const head = arr.length > 0 && arr[0].role === 'system' ? [arr[0]] : []
+  const rest = arr.slice(head.length)
+  const keep = 8
+  const folded = rest.slice(0, Math.max(0, rest.length - keep)).slice(-24) // 至多回看 24 条,更早已是占位
+  if (folded.length === 0) { trimContext(); return null }
+  try {
+    const digest = folded.map((m) => ({
+      role: m.role,
+      content: String(m.content || '').slice(0, 1200),
+      tool_calls: Array.isArray(m.tool_calls) ? m.tool_calls.map((c) => ({ name: c.name, arguments: c.arguments })) : undefined,
+    }))
+    const result = await invoke('ai_chat', {
+      message: `下面是一个模板编辑代理的工作历史(按时间序,JSON)。请压缩为结构化交接摘要,供下一轮继续工作。严格按以下格式输出,每节至多 6 条、每条一行,没有则写"无":\n## 已完成\n## 进行中\n## 已修改文件(路径+一句话)\n## 技术决策及原因\n## 用户约束\n## 下一步\n\n---\n${JSON.stringify(digest)}`,
+      templatePath: null, projectId: null, extraContext: null, history: [],
+    })
+    const text = (JSON.parse(result).response || '').trim()
+    if (!text) throw new Error('空摘要')
+    taskMessages.value = [
+      ...head,
+      { role: 'user', content: `[交接摘要·替代更早历史]\n${text}` },
+      ...rest.slice(-keep),
+    ]
+    return { text }
+  } catch {
+    trimContext() // 回落:规则折叠工具结果
+    return null
+  }
+}
+
 const pickAt = (path) => {
   agentInput.value = (agentInput.value || '').replace(/@([\w\/.\-]*)$/, '@' + path + ' ')
 }
 
 // ===== 会话持久化(localStorage,按模板隔离;续跑时工具结果已裁剪) =====
-let sessionName = null  // 当前会话时间戳名;null=新会话
+const sessionName = ref(null) // 当前会话时间戳名;null=新会话
 const saveTimer = { t: null }
 const scheduleSave = () => {
   clearTimeout(saveTimer.t)
   saveTimer.t = setTimeout(saveSession, 500)
 }
 const saveSession = async () => {
+  // 全空态不落盘:避免重置/删当前会话后被 watcher 复活成空会话文件
+  if (
+    taskMessages.value.length === 0 && messages.value.length === 0 &&
+    timeline.value.length === 0 && todos.value.length === 0 && workset.size === 0
+  ) return
   try {
     const trimmed = taskMessages.value.map((m) =>
       m.role === 'tool_result'
         ? { ...m, content: String(m.content || '').slice(0, 2000) }
         : m
     )
-    if (!sessionName) sessionName = String(Date.now())
+    if (!sessionName.value) sessionName.value = String(Date.now())
     const line = (o) => JSON.stringify(o)
     const lines = [
       line({ t: 'meta', tokIn: tokIn.value, tokOut: tokOut.value, savedAt: Date.now() }),
@@ -272,37 +366,102 @@ const saveSession = async () => {
     ]
     await invoke('ai_session_save', {
       templateId: Number(props.templateId),
-      name: sessionName,
+      name: sessionName.value,
       data: lines.join('\n'),
     })
   } catch { /* 写盘失败静默,内存态继续 */ }
+}
+
+// 从 JSONL 原文恢复全部面板状态(sessionName 由调用方先设好,保证随后的自动保存落到正确文件)
+const restoreSession = (raw) => {
+  const d = { chat: [], tl: [], task: [], file: [], todo: [], meta: {} }
+  for (const l of raw.data.split('\n')) {
+    if (!l.trim()) continue
+    try { const o = JSON.parse(l); (d[o.t] || (d[o.t] = [])).push(o.m ?? o.e ?? o.f ?? o) } catch {}
+  }
+  const meta = (d.meta && d.meta[0]) || {}
+  messages.value = d.chat || []
+  todos.value = (d.todo || []).map((x) => x.td || x).filter((x) => x && x.title)
+  timeline.value = d.tl || []
+  taskMessages.value = d.task || []
+  tokIn.value = meta.tokIn || 0
+  tokOut.value = meta.tokOut || 0
+  agentSummary.value = ''
+  appliedInfo.value = null
+  workset.clear()
+  for (const item of d.file || []) {
+    if (item && item.path) workset.set(item.path, { ...item.f, version: 0, readVersion: 0, hasRead: true })
+  }
+  refreshDirty()
 }
 const loadSession = async () => {
   try {
     const raw = await invoke('ai_session_load', { templateId: Number(props.templateId) })
     if (!raw || !raw.data) return
-    sessionName = raw.name.replace('.jsonl', '')
-    const d = { chat: [], tl: [], task: [], file: [], todo: [], meta: {} }
-    for (const l of raw.data.split('\n')) {
-      if (!l.trim()) continue
-      try { const o = JSON.parse(l); (d[o.t] || (d[o.t] = [])).push(o.m ?? o.e ?? o.f ?? o) } catch {}
-    }
-    const meta = (d.meta && d.meta[0]) || {}
-    messages.value = d.chat || []
-    todos.value = (d.todo || []).map((x) => x.td || x).filter((x) => x && x.title)
-    timeline.value = d.tl || []
-    taskMessages.value = d.task || []
-    tokIn.value = meta.tokIn || 0
-    tokOut.value = meta.tokOut || 0
-    agentSummary.value = ''
-    workset.clear()
-    for (const item of d.file || []) {
-      if (item && item.path) workset.set(item.path, { ...item.f, version: 0, readVersion: 0, hasRead: true })
-    }
-    refreshDirty()
+    sessionName.value = raw.name.replace('.jsonl', '')
+    restoreSession(raw)
   } catch { /* 损坏则丢弃 */ }
 }
-const clearSession = () => { try { if (sessionName) invoke('ai_session_clear', { templateId: Number(props.templateId), name: sessionName + '.jsonl' }); sessionName = null } catch {} }
+const clearSession = () => { try { if (sessionName.value) invoke('ai_session_clear', { templateId: Number(props.templateId), name: sessionName.value + '.jsonl' }); sessionName.value = null } catch {} }
+
+// ---- 会话历史列表/切换 ----
+const historyOpen = ref(false)
+const historyList = ref([])
+const historyLoading = ref(false)
+const fmtTime = (ms) => {
+  const d = new Date(Number(ms))
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+const fmtSize = (b) => (b > 1024 ? `${(b / 1024).toFixed(1)}k` : `${b}B`)
+const loadHistory = async () => {
+  historyLoading.value = true
+  try {
+    historyList.value = await invoke('ai_session_list', { templateId: Number(props.templateId) })
+  } catch { historyList.value = [] } finally { historyLoading.value = false }
+}
+const toggleHistory = async () => {
+  historyOpen.value = !historyOpen.value
+  if (historyOpen.value) await loadHistory()
+}
+const switchSession = (name) => {
+  if (busy.value) return
+  const doSwitch = async () => {
+    try {
+      const raw = await invoke('ai_session_load', { templateId: Number(props.templateId), name })
+      if (!raw || !raw.data) return
+      sessionName.value = raw.name.replace('.jsonl', '')
+      restoreSession(raw)
+      historyOpen.value = false
+    } catch { message.error('加载会话失败') }
+  }
+  if (dirtyFiles.value.length > 0) {
+    Modal.confirm({
+      title: '切换会话将丢弃未应用的修改',
+      content: `当前有 ${dirtyFiles.value.length} 个文件的 AI 修改未应用`,
+      okText: '丢弃并切换', okType: 'danger', cancelText: '取消',
+      onOk: doSwitch,
+    })
+  } else doSwitch()
+}
+const removeSession = async (name) => {
+  try {
+    await invoke('ai_session_clear', { templateId: Number(props.templateId), name })
+    if (name === (sessionName.value ? sessionName.value + '.jsonl' : '')) {
+      // 删除的是当前会话:连同内存态一起清空
+      sessionName.value = null
+      taskMessages.value = []
+      todos.value = []
+      timeline.value = []
+      workset.clear()
+      dirtyFiles.value = []
+      appliedInfo.value = null
+      agentSummary.value = ''
+      tokIn.value = 0
+      tokOut.value = 0
+    }
+    await loadHistory()
+  } catch { message.error('删除会话失败') }
+}
 const busy = computed(() => agentRunning.value || applying.value)
 
 // token 水位
@@ -347,6 +506,26 @@ const TOOLS = [
   { name: 'list_variables', description: '列出模板已定义的变量', parameters: { type: 'object', properties: {}, required: [] } },
   { name: 'update_todo', description: '维护任务计划清单(整体替换)', parameters: { type: 'object', properties: { items: { type: 'array', description: '计划项列表', items: { type: 'object', properties: { title: { type: 'string' }, status: { type: 'string', description: 'pending|in_progress|done' } }, required: ['title', 'status'] } } }, required: ['items'] } },
 ]
+
+// ---- 低风险自动应用:新文件即时落库,既有文件修改不自动应用 ----
+const autoApplyNew = ref(localStorage.getItem('ai-auto-apply-new') === '1')
+watch(autoApplyNew, (v) => localStorage.setItem('ai-auto-apply-new', v ? '1' : '0'))
+const tryAutoApplyNew = async (path) => {
+  if (!autoApplyNew.value) return false
+  const f = workset.get(path)
+  if (!f || (f.base || '') !== '') return false
+  if (fileExistsCache.has(path) || (await fileExistsOnServer(path))) return false
+  try {
+    const parentPath = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''
+    await addTemplateFile({ templateId: tid(), fileName: path.split('/').pop(), parentPath, isDirectory: false })
+    await editTemplateFile({ templateId: tid(), filePath: path, content: f.content })
+    fileExistsCache.add(path)
+    f.base = f.content // 基线前移:后续 edit_file 的增量继续走 diff 审查
+    refreshDirty()
+    emit('files-updated')
+    return true
+  } catch { return false /* 落库失败回落待审流程 */ }
+}
 
 // ---- 工具执行(读前置/新鲜度守卫) ----
 async function execTool(name, args) {
@@ -395,6 +574,7 @@ async function execTool(name, args) {
     case 'create_file': {
       if (workset.has(args.path)) return '错误:文件已存在,请用 edit_file。'
       workset.set(args.path, { content: args.content, base: '', version: 0, readVersion: 0, hasRead: true })
+      if (await tryAutoApplyNew(args.path)) return '已创建并自动应用到模板。'
       return '已创建(待应用)。'
     }
     case 'render_file': {
@@ -479,8 +659,14 @@ const runAgent = async (textArg) => {
   try {
     for (let round = 0; round < 12; round++) {
       if (abortFlag.value) break
-      if (trimContext()) {
-        timeline.value.push({ kind: 'tool', title: '已修剪上下文', detail: `${(estTokens(taskMessages.value) / 1000).toFixed(1)}k tok` })
+      if (estTokens(taskMessages.value) > CTX_BUDGET * 0.85) {
+        const r = await compactContext()
+        timeline.value.push({
+          kind: 'tool',
+          title: r?.text ? '已压缩上下文(模型交接摘要)' : '已修剪上下文',
+          detail: `${(estTokens(taskMessages.value) / 1000).toFixed(1)}k tok`,
+          full: r?.text,
+        })
       }
       const raw = await invoke('ai_agent_turn', { messages: taskMessages.value, tools: TOOLS })
       const res = JSON.parse(raw)
@@ -534,8 +720,16 @@ const fileExistsOnServer = async (path) => {
 
 const applyAll = async () => {
   applying.value = true
+  let applied = 0
   try {
-    let applied = 0
+    // 修改前快照:本会话首个应用前创建一次,作为一键撤销锚点(复用版本管理;失败不阻断应用)
+    if (!appliedInfo.value) {
+      try {
+        const res = await createRelease(tid(), { changelog: `AI 修改前快照 ${new Date().toLocaleString()}` })
+        const ver = res?.data?.data?.version
+        if (ver) appliedInfo.value = { count: 0, version: ver }
+      } catch { /* 版本服务不可用时直接应用 */ }
+    }
     for (const d of dirtyFiles.value) {
       const f = workset.get(d.path)
       if (!(await fileExistsOnServer(d.path))) {
@@ -553,11 +747,44 @@ const applyAll = async () => {
     emit('files-updated')
     workset.clear()
     dirtyFiles.value = []
-    timeline.value.push({ kind: 'done', title: `已应用 ${applied} 个文件` })
+    if (appliedInfo.value) appliedInfo.value = { ...appliedInfo.value, count: applied }
+    timeline.value.push({
+      kind: 'done',
+      title: `已应用 ${applied} 个文件`,
+      detail: appliedInfo.value ? `修改前快照 ${appliedInfo.value.version},可撤销` : '',
+    })
   } catch (e) {
+    // 部分应用失败也保留快照锚点,便于整体回滚
+    if (applied > 0 && appliedInfo.value) appliedInfo.value = { ...appliedInfo.value, count: applied }
     message.error('应用失败: ' + (e.message || e))
   } finally {
     applying.value = false
+  }
+}
+
+// 一键撤销:回滚到修改前快照,并刷新文件树与当前缓冲区
+const undoApply = async () => {
+  if (!appliedInfo.value?.version || undoing.value) return
+  undoing.value = true
+  try {
+    await rollbackVersion(tid(), appliedInfo.value.version)
+    message.success(`已回滚到快照 ${appliedInfo.value.version}`)
+    timeline.value.push({ kind: 'done', title: `已回滚到 ${appliedInfo.value.version}` })
+    appliedInfo.value = null
+    workset.clear()
+    dirtyFiles.value = []
+    fileExistsCache.clear()
+    if (props.currentFilePath) {
+      try {
+        const res = await getTemplateFileContent(tid(), props.currentFilePath)
+        emit('buffer-replace', { path: props.currentFilePath, content: res.data?.data?.content ?? res.data?.data?.fileContent ?? '' })
+      } catch { /* 文件可能已不存在 */ }
+    }
+    emit('files-updated')
+  } catch (e) {
+    message.error('回滚失败: ' + (e.message || e))
+  } finally {
+    undoing.value = false
   }
 }
 
@@ -573,6 +800,7 @@ const resetAgent = () => {
   todos.value = []
   workset.clear()
   dirtyFiles.value = []
+  appliedInfo.value = null
   timeline.value = []
   agentSummary.value = ''
   tokIn.value = 0
@@ -608,10 +836,62 @@ onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop() })
 
 .ai-sender-wrap { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--editor-border, #e0e0e6); flex-shrink: 0; }
 .ai-apply-row { display: flex; gap: 8px; }
+.ai-auto-row { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--editor-muted, #999); }
 
 .diff-card { border: 1px solid var(--editor-border, #e0e0e6); border-radius: 8px; overflow: hidden; }
+.applied-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--editor-border, #e0e0e6); border-left: 3px solid var(--editor-accent, #16a34a); border-radius: 8px; font-size: 12px; color: var(--editor-muted, #666); }
+.applied-bar b { color: var(--editor-primary, #333); font-weight: 600; font-family: var(--editor-mono, monospace); }
 .diff-head { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--editor-inset-bg, #f4f4f2); font-size: 12px; }
 .diff-path { font-weight: 500; color: var(--editor-primary, #333); word-break: break-all; }
 .diff-count { color: var(--editor-accent, #16a34a); flex: none; }
 .diff-body { margin: 0; padding: 8px 10px; font-size: 11px; line-height: 1.5; max-height: 120px; overflow: auto; color: var(--editor-muted, #666); white-space: pre-wrap; word-break: break-all; }
+
+/* 紧凑步骤行(终端式) */
+.steps { display: flex; flex-direction: column; gap: 2px; }
+.step { display: flex; align-items: center; gap: 8px; min-height: 24px; padding: 2px 6px; border-radius: 6px; font-size: 12px; cursor: pointer; color: var(--editor-primary, #1b1c1f); }
+.step:hover { background: var(--editor-inset-bg, #f4f4f2); }
+.step-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--editor-muted, #999); }
+.step.done .step-dot { background: var(--editor-accent, #16a34a); }
+.step.error .step-dot { background: #dc2626; }
+.step-title { font-weight: 500; white-space: nowrap; flex: none; }
+.step-detail { color: var(--editor-muted, #999); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; font-size: 11.5px; }
+.step-chev { color: var(--editor-muted, #999); flex: none; font-size: 11px; }
+.step-full { margin: 2px 6px 6px 20px; padding: 8px 10px; background: var(--editor-inset-bg, #f4f4f2); border-radius: 6px; font-family: var(--editor-mono, monospace); font-size: 11px; line-height: 1.5; color: var(--editor-muted, #666); white-space: pre-wrap; word-break: break-all; max-height: 260px; overflow: auto; }
+
+/* 计划清单 */
+.todo-box { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1px solid var(--editor-border, #e0e0e6); border-radius: 8px; }
+.todo-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--editor-primary, #1b1c1f); }
+.todo-item.done .todo-title { text-decoration: line-through; color: var(--editor-muted, #999); }
+.todo-dot { color: var(--editor-muted, #999); flex: none; }
+.todo-item.in_progress .todo-dot { color: var(--editor-accent, #16a34a); }
+.todo-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* @ 引用补全面板 */
+.at-panel { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; border: 1px solid var(--editor-border, #e0e0e6); border-radius: 8px; background: var(--editor-panel-bg, #fff); }
+.at-item { border: none; background: var(--editor-inset-bg, #f4f4f2); border-radius: 6px; padding: 3px 8px; font-size: 11.5px; color: var(--editor-primary, #333); cursor: pointer; font-family: var(--editor-mono, monospace); }
+.at-item:hover { color: var(--editor-accent, #16a34a); }
+
+/* 总结气泡 */
+.ai-summary { margin: 0; }
+
+/* 收起态迷你徽标 */
+.ai-mini { position: fixed; right: 18px; bottom: 18px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--editor-border, #e0e0e6); background: var(--editor-panel-bg, #fff); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--editor-accent, #16a34a); z-index: 100; transition: transform 0.15s ease; }
+.ai-mini:hover { transform: scale(1.06); }
+.ai-mini-dot { position: absolute; top: 2px; right: 2px; width: 8px; height: 8px; border-radius: 50%; background: var(--editor-accent, #16a34a); }
+.ai-mini-dot.spin { animation: ai-breathe 1.2s ease-in-out infinite; }
+@keyframes ai-breathe { 0%, 100% { opacity: 0.35; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+
+/* 会话历史面板 */
+.history-box { margin: 10px 12px 0; border: 1px solid var(--editor-border, #e0e0e6); border-radius: 8px; overflow-y: auto; max-height: 220px; flex-shrink: 0; }
+.history-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: var(--editor-inset-bg, #f4f4f2); font-size: 12px; font-weight: 600; color: var(--editor-primary, #1b1c1f); position: sticky; top: 0; }
+.history-count { font-weight: 400; color: var(--editor-muted, #999); }
+.history-empty { padding: 14px; font-size: 12px; color: var(--editor-muted, #999); text-align: center; }
+.history-item { display: flex; align-items: center; gap: 8px; padding: 5px 10px; font-size: 12px; cursor: pointer; color: var(--editor-primary, #333); border-left: 2px solid transparent; }
+.history-item:hover { background: var(--editor-inset-bg, #f4f4f2); }
+.history-item.cur { border-left-color: var(--editor-accent, #16a34a); background: rgba(22, 163, 74, 0.05); }
+.history-item.cur .history-time { color: var(--editor-accent, #16a34a); font-weight: 600; }
+.history-time { font-family: var(--editor-mono, monospace); }
+.history-size { color: var(--editor-muted, #999); font-size: 11px; margin-left: auto; }
+.history-del { color: var(--editor-muted, #999); flex: none; padding: 2px; display: inline-flex; font-size: 11px; }
+.history-del:hover { color: #dc2626; }
 </style>

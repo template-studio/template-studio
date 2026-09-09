@@ -1059,6 +1059,14 @@
 
 **验收结果：** `pnpm build` 通过。
 
+## 2026-09-10 进度迷你徽标（任务 #106）
+
+**变更内容：** 停靠栏收起且代理运行中或有未应用修改时，右下角 40px 星光徽标（运行中=呼吸绿点、待应用=常亮绿点），点击展开停靠栏——收起也不丢任务状态感知。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** `pnpm build` 通过。
+
 ## 2026-09-10 上下文预算与修剪（任务 #105）
 
 **变更内容：** 长任务上下文控制（三批-1）。预算 40k token（字符/3 粗估），每轮调用前检查，超 85% 触发规则修剪：保留首条 system + 最近 8 条原文，中间历史 tool_result（>80 字）折叠为占位；时间线标注"已修剪上下文"及修剪后水位。模型生成的结构化交接摘要（压缩层）留后续。
@@ -1066,3 +1074,35 @@
 **涉及文件：** `views/editor/components/EditorAiAssistant.vue`
 
 **验收结果：** `pnpm build` 通过。
+
+## 2026-09-10 应用即 checkpoint（任务 #107）
+
+**变更内容：** agent「应用全部修改」前置保障（三批-2）。首个应用前自动调用 releases API 创建"AI 修改前快照"（版本号自动生成，复用版本管理，快照失败不阻断应用）；应用成功后面板显示快照版本横幅 + 「撤销」按钮（popconfirm 警示含手动修改在内的后续更改会丢失），确认后 rollbackVersion 回滚、清空工作副本/缓存、刷新当前缓冲区与文件树；部分应用失败同样保留锚点供整体回滚；重置会话时清除。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`、`dev-docs/agent-console-todos.md`（补实施进度记录）
+
+**验收结果：** `pnpm build` 通过。
+
+## 2026-09-10 会话历史列表与切换 + 样式回归修复（任务 #108）
+
+**变更内容：** 会话管理闭环（三批-3）。新增 `ai_session_list` 命令（按修改时间倒序列出 JSONL 会话含 mtime/size），`ai_session_load` 增加可选 name 参数；前端停靠栏头部新增历史按钮，agent 面板内联会话列表（时间+大小+删除图标，当前会话绿色高亮），点击切换会话（有未应用修改时二次确认），删除当前会话连同内存态清空；`sessionName` 转 ref、JSONL 恢复逻辑抽取为 `restoreSession` 复用，全空态不再落盘空会话文件。修复样式块丢失回归：步骤行/计划清单/@ 引用面板/迷你徽标/总结气泡的 CSS 全部补回。
+
+**涉及文件：** `src-tauri/src/commands/ai.rs`、`src-tauri/src/lib.rs`、`views/editor/components/EditorAiAssistant.vue`、`dev-docs/agent-console-todos.md`
+
+**验收结果：** `cargo check` 与 `pnpm build` 均通过。
+
+## 2026-09-10 低风险自动应用分级（任务 #109）
+
+**变更内容：** agent 面板新增「自动应用新文件(低风险)」开关（localStorage 持久化，默认关）。开启后 create_file 工具确认服务端无此文件即 addTemplateFile+editTemplateFile 落库，工作副本 base 前移（后续 edit_file 增量继续走 diff 审查），落库失败静默回落待审流程；对既有文件的任何写入不自动应用。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** `pnpm build` 通过。
+
+## 2026-09-10 模型结构化交接摘要·压缩层（任务 #110）
+
+**变更内容：** 上下文压缩升级为模型摘要优先。超预算（40k×85%）时先由默认模型（ai_chat）把被折叠的中段历史（至多回看 24 条）压缩为六节结构化摘要（已完成/进行中/已修改文件/技术决策及原因/用户约束/下一步），以 user 消息整体替换中段（保留 system + 最近 8 条原文）；模型调用失败回落原规则修剪；时间线步骤显示压缩后水位并挂摘要全文（点击展开）。摘要作为普通消息参与后续压缩循环，无需改写 system。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** `pnpm build` 通过。至此 agent 控制台三批（骨架/可观测/长任务支撑）全部落地。
