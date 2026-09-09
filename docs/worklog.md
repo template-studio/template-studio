@@ -754,3 +754,11 @@
 **涉及文件：** `assets/styles/settings.css`（所有设置子页共用 `.setting-group` 一处生效）
 
 **验收结果：** `pnpm build` 通过；浏览器实测分组卡 computed 样式为白色背景 + 12px 圆角 + 双层柔和阴影，标题/分隔线/行高细节全部按新规格生效。
+
+## 2026-09-09 全端 Logo 统一：任务栏图标 + 关于页占位修复
+
+**变更内容：** 盘点发现四套不一致的 logo：侧栏为品牌绿渐变圆角块 + 白色 `< / >`（唯一在用且符合视觉语言）；任务栏/窗口图标（icon.ico/png）仍是默认 Tauri 图标（金青双弧）；icon.svg 是已淘汰的紫粉渐变+金闪电且从未烘焙进 ico；关于页为文字占位"UI"。以侧栏 logo 为唯一样式源统一：① PIL 脚本从 1024 母版生成全套图标（icon.png/ico 含 16-256 七档、Square*Logo 商店资产、icns），小尺寸（≤48px）用加粗笔画（2/24→2.35/24）的独立母版 + 逐级减半下采样解决发糊，ICO 容器手写逐帧嵌入；② icon.svg 重写为同款矢量；③ 关于页占位替换为同款内联 SVG（64px + 品牌绿投影）。生成脚本存 `.local/gen_icons.py`（不入库）。
+
+**涉及文件：** `apps/desktop/src-tauri/icons/*`（全套再生成）、`views/settings/AboutSettings.vue`
+
+**验收结果：** `pnpm build` 通过；触发 cargo 重编译后提取 exe 内嵌 32px 图标验证为绿底白色 `< / >`（810 绿 + 115 白像素），任务栏图标已换新；ICO 七档帧结构校验通过，32px 帧笔画 ~3px 清晰。

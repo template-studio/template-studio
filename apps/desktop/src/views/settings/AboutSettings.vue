@@ -5,9 +5,18 @@
       <div class="setting-title">应用程序</div>
 
       <div style="display: flex; align-items: center; gap: 16px; padding: 16px 0;">
-        <div class="app-logo">
-          <span class="logo-text">UI</span>
-        </div>
+        <svg class="app-logo" width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="24" height="24" rx="6.5" fill="url(#aboutBrandGradient)" />
+          <path d="M9.2 8.4 L6 12 L9.2 15.6" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+          <path d="M13.8 7.2 L10.8 16.8" stroke="#ffffff" stroke-width="2" stroke-linecap="round" fill="none" />
+          <path d="M14.8 8.4 L18 12 L14.8 15.6" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+          <defs>
+            <linearGradient id="aboutBrandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color: #16a34a; stop-opacity: 1" />
+              <stop offset="100%" style="stop-color: #18a058; stop-opacity: 1" />
+            </linearGradient>
+          </defs>
+        </svg>
         <div class="app-details">
           <h3>Template Studio</h3>
           <div class="app-version">版本 1.0.0</div>
@@ -358,18 +367,9 @@ onMounted(() => {
 }
 
 .app-logo {
-  width: 64px;
-  height: 64px;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 1.2rem;
-  font-weight: bold;
-  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
   flex-shrink: 0;
+  border-radius: 14px;
+  filter: drop-shadow(0 4px 10px rgba(22, 163, 74, 0.25));
 }
 
 .app-details h3 {
