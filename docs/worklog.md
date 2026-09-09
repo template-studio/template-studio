@@ -1138,3 +1138,19 @@
 **涉及文件：** `views/editor/components/EditorAiAssistant.vue`、`dev-docs/agent-console-todos.md`
 
 **验收结果：** `pnpm build` 通过。
+
+## 2026-09-10 composer chips 移入输入框卡片内部（任务 #115）
+
+**变更内容：** 采纳用户反馈——模型/思考/权限 chips 应在输入框内部底边而非输入框下方（ZCode 式单卡片）。新增 .ai-composer 统一卡片承载边框/圆孔/focus-within 品牌绿描边，Sender 置于卡内并剥除 antdx 自带边框（查其样式源码确认可视边框在根 boxShadow 与内层继承 border 上，根+内层一并重置），chips 条移入卡片底部；应用行与 @ 补全面板仍在卡片上方。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** `pnpm build` 通过。
+
+## 2026-09-10 权限模式弹层重设计（任务 #116）
+
+**变更内容：** 采纳用户反馈——弹层太宽、说明应简短换行。条目重做为两行式：左侧档位图标（确认=Audit 灰/自动编辑=Edit 品牌绿/自动=Thunder 蓝/完全访问=Safety 橙，与 chip 色彩编码一致），右侧标题（12.5px 半粗）+ 换行说明（11px 弱色，缩短为一句：改动先审查手动应用/改动即时写入可一键撤销/自动编辑轮次上限 20/30）；当前档背景高亮 + 右端品牌绿对勾；弹层固定宽 236px。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** `pnpm build` 通过。

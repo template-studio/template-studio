@@ -114,10 +114,11 @@
         <div v-if="atMatches.length > 0" class="at-panel">
           <button v-for="p in atMatches" :key="p" class="at-item" @mousedown.prevent="pickAt(p)">{{ p }}</button>
         </div>
-        <Sender v-model:value="agentInput" :loading="agentRunning" :disabled="applying"
-          placeholder="提问或描述编辑任务,支持 @ 引用文件"
-          submit-type="enter" @submit="runAgent" @cancel="abortAgent" @focus="loadFilePaths" />
-      </div>
+        <!-- 输入框卡片:Sender + 底部 chips 同框(ZCode 式) -->
+        <div class="ai-composer">
+          <Sender v-model:value="agentInput" :loading="agentRunning" :disabled="applying"
+            placeholder="提问或描述编辑任务,支持 @ 引用文件"
+            submit-type="enter" @submit="runAgent" @cancel="abortAgent" @focus="loadFilePaths" />
 
     <!-- composer 底栏:模型 / 思考级别 / 权限访问模式(向上弹出) -->
     <div class="ai-composer-bar">
@@ -162,10 +163,16 @@
 
       <a-popover trigger="click" placement="topLeft">
         <template #content>
-          <div class="mp-list">
-            <div v-for="pm in PERMS" :key="pm.v" class="mp-item" :class="{ cur: permMode === pm.v }" @click="permMode = pm.v">
-              <span class="mp-name">{{ pm.label }}</span>
-              <span class="mp-desc">{{ pm.desc }}</span>
+          <div class="perm-list">
+            <div v-for="pm in PERMS" :key="pm.v" class="perm-item" :class="[pm.v, { cur: permMode === pm.v }]" @click="permMode = pm.v">
+              <component :is="pm.icon" class="perm-ico" />
+              <div class="perm-text">
+                <div class="perm-name">
+                  {{ pm.label }}
+                  <CheckOutlined v-if="permMode === pm.v" class="perm-check" />
+                </div>
+                <div class="perm-desc">{{ pm.desc }}</div>
+              </div>
             </div>
           </div>
         </template>
@@ -174,6 +181,8 @@
         </button>
       </a-popover>
     </div>
+        </div>
+      </div>
   </div>
 
   <!-- 收起态迷你徽标:运行中转圈点/有未应用修改绿点 -->
@@ -193,7 +202,7 @@
 import { ref, watch, nextTick, reactive, computed, onMounted, onUnmounted, h } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
-import { CloseOutlined, HistoryOutlined, DeleteOutlined, SafetyOutlined, BulbOutlined } from '@ant-design/icons-vue'
+import { CloseOutlined, HistoryOutlined, DeleteOutlined, SafetyOutlined, BulbOutlined, AuditOutlined, EditOutlined, ThunderboltOutlined, CheckOutlined } from '@ant-design/icons-vue'
 import { Sender, Welcome } from 'ant-design-x-vue'
 import { useAIConfigStore } from '@/stores/ai-config'
 import AiIcon from '@/components/icons/AiIcon.vue'
@@ -284,10 +293,10 @@ const THINKS = [
   { v: 'high', label: '深', desc: '完整推演方案后执行' },
 ]
 const PERMS = [
-  { v: 'confirm', label: '变更前确认', desc: '修改进入工作副本,应用前人工审查 diff', rounds: 12 },
-  { v: 'autoEdit', label: '自动编辑', desc: '文件修改即时写入模板(修改前自动快照,可一键撤销)', rounds: 12 },
-  { v: 'auto', label: '自动模式', desc: '自动编辑 + 轮次上限 20,适合中型批量任务', rounds: 20 },
-  { v: 'full', label: '完全访问', desc: '自动编辑 + 轮次上限 30,大批量重构', rounds: 30 },
+  { v: 'confirm', label: '变更前确认', desc: '改动先审查,手动应用', icon: AuditOutlined, rounds: 12 },
+  { v: 'autoEdit', label: '自动编辑', desc: '改动即时写入,可一键撤销', icon: EditOutlined, rounds: 12 },
+  { v: 'auto', label: '自动模式', desc: '自动编辑,轮次上限 20', icon: ThunderboltOutlined, rounds: 20 },
+  { v: 'full', label: '完全访问', desc: '自动编辑,轮次上限 30', icon: SafetyOutlined, rounds: 30 },
 ]
 const thinkLevel = ref(localStorage.getItem('ai-think-level') || 'auto')
 const permMode = ref(localStorage.getItem('ai-perm-mode') || 'confirm')
@@ -962,8 +971,19 @@ onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop(); clearInterva
 .ai-sender-wrap { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--editor-border, #e0e0e6); flex-shrink: 0; }
 .ai-apply-row { display: flex; gap: 8px; }
 
-/* composer 底栏(模型/思考/权限):无边框 chip,hover 显底色(ZCode 式) */
-.ai-composer-bar { display: flex; align-items: center; gap: 2px; padding: 2px 8px 8px; flex-shrink: 0; }
+/* composer 底栏(模型/思考/权限):输入框卡片内部底边(ZCode 式) */
+.ai-composer { border: 1px solid var(--editor-border, #e0e0e6); border-radius: 10px; background: var(--editor-panel-bg, #fff); overflow: hidden; transition: border-color 0.15s ease; }
+.ai-composer:focus-within { border-color: var(--editor-accent, #16a34a); }
+/* antdx Sender 的可视边框在根 boxShadow 与内层继承 border 上,一并剥掉,由卡片统一承载 */
+.ai-composer :deep(.ant-sender),
+.ai-composer :deep(.ant-sender:focus-within),
+.ai-composer :deep(.ant-sender *) {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+.ai-composer :deep(.ant-sender) { padding: 4px 6px 0 10px; }
+.ai-composer-bar { display: flex; align-items: center; gap: 2px; padding: 2px 6px 4px; }
 .chip { display: inline-flex; align-items: center; gap: 5px; border: none; background: transparent; padding: 3px 8px; font-size: 11.5px; color: var(--editor-muted, #999); cursor: pointer; white-space: nowrap; overflow: hidden; border-radius: 6px; transition: background-color 0.15s ease; }
 .chip:hover { background: var(--editor-inset-bg, #f4f4f2); }
 .chip-ico { font-size: 12px; }
@@ -989,6 +1009,22 @@ onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop(); clearInterva
 .mp-desc { font-size: 11px; color: var(--editor-muted, #999); margin-left: auto; white-space: nowrap; }
 .mp-fn { flex: none; font-size: 9px; font-weight: 600; color: var(--editor-accent, #16a34a); border: 1px solid currentColor; border-radius: 4px; padding: 0 3px; }
 .mp-empty { padding: 6px 10px; font-size: 11.5px; color: var(--editor-muted, #999); }
+
+/* 权限模式弹层:两行式条目(档位配色图标+标题/换行说明),固定宽 */
+.perm-list { display: flex; flex-direction: column; gap: 2px; width: 236px; }
+.perm-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; transition: background-color 0.12s ease; }
+.perm-item:hover { background: var(--editor-inset-bg, #f4f4f2); }
+.perm-item.cur { background: var(--editor-inset-bg, #f4f4f2); }
+.perm-ico { font-size: 15px; margin-top: 1px; flex: none; }
+.perm-item.confirm .perm-ico { color: var(--editor-muted, #999); }
+.perm-item.autoEdit .perm-ico { color: var(--editor-accent, #16a34a); }
+.perm-item.auto .perm-ico { color: #2563eb; }
+.perm-item.full .perm-ico { color: #d97706; }
+.perm-text { flex: 1; min-width: 0; }
+.perm-name { display: flex; align-items: center; font-size: 12.5px; font-weight: 600; color: var(--editor-primary, #1b1c1f); }
+.perm-desc { font-size: 11px; line-height: 1.5; color: var(--editor-muted, #999); margin-top: 2px; }
+.perm-check { margin-left: auto; font-size: 11px; }
+.perm-item.cur .perm-check { color: var(--editor-accent, #16a34a); }
 
 .diff-card { border: 1px solid var(--editor-border, #e0e0e6); border-radius: 8px; overflow: hidden; }
 .diffs-head { font-size: 12px; color: var(--editor-primary, #1b1c1f); font-weight: 500; padding: 0 2px; display: flex; align-items: center; gap: 8px; }
