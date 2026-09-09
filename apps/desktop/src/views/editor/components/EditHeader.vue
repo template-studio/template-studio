@@ -33,6 +33,12 @@
     </div>
     <div class="header-actions">
       <a-tooltip>
+        <template #title>AI 助手</template>
+        <button class="action-icon" :class="{ 'ai-active': aiOpen }" @click="$emit('toggle-ai')">
+          <AiIcon :size="18" />
+        </button>
+      </a-tooltip>
+      <a-tooltip>
         <template #title>高级设置</template>
         <button class="action-icon" @click="$emit('show-advanced')">
           <SettingsOutline style="font-size: 18px" />
@@ -50,6 +56,19 @@
           <CloseOutline style="font-size: 18px" />
         </button>
       </a-tooltip>
+
+      <!-- 窗口控制(独立全屏页自带,样式与主布局一致) -->
+      <div class="window-controls">
+        <button class="action-icon" title="最小化" @click="minimizeWindow">
+          <MinusOutlined style="font-size: 16px" />
+        </button>
+        <button class="action-icon" title="最大化/还原" @click="maximizeWindow">
+          <BorderOutlined style="font-size: 13px" />
+        </button>
+        <button class="action-icon win-close" title="关闭窗口" @click="closeWindow">
+          <CloseOutline style="font-size: 18px" />
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -62,6 +81,9 @@
     PlayOutline,
     CloseOutline,
   } from '@/icons/ionicons5';
+  import { MinusOutlined, BorderOutlined } from '@ant-design/icons-vue';
+  import AiIcon from '@/components/icons/AiIcon.vue';
+  import { tauriApi } from '@/utils/tauriApi';
 
   const VariablesOutline = () =>
     h(
@@ -100,6 +122,10 @@
       type: String,
       default: 'basic',
     },
+    aiOpen: {
+      type: Boolean,
+      default: false,
+    },
   });
 
   const emit = defineEmits([
@@ -108,11 +134,41 @@
     'toggle-file-tree',
     'show-advanced',
     'full-render',
+    'toggle-ai',
   ]);
+
+  const minimizeWindow = async () => {
+    try {
+      await tauriApi.window.minimize();
+      document.activeElement.blur();
+    } catch (error) {
+      console.error('Failed to minimize window:', error);
+    }
+  };
+
+  const maximizeWindow = async () => {
+    try {
+      await tauriApi.window.maximize();
+      document.activeElement.blur();
+    } catch (error) {
+      console.error('Failed to maximize window:', error);
+    }
+  };
+
+  const closeWindow = async () => {
+    try {
+      await tauriApi.window.close();
+    } catch (error) {
+      console.error('Failed to close window:', error);
+    }
+  };
 </script>
 
 <style scoped>
   .edit-header {
+    /* 无边框窗口的标题栏拖拽区(按钮等交互元素单独 no-drag) */
+    -webkit-app-region: drag;
+    user-select: none;
     height: 48px;
     background: var(--editor-panel-bg, #ffffff);
     border-bottom: 1px solid var(--editor-border, #e2e8f0);
@@ -210,6 +266,11 @@
     display: flex;
     align-items: center;
     gap: 2px;
+    -webkit-app-region: no-drag;
+  }
+
+  .header-left {
+    -webkit-app-region: no-drag;
   }
 
   .action-icon {
@@ -234,6 +295,25 @@
   .action-icon.action-close:hover {
     background: #fef2f2;
     color: #ef4444;
+  }
+
+  .action-icon.ai-active {
+    background: var(--editor-active-bg, #e8e8e6);
+    color: var(--editor-accent, #16a34a);
+  }
+
+  .window-controls {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 10px;
+    padding-left: 10px;
+    border-left: 1px solid var(--editor-border, #e2e8f0);
+  }
+
+  .action-icon.win-close:hover {
+    background: #ff4757;
+    color: #fff;
   }
 
   @media (prefers-reduced-motion: reduce) {

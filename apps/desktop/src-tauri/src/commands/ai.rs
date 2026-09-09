@@ -692,12 +692,14 @@ async fn project_schema_summary(
     Ok(out)
 }
 
-/// AI 助手对话(单轮;上下文=模板变量与/或项目表结构)
+/// AI 助手对话(上下文=模板变量/项目表结构/调用方附加上下文;支持多轮历史)
 #[tauri::command]
 pub async fn ai_chat(
     message: String,
     template_path: Option<String>,
     project_id: Option<i64>,
+    extra_context: Option<String>,
+    history: Option<serde_json::Value>,
     database: tauri::State<'_, DbState>,
 ) -> Result<String, String> {
     let db = database.as_ref();
@@ -706,6 +708,10 @@ pub async fn ai_chat(
     let mut context = String::from(
         "你是 Template Studio 桌面端的内置助手,熟悉代码模板、变量设计与数据库建模。用简洁的中文回答。",
     );
+    if let Some(extra) = extra_context.as_deref().filter(|s| !s.trim().is_empty()) {
+        context.push_str("\n\n当前编辑上下文:\n");
+        context.push_str(&extra.chars().take(6000).collect::<String>());
+    }
     if let Some(tp) = &template_path {
         let root = std::path::Path::new(tp);
         if root.is_dir() {
@@ -738,7 +744,18 @@ pub async fn ai_chat(
         }
     }
 
-    let reply = crate::ai_runtime::chat(&target, Some(&context), &message, &[]).await?;
+    // 多轮历史:仅保留最近 20 条,避免上下文膨胀
+    let history_arr: Vec<serde_json::Value> = history
+        .and_then(|h| h.as_array().cloned())
+        .unwrap_or_default();
+    let recent: Vec<serde_json::Value> = history_arr
+        .into_iter()
+        .rev()
+        .take(20)
+        .rev()
+        .collect();
+
+    let reply = crate::ai_runtime::chat(&target, Some(&context), &message, &recent).await?;
     serde_json::to_string(&serde_json::json!({ "response": reply, "tool_calls": [] }))
         .map_err(|e| format!("序列化失败: {}", e))
 }

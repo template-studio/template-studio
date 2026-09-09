@@ -810,3 +810,35 @@
 **涉及文件：** `apps/desktop/src-tauri/src/{commands/ai.rs, lib.rs}`、`views/templates/{index.vue, components/ExtractTemplateWizard.vue(新增)}`
 
 **验收结果：** `cargo build` + `pnpm build` 通过，应用自动重启；目录扫描/启发式/AI 链路待用户桌面端实测。初始变量值集写入 schema 与条件建议留 P1。
+
+## 2026-09-09 编辑器悬浮 AI 助手（任务 #71）
+
+**变更内容：** 编辑器右下角悬浮 AI 助手：① `EditorAiAssistant.vue`——44px 圆形 FAB（单色黑/图标反色）+ 400×520 对话面板（14px 圆角，`--editor-*` 变量族深浅自适应），空态提示卡、气泡对话、打字动效、Enter 发送/Shift+Enter 换行、清空会话；② `ai_chat` 扩展可选 `extra_context`（当前文件路径 + 模板变量清单，前端拼装）与 `history`（多轮最近 20 条），旧调用零改动兼容；③ 挂载于 editor/index.vue。
+
+**涉及文件：** `apps/desktop/src-tauri/src/commands/ai.rs`、`views/editor/{index.vue, components/EditorAiAssistant.vue(新增)}`
+
+**验收结果：** 双端构建通过；浏览器实测 FAB 与面板样式/结构齐全（44px 圆形单色、400×520/r14/提示卡/输入框）；真实对话链路待用户在桌面端验证。
+
+## 2026-09-09 AI 助手图标换为四角星光（任务 #72）
+
+**变更内容：** 编辑器 AI 助手三处图标（FAB/面板标题/空态）由 antd `RobotOutlined` 换为项目既有 `AiIcon` 四角星光品牌符号（用户提供 path 与此前裁剪的组件一致，零新增资产）；清理图标字体遗留 font-size；全项目 RobotOutlined 清零。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** `pnpm build` 通过；浏览器实测 FAB 为 20×20 星光 svg、机器人图标不存在。
+
+## 2026-09-09 AI 助手改停靠式右侧栏（任务 #73）
+
+**变更内容：** 应反馈"悬浮弹窗小气"，AI 助手重构为 Cursor 式停靠栏：组件成为编辑器 `.edit-main` 布局列（预览面板之后），全高贴边、编辑区与预览自然收缩；左缘拖拽手柄（悬停品牌绿）宽度 320-640 可调并 localStorage 持久化（默认 420）；FAB 保留为关闭态唤起入口（开启即隐藏）；字号/内距/气泡放大（13.5px、86% 宽、输入区上下布局）。
+
+**涉及文件：** `views/editor/{index.vue, components/EditorAiAssistant.vue}`
+
+**验收结果：** `pnpm build` 通过；浏览器实测：初态/开合正确、420px 全高在布局内、模拟拖拽 420→540 且超限钳制 320、持久化生效。
+
+## 2026-09-09 编辑器头部补窗口控制与 AI 入口（任务 #74）
+
+**变更内容：** 编辑器独立页头部右上角扩为 7 键：AI 助手（星光图标，激活态品牌绿，开关停靠栏）/ 高级设置 / 全量渲染 / 关闭编辑器 ｜ 最小化 / 最大化 / 关闭窗口（`tauriApi.window`，窗口组以发丝分隔线区隔、关闭悬停红，样式与主布局一致）；头部整体设为无边框窗口标题栏拖拽区（交互元素单独 no-drag，此前独立页无法拖动窗口）；AI 开关状态提升至 editor/index.vue（`aiDockOpen` + v-model），移除右下角 FAB 入口唯一化。
+
+**涉及文件：** `views/editor/{index.vue, components/EditHeader.vue, components/EditorAiAssistant.vue}`
+
+**验收结果：** `pnpm build` 通过；浏览器实测 7 键就位、拖拽区生效、星光开关联动停靠栏与激活态、FAB 已移除；窗口三键真实效果在桌面端生效。

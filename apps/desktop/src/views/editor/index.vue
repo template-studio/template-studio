@@ -6,11 +6,13 @@
       :has-unsaved-changes="hasUnsavedChanges"
       :current-file-name="currentFileName"
       :mode="templateType"
+      :ai-open="aiDockOpen"
       @toggle-variable-sidebar="toggleVariableSidebar"
       @close-edit="closeEdit"
       @toggle-file-tree="toggleFileTree"
       @show-advanced="openAdvancedTab('engine')"
       @full-render="showFullRenderDrawer = true"
+      @toggle-ai="aiDockOpen = !aiDockOpen"
     />
 
     <!-- 自动保存指示器 -->
@@ -91,6 +93,13 @@
         :file-path="currentFilePath"
         :file-content="currentFileContent"
         :variables="variableValues"
+      />
+
+      <!-- 停靠式 AI 助手栏(头部星光图标开关) -->
+      <EditorAiAssistant
+        v-model:open="aiDockOpen"
+        :current-file-path="currentFilePath"
+        :template-variables="templateVariables"
       />
     </div>
 
@@ -175,6 +184,7 @@
   import FullRenderDrawer from './components/FullRenderDrawer.vue';
   import ReleaseManager from './components/ReleaseManager.vue';
   import QuickDesignDrawer from './components/QuickDesignDrawer/index.vue';
+  import EditorAiAssistant from './components/EditorAiAssistant.vue';
   import { templateSyntaxCategories as syntaxData } from './data/templateSyntax';
   import { useTemplateFileStore } from '@/stores/templateFileStore';
   import { message } from 'ant-design-vue';
@@ -346,6 +356,7 @@
 
   const showAdvancedDrawer = ref(false);
   const showFullRenderDrawer = ref(false);
+  const aiDockOpen = ref(false);
   const showReleasesModal = ref(false);
 
   const editorSettings = ref({
