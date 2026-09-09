@@ -802,3 +802,11 @@
 **涉及文件：** `apps/desktop/src-tauri/src/{commands/ai.rs, lib.rs}`、`views/editor/components/QuickDesignDrawer/{index.vue, components/VariableAnalysisModal.vue}`
 
 **验收结果：** `cargo build` + `pnpm build` 通过，应用自动重启；真实 AI 链路待用户在编辑器按使用路径验证。
+
+## 2026-09-09 一键从项目提取模板向导（任务 #69，AI P0 收官）
+
+**变更内容：** 模板广场新增「从项目提取」四步向导：① 选目录（tauri dialog + `extract_scan_dir`：26 扩展名白名单、256KB/文件、500 文件、8 深度、跳依赖目录）；② 文件树勾选（`extract_read_files` 批量读取带 2MB 总量与防路径穿越）；③ AI 参数化分析（`extract_analyze`：启发式候选＝引号字符串≥3 次出现＋目录名恒候选，截 30 个交 AI 精炼 snake_case 变量名/中文标题/类型/默认值，无 provider 纯启发式降级，结果按候选过滤防幻觉）；④ 创建表单 → 逐文件应用 `{{ var }}` 替换 → createUserTemplate + addTemplateFile（先目录后文件）+ editTemplateFile 上传 → 跳转编辑器。变量建议表支持勾选与变量名编辑。
+
+**涉及文件：** `apps/desktop/src-tauri/src/{commands/ai.rs, lib.rs}`、`views/templates/{index.vue, components/ExtractTemplateWizard.vue(新增)}`
+
+**验收结果：** `cargo build` + `pnpm build` 通过，应用自动重启；目录扫描/启发式/AI 链路待用户桌面端实测。初始变量值集写入 schema 与条件建议留 P1。

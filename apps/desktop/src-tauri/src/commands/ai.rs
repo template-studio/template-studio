@@ -987,3 +987,332 @@ pub async fn ai_suggest_variables(
 
     Ok(serde_json::json!({ "suggestions": list }).to_string())
 }
+
+// ===== 模板提取向导命令 =====
+
+/// 向导用目录遍历:返回白名单内候选文件(相对路径 + 字节大小),不读内容
+fn scan_extract_files(root: &std::path::Path) -> Vec<(String, u64)> {
+    const EXTS: [&str; 26] = [
+        "rs", "ts", "js", "vue", "java", "kt", "go", "py", "cs", "php", "rb", "sql", "yml",
+        "yaml", "json", "toml", "xml", "html", "css", "scss", "md", "txt", "sh", "properties",
+        "gradle", "mod",
+    ];
+    const SKIP_DIRS: [&str; 8] = [
+        "node_modules", ".git", "target", "dist", "build", ".venv", "__pycache__", ".idea",
+    ];
+    const MAX_FILE: u64 = 256 * 1024;
+    const MAX_FILES: usize = 500;
+    const MAX_DEPTH: usize = 8;
+
+    let mut files: Vec<(String, u64)> = Vec::new();
+    let mut stack: Vec<(std::path::PathBuf, usize)> = vec![(root.to_path_buf(), 0)];
+
+    while let Some((dir, depth)) = stack.pop() {
+        if depth > MAX_DEPTH || files.len() >= MAX_FILES {
+            break;
+        }
+        let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().to_string();
+            if path.is_dir() {
+                if !SKIP_DIRS.contains(&name.as_str()) && !name.starts_with('.') {
+                    stack.push((path, depth + 1));
+                }
+            } else {
+                let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                if !EXTS.contains(&ext) {
+                    continue;
+                }
+                let Ok(meta) = entry.metadata() else { continue };
+                if meta.len() > MAX_FILE {
+                    continue;
+                }
+                let rel = path
+                    .strip_prefix(root)
+                    .unwrap_or(&path)
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                files.push((rel, meta.len()));
+                if files.len() >= MAX_FILES {
+                    break;
+                }
+            }
+        }
+    }
+    files.sort();
+    files
+}
+
+/// 提取向导步骤1:扫描目录,返回候选文件清单
+#[tauri::command]
+pub async fn extract_scan_dir(path: String) -> Result<String, String> {
+    let root = std::path::PathBuf::from(&path);
+    if !root.is_dir() {
+        return Err("路径不存在或不是目录".to_string());
+    }
+
+    let files = scan_extract_files(&root);
+    let list: Vec<serde_json::Value> = files
+        .iter()
+        .map(|(rel, size)| serde_json::json!({ "path": rel, "size": size }))
+        .collect();
+
+    Ok(serde_json::json!({
+        "root": path,
+        "files": list,
+        "totalSize": files.iter().map(|(_, s)| s).sum::<u64>(),
+    })
+    .to_string())
+}
+
+/// 提取向导步骤2后:批量读取所选文件内容(总量/单文件上限)
+#[tauri::command]
+pub async fn extract_read_files(
+    path: String,
+    selected_files: Vec<String>,
+) -> Result<String, String> {
+    let root = std::path::PathBuf::from(&path);
+    if !root.is_dir() {
+        return Err("路径不存在或不是目录".to_string());
+    }
+
+    const MAX_FILE: usize = 256 * 1024;
+    const MAX_TOTAL: usize = 2 * 1024 * 1024;
+    const MAX_COUNT: usize = 120;
+
+    let mut files: Vec<serde_json::Value> = Vec::new();
+    let mut total = 0usize;
+    for rel in selected_files.iter().take(MAX_COUNT) {
+        // 防路径穿越:只接受相对路径且不含 ..
+        if rel.contains("..") || std::path::Path::new(rel).is_absolute() {
+            continue;
+        }
+        let full = root.join(rel);
+        match std::fs::read_to_string(&full) {
+            Ok(content) => {
+                let content = if content.len() > MAX_FILE {
+                    content[..MAX_FILE].to_string()
+                } else {
+                    content
+                };
+                total += content.len();
+                files.push(serde_json::json!({ "path": rel, "content": content }));
+                if total >= MAX_TOTAL {
+                    break;
+                }
+            }
+            Err(_) => continue,
+        }
+    }
+
+    Ok(serde_json::json!({ "files": files }).to_string())
+}
+
+/// 启发式候选:引号字符串与目录名,出现次数达标者
+fn heuristic_candidates(root_name: &str, files: &[(String, String)]) -> Vec<(String, usize)> {
+    use std::collections::HashMap;
+    let mut counts: HashMap<String, usize> = HashMap::new();
+
+    let mut bump = |s: &str| {
+        let t = s.trim();
+        if t.len() < 2 || t.len() > 48 || t.chars().all(|c| c.is_ascii_digit()) {
+            return;
+        }
+        *counts.entry(t.to_string()).or_insert(0) += 1;
+    };
+
+    for (_, content) in files {
+        let bytes: Vec<char> = content.chars().collect();
+        let mut i = 0usize;
+        while i < bytes.len() {
+            let q = bytes[i];
+            if q == '"' || q == '\'' {
+                let mut j = i + 1;
+                let mut buf = String::new();
+                while j < bytes.len() && bytes[j] != q && buf.len() < 64 {
+                    let c = bytes[j];
+                    if c == '\n' || c == '\r' {
+                        break;
+                    }
+                    buf.push(c);
+                    j += 1;
+                }
+                if j < bytes.len() && bytes[j] == q && !buf.is_empty() {
+                    bump(&buf);
+                }
+                i = j + 1;
+            } else {
+                i += 1;
+            }
+        }
+    }
+
+    // 目录名始终作为候选(闭包借用已结束,直接写入)
+    if root_name.len() >= 2 {
+        counts.insert(root_name.to_string(), usize::MAX / 2);
+    }
+
+    let mut out: Vec<(String, usize)> = counts
+        .into_iter()
+        .filter(|(v, c)| v == root_name || *c >= 3)
+        .collect();
+    out.sort_by(|a, b| b.1.cmp(&a.1));
+    out.truncate(30);
+    out
+}
+
+/// 提取向导步骤3:AI 参数化分析所选文件,产出变量建议表
+#[tauri::command]
+pub async fn extract_analyze(
+    path: String,
+    selected_files: Vec<String>,
+    database: tauri::State<'_, DbState>,
+) -> Result<String, String> {
+    let root = std::path::PathBuf::from(&path);
+    if !root.is_dir() {
+        return Err("路径不存在或不是目录".to_string());
+    }
+    let root_name = root
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default();
+
+    // 读取所选文件(与 extract_read_files 同上限,这里更紧:总量 512KB)
+    const MAX_FILE: usize = 128 * 1024;
+    const MAX_TOTAL: usize = 512 * 1024;
+    const MAX_COUNT: usize = 80;
+    let mut files: Vec<(String, String)> = Vec::new();
+    let mut total = 0usize;
+    for rel in selected_files.iter().take(MAX_COUNT) {
+        if rel.contains("..") || std::path::Path::new(rel).is_absolute() {
+            continue;
+        }
+        if let Ok(content) = std::fs::read_to_string(root.join(rel)) {
+            let content = if content.len() > MAX_FILE {
+                content[..MAX_FILE].to_string()
+            } else {
+                content
+            };
+            total += content.len();
+            files.push((rel.clone(), content));
+            if total >= MAX_TOTAL {
+                break;
+            }
+        }
+    }
+
+    let candidates = heuristic_candidates(&root_name, &files);
+    if candidates.is_empty() {
+        return Ok(serde_json::json!({ "suggestions": [] }).to_string());
+    }
+
+    // 降级路径:无 provider 时直接返回启发式建议
+    let target = match default_call_target(database.as_ref()).await {
+        Ok(t) => t,
+        Err(_) => {
+            let list: Vec<serde_json::Value> = candidates
+                .iter()
+                .map(|(v, c)| {
+                    serde_json::json!({
+                        "value": v,
+                        "varName": sanitize_var_name(v, &root_name),
+                        "type": "string",
+                        "defaultValue": v,
+                        "title": "",
+                        "count": c,
+                    })
+                })
+                .collect();
+            return Ok(serde_json::json!({ "suggestions": list }).to_string());
+        }
+    };
+
+    // 内容摘要:优先包含候选出现位置的文件,截 12KB
+    let mut digest = String::new();
+    for (rel, content) in &files {
+        if candidates.iter().any(|(v, _)| content.contains(v.as_str())) {
+            digest.push_str(&format!("\n--- {} ---\n{}\n", rel, content));
+            if digest.len() >= 12000 {
+                break;
+            }
+        }
+    }
+
+    let mut target = target;
+    target.temperature = 0.2;
+
+    let cand_list = candidates
+        .iter()
+        .map(|(v, c)| format!("{}(出现{}次)", v, c))
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    let system = "你是代码模板参数化专家。给定一个项目文件片段与一组候选字面量,挑选适合做成模板变量的项(项目名/包名/端口/连接串/版本号/环境相关配置等),为每项给出 snake_case 变量名、中文标题、类型(string/number/boolean)、默认值(原值)。排除通用词(如 main/test/http)与不宜参数化的内容。只返回 JSON。";
+    let prompt = format!(
+        "项目目录名: {}\n候选字面量: {}\n\n文件片段:\n{}\n\n返回格式:{{\"suggestions\":[{{\"value\":\"原字面量\",\"varName\":\"snake_case名\",\"title\":\"中文标题\",\"type\":\"string\",\"defaultValue\":\"原值\"}}]}}",
+        root_name, cand_list, digest
+    );
+
+    let reply = crate::ai_runtime::chat(&target, Some(system), &prompt, &[]).await?;
+    let list = parse_json_reply(&reply)
+        .and_then(|v| v.get("suggestions").cloned())
+        .and_then(|v| v.as_array().cloned())
+        .unwrap_or_default();
+
+    // 校验:只保留真实存在于候选/文件中的值,补计数
+    let known: Vec<String> = candidates.iter().map(|(v, _)| v.clone()).collect();
+    let list: Vec<serde_json::Value> = list
+        .into_iter()
+        .filter_map(|v| {
+            let value = v["value"].as_str()?.to_string();
+            if !known.contains(&value) {
+                return None;
+            }
+            let count = candidates
+                .iter()
+                .find(|(c, _)| *c == value)
+                .map(|(_, n)| *n)
+                .unwrap_or(0);
+            let var_name = v
+                .get("varName")
+                .and_then(|s| s.as_str())
+                .filter(|s| !s.is_empty())
+                .map(str::to_string)
+                .unwrap_or_else(|| sanitize_var_name(&value, &root_name));
+            Some(serde_json::json!({
+                "value": value,
+                "varName": var_name,
+                "title": v.get("title").and_then(|t| t.as_str()).unwrap_or(""),
+                "type": v.get("type").and_then(|t| t.as_str()).unwrap_or("string"),
+                "defaultValue": v.get("defaultValue").and_then(|t| t.as_str()).unwrap_or(&value),
+                "count": count,
+            }))
+        })
+        .collect();
+
+    Ok(serde_json::json!({ "suggestions": list }).to_string())
+}
+
+/// 值 → 合法 snake_case 变量名(仅 ASCII 字母数字,其它边界转下划线)
+fn sanitize_var_name(value: &str, fallback: &str) -> String {
+    let mut name = String::new();
+    let mut prev_us = false;
+    for c in value.chars() {
+        if c.is_ascii_alphanumeric() {
+            name.push(c.to_ascii_lowercase());
+            prev_us = false;
+        } else if !prev_us && !name.is_empty() {
+            name.push('_');
+            prev_us = true;
+        }
+    }
+    let name = name.trim_matches('_').to_string();
+    if name.is_empty() || name.chars().next().map_or(true, |c| c.is_ascii_digit()) {
+        if !fallback.is_empty() {
+            return sanitize_var_name(fallback, "project_name");
+        }
+        return "project_name".to_string();
+    }
+    name
+}

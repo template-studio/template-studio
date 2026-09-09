@@ -7,6 +7,10 @@
         <span class="result-count">共 {{ filteredTemplates.length }} 个模板</span>
       </div>
       <div class="toolbar-right">
+        <a-button v-if="configStore.hasApiKey" @click="showExtractWizard = true">
+          <template #icon><FolderOpenOutlined /></template>
+          从项目提取
+        </a-button>
         <a-button v-if="configStore.hasApiKey" type="primary" @click="openCreateModal">
           <template #icon><PlusOutlined /></template>
           新建模板
@@ -99,6 +103,12 @@
     </a-modal>
     <!-- 模板配置向导抽屉 -->
     <TemplateWizardDrawer v-model:open="showWizardModal" :template="selectedTemplate" @created="onProjectCreated" />
+    <!-- 从项目提取模板向导 -->
+    <ExtractTemplateWizard
+      v-model:open="showExtractWizard"
+      :template-types="templateTypes"
+      :categories="selectableCategories"
+    />
   </div>
 </template>
 
@@ -108,11 +118,12 @@ import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useLayoutStore } from '@/stores/layout'
 import { useConfigStore } from '@/stores/config'
-import { SearchOutlined, UserOutlined, PlusOutlined, EditOutlined } from '@ant-design/icons-vue'
+import { SearchOutlined, UserOutlined, PlusOutlined, EditOutlined, FolderOpenOutlined } from '@ant-design/icons-vue'
 import { getCategories, getLanguages, getTemplates } from '@/api/templates'
 import { getTemplateTypes } from '@/api/editor/templates'
 import { createUserTemplate } from '@/api/editor/templates/contribution'
 import TemplateWizardDrawer from './components/TemplateWizardDrawer.vue'
+import ExtractTemplateWizard from './components/ExtractTemplateWizard.vue'
 
 const layoutStore = useLayoutStore()
 const configStore = useConfigStore()
@@ -130,6 +141,7 @@ const sortOptions = [
   { label: '推荐优先', value: 'featured' }
 ]
 const showWizardModal = ref(false)
+const showExtractWizard = ref(false)
 const categories = ref([{ id: 'all', name: '全部' }])
 const languages = ref([{ id: 'all', name: '全部' }])
 const templates = ref([])

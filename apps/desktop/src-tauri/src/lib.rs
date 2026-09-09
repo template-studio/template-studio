@@ -157,6 +157,10 @@ pub fn run() {
             commands::ai::ai_fill_variables,
             commands::ai::ai_write_variables,
             commands::ai::ai_suggest_variables,
+            // 模板提取向导
+            commands::ai::extract_scan_dir,
+            commands::ai::extract_read_files,
+            commands::ai::extract_analyze,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
