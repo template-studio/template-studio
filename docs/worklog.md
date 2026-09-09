@@ -1114,3 +1114,19 @@
 **涉及文件：** `src-tauri/src/ai_runtime.rs`、`src-tauri/src/commands/ai.rs`、`views/editor/components/EditorAiAssistant.vue`、`dev-docs/agent-console-todos.md`
 
 **验收结果：** `cargo check` 与 `pnpm build` 均通过。
+
+## 2026-09-10 composer 底栏对齐 ZCode 交互细节（任务 #112）
+
+**变更内容：** 实测截取 ZCode 窗口（PowerShell CopyFromScreen，脚本与截图在 .local/）对照后三处对齐。①chip 去边框改纯图标+文字+▾（muted，hover 显底色），模型 chip 亮色主文字，权限 chip 盾牌图标按档位配色（确认=灰/自动编辑=绿/自动=蓝/完全访问=橙警示），思考 chip 灯泡图标；②模型切换写入 agent 时间线（「模型已切换 X → Y」，仅 agent 模式且变化时）；③应用横幅增加总 diffstat（+N 绿 / -N 红）：diffStat 公共函数抽取（added/removed/起始行，refreshDirty 复用），applyAll 按文件聚合、自动应用按次累计。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`、`dev-docs/agent-console-todos.md`
+
+**验收结果：** `pnpm build` 通过。
+
+## 2026-09-10 agent 面板修复：行展开/工作计时/文件更改汇总（任务 #113）
+
+**变更内容：** 修复用户实测反馈三处。①步骤行点击无展开：根因是工具行 timeline 事件只存首行 detail 未存全文，展开区渲染 undefined——工具行与任务行现均存 full（截 4000 字，会话持久化同规格），chevron 仅在有全文时显示并随展开旋转 90°；②运行中步骤区顶部显示「工作中 X 分 X 秒」（agentStartAt + 每秒 tick，结束/卸载清理）；③diff 卡片组上方汇总头「N 个文件已更改 +X -Y」（dirtyFiles 聚合，绿加红减）。探索 ZCode 交互（PowerShell 点击+截图，.local/explore.ps1）另发现同类工具自动分组、模型弹层徽标/管理入口等待借鉴项，已记入待办文档。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`、`dev-docs/agent-console-todos.md`
+
+**验收结果：** `pnpm build` 通过。

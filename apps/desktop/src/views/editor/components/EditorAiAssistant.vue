@@ -71,13 +71,15 @@
           :icon="() => h('span', { class: 'ai-welcome-icon' }, [h(AiIcon, { size: 36 })])"
           title="编辑代理" description="给 AI 一个编辑任务,它会读取文件、打补丁、渲染验证" />
         <div v-else class="agent-stream">
+          <!-- 工作计时(ZCode 式) -->
+          <div v-if="agentRunning && elapsedText" class="working-row">{{ elapsedText }}</div>
           <!-- 紧凑步骤行(终端式:单行折叠,点击展开) -->
           <div class="steps">
-            <div v-for="(e, i) in timeline" :key="i" class="step" :class="e.kind" @click="toggleStep(i)">
+            <div v-for="(e, i) in timeline" :key="i" class="step" :class="[e.kind, { open: expandedStep === i }]" @click="toggleStep(i)">
               <span class="step-dot"></span>
               <span class="step-title">{{ e.title }}</span>
               <span v-if="e.detail" class="step-detail">{{ e.detail }}</span>
-              <span class="step-chev">›</span>
+              <span v-if="e.full" class="step-chev">›</span>
             </div>
             <div v-if="expandedStep !== null && timeline[expandedStep]?.full" class="step-full">{{ timeline[expandedStep].full }}</div>
           </div>
@@ -90,7 +92,12 @@
             </div>
           </div>
 
-          <!-- diff 卡片 -->
+          <!-- diff 卡片:汇总头 + 逐文件 -->
+          <div v-if="dirtyFiles.length > 0" class="diffs-head">
+            {{ dirtyFiles.length }} 个文件已更改
+            <span class="applied-plus">+{{ dirtyAdded }}</span>
+            <span class="applied-minus">-{{ dirtyRemoved }}</span>
+          </div>
           <div v-for="(d, i) in dirtyFiles" :key="'d' + i" class="diff-card">
             <div class="diff-head">
               <span class="diff-path">{{ d.path }}</span>
@@ -101,7 +108,12 @@
 
           <!-- 应用即 checkpoint:快照锚点与一键撤销 -->
           <div v-if="appliedInfo && appliedInfo.count > 0" class="applied-bar">
-            <span class="applied-text">已应用 {{ appliedInfo.count }} 项修改 · 修改前快照 <b>{{ appliedInfo.version }}</b></span>
+            <span class="applied-text">
+              已应用 {{ appliedInfo.count }} 项修改
+              <span class="applied-plus">+{{ appliedInfo.added || 0 }}</span>
+              <span class="applied-minus">-{{ appliedInfo.removed || 0 }}</span>
+              · 修改前快照 <b>{{ appliedInfo.version }}</b>
+            </span>
             <a-popconfirm
               title="回滚将丢弃该快照之后的全部更改（含手动修改），确定？"
               ok-text="回滚" cancel-text="取消" @confirm="undoApply"
@@ -152,7 +164,7 @@
             </template>
           </div>
         </template>
-        <button class="chip" title="选择模型">
+        <button class="chip chip-model" title="选择模型">
           {{ selModel || '默认模型' }}<span class="chip-caret">▾</span>
         </button>
       </a-popover>
@@ -166,7 +178,7 @@
             </div>
           </div>
         </template>
-        <button class="chip" title="思考级别">思考·{{ THINKS.find((t) => t.v === thinkLevel)?.label }}<span class="chip-caret">▾</span></button>
+        <button class="chip" title="思考级别"><BulbOutlined class="chip-ico" />思考·{{ THINKS.find((t) => t.v === thinkLevel)?.label }}<span class="chip-caret">▾</span></button>
       </a-popover>
 
       <a-popover v-if="mode === 'agent'" trigger="click" placement="topLeft">
@@ -178,7 +190,9 @@
             </div>
           </div>
         </template>
-        <button class="chip" title="权限访问模式">{{ PERMS.find((p) => p.v === permMode)?.label }}<span class="chip-caret">▾</span></button>
+        <button class="chip" :class="'chip-perm-' + permMode" title="权限访问模式">
+          <SafetyOutlined class="chip-ico" />{{ PERMS.find((p) => p.v === permMode)?.label }}<span class="chip-caret">▾</span>
+        </button>
       </a-popover>
     </div>
   </div>
@@ -200,7 +214,7 @@
 import { ref, watch, nextTick, reactive, computed, onMounted, onUnmounted, h } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
-import { CloseOutlined, HistoryOutlined, DeleteOutlined } from '@ant-design/icons-vue'
+import { CloseOutlined, HistoryOutlined, DeleteOutlined, SafetyOutlined, BulbOutlined } from '@ant-design/icons-vue'
 import { Bubble, BubbleList, Sender, Welcome } from 'ant-design-x-vue'
 import { useAIConfigStore } from '@/stores/ai-config'
 import AiIcon from '@/components/icons/AiIcon.vue'
@@ -309,6 +323,16 @@ const applying = ref(false)
 // 应用即 checkpoint:最近一次应用的修改前快照锚点({ count, version })
 const appliedInfo = ref(null)
 const undoing = ref(false)
+// 工作计时(运行中每秒走字,ZCode 式「工作中 X 分 X 秒」)
+const agentStartAt = ref(0)
+const nowTick = ref(0)
+let tickTimer = null
+const elapsedText = computed(() => {
+  if (!agentRunning.value || !agentStartAt.value) return ''
+  const s = Math.max(0, Math.floor((nowTick.value - agentStartAt.value) / 1000))
+  const m = Math.floor(s / 60)
+  return m > 0 ? `工作中 ${m} 分 ${s % 60} 秒` : `工作中 ${s} 秒`
+})
 
 // ---- composer 底栏:模型/思考级别/权限访问模式(参考主流 coding agent) ----
 const THINKS = [
@@ -360,8 +384,27 @@ watch(modelPopover, async (open) => {
   enabledProviders.value.forEach((p) => ensureModels(p.providerName))
 })
 onMounted(() => { aiStore.loadAllProviders().catch(() => {}) })
-const pickModel = (pn, m) => { selProvider.value = pn; selModel.value = m; modelPopover.value = false }
-const pickDefaultModel = () => { selProvider.value = ''; selModel.value = ''; modelPopover.value = false }
+const modelLabel = () => selModel.value || '默认模型'
+// 切换留痕:agent 模式下写入时间线(ZCode 式居中分隔事件)
+const pushModelEvent = (from) => {
+  const to = modelLabel()
+  if (mode.value !== 'agent' || from === to) return
+  timeline.value.push({ kind: 'tool', title: '模型已切换', detail: `${from} → ${to}` })
+}
+const pickModel = (pn, m) => {
+  const from = modelLabel()
+  selProvider.value = pn
+  selModel.value = m
+  modelPopover.value = false
+  pushModelEvent(from)
+}
+const pickDefaultModel = () => {
+  const from = modelLabel()
+  selProvider.value = ''
+  selModel.value = ''
+  modelPopover.value = false
+  pushModelEvent(from)
+}
 const timeline = ref([])
 const agentSummary = ref('')
 const abortFlag = ref(false)
@@ -634,8 +677,16 @@ const tryAutoApply = async (path) => {
       fileExistsCache.add(path)
     }
     await editTemplateFile({ templateId: tid(), filePath: path, content: f.content })
+    const st = diffStat(f.base, f.content)
     f.base = f.content // 基线前移:后续增量继续可审查/可撤销
-    if (appliedInfo.value) appliedInfo.value = { ...appliedInfo.value, count: (appliedInfo.value.count || 0) + 1 }
+    if (appliedInfo.value) {
+      appliedInfo.value = {
+        ...appliedInfo.value,
+        count: (appliedInfo.value.count || 0) + 1,
+        added: (appliedInfo.value.added || 0) + st.added,
+        removed: (appliedInfo.value.removed || 0) + st.removed,
+      }
+    }
     refreshDirty()
     if (path === props.currentFilePath) emit('buffer-replace', { path, content: f.content })
     if (isNew) emit('files-updated') // 编辑不改树结构,仅新建需要刷新
@@ -728,25 +779,30 @@ const toggleStep = (i) => {
 
 // ---- diff 视图(公共前后缀行级差异) ----
 const dirtyFiles = ref([])
+const diffStat = (base, content) => {
+  const o = String(base || '').split('\n')
+  const n = String(content || '').split('\n')
+  let s = 0
+  while (s < o.length && s < n.length && o[s] === n[s]) s += 1
+  let e = 0
+  while (e < o.length - s && e < n.length - s && o[o.length - 1 - e] === n[n.length - 1 - e]) e += 1
+  return { added: n.length - s - e, removed: o.length - s - e, start: s }
+}
 const refreshDirty = () => {
   const list = []
   for (const [path, f] of workset) {
     if (path === props.currentFilePath && f.content === (props.currentFileContent || '')) continue
-    const orig = (f.base || '').split('\n')
-    const now = (f.content || '').split('\n')
-    let s = 0
-    while (s < orig.length && s < now.length && orig[s] === now[s]) s += 1
-    let e = 0
-    while (e < orig.length - s && e < now.length - s && orig[orig.length - 1 - e] === now[now.length - 1 - e]) e += 1
-    const removed = orig.length - s - e
-    const added = now.length - s - e
+    const { added, removed, start } = diffStat(f.base, f.content)
     if (removed === 0 && added === 0) continue
-    const preview = now.slice(s, s + Math.max(added, Math.min(removed, 4), 1)).slice(0, 12).join('\n')
+    const now = (f.content || '').split('\n')
+    const preview = now.slice(start, start + Math.max(added, Math.min(removed, 4), 1)).slice(0, 12).join('\n')
     list.push({ path, added, removed, preview })
   }
   dirtyFiles.value = list
 }
 watch(workset, () => nextTick(refreshDirty), { deep: true })
+const dirtyAdded = computed(() => dirtyFiles.value.reduce((s, d) => s + d.added, 0))
+const dirtyRemoved = computed(() => dirtyFiles.value.reduce((s, d) => s + d.removed, 0))
 
 const abortAgent = () => {
   abortFlag.value = true
@@ -758,8 +814,11 @@ const runAgent = async (textArg) => {
   if (!task || agentRunning.value) return
   agentInput.value = ''
   agentRunning.value = true
+  agentStartAt.value = Date.now()
+  nowTick.value = agentStartAt.value
+  if (!tickTimer) tickTimer = setInterval(() => { nowTick.value = Date.now() }, 1000)
   abortFlag.value = false
-  timeline.value.push({ kind: 'tool', title: '任务', detail: task })
+  timeline.value.push({ kind: 'tool', title: '任务', detail: task, full: task })
 
   // 会话续跑:已有线程则追加任务,否则以系统提示开局
   if (taskMessages.value.length === 0) {
@@ -817,6 +876,7 @@ const runAgent = async (textArg) => {
           kind: out.startsWith('错误') ? 'error' : 'tool',
           title: `${c.name}(${(c.arguments?.path || '').slice(0, 40)})`,
           detail: String(out).split('\n')[0].slice(0, 120),
+          full: String(out).slice(0, 4000),
         })
       }
     }
@@ -826,6 +886,8 @@ const runAgent = async (textArg) => {
   } finally {
     agentRunning.value = false
     abortFlag.value = false
+    clearInterval(tickTimer)
+    tickTimer = null
   }
 }
 
@@ -845,6 +907,8 @@ const fileExistsOnServer = async (path) => {
 const applyAll = async () => {
   applying.value = true
   let applied = 0
+  let added = 0
+  let removed = 0
   try {
     // 修改前快照:本会话首个应用前创建一次,作为一键撤销锚点(复用版本管理;失败不阻断应用)
     if (!appliedInfo.value) {
@@ -863,6 +927,8 @@ const applyAll = async () => {
       }
       await editTemplateFile({ templateId: tid(), filePath: d.path, content: f.content })
       applied += 1
+      added += d.added
+      removed += d.removed
     }
     message.success(`已应用 ${applied} 个文件`)
     for (const d of dirtyFiles.value) {
@@ -871,7 +937,7 @@ const applyAll = async () => {
     emit('files-updated')
     workset.clear()
     dirtyFiles.value = []
-    if (appliedInfo.value) appliedInfo.value = { ...appliedInfo.value, count: applied }
+    if (appliedInfo.value) appliedInfo.value = { ...appliedInfo.value, count: applied, added, removed }
     timeline.value.push({
       kind: 'done',
       title: `已应用 ${applied} 个文件`,
@@ -879,7 +945,7 @@ const applyAll = async () => {
     })
   } catch (e) {
     // 部分应用失败也保留快照锚点,便于整体回滚
-    if (applied > 0 && appliedInfo.value) appliedInfo.value = { ...appliedInfo.value, count: applied }
+    if (applied > 0 && appliedInfo.value) appliedInfo.value = { ...appliedInfo.value, count: applied, added, removed }
     message.error('应用失败: ' + (e.message || e))
   } finally {
     applying.value = false
@@ -937,7 +1003,7 @@ const persistWatch = watch(
   scheduleSave,
   { deep: true }
 )
-onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop() })
+onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop(); clearInterval(tickTimer); tickTimer = null })
 
 </script>
 
@@ -961,11 +1027,21 @@ onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop() })
 .ai-sender-wrap { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--editor-border, #e0e0e6); flex-shrink: 0; }
 .ai-apply-row { display: flex; gap: 8px; }
 
-/* composer 底栏(模型/思考/权限) */
-.ai-composer-bar { display: flex; align-items: center; gap: 6px; padding: 6px 12px 8px; flex-shrink: 0; }
-.chip { display: inline-flex; align-items: center; gap: 4px; max-width: 45%; border: 1px solid var(--editor-border, #e0e0e6); background: transparent; border-radius: 999px; padding: 2px 10px; font-size: 11.5px; color: var(--editor-muted, #666); cursor: pointer; white-space: nowrap; overflow: hidden; }
-.chip:hover { color: var(--editor-accent, #16a34a); border-color: var(--editor-accent, #16a34a); }
-.chip-caret { font-size: 9px; opacity: 0.7; }
+/* composer 底栏(模型/思考/权限):无边框 chip,hover 显底色(ZCode 式) */
+.ai-composer-bar { display: flex; align-items: center; gap: 2px; padding: 2px 8px 8px; flex-shrink: 0; }
+.chip { display: inline-flex; align-items: center; gap: 5px; border: none; background: transparent; padding: 3px 8px; font-size: 11.5px; color: var(--editor-muted, #999); cursor: pointer; white-space: nowrap; overflow: hidden; border-radius: 6px; transition: background-color 0.15s ease; }
+.chip:hover { background: var(--editor-inset-bg, #f4f4f2); }
+.chip-ico { font-size: 12px; }
+.chip-caret { font-size: 9px; opacity: 0.6; }
+.chip-model { color: var(--editor-primary, #1b1c1f); font-weight: 500; }
+/* 权限档位色彩编码:确认=灰 / 自动编辑=绿 / 自动=蓝 / 完全访问=橙警示 */
+.chip-perm-confirm { color: var(--editor-muted, #999); }
+.chip-perm-autoEdit { color: var(--editor-accent, #16a34a); }
+.chip-perm-auto { color: #2563eb; }
+.chip-perm-full { color: #d97706; }
+.chip-perm-autoEdit:hover { background: rgba(22, 163, 74, 0.08); }
+.chip-perm-auto:hover { background: rgba(37, 99, 235, 0.08); }
+.chip-perm-full:hover { background: rgba(217, 119, 6, 0.08); }
 
 /* 弹出选择列表(popover 内容,向上弹出) */
 .mp-list { display: flex; flex-direction: column; min-width: 210px; max-height: 300px; overflow-y: auto; }
@@ -980,14 +1056,18 @@ onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop() })
 .mp-empty { padding: 6px 10px; font-size: 11.5px; color: var(--editor-muted, #999); }
 
 .diff-card { border: 1px solid var(--editor-border, #e0e0e6); border-radius: 8px; overflow: hidden; }
+.diffs-head { font-size: 12px; color: var(--editor-primary, #1b1c1f); font-weight: 500; padding: 0 2px; display: flex; align-items: center; gap: 8px; }
 .applied-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--editor-border, #e0e0e6); border-left: 3px solid var(--editor-accent, #16a34a); border-radius: 8px; font-size: 12px; color: var(--editor-muted, #666); }
 .applied-bar b { color: var(--editor-primary, #333); font-weight: 600; font-family: var(--editor-mono, monospace); }
+.applied-plus { color: var(--editor-accent, #16a34a); font-family: var(--editor-mono, monospace); }
+.applied-minus { color: #dc2626; font-family: var(--editor-mono, monospace); }
 .diff-head { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--editor-inset-bg, #f4f4f2); font-size: 12px; }
 .diff-path { font-weight: 500; color: var(--editor-primary, #333); word-break: break-all; }
 .diff-count { color: var(--editor-accent, #16a34a); flex: none; }
 .diff-body { margin: 0; padding: 8px 10px; font-size: 11px; line-height: 1.5; max-height: 120px; overflow: auto; color: var(--editor-muted, #666); white-space: pre-wrap; word-break: break-all; }
 
 /* 紧凑步骤行(终端式) */
+.working-row { font-size: 12px; color: var(--editor-muted, #999); padding: 0 6px; }
 .steps { display: flex; flex-direction: column; gap: 2px; }
 .step { display: flex; align-items: center; gap: 8px; min-height: 24px; padding: 2px 6px; border-radius: 6px; font-size: 12px; cursor: pointer; color: var(--editor-primary, #1b1c1f); }
 .step:hover { background: var(--editor-inset-bg, #f4f4f2); }
@@ -996,7 +1076,8 @@ onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop() })
 .step.error .step-dot { background: #dc2626; }
 .step-title { font-weight: 500; white-space: nowrap; flex: none; }
 .step-detail { color: var(--editor-muted, #999); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; font-size: 11.5px; }
-.step-chev { color: var(--editor-muted, #999); flex: none; font-size: 11px; }
+.step-chev { color: var(--editor-muted, #999); flex: none; font-size: 11px; transition: transform 0.15s ease; }
+.step.open .step-chev { transform: rotate(90deg); }
 .step-full { margin: 2px 6px 6px 20px; padding: 8px 10px; background: var(--editor-inset-bg, #f4f4f2); border-radius: 6px; font-family: var(--editor-mono, monospace); font-size: 11px; line-height: 1.5; color: var(--editor-muted, #666); white-space: pre-wrap; word-break: break-all; max-height: 260px; overflow: auto; }
 
 /* 计划清单 */
