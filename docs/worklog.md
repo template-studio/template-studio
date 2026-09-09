@@ -1010,3 +1010,35 @@
 **涉及文件：** `views/editor/index.vue`
 
 **验收结果：** `pnpm build` 通过；重跑应用验证。
+
+## 2026-09-10 AI 会话磁盘持久化与连续任务（任务 #99）
+
+**变更内容：** 会话不再随关栏/重启丢失。Rust 三命令 `ai_session_save/load/clear`（临时文件+rename 原子写，`~/.cicbyte/template_studio/ai_sessions/<templateId>.json`）；前端快照（对话消息、agent 线程、时间线、工作副本含未应用 diff、token 计量）防抖 500ms 落盘、载入恢复（工作副本恢复后可继续编辑，改动戳与打开缓冲联动不破坏）；`taskMessages` 提升为会话级，后续任务追加同线程连续执行（非每次新开），"重置"清档。落盘裁剪 tool_result 2k/全文 4k 控制上下文体积。
+
+**涉及文件：** `src-tauri/src/{commands/ai.rs, lib.rs}`、`views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** 双端构建零错误。
+
+## 2026-09-10 会话存储定稿：sessions/模板ID/时间戳.jsonl（任务 #100）
+
+**变更内容：** 修订 #99 的存储形态：目录 `ai_sessions` → `sessions`；每模板一个目录（ID 命名），会话文件为毫秒时间戳名；**格式改 JSONL**（每行一个事件 `{t: meta|chat|tl|task|file}`——tail/diff 友好、天然可追加）；默认加载目录内最新会话；会话名由前端持有以续写同一文件，重置删除当前会话。修复批量脚本转义被折叠导致的两处未终止字符串。
+
+**涉及文件：** `src-tauri/src/commands/ai.rs`、`views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** 双端构建零错误。
+
+## 2026-09-10 修复会话恢复 TDZ 报错（任务 #101）
+
+**变更内容：** 打开编辑器报 `Cannot access 'tokIn' before initialization`。根因：`loadSession()` 与持久化 watch 在 `abortFlag` 声明后立即执行，而 `tokIn`/`messages`/`workset` 等在其后才声明（TDZ）。修复：立即调用与 `watch`/`onUnmounted` 移至 setup 末尾（`resetAgent` 之后），全部状态声明完成再恢复会话。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** `pnpm build` 通过。
+
+## 2026-09-10 修复 runAgent 局部 taskMessages 遮蔽（任务 #102）
+
+**变更内容：** 跑任务报 `missing required key messages`。根因：会话化补丁对 runAgent 的替换因转义差异未命中，残留旧局部 `const taskMessages = [...]`（普通数组）遮蔽会话级 ref → invoke 处 `taskMessages.value` 为 undefined → 序列化丢键。修复：删除局部声明，统一走会话级 ref（首任务种 system、后续追加同线程），timeline 改 push 保留历史。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** `pnpm build` 通过；`taskMessages` 声明唯一。

@@ -1501,3 +1501,54 @@ pub async fn ai_agent_turn(
 pub fn ai_get_agent_prompt() -> String {
     EDIT_AGENT_PROMPT.to_string()
 }
+
+// ===== AI 会话持久化(JSONL,sessions/<模板ID>/<毫秒时间戳>.jsonl,默认最新) =====
+
+fn ai_session_dir(template_id: i64) -> Result<std::path::PathBuf, String> {
+    let home = dirs::home_dir().ok_or("无法定位用户目录")?;
+    let dir = home
+        .join(".cicbyte")
+        .join("template_studio")
+        .join("sessions")
+        .join(template_id.to_string());
+    std::fs::create_dir_all(&dir).map_err(|e| format!("创建会话目录失败: {}", e))?;
+    Ok(dir)
+}
+
+/// 保存(原子写);name 为时间戳名,由前端持有以便续写同一会话
+#[tauri::command]
+pub fn ai_session_save(template_id: i64, name: String, data: String) -> Result<(), String> {
+    let path = ai_session_dir(template_id)?.join(format!("{}.jsonl", name));
+    let tmp = path.with_extension("jsonl.tmp");
+    std::fs::write(&tmp, data).map_err(|e| format!("写入会话失败: {}", e))?;
+    std::fs::rename(&tmp, &path).map_err(|e| format!("落盘会话失败: {}", e))?;
+    Ok(())
+}
+
+/// 加载最近一个会话(按文件名时间戳排序),返回 {name, data}
+#[tauri::command]
+pub fn ai_session_load(template_id: i64) -> Result<Option<serde_json::Value>, String> {
+    let dir = ai_session_dir(template_id)?;
+    let mut names: Vec<String> = std::fs::read_dir(&dir)
+        .map(|rd| {
+            rd.flatten()
+                .filter_map(|e| {
+                    let n = e.file_name().to_string_lossy().to_string();
+                    n.ends_with(".jsonl").then(|| n)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    names.sort();
+    let Some(latest) = names.last() else { return Ok(None) };
+    let data = std::fs::read_to_string(dir.join(latest)).unwrap_or_default();
+    Ok(Some(serde_json::json!({ "name": latest, "data": data })))
+}
+
+/// 删除指定会话(重置当前)
+#[tauri::command]
+pub fn ai_session_clear(template_id: i64, name: String) -> Result<(), String> {
+    let path = ai_session_dir(template_id)?.join(name);
+    let _ = std::fs::remove_file(path);
+    Ok(())
+}

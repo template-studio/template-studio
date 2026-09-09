@@ -191,6 +191,63 @@ const applying = ref(false)
 const timeline = ref([])
 const agentSummary = ref('')
 const abortFlag = ref(false)
+const taskMessages = ref([])
+
+// ===== 会话持久化(localStorage,按模板隔离;续跑时工具结果已裁剪) =====
+let sessionName = null  // 当前会话时间戳名;null=新会话
+const saveTimer = { t: null }
+const scheduleSave = () => {
+  clearTimeout(saveTimer.t)
+  saveTimer.t = setTimeout(saveSession, 500)
+}
+const saveSession = async () => {
+  try {
+    const trimmed = taskMessages.value.map((m) =>
+      m.role === 'tool_result'
+        ? { ...m, content: String(m.content || '').slice(0, 2000) }
+        : m
+    )
+    if (!sessionName) sessionName = String(Date.now())
+    const line = (o) => JSON.stringify(o)
+    const lines = [
+      line({ t: 'meta', tokIn: tokIn.value, tokOut: tokOut.value, savedAt: Date.now() }),
+      ...messages.value.map((m) => line({ t: 'chat', m })),
+      ...timeline.value.map((e) => line({ t: 'tl', e: { ...e, full: e.full ? String(e.full).slice(0, 4000) : undefined } })),
+      ...trimmed.map((m) => line({ t: 'task', m })),
+      ...[...workset.entries()].map(([path, f]) => line({ t: 'file', path, f: { ...f } })),
+    ]
+    await invoke('ai_session_save', {
+      templateId: Number(props.templateId),
+      name: sessionName,
+      data: lines.join('\n'),
+    })
+  } catch { /* 写盘失败静默,内存态继续 */ }
+}
+const loadSession = async () => {
+  try {
+    const raw = await invoke('ai_session_load', { templateId: Number(props.templateId) })
+    if (!raw || !raw.data) return
+    sessionName = raw.name.replace('.jsonl', '')
+    const d = { chat: [], tl: [], task: [], file: [], meta: {} }
+    for (const l of raw.data.split('\n')) {
+      if (!l.trim()) continue
+      try { const o = JSON.parse(l); (d[o.t] || (d[o.t] = [])).push(o.m ?? o.e ?? o.f ?? o) } catch {}
+    }
+    const meta = (d.meta && d.meta[0]) || {}
+    messages.value = d.chat || []
+    timeline.value = d.tl || []
+    taskMessages.value = d.task || []
+    tokIn.value = meta.tokIn || 0
+    tokOut.value = meta.tokOut || 0
+    agentSummary.value = ''
+    workset.clear()
+    for (const item of d.file || []) {
+      if (item && item.path) workset.set(item.path, { ...item.f, version: 0, readVersion: 0, hasRead: true })
+    }
+    refreshDirty()
+  } catch { /* 损坏则丢弃 */ }
+}
+const clearSession = () => { try { if (sessionName) invoke('ai_session_clear', { templateId: Number(props.templateId), name: sessionName + '.jsonl' }); sessionName = null } catch {} }
 const busy = computed(() => agentRunning.value || applying.value)
 
 // token 水位
@@ -342,24 +399,26 @@ const runAgent = async (textArg) => {
   if (!task || agentRunning.value) return
   agentInput.value = ''
   agentRunning.value = true
-  agentSummary.value = ''
   abortFlag.value = false
-  timeline.value = [{ kind: 'tool', title: '任务', detail: task }]
+  timeline.value.push({ kind: 'tool', title: '任务', detail: task })
 
-  let system = ''
-  try {
-    system = await invoke('ai_get_agent_prompt')
-  } catch { system = '' }
-  const ctx = buildExtraContext()
-  const taskMessages = [
-    { role: 'system', content: (system || '') + (ctx ? `\n\n当前编辑上下文:\n${ctx}` : '') },
-    { role: 'user', content: task },
-  ]
+  // 会话续跑:已有线程则追加任务,否则以系统提示开局
+  if (taskMessages.value.length === 0) {
+    let system = ''
+    try {
+      system = await invoke('ai_get_agent_prompt')
+    } catch { system = '' }
+    const ctx = buildExtraContext()
+    taskMessages.value = [
+      { role: 'system', content: (system || '') + (ctx ? `\n\n当前编辑上下文:\n${ctx}` : '') },
+    ]
+  }
+  taskMessages.value.push({ role: 'user', content: task })
 
   try {
     for (let round = 0; round < 12; round++) {
       if (abortFlag.value) break
-      const raw = await invoke('ai_agent_turn', { messages: taskMessages, tools: TOOLS })
+      const raw = await invoke('ai_agent_turn', { messages: taskMessages.value, tools: TOOLS })
       const res = JSON.parse(raw)
       if (res.usage) {
         tokIn.value += res.usage.input || 0
@@ -370,7 +429,7 @@ const runAgent = async (textArg) => {
         timeline.value.push({ kind: 'done', title: '完成' })
         break
       }
-      taskMessages.push({ role: 'assistant', tool_calls: res.calls })
+      taskMessages.value.push({ role: 'assistant', tool_calls: res.calls })
       for (const c of res.calls) {
         if (abortFlag.value) break
         let out
@@ -379,7 +438,7 @@ const runAgent = async (textArg) => {
         } catch (e) {
           out = `工具执行异常: ${e.message || e}`
         }
-        taskMessages.push({ role: 'tool_result', tool_call_id: c.id, name: c.name, content: String(out).slice(0, 8000) })
+        taskMessages.value.push({ role: 'tool_result', tool_call_id: c.id, name: c.name, content: String(out).slice(0, 8000) })
         timeline.value.push({
           kind: out.startsWith('错误') ? 'error' : 'tool',
           title: `${c.name}(${(c.arguments?.path || '').slice(0, 40)})`,
@@ -445,6 +504,8 @@ const discardAll = () => {
 }
 
 const resetAgent = () => {
+  clearSession()
+  taskMessages.value = []
   workset.clear()
   dirtyFiles.value = []
   timeline.value = []
@@ -452,6 +513,15 @@ const resetAgent = () => {
   tokIn.value = 0
   tokOut.value = 0
 }
+// 状态全部声明后恢复会话并挂自动保存(避免 TDZ)
+loadSession()
+const persistWatch = watch(
+  [messages, timeline, agentSummary, tokIn, tokOut, workset, taskMessages],
+  scheduleSave,
+  { deep: true }
+)
+onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop() })
+
 </script>
 
 <style scoped>
