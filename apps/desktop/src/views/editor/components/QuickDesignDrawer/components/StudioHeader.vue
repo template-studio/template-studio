@@ -4,7 +4,7 @@
       <span style="font-size: 18px; color: var(--editor-muted, #666)">
         <CodeOutline />
       </span>
-      <span class="header-title">Variable Studio</span>
+      <span class="header-title">变量设计器</span>
     </div>
     <div class="header-actions">
       <!-- 编辑模式切换 -->
@@ -64,7 +64,7 @@
 
   /**
    * StudioHeader 组件
-   * 负责显示 Variable Studio 的标题和操作按钮
+   * 负责显示变量设计器的标题和操作按钮
    */
 
   // Props

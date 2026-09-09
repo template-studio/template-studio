@@ -858,3 +858,59 @@
 **涉及文件：** `components/icons/RenderIcon.vue(新增)`、`views/editor/components/EditHeader.vue`
 
 **验收结果：** `pnpm build` 通过；浏览器实测图标 5 路径就位、play 三角清除。
+
+## 2026-09-09 编辑器左侧开关键裸图标化与变量图标重设计（任务 #77）
+
+**变更内容：** ① 文件树/变量切换按钮去边框去文字，改裸图标（`action-icon` 同右侧操作键，激活态统一走 `--editor-active-bg/primary`，顺带清除旧变量按钮激活态紫色残留）；② 新建 `VariableIcon.vue`——`{ }` 大括号 + 中心值点，直接对应模板 `{{ 变量 }}` 语法，线形风格与 RenderIcon/AiIcon 同族；移除语义错位的 VariablesOutline（折线图路径）与孤儿 `h` 导入及旧 toggle 样式。
+
+**涉及文件：** `components/icons/VariableIcon.vue(新增)`、`views/editor/components/EditHeader.vue`
+
+**验收结果：** `pnpm build` 通过；浏览器环境无登录态（模板类型回落 basic，按钮按 `v-if` 设计隐藏）无法实测渲染，结构与已验证的 action-icon 模式一致，真实效果待桌面端非 basic 模板确认。
+
+## 2026-09-09 开关键激活态去灰底改品牌绿（任务 #78）
+
+**变更内容：** #77 复审反馈：激活态灰色背景难看。`.action-icon.active`/`.ai-active` 改为纯色标记——背景透明、图标变品牌绿（`--editor-accent`），悬停反馈不变。
+
+**涉及文件：** `views/editor/components/EditHeader.vue`
+
+**验收结果：** `pnpm build` 通过；浏览器实测点击 AI 键后图标由 muted 灰变品牌绿 rgb(22,163,74)，背景透明，停靠栏联动正常。
+
+## 2026-09-09 变量栏入口常驻化与图标重设计（任务 #79）
+
+**变更内容：** 变量栏头部两个纯图标按钮（需悬停才知道是什么）改为标题下**常驻文字按钮行**：「变量设计器」「测试数据」（26px 迷你按钮，图标+文字，悬停品牌绿描边）。新建 `DesignerIcon`（魔杖+四角星光，与 AI 品牌星光同族）与 `TestDataIcon`（锥形烧杯+液面线）两个线形 SVG；「Variable Studio」全面更名「变量设计器」（StudioHeader 标题与注释，英文残留清零）；预设 tab 图标硬编码旧绿 #52c41a 换 `--editor-accent`。
+
+**涉及文件：** `components/icons/{DesignerIcon,TestDataIcon}.vue(新增)`、`views/editor/components/{VariableSidebar.vue, QuickDesignDrawer/components/StudioHeader.vue}`
+
+**验收结果：** `pnpm build` 通过；浏览器实测常驻按钮行结构正确（文本/svg 就位；面板在无登录态下整体隐藏属既有行为）。
+
+## 2026-09-09 变量栏入口改悬停展开式（任务 #80）
+
+**变更内容：** #79 复审：常驻按钮行把内容下推不可取。入口回到 sidebar-header 原位，改**悬停展开式**：平时仅 16px 图标（28px 透明胶囊），悬停时背景浮现、图标转品牌绿、文字滑入（max-width 0→84px + opacity 180ms 过渡）；移除 quick-actions 占位行。新图标与「变量设计器」命名保留。
+
+**涉及文件：** `views/editor/components/VariableSidebar.vue`
+
+**验收结果：** `pnpm build` 通过；浏览器实测两键回头部、占位行清除、文字默认隐藏（max-width=0/opacity=0），悬停展开为标准 CSS 行为。
+
+## 2026-09-09 变量栏入口简化为图标+tooltip（任务 #81）
+
+**变更内容：** #80 复审：悬停展开文字多余，tip 显示即可。入口最终形态：28px 裸图标 + `a-tooltip`（变量设计器/测试数据），悬停图标转品牌绿+浅底；移除 reveal 展开样式，新 SVG 图标与命名保留。
+
+**涉及文件：** `views/editor/components/VariableSidebar.vue`
+
+**验收结果：** `pnpm build` 通过。
+
+## 2026-09-09 修复变量栏图标默认隐藏（任务 #82）
+
+**变更内容：** #81 复审反馈"图标移入才显示"。根因：VariableSidebar 残留一套旧 `.action-icon` 规则（`opacity:0`、`.sidebar-header:hover` 才显现、hover 紫色残留），定义靠后覆盖了新样式。删除旧块，保留唯一定义（28px 裸图标 muted 常显、悬停品牌绿）。
+
+**涉及文件：** `views/editor/components/VariableSidebar.vue`
+
+**验收结果：** `pnpm build` 通过；浏览器实测两键 `opacity:1` 常显。
+
+## 2026-09-09 模板资源栏图标常显统一（任务 #83）
+
+**变更内容：** TemplateFileTree（模板资源）头部「下载模板/版本管理」图标与变量栏同款问题（`opacity:0` 悬停头部才显现）。删除该机制，统一为 28px 裸图标常显 + 悬停品牌绿浅底，编辑器左栏两个面板行为一致。
+
+**涉及文件：** `views/editor/components/TemplateFileTree.vue`
+
+**验收结果：** `pnpm build` 通过；浏览器实测两键 28px/`opacity:1` 常显。

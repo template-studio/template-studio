@@ -1459,25 +1459,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     border: none;
     background: transparent;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
-    color: var(--editor-muted, #94a3b8);
-    opacity: 0;
-    transition: all 0.15s ease;
+    color: var(--editor-muted, #64748b);
+    transition: background-color 0.15s ease, color 0.15s ease;
     flex-shrink: 0;
-  }
-
-  .explorer-title:hover .action-icon {
-    opacity: 1;
   }
 
   .action-icon:hover {
     background: var(--editor-hover-bg, #f1f5f9);
-    color: var(--editor-accent, #22c55e);
+    color: var(--editor-accent, #16a34a);
   }
   .explorer-container {
     flex: 1;

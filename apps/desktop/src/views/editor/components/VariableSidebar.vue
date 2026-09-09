@@ -1,6 +1,6 @@
 <template>
   <div class="variable-sidebar" :style="{ width: sidebarWidth + 'px' }">
-    <!-- 头部：标题 + 操作按钮 -->
+    <!-- 头部：标题 + 悬停展开式入口 -->
     <div class="sidebar-header">
       <div class="header-left">
         <AppsOutline style="font-size: 18px; color: var(--editor-accent)" />
@@ -8,15 +8,15 @@
       </div>
       <div class="header-actions">
         <a-tooltip>
-          <template #title>Variable Studio</template>
+          <template #title>变量设计器</template>
           <button class="action-icon" @click="emit('show-quick-design')">
-            <ConstructOutline style="font-size: 16px" />
+            <DesignerIcon :size="16" />
           </button>
         </a-tooltip>
         <a-tooltip>
           <template #title>测试数据</template>
           <button class="action-icon" @click="emit('show-test-data')">
-            <FlaskOutline style="font-size: 16px" />
+            <TestDataIcon :size="16" />
           </button>
         </a-tooltip>
       </div>
@@ -95,7 +95,7 @@
                 @mouseleave="handleHideFunctionDetail"
               >
                 <div class="variable-info">
-                  <ConstructOutline style="font-size: 16px; color: #52c41a" />
+                  <ConstructOutline style="font-size: 16px; color: var(--editor-accent, #16a34a)" />
                   <span class="variable-name">{{ func.display_name || func.name }}</span>
                 </div>
               </div>
@@ -463,8 +463,9 @@
     PersonOutline,
     Settings,
     AddOutline,
-    FlaskOutline,
   } from '@/icons/ionicons5';
+  import DesignerIcon from '@/components/icons/DesignerIcon.vue';
+  import TestDataIcon from '@/components/icons/TestDataIcon.vue';
   import { getTemplateExpose } from '@/api/editor/templateExpose';
   import {
     getSubscribedPresets,
@@ -1166,6 +1167,30 @@ watch(() => props.width, (v) => { if (v && v !== sidebarWidth.value) sidebarWidt
     border-bottom: 1px solid var(--editor-border, #e2e8f0);
   }
 
+  .header-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  .action-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--editor-muted, #64748b);
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+
+  .action-icon:hover {
+    background: var(--editor-hover-bg, #f1f5f9);
+    color: var(--editor-accent, #16a34a);
+  }
+
   .header-left {
     display: flex;
     align-items: center;
@@ -1184,31 +1209,6 @@ watch(() => props.width, (v) => { if (v && v !== sidebarWidth.value) sidebarWidt
     display: flex;
     align-items: center;
     gap: 2px;
-  }
-
-  .action-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border: none;
-    background: transparent;
-    border-radius: 4px;
-    cursor: pointer;
-    color: var(--editor-muted, #94a3b8);
-    opacity: 0;
-    transition: all 0.15s ease;
-    flex-shrink: 0;
-  }
-
-  .sidebar-header:hover .action-icon {
-    opacity: 1;
-  }
-
-  .action-icon:hover {
-    background: var(--editor-hover-bg, #f1f5f9);
-    color: #8b5cf6;
   }
 
   /* 内容区域 */
