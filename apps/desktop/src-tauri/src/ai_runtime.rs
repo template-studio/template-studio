@@ -41,6 +41,7 @@ impl Protocol {
 /// 一次 AI 调用的目标:由 ai_providers 行(协议/密钥/端点)+ 模型名解析而来。
 pub struct CallTarget {
     pub protocol: Protocol,
+    pub provider_name: String,
     pub api_key: String,
     pub base_url: Option<String>,
     pub model: String,
@@ -66,6 +67,7 @@ pub fn call_target_from_provider(
         .map(str::to_string);
     Ok(CallTarget {
         protocol,
+        provider_name: provider["providerName"].as_str().unwrap_or_default().to_string(),
         api_key,
         base_url,
         model: model.to_string(),
@@ -102,32 +104,34 @@ fn extract_text(choice: Vec<AssistantContent>) -> Result<String, String> {
 }
 
 /// 单轮/多轮对话。`system` 进 preamble,`history` 为 prior 轮次,`prompt` 为本轮输入。
+/// `extra_body` 仅对 OpenAI 兼容协议平铺进请求体(思考级别等厂商参数)。
 pub async fn chat(
     target: &CallTarget,
     system: Option<&str>,
     prompt: &str,
     history: &[serde_json::Value],
+    extra_body: Option<serde_json::Value>,
 ) -> Result<String, String> {
     match target.protocol {
         Protocol::OpenAiCompatible => {
             let client = openai_client(target)?;
             let model = client.completion_model(target.model.clone());
-            run_chat(&model, target, system, prompt, history).await
+            run_chat(&model, target, system, prompt, history, extra_body).await
         }
         Protocol::Anthropic => {
             let client = anthropic_client(target)?;
             let model = client.completion_model(target.model.clone());
-            run_chat(&model, target, system, prompt, history).await
+            run_chat(&model, target, system, prompt, history, None).await
         }
         Protocol::Gemini => {
             let client = gemini_client(target)?;
             let model = client.completion_model(target.model.clone());
-            run_chat(&model, target, system, prompt, history).await
+            run_chat(&model, target, system, prompt, history, None).await
         }
         Protocol::Ollama => {
             let client = ollama_client(target)?;
             let model = client.completion_model(target.model.clone());
-            run_chat(&model, target, system, prompt, history).await
+            run_chat(&model, target, system, prompt, history, None).await
         }
     }
 }
@@ -137,6 +141,7 @@ pub async fn chat(
 pub async fn chat_openai_style(
     target: &CallTarget,
     messages: &[serde_json::Value],
+    extra_body: Option<serde_json::Value>,
 ) -> Result<String, String> {
     if messages.is_empty() {
         return Err("messages 不能为空".to_string());
@@ -161,7 +166,7 @@ pub async fn chat_openai_style(
         _ => ("", messages),
     };
 
-    chat(target, preamble.as_deref(), prompt, history).await
+    chat(target, preamble.as_deref(), prompt, history, extra_body).await
 }
 
 async fn run_chat<M: CompletionModel + Clone>(
@@ -170,12 +175,16 @@ async fn run_chat<M: CompletionModel + Clone>(
     system: Option<&str>,
     prompt: &str,
     history: &[serde_json::Value],
+    extra_body: Option<serde_json::Value>,
 ) -> Result<String, String> {
     let mut req = model
         .completion_request(prompt.to_string())
         .temperature(target.temperature)
         .max_tokens(target.max_tokens)
         .messages(history_to_messages(history));
+    if target.protocol == Protocol::OpenAiCompatible {
+        req = req.additional_params_opt(extra_body);
+    }
     if let Some(sys) = system {
         req = req.preamble(sys.to_string());
     }

@@ -443,7 +443,7 @@ pub async fn ai_generate_sql(
     target.temperature = 0.3;
     target.max_tokens = 2000;
 
-    crate::ai_runtime::chat_openai_style(&target, messages_array).await
+    crate::ai_runtime::chat_openai_style(&target, messages_array, None).await
 }
 
 /// AI 修复 SQL
@@ -486,7 +486,7 @@ pub async fn ai_fix_sql(
     target.temperature = 0.2;
     target.max_tokens = 2000;
 
-    crate::ai_runtime::chat(&target, None, &prompt, &[]).await
+    crate::ai_runtime::chat(&target, None, &prompt, &[], None).await
 }
 
 /// 解析 AI 生成的 SQL（只返回表结构，不创建）
@@ -549,6 +549,70 @@ async fn default_call_target(db: &crate::database::Database) -> Result<CallTarge
 
     let protocol = Protocol::parse(provider["protocol"].as_str().unwrap_or("openai_compatible"));
     call_target_from_provider(&provider, &model, protocol)
+}
+
+/// 解析调用目标:provider/model 为 composer 选择器的覆盖项,缺省回落默认提供商与其首个模型。
+async fn resolve_call_target(
+    db: &crate::database::Database,
+    provider: Option<String>,
+    model: Option<String>,
+) -> Result<CallTarget, String> {
+    match provider.filter(|p| !p.is_empty()) {
+        None => default_call_target(db).await,
+        Some(p) => {
+            let row = db
+                .get_ai_provider(&p)
+                .await
+                .map_err(|e| format!("获取提供商失败: {}", e))?
+                .ok_or_else(|| format!("提供商 {} 不存在", p))?;
+            let model = match model.filter(|m| !m.is_empty()) {
+                Some(m) => m,
+                None => db
+                    .get_first_chat_model(&p)
+                    .await
+                    .map_err(|e| format!("获取模型失败: {}", e))?
+                    .ok_or_else(|| format!("提供商 {} 下没有模型", p))?,
+            };
+            let protocol =
+                Protocol::parse(row["protocol"].as_str().unwrap_or("openai_compatible"));
+            call_target_from_provider(&row, &model, protocol)
+        }
+    }
+}
+
+/// 思考级别 → 厂商扩展参数(经 rig additional_params 平铺进 OpenAI 兼容请求体)。
+/// 级别:auto(跟随模型默认)/off/medium/high;按 provider/模型名启发式选键,未知厂商不注入。
+fn thinking_extra(
+    provider_name: &str,
+    model: &str,
+    level: Option<&str>,
+) -> Option<serde_json::Value> {
+    let level = level?.to_ascii_lowercase();
+    if level.is_empty() || level == "auto" {
+        return None;
+    }
+    let provider = provider_name.to_ascii_lowercase();
+    let model = model.to_ascii_lowercase();
+    if provider.contains("glm") || provider.contains("zhipu") {
+        let t = if level == "off" { "disabled" } else { "enabled" };
+        Some(serde_json::json!({ "thinking": { "type": t } }))
+    } else if provider.contains("openai")
+        || model.starts_with("gpt-5")
+        || model.starts_with("o1")
+        || model.starts_with("o3")
+        || model.starts_with("o4")
+    {
+        let effort = match level.as_str() {
+            "off" => "minimal",
+            "high" => "high",
+            _ => "medium",
+        };
+        Some(serde_json::json!({ "reasoning_effort": effort }))
+    } else if provider.contains("qwen") || provider.contains("alibaba") {
+        Some(serde_json::json!({ "enable_thinking": level != "off" }))
+    } else {
+        None
+    }
 }
 
 /// 从模板内容提取 {{ 变量 }} 占位符(去过滤器、去重、保留点路径)
@@ -700,10 +764,14 @@ pub async fn ai_chat(
     project_id: Option<i64>,
     extra_context: Option<String>,
     history: Option<serde_json::Value>,
+    provider: Option<String>,
+    model: Option<String>,
+    thinking: Option<String>,
     database: tauri::State<'_, DbState>,
 ) -> Result<String, String> {
     let db = database.as_ref();
-    let target = default_call_target(db).await?;
+    let target = resolve_call_target(db, provider, model).await?;
+    let extra_body = thinking_extra(&target.provider_name, &target.model, thinking.as_deref());
 
     let mut context = String::from(
         "你是 Template Studio 桌面端的内置助手,熟悉代码模板、变量设计与数据库建模。用简洁的中文回答。",
@@ -755,7 +823,7 @@ pub async fn ai_chat(
         .rev()
         .collect();
 
-    let reply = crate::ai_runtime::chat(&target, Some(&context), &message, &recent).await?;
+    let reply = crate::ai_runtime::chat(&target, Some(&context), &message, &recent, extra_body).await?;
     serde_json::to_string(&serde_json::json!({ "response": reply, "tool_calls": [] }))
         .map_err(|e| format!("序列化失败: {}", e))
 }
@@ -813,7 +881,7 @@ pub async fn ai_analyze_variables(
         snippet
     );
 
-    let reply = crate::ai_runtime::chat(&target, Some(system), &prompt, &[]).await?;
+    let reply = crate::ai_runtime::chat(&target, Some(system), &prompt, &[], None).await?;
     let parsed = parse_json_reply(&reply);
     let list = parsed
         .and_then(|v| v.get("variables").cloned())
@@ -881,7 +949,7 @@ pub async fn ai_fill_variables(
         schema
     );
 
-    let reply = crate::ai_runtime::chat(&target, Some(system), &prompt, &[]).await?;
+    let reply = crate::ai_runtime::chat(&target, Some(system), &prompt, &[], None).await?;
     let filled = parse_json_reply(&reply)
         .and_then(|v| v.get("filled").cloned())
         .and_then(|v| v.as_array().cloned())
@@ -975,7 +1043,7 @@ pub async fn ai_suggest_variables(
         snippet
     );
 
-    let reply = crate::ai_runtime::chat(&target, Some(system), &prompt, &[]).await?;
+    let reply = crate::ai_runtime::chat(&target, Some(system), &prompt, &[], None).await?;
     let list = parse_json_reply(&reply)
         .and_then(|v| v.get("suggestions").cloned())
         .and_then(|v| v.as_array().cloned())
@@ -1271,7 +1339,7 @@ pub async fn extract_analyze(
         root_name, cand_list, digest
     );
 
-    let reply = crate::ai_runtime::chat(&target, Some(system), &prompt, &[]).await?;
+    let reply = crate::ai_runtime::chat(&target, Some(system), &prompt, &[], None).await?;
     let list = parse_json_reply(&reply)
         .and_then(|v| v.get("suggestions").cloned())
         .and_then(|v| v.as_array().cloned())
@@ -1422,15 +1490,19 @@ fn agent_messages_to_rig(messages: &serde_json::Value) -> Result<Vec<Message>, S
 pub async fn ai_agent_turn(
     messages: serde_json::Value,
     tools: serde_json::Value,
+    provider: Option<String>,
+    model: Option<String>,
+    thinking: Option<String>,
     database: tauri::State<'_, DbState>,
 ) -> Result<String, String> {
     use rig_core::client::CompletionClient;
     use rig_core::completion::{AssistantContent, ToolDefinition};
     use rig_core::completion::CompletionModel as _;
 
-    let target = default_call_target(database.as_ref()).await?;
+    let target = resolve_call_target(database.as_ref(), provider, model).await?;
     let mut target = target;
     target.temperature = 0.2;
+    let extra_body = thinking_extra(&target.provider_name, &target.model, thinking.as_deref());
 
     let mut defs = Vec::new();
     for t in tools.as_array().cloned().unwrap_or_default() {
@@ -1461,6 +1533,9 @@ pub async fn ai_agent_turn(
         .messages(rig_messages);
     if !defs.is_empty() {
         req = req.tools(defs);
+    }
+    if let Some(extra) = extra_body {
+        req = req.additional_params(extra);
     }
 
     let resp = model

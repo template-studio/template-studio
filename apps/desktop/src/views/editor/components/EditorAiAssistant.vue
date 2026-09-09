@@ -101,7 +101,7 @@
 
           <!-- 应用即 checkpoint:快照锚点与一键撤销 -->
           <div v-if="appliedInfo && appliedInfo.count > 0" class="applied-bar">
-            <span class="applied-text">已应用 {{ appliedInfo.count }} 个文件 · 修改前快照 <b>{{ appliedInfo.version }}</b></span>
+            <span class="applied-text">已应用 {{ appliedInfo.count }} 项修改 · 修改前快照 <b>{{ appliedInfo.version }}</b></span>
             <a-popconfirm
               title="回滚将丢弃该快照之后的全部更改（含手动修改），确定？"
               ok-text="回滚" cancel-text="取消" @confirm="undoApply"
@@ -115,10 +115,6 @@
       </div>
 
       <div class="ai-sender-wrap">
-        <div class="ai-auto-row" title="开启后 AI 新建的文件立即写入模板;对既有文件的修改仍需手动应用">
-          <a-switch v-model:checked="autoApplyNew" size="small" :disabled="busy" />
-          <span>自动应用新文件(低风险)</span>
-        </div>
         <div v-if="dirtyFiles.length > 0 && !busy" class="ai-apply-row">
           <a-button type="primary" size="small" :loading="applying" @click="applyAll">应用全部修改({{ dirtyFiles.length }})</a-button>
           <a-button size="small" :disabled="applying" @click="discardAll">全部放弃</a-button>
@@ -131,6 +127,60 @@
           submit-type="enter" @submit="runAgent" @cancel="abortAgent" @focus="loadFilePaths" />
       </div>
     </template>
+
+    <!-- composer 底栏:模型 / 思考级别 / 权限访问模式(向上弹出) -->
+    <div class="ai-composer-bar">
+      <a-popover v-model:open="modelPopover" trigger="click" placement="topLeft" :overlay-style="{ maxWidth: '300px' }">
+        <template #content>
+          <div class="mp-list">
+            <div class="mp-group">默认</div>
+            <div class="mp-item" :class="{ cur: !selProvider }" @click="pickDefaultModel">
+              <span class="mp-name">跟随设置中的默认提供商</span>
+            </div>
+            <template v-for="p in enabledProviders" :key="p.providerName">
+              <div class="mp-group">{{ p.displayName || p.providerName }}</div>
+              <template v-for="g in modelGroupsCache[p.providerName] || []" :key="g.groupId">
+                <div v-if="g.groupName && (modelGroupsCache[p.providerName] || []).length > 1" class="mp-subgroup">{{ g.groupName }}</div>
+                <div v-for="m in g.models" :key="m.id" class="mp-item"
+                  :class="{ cur: selProvider === p.providerName && selModel === m.modelId }"
+                  @click="pickModel(p.providerName, m.modelId)">
+                  <span class="mp-name">{{ m.modelName || m.modelId }}</span>
+                  <span v-if="m.supportsFunctions" class="mp-fn" title="支持工具调用">fn</span>
+                </div>
+              </template>
+              <div v-if="!(modelGroupsCache[p.providerName] || []).length" class="mp-empty">暂无模型</div>
+            </template>
+          </div>
+        </template>
+        <button class="chip" title="选择模型">
+          {{ selModel || '默认模型' }}<span class="chip-caret">▾</span>
+        </button>
+      </a-popover>
+
+      <a-popover trigger="click" placement="topLeft">
+        <template #content>
+          <div class="mp-list">
+            <div v-for="t in THINKS" :key="t.v" class="mp-item" :class="{ cur: thinkLevel === t.v }" @click="thinkLevel = t.v">
+              <span class="mp-name">{{ t.label }}</span>
+              <span class="mp-desc">{{ t.desc }}</span>
+            </div>
+          </div>
+        </template>
+        <button class="chip" title="思考级别">思考·{{ THINKS.find((t) => t.v === thinkLevel)?.label }}<span class="chip-caret">▾</span></button>
+      </a-popover>
+
+      <a-popover v-if="mode === 'agent'" trigger="click" placement="topLeft">
+        <template #content>
+          <div class="mp-list">
+            <div v-for="pm in PERMS" :key="pm.v" class="mp-item" :class="{ cur: permMode === pm.v }" @click="permMode = pm.v">
+              <span class="mp-name">{{ pm.label }}</span>
+              <span class="mp-desc">{{ pm.desc }}</span>
+            </div>
+          </div>
+        </template>
+        <button class="chip" title="权限访问模式">{{ PERMS.find((p) => p.v === permMode)?.label }}<span class="chip-caret">▾</span></button>
+      </a-popover>
+    </div>
   </div>
 
   <!-- 收起态迷你徽标:运行中转圈点/有未应用修改绿点 -->
@@ -152,6 +202,7 @@ import { message, Modal } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
 import { CloseOutlined, HistoryOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import { Bubble, BubbleList, Sender, Welcome } from 'ant-design-x-vue'
+import { useAIConfigStore } from '@/stores/ai-config'
 import AiIcon from '@/components/icons/AiIcon.vue'
 import { getTemplateFileTree, getTemplateFileContent, editTemplateFile, addTemplateFile } from '@/api/editor/templateFiles'
 import { createRelease, rollbackVersion } from '@/api/editor/releases'
@@ -238,6 +289,8 @@ const send = async (textArg) => {
     const result = await invoke('ai_chat', {
       message: text, templatePath: null, projectId: null,
       extraContext: buildExtraContext(), history,
+      provider: selProvider.value || null, model: selModel.value || null,
+      thinking: thinkLevel.value === 'auto' ? null : thinkLevel.value,
     })
     const data = JSON.parse(result)
     messages.value.push({ role: 'assistant', content: data.response || '抱歉,没有拿到有效回复。' })
@@ -256,6 +309,59 @@ const applying = ref(false)
 // 应用即 checkpoint:最近一次应用的修改前快照锚点({ count, version })
 const appliedInfo = ref(null)
 const undoing = ref(false)
+
+// ---- composer 底栏:模型/思考级别/权限访问模式(参考主流 coding agent) ----
+const THINKS = [
+  { v: 'auto', label: '自动', desc: '跟随模型默认' },
+  { v: 'off', label: '关', desc: '直接给结论,不展开推理' },
+  { v: 'medium', label: '中', desc: '先简要分析再动手' },
+  { v: 'high', label: '深', desc: '完整推演方案后执行' },
+]
+const PERMS = [
+  { v: 'confirm', label: '变更前确认', desc: '修改进入工作副本,应用前人工审查 diff', rounds: 12 },
+  { v: 'autoEdit', label: '自动编辑', desc: '文件修改即时写入模板(修改前自动快照,可一键撤销)', rounds: 12 },
+  { v: 'auto', label: '自动模式', desc: '自动编辑 + 轮次上限 20,适合中型批量任务', rounds: 20 },
+  { v: 'full', label: '完全访问', desc: '自动编辑 + 轮次上限 30,大批量重构', rounds: 30 },
+]
+const thinkLevel = ref(localStorage.getItem('ai-think-level') || 'auto')
+const permMode = ref(localStorage.getItem('ai-perm-mode') || 'confirm')
+watch(thinkLevel, (v) => localStorage.setItem('ai-think-level', v))
+watch(permMode, (v) => localStorage.setItem('ai-perm-mode', v))
+const maxRounds = computed(() => PERMS.find((p) => p.v === permMode.value)?.rounds || 12)
+// 思考级别的提示词指令(wire 级参数之外,对不支持思考参数的模型仍生效)
+const thinkDirective = () => ({
+  off: '\n\n[思考级别:关] 直接给出结论与修改,不展开长推理。',
+  medium: '\n\n[思考级别:中] 先简要分析,再执行工具调用。',
+  high: '\n\n[思考级别:深] 先在内部完整推演方案(多文件影响、边界情况),再执行工具调用。',
+}[thinkLevel.value] || '')
+const turnOptions = () => ({
+  provider: selProvider.value || null,
+  model: selModel.value || null,
+  thinking: thinkLevel.value === 'auto' ? null : thinkLevel.value,
+})
+
+// 模型选择:按 provider 分组,弹出时惰性加载各启用提供商的模型分组
+const aiStore = useAIConfigStore()
+const selProvider = ref(localStorage.getItem('ai-sel-provider') || '')
+const selModel = ref(localStorage.getItem('ai-sel-model') || '')
+watch(selProvider, (v) => localStorage.setItem('ai-sel-provider', v))
+watch(selModel, (v) => localStorage.setItem('ai-sel-model', v))
+const modelPopover = ref(false)
+const modelGroupsCache = reactive({})
+const enabledProviders = computed(() => (aiStore.providers || []).filter((p) => p.isEnabled))
+const ensureModels = async (pn) => {
+  if (modelGroupsCache[pn]) return
+  modelGroupsCache[pn] = []
+  modelGroupsCache[pn] = await aiStore.getProviderModelsGrouped(pn)
+}
+watch(modelPopover, async (open) => {
+  if (!open) return
+  await aiStore.loadAllProviders()
+  enabledProviders.value.forEach((p) => ensureModels(p.providerName))
+})
+onMounted(() => { aiStore.loadAllProviders().catch(() => {}) })
+const pickModel = (pn, m) => { selProvider.value = pn; selModel.value = m; modelPopover.value = false }
+const pickDefaultModel = () => { selProvider.value = ''; selModel.value = ''; modelPopover.value = false }
 const timeline = ref([])
 const agentSummary = ref('')
 const abortFlag = ref(false)
@@ -507,22 +613,32 @@ const TOOLS = [
   { name: 'update_todo', description: '维护任务计划清单(整体替换)', parameters: { type: 'object', properties: { items: { type: 'array', description: '计划项列表', items: { type: 'object', properties: { title: { type: 'string' }, status: { type: 'string', description: 'pending|in_progress|done' } }, required: ['title', 'status'] } } }, required: ['items'] } },
 ]
 
-// ---- 低风险自动应用:新文件即时落库,既有文件修改不自动应用 ----
-const autoApplyNew = ref(localStorage.getItem('ai-auto-apply-new') === '1')
-watch(autoApplyNew, (v) => localStorage.setItem('ai-auto-apply-new', v ? '1' : '0'))
-const tryAutoApplyNew = async (path) => {
-  if (!autoApplyNew.value) return false
+// ---- 权限模式驱动的自动应用(autoEdit/auto/full):写操作即时落库,修改前快照兜底 ----
+const isAutoApply = () => ['autoEdit', 'auto', 'full'].includes(permMode.value)
+const tryAutoApply = async (path) => {
+  if (!isAutoApply()) return false
   const f = workset.get(path)
-  if (!f || (f.base || '') !== '') return false
-  if (fileExistsCache.has(path) || (await fileExistsOnServer(path))) return false
+  if (!f) return false
   try {
-    const parentPath = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''
-    await addTemplateFile({ templateId: tid(), fileName: path.split('/').pop(), parentPath, isDirectory: false })
+    if (!appliedInfo.value) {
+      try {
+        const res = await createRelease(tid(), { changelog: `AI 自动应用前快照 ${new Date().toLocaleString()}` })
+        const ver = res?.data?.data?.version
+        if (ver) appliedInfo.value = { count: 0, version: ver }
+      } catch { /* 快照失败不阻断:自动应用是用户显式选择的模式 */ }
+    }
+    const isNew = !(fileExistsCache.has(path) || (await fileExistsOnServer(path)))
+    if (isNew) {
+      const parentPath = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : ''
+      await addTemplateFile({ templateId: tid(), fileName: path.split('/').pop(), parentPath, isDirectory: false })
+      fileExistsCache.add(path)
+    }
     await editTemplateFile({ templateId: tid(), filePath: path, content: f.content })
-    fileExistsCache.add(path)
-    f.base = f.content // 基线前移:后续 edit_file 的增量继续走 diff 审查
+    f.base = f.content // 基线前移:后续增量继续可审查/可撤销
+    if (appliedInfo.value) appliedInfo.value = { ...appliedInfo.value, count: (appliedInfo.value.count || 0) + 1 }
     refreshDirty()
-    emit('files-updated')
+    if (path === props.currentFilePath) emit('buffer-replace', { path, content: f.content })
+    if (isNew) emit('files-updated') // 编辑不改树结构,仅新建需要刷新
     return true
   } catch { return false /* 落库失败回落待审流程 */ }
 }
@@ -557,6 +673,7 @@ async function execTool(name, args) {
       f.content = f.content.slice(0, first) + args.new_string + f.content.slice(first + args.old_string.length)
       f.version += 1
       f.readVersion = f.version
+      if (await tryAutoApply(args.path)) return '已应用替换并自动落库。'
       return '已应用替换。'
     }
     case 'insert_lines': {
@@ -569,12 +686,13 @@ async function execTool(name, args) {
       f.content = lines.join('\n')
       f.version += 1
       f.readVersion = f.version
+      if (await tryAutoApply(args.path)) return '已插入并自动落库。'
       return '已插入。'
     }
     case 'create_file': {
       if (workset.has(args.path)) return '错误:文件已存在,请用 edit_file。'
       workset.set(args.path, { content: args.content, base: '', version: 0, readVersion: 0, hasRead: true })
-      if (await tryAutoApplyNew(args.path)) return '已创建并自动应用到模板。'
+      if (await tryAutoApply(args.path)) return '已创建并自动应用到模板。'
       return '已创建(待应用)。'
     }
     case 'render_file': {
@@ -651,13 +769,19 @@ const runAgent = async (textArg) => {
     } catch { system = '' }
     const ctx = buildExtraContext()
     taskMessages.value = [
-      { role: 'system', content: (system || '') + (ctx ? `\n\n当前编辑上下文:\n${ctx}` : '') },
+      { role: 'system', content: (system || '') + (ctx ? `\n\n当前编辑上下文:\n${ctx}` : '') + thinkDirective() },
     ]
   }
   taskMessages.value.push({ role: 'user', content: task })
 
+  // 思考指令随级别即时生效:系统消息是会话首条,重写其指令段
+  if (taskMessages.value[0]?.role === 'system') {
+    const base = String(taskMessages.value[0].content).replace(/\n\n\[思考级别:[^\]]*\][^\n]*/g, '')
+    taskMessages.value[0].content = base + thinkDirective()
+  }
+
   try {
-    for (let round = 0; round < 12; round++) {
+    for (let round = 0; round < maxRounds.value; round++) {
       if (abortFlag.value) break
       if (estTokens(taskMessages.value) > CTX_BUDGET * 0.85) {
         const r = await compactContext()
@@ -668,7 +792,7 @@ const runAgent = async (textArg) => {
           full: r?.text,
         })
       }
-      const raw = await invoke('ai_agent_turn', { messages: taskMessages.value, tools: TOOLS })
+      const raw = await invoke('ai_agent_turn', { messages: taskMessages.value, tools: TOOLS, ...turnOptions() })
       const res = JSON.parse(raw)
       if (res.usage) {
         tokIn.value += res.usage.input || 0
@@ -836,7 +960,24 @@ onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop() })
 
 .ai-sender-wrap { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--editor-border, #e0e0e6); flex-shrink: 0; }
 .ai-apply-row { display: flex; gap: 8px; }
-.ai-auto-row { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--editor-muted, #999); }
+
+/* composer 底栏(模型/思考/权限) */
+.ai-composer-bar { display: flex; align-items: center; gap: 6px; padding: 6px 12px 8px; flex-shrink: 0; }
+.chip { display: inline-flex; align-items: center; gap: 4px; max-width: 45%; border: 1px solid var(--editor-border, #e0e0e6); background: transparent; border-radius: 999px; padding: 2px 10px; font-size: 11.5px; color: var(--editor-muted, #666); cursor: pointer; white-space: nowrap; overflow: hidden; }
+.chip:hover { color: var(--editor-accent, #16a34a); border-color: var(--editor-accent, #16a34a); }
+.chip-caret { font-size: 9px; opacity: 0.7; }
+
+/* 弹出选择列表(popover 内容,向上弹出) */
+.mp-list { display: flex; flex-direction: column; min-width: 210px; max-height: 300px; overflow-y: auto; }
+.mp-group { font-size: 11px; font-weight: 600; color: var(--editor-muted, #999); padding: 8px 10px 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.mp-subgroup { font-size: 11px; color: var(--editor-muted, #999); padding: 4px 10px 2px; }
+.mp-item { display: flex; align-items: center; gap: 8px; padding: 5px 10px; font-size: 12px; color: var(--editor-primary, #333); cursor: pointer; border-radius: 6px; }
+.mp-item:hover { background: var(--editor-inset-bg, #f4f4f2); }
+.mp-item.cur { color: var(--editor-accent, #16a34a); font-weight: 600; }
+.mp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-desc { font-size: 11px; color: var(--editor-muted, #999); margin-left: auto; white-space: nowrap; }
+.mp-fn { flex: none; font-size: 9px; font-weight: 600; color: var(--editor-accent, #16a34a); border: 1px solid currentColor; border-radius: 4px; padding: 0 3px; }
+.mp-empty { padding: 6px 10px; font-size: 11.5px; color: var(--editor-muted, #999); }
 
 .diff-card { border: 1px solid var(--editor-border, #e0e0e6); border-radius: 8px; overflow: hidden; }
 .applied-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--editor-border, #e0e0e6); border-left: 3px solid var(--editor-accent, #16a34a); border-radius: 8px; font-size: 12px; color: var(--editor-muted, #666); }

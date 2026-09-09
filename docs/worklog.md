@@ -1106,3 +1106,11 @@
 **涉及文件：** `views/editor/components/EditorAiAssistant.vue`
 
 **验收结果：** `pnpm build` 通过。至此 agent 控制台三批（骨架/可观测/长任务支撑）全部落地。
+
+## 2026-09-10 AI 面板 composer 底栏：模型/思考级别/权限模式（任务 #111）
+
+**变更内容：** 参考主流 coding agent 为 AI 面板加 composer 底栏（双模式共用，向上弹出）。①模型选择：按 provider 分组展示模型（惰性加载 ai_models 分组，fn 标记支持工具调用，「跟随设置默认」项），选中经 `resolve_call_target` 覆盖默认提供商；②思考级别（关/自动/中/深）：Rust `thinking_extra` 按 provider/模型名启发式注入厂商参数（glm→thinking.type、openai/o 系→reasoning_effort、qwen→enable_thinking，经 rig additional_params 平铺进请求体），agent 模式另注入系统指令段并随级别即时重写；③权限访问模式：变更前确认（diff 审查，现状）/自动编辑（写操作即时落库，修改前快照兜底，可一键撤销）/自动模式（+20 轮）/完全访问（+30 轮）；#109 的自动应用新文件开关并入自动编辑档移除。ai_agent_turn 与 ai_chat 均支持 provider/model/thinking 覆盖参数；CallTarget 增加 provider_name。
+
+**涉及文件：** `src-tauri/src/ai_runtime.rs`、`src-tauri/src/commands/ai.rs`、`views/editor/components/EditorAiAssistant.vue`、`dev-docs/agent-console-todos.md`
+
+**验收结果：** `cargo check` 与 `pnpm build` 均通过。
