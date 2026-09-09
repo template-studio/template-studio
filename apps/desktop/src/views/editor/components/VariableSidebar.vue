@@ -3,7 +3,7 @@
     <!-- 头部：标题 + 操作按钮 -->
     <div class="sidebar-header">
       <div class="header-left">
-        <AppsOutline style="font-size: 18px; color: #722ed1" />
+        <AppsOutline style="font-size: 18px; color: var(--editor-accent)" />
         <span class="header-title">变量</span>
       </div>
       <div class="header-actions">
@@ -203,7 +203,7 @@
                   class="variable-item preset-subscription-item"
                 >
                   <div class="variable-info" @click="activeTab = `preset_${preset.presetId}`">
-                    <AppsOutline style="font-size: 16px; color: #722ed1" />
+                    <AppsOutline style="font-size: 16px; color: var(--editor-accent)" />
                     <span class="variable-name">{{ preset.presetName }}</span>
                   </div>
                   <a-button
@@ -1255,14 +1255,14 @@ watch(() => props.width, (v) => { if (v && v !== sidebarWidth.value) sidebarWidt
   }
 
   .tab-item:hover {
-    background: rgba(114, 46, 209, 0.05);
-    color: #722ed1;
+    background: var(--editor-hover-bg);
+    color: var(--editor-primary);
   }
 
   .tab-item.active {
     background: var(--editor-panel-bg, #fff);
-    color: #722ed1;
-    border-left-color: #722ed1;
+    color: var(--editor-primary);
+    border-left-color: var(--editor-accent);
     font-weight: 500;
   }
 
@@ -1275,7 +1275,7 @@ watch(() => props.width, (v) => { if (v && v !== sidebarWidth.value) sidebarWidt
     position: absolute;
     top: -2px;
     right: -2px;
-    background: #722ed1;
+    background: var(--editor-accent);
     color: white;
     font-size: 10px;
     padding: 1px 4px;
@@ -1318,12 +1318,12 @@ watch(() => props.width, (v) => { if (v && v !== sidebarWidth.value) sidebarWidt
     padding: 8px 12px;
     margin: 8px 0 8px 0;
     background: var(--editor-inset-bg, #f8f9fa);
-    border-left: 3px solid #18a058;
+    border-left: 3px solid var(--editor-accent);
     border-radius: 4px;
   }
 
   .category-divider.preset-category {
-    border-left-color: #722ed1;
+    border-left-color: var(--editor-accent);
   }
 
   .category-name {
@@ -1359,7 +1359,7 @@ watch(() => props.width, (v) => { if (v && v !== sidebarWidth.value) sidebarWidt
 
   .variable-item:hover {
     background: var(--editor-hover-bg, #f0f9ff);
-    border-left: 2px solid #18a058;
+    border-left: 2px solid var(--editor-accent);
   }
 
   .variable-info {
@@ -1381,8 +1381,8 @@ watch(() => props.width, (v) => { if (v && v !== sidebarWidth.value) sidebarWidt
 
   /* 预设变量特殊样式 */
   .preset-item.parent-variable {
-    background: rgba(114, 46, 209, 0.07);
-    border-left: 2px solid #722ed1;
+    background: var(--editor-active-bg);
+    border-left: 2px solid var(--editor-accent);
     font-weight: 500;
   }
 
@@ -1458,7 +1458,7 @@ watch(() => props.width, (v) => { if (v && v !== sidebarWidth.value) sidebarWidt
   }
 
   .sidebar-resizer:hover .dot {
-    background: #18a058;
+    background: var(--editor-accent);
   }
 
   /* 订阅弹窗样式 */
@@ -1608,7 +1608,7 @@ watch(() => props.width, (v) => { if (v && v !== sidebarWidth.value) sidebarWidt
   }
 
   .insert-preview {
-    color: #18a058;
+    color: var(--editor-accent);
     font-weight: 500;
   }
 

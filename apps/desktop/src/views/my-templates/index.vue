@@ -507,7 +507,7 @@ function formatDate(d) {
 /* 视觉区与模板广场同款：深色渐变 + 微光 */
 .card-visual { height: 140px; position: relative; overflow: hidden; }
 .visual-bg {
-  width: 100%; height: 100%; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  width: 100%; height: 100%; background: var(--cover-gradient);
   display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;
 }
 .visual-bg::before {

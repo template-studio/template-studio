@@ -714,3 +714,19 @@
 **涉及文件：** `apps/desktop/src-tauri/tauri.conf.json`
 
 **验收结果：** 配置 JSON 校验通过；`tauri dev` 运行中保存配置自动触发应用重启，新窗口按 1440×900 居中创建，拖拽无法小于 1100×700。
+
+## 2026-09-09 全应用去彩色渐变：单色剪影图标 + 统一石板封面令牌
+
+**变更内容：** 首页统计卡四色渐变图标、最近项目紫色渐变图标、欢迎语绿蓝渐变标题等高饱和彩色元素与既定单色视觉语言冲突。按「全单色剪影」方向全应用清理：① 小图标块统一 `var(--color-surface-3)` 底 + `var(--color-text-secondary)` 字（深浅主题自适应）；② 卡片封面统一新增令牌 `--cover-gradient`（深石板终端风），数据源/项目页的数据库品牌色渐变卡头全部换用，模板广场/我的模板/渲染页的硬编码同款渐变收敛到令牌，数据源卡头代码预览文字改石板灰系；③ 欢迎标题改纯色；④ 高级设置抽屉激活 tab 蓝渐变、编辑器散落的旧绿 `#18a058`/旧紫 `#722ed1` 状态色（变量侧栏 tab/预设分类/拖拽手柄/设置菜单等）规范到 `--editor-*` 令牌族；⑤ 死代码组件（DesktopLayout/TemplateCard/FilterSection/PreviewPane/StatusBar 中的旧彩色）一并规范化，代码库零彩色渐变残留（语义色如变量类型 map、语言色卡、logo SVG 保留）。
+
+**涉及文件：** `assets/styles/variables.css`（新增令牌）、`views/home/{index.vue,components/StatsSection.vue,components/RecentProjectsList.vue}`、`views/{datasource,projects,templates,my-templates,template-render}/index.vue`、`views/editor/components/{AdvancedDrawer,VariableSidebar,EditorSettings,FullRenderDrawer}.vue`、`views/editor/components/QuickDesignDrawer/components/TestDataModal.vue`、`components/{DesktopLayout,PreviewPane,template/TemplateCard,template/FilterSection}.vue`
+
+**验收结果：** `pnpm build` 通过；grep 终审确认彩色渐变清零，剩余渐变均为中性（白灰微渐变/透明扫光/令牌化石板封面/主色令牌渐变）。
+
+## 2026-09-09 修复主按钮被旧 Soft UI 覆盖成靛蓝紫的问题
+
+**变更内容：** 用户反馈"新建"按钮呈默认紫色无设计感。根因：`themes.css` 中两段（其中一段为重复粘贴）"Button Refinement (Soft UI)"遗留覆盖用 `!important` 将 `.ant-btn-primary` 强制为靛蓝 `#4f6ef7`（暗色 `#6b8aff`）+ 彩色光晕 + 上浮位移，压过了 App.vue a-config-provider 的单色主题令牌。修复：删除两段覆盖及配套的 pastel 禁用色/强制大按钮尺寸，主按钮颜色回归令牌驱动（浅色黑底白字 / 暗色反转白底黑字）；保留仅静音交互——hover/active 降一档亮度、无光晕无位移、圆角 8；暗色次级/文本/链接/禁用按钮的令牌化兜底保留。
+
+**涉及文件：** `assets/styles/themes.css`
+
+**验收结果：** `pnpm build` 通过；浏览器实测（14200 dev）"新建项目"与空态"创建第一个项目"按钮计算样式均为 `rgb(27,28,31)`（#1b1c1f 单色黑）+ 白字、非禁用，页面无紫色/蓝色残留；grep 确认靛蓝色值清零。

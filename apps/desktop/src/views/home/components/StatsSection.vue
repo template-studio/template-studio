@@ -95,23 +95,9 @@ defineEmits(['navigate'])
   align-items: center;
   justify-content: center;
   font-size: 28px;
-  color: white;
-}
-
-.stat-icon.projects {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.stat-icon.datasources {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
-.stat-icon.languages {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-}
-
-.stat-icon.tables {
-  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  background: var(--color-surface-3);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
 }
 
 .stat-content {

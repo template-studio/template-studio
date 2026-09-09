@@ -318,13 +318,9 @@ onMounted(async () => {
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
   border-color: var(--color-border-strong); }
 .card-visual { height: 120px; position: relative; overflow: hidden; }
-.visual-bg { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+.visual-bg { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; background: var(--cover-gradient); overflow: hidden; }
 .visual-bg::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%); animation: shimmer 3s infinite; }
 @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-.project-mysql .visual-bg { background: linear-gradient(135deg, #00758f 0%, #00a0e4 50%, #f29111 100%); overflow: hidden; }
-.project-postgresql .visual-bg { background: linear-gradient(135deg, #336791 0%, #0064a5 50%, #008bfc 100%); overflow: hidden; }
-.project-sqlite .visual-bg { background: linear-gradient(135deg, #0f8044 0%, #00a86b 50%, #98fb98 100%); overflow: hidden; }
-.project-default .visual-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); overflow: hidden; }
 .geometric-pattern { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.15; }
 .circle { position: absolute; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; animation: rotate 20s linear infinite; }
 .circle-1 { width: 200px; height: 200px; top: -50px; right: -50px; animation-duration: 25s; }

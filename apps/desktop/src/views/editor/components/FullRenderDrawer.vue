@@ -912,20 +912,20 @@
   }
 
   .resize-handle:hover {
-    background: rgba(24, 160, 88, 0.1);
+    background: var(--editor-hover-bg);
   }
 
   .resize-handle:hover:before {
-    background: #18a058;
+    background: var(--editor-accent);
     height: 60px;
   }
 
   .resize-handle.is-resizing {
-    background: rgba(24, 160, 88, 0.2);
+    background: var(--editor-active-bg);
   }
 
   .resize-handle.is-resizing:before {
-    background: #18a058;
+    background: var(--editor-accent);
     height: 80px;
   }
 </style>

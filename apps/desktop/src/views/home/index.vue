@@ -144,11 +144,9 @@ onMounted(async () => {
 .welcome-section h1 {
   font-size: 2.5rem;
   margin-bottom: var(--spacing-md);
-  background: linear-gradient(90deg, #18a058 0%, #2196f3 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-weight: 800;
+  color: var(--color-text);
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 
 .welcome-section p {

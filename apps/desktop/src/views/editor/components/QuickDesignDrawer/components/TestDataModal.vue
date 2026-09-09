@@ -260,7 +260,7 @@
         },
         '.cm-focused': {
           outline: 'none',
-          borderColor: '#18a058',
+          borderColor: 'var(--editor-accent)',
         },
       }),
       EditorView.updateListener.of((update) => {

@@ -352,8 +352,8 @@
   }
 
   .menu-item.active {
-    background: #e8f5e8;
-    color: #18a058;
+    background: var(--editor-active-bg);
+    color: var(--editor-primary);
   }
 
   .settings-content {

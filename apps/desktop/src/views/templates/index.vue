@@ -319,7 +319,7 @@ onMounted(async () => {
 .template-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12); border-color: var(--color-border-strong); }
 .template-card.selected { border-color: var(--color-border-strong); box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1); }
 .card-visual { height: 140px; position: relative; overflow: hidden; }
-.visual-bg { width: 100%; height: 100%; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+.visual-bg { width: 100%; height: 100%; background: var(--cover-gradient); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
 .visual-bg::before { content: ''; position: absolute; top: 0; left: -100%; width: 200%; height: 100%; background: linear-gradient(90deg, transparent 0%, rgba(28,29,31,0.04) 45%, rgba(28,29,31,0.06) 50%, rgba(28,29,31,0.04) 55%, transparent 100%); animation: shimmer 4s ease-in-out infinite; }
 @keyframes shimmer { 0% { transform: translateX(0); } 100% { transform: translateX(50%); } }
 .code-preview { font-family: 'JetBrains Mono','Fira Code','Consolas',monospace; font-size: 10px; line-height: 1.5; color: rgba(148, 163, 184, 0.4); white-space: pre; padding: 16px 20px; text-align: left; position: relative; z-index: 1; overflow: hidden; }
@@ -333,7 +333,7 @@ onMounted(async () => {
 .template-card:hover .template-tag { background: rgba(28,29,31,0.06); border-color: rgba(28,29,31,0.14); color: var(--color-primary); }
 .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--color-border-light); }
 .card-author { display: flex; align-items: center; gap: 8px; }
-.author-avatar { width: 24px; height: 24px; border-radius: 6px; background: linear-gradient(135deg, #0f172a 0%, #334155 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; font-size: 12px; position: relative; overflow: hidden; }
+.author-avatar { width: 24px; height: 24px; border-radius: 6px; background: var(--cover-gradient); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; font-size: 12px; position: relative; overflow: hidden; }
 .author-avatar-fallback { font-size: 12px; color: #fff; }
 .author-avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
 .author-name { font-size: 12px; color: var(--color-text-secondary); font-weight: 500; }

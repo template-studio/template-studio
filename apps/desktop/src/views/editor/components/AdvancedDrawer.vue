@@ -974,10 +974,9 @@
   }
 
   .advanced-drawer :deep(.ant-tabs-tab-active) {
-    background: linear-gradient(135deg, #3e7bfa 0%, #2f63d8 100%);
-    color: #fff !important;
+    background: var(--editor-active-bg);
+    color: var(--editor-primary) !important;
     font-weight: 500;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   }
 
   .advanced-drawer :deep(.ant-tabs-ink-bar) {

@@ -136,20 +136,19 @@ defineEmits(['update:searchQuery', 'update:selectedCategory', 'update:selectedLa
 .tile:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-  color: #4285f4;
-  border-color: rgba(66, 133, 244, 0.1);
+  color: var(--color-primary);
+  border-color: var(--color-border-strong);
 }
 
 .tile.active {
-  background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(66, 133, 244, 0.3);
+  background: var(--color-primary);
+  color: var(--color-canvas);
 }
 
 .tile.active:hover {
-  background: linear-gradient(135deg, #3b78e7 0%, #2d9249 100%);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-canvas);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(66, 133, 244, 0.4);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 </style>

@@ -123,11 +123,11 @@ const formatDate = (dateStr) => {
   width: 40px;
   height: 40px;
   border-radius: var(--border-radius-lg);
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--color-surface-3);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--color-text-secondary);
   font-size: 20px;
   flex-shrink: 0;
 }

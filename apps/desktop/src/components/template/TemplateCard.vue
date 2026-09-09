@@ -123,13 +123,13 @@ app.run();`
 
 .template-card:hover {
   transform: translateY(-6px) scale(1.02);
-  box-shadow: 0 12px 40px rgba(66, 133, 244, 0.15);
+  box-shadow: 0 12px 40px rgba(19, 19, 22, 0.12);
   background: rgba(255, 255, 255, 0.95);
 }
 
 .template-card.selected {
-  border-color: #4285f4;
-  box-shadow: 0 0 0 4px rgba(66, 133, 244, 0.1);
+  border-color: var(--color-border-strong);
+  box-shadow: 0 0 0 3px var(--color-nav-active);
 }
 
 .card-visual-area {
@@ -142,7 +142,7 @@ app.run();`
 .visual-bg {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+  background: var(--cover-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -255,7 +255,7 @@ app.run();`
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+  background: var(--cover-gradient);
 }
 
 .author-name {

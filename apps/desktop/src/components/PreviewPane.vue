@@ -344,13 +344,13 @@ watch(() => [props.templateId, props.variables], () => {
 }
 
 :deep(.n-tree-node-content:hover) {
-  background: rgba(24, 160, 88, 0.1);
+  background: var(--color-hover);
   transform: translateX(4px);
 }
 
 :deep(.n-tree-node--selected > .n-tree-node-content) {
-  background: linear-gradient(90deg, rgba(24, 160, 88, 0.15) 0%, rgba(24, 160, 88, 0.05) 100%);
-  color: #18a058;
+  background: var(--color-nav-active);
+  color: var(--color-primary);
   font-weight: 600;
 }
 

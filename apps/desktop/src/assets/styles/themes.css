@@ -302,70 +302,41 @@ html {
   color: var(--color-text-secondary-dark) !important;
 }
 
-/* ==================== Button Refinement (Soft UI) ==================== */
+/* ==================== Button（主色由 App.vue 主题令牌驱动：浅色黑底白字 / 暗色白底黑字） ==================== */
 
-/* --- Light mode primary button --- */
 .ant-btn-primary {
-  background: #4f6ef7 !important;
-  border-color: #4f6ef7 !important;
   border-radius: 8px !important;
   font-weight: 500 !important;
-  box-shadow: 0 2px 6px rgba(79, 110, 247, 0.25) !important;
-  transition: all 0.2s ease !important;
+  box-shadow: none !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
 }
 
+/* hover/active 降一档亮度：静音反馈，无光晕无位移 */
 .ant-btn-primary:hover {
-  background: #3b5de7 !important;
-  border-color: #3b5de7 !important;
-  box-shadow: 0 4px 12px rgba(79, 110, 247, 0.35) !important;
-  transform: translateY(-1px);
+  background: #34353a !important;
+  border-color: #34353a !important;
 }
 
 .ant-btn-primary:active {
-  background: #2d4fd6 !important;
-  border-color: #2d4fd6 !important;
-  box-shadow: 0 1px 4px rgba(79, 110, 247, 0.2) !important;
-  transform: translateY(0);
+  background: #101114 !important;
+  border-color: #101114 !important;
 }
 
-/* Large button gets more radius */
-.ant-btn-lg {
-  border-radius: 10px !important;
-  height: 40px !important;
-  padding: 0 20px !important;
-  font-size: 14px !important;
-}
-
-/* Default button radius */
 .ant-btn-default {
   border-radius: 8px !important;
   transition: all 0.2s ease !important;
 }
 
-.ant-btn-default:hover {
-  transform: translateY(-1px);
-}
 
-/* Small button radius */
-
-
-/* --- Dark mode primary button --- */
-[data-theme="dark"] .ant-btn-primary {
-  background: #6b8aff !important;
-  border-color: #6b8aff !important;
-  color: #fff !important;
-  box-shadow: 0 2px 6px rgba(107, 138, 255, 0.2) !important;
-}
-
+/* --- Dark mode 主按钮（令牌已反转白底黑字，hover 提亮一档） --- */
 [data-theme="dark"] .ant-btn-primary:hover {
-  background: #8aa4ff !important;
-  border-color: #8aa4ff !important;
-  box-shadow: 0 4px 12px rgba(107, 138, 255, 0.3) !important;
+  background: #ffffff !important;
+  border-color: #ffffff !important;
 }
 
 [data-theme="dark"] .ant-btn-primary:active {
-  background: #5a7aef !important;
-  border-color: #5a7aef !important;
+  background: #d9d9d6 !important;
+  border-color: #d9d9d6 !important;
 }
 
 /* --- Dark mode default button --- */
@@ -401,23 +372,7 @@ html {
   opacity: 0.8;
 }
 
-/* --- Disabled state --- */
-.ant-btn-primary:disabled,
-.ant-btn-primary[disabled] {
-  background: #a8c4ff !important;
-  border-color: #a8c4ff !important;
-  box-shadow: none !important;
-  opacity: 0.7;
-}
-
-[data-theme="dark"] .ant-btn-primary:disabled,
-[data-theme="dark"] .ant-btn-primary[disabled] {
-  background: #3a4a6a !important;
-  border-color: #3a4a6a !important;
-  color: #666 !important;
-  box-shadow: none !important;
-}
-
+/* --- Disabled state（颜色由令牌自动淡化） --- */
 [data-theme="dark"] .ant-btn:disabled,
 [data-theme="dark"] .ant-btn[disabled] {
   background-color: var(--color-surface-dark) !important;
@@ -959,99 +914,4 @@ html {
 [data-theme="dark"] .ant-result-content {
   color: var(--color-text-secondary-dark) !important;
   background-color: var(--color-surface-dark) !important;
-}
-
-/* ==================== Button Refinement (Soft UI) ==================== */
-.ant-btn-primary {
-  background: #4f6ef7 !important;
-  border-color: #4f6ef7 !important;
-  border-radius: 8px !important;
-  font-weight: 500 !important;
-  box-shadow: 0 2px 6px rgba(79, 110, 247, 0.25) !important;
-  transition: all 0.2s ease !important;
-}
-
-.ant-btn-primary:hover {
-  background: #3b5de7 !important;
-  border-color: #3b5de7 !important;
-  box-shadow: 0 4px 12px rgba(79, 110, 247, 0.35) !important;
-  transform: translateY(-1px);
-}
-
-.ant-btn-primary:active {
-  background: #2d4fd6 !important;
-  border-color: #2d4fd6 !important;
-  box-shadow: 0 1px 4px rgba(79, 110, 247, 0.2) !important;
-  transform: translateY(0);
-}
-
-.ant-btn-lg {
-  border-radius: 10px !important;
-  height: 40px !important;
-  padding: 0 20px !important;
-  font-size: 14px !important;
-}
-
-.ant-btn-default {
-  border-radius: 8px !important;
-  transition: all 0.2s ease !important;
-}
-
-.ant-btn-default:hover {
-  transform: translateY(-1px);
-}
-
-
-
-/* Dark mode buttons */
-[data-theme="dark"] .ant-btn-primary {
-  background: #6b8aff !important;
-  border-color: #6b8aff !important;
-  color: #fff !important;
-  box-shadow: 0 2px 6px rgba(107, 138, 255, 0.2) !important;
-}
-
-[data-theme="dark"] .ant-btn-primary:hover {
-  background: #8aa4ff !important;
-  border-color: #8aa4ff !important;
-  box-shadow: 0 4px 12px rgba(107, 138, 255, 0.3) !important;
-}
-
-[data-theme="dark"] .ant-btn-primary:active {
-  background: #5a7aef !important;
-  border-color: #5a7aef !important;
-}
-
-[data-theme="dark"] .ant-btn-default {
-  background-color: var(--color-surface-dark) !important;
-  border-color: var(--color-border-dark) !important;
-  color: var(--color-text-dark) !important;
-}
-
-[data-theme="dark"] .ant-btn-default:hover {
-  background-color: var(--color-hover-dark) !important;
-  border-color: var(--color-primary-dark) !important;
-  color: var(--color-primary-dark) !important;
-}
-
-/* Disabled state */
-.ant-btn-primary[disabled],
-.ant-btn-primary[disabled]:hover {
-  background: #bfcfff !important;
-  border-color: #bfcfff !important;
-  box-shadow: none !important;
-  transform: none !important;
-}
-
-[data-theme="dark"] .ant-btn-primary[disabled],
-[data-theme="dark"] .ant-btn-primary[disabled]:hover {
-  background: #3a4a6b !important;
-  border-color: #3a4a6b !important;
-  box-shadow: none !important;
-}
-
-/* Loading state */
-.ant-btn-loading {
-  opacity: 0.85 !important;
-  cursor: not-allowed !important;
 }

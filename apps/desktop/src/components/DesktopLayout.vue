@@ -208,24 +208,21 @@ onMounted(() => {
 }
 
 .brand-logo svg {
-  filter: drop-shadow(0 2px 4px rgba(24, 160, 88, 0.2));
+  filter: drop-shadow(0 2px 4px rgba(19, 19, 22, 0.15));
 }
 
 .title-text {
   flex: 1;
   font-family: 'Fira Code', 'Segoe UI', 'Arial', sans-serif;
   letter-spacing: 0.5px;
-  background: linear-gradient(90deg, #18a058 0%, #2196f3 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--color-text);
   font-weight: 800;
   font-size: 16px;
 }
 
 .brand-accent {
   font-weight: 900;
-  -webkit-text-fill-color: #18a058;
+  -webkit-text-fill-color: var(--color-text-secondary);
 }
 
 .fade-enter-active, .fade-leave-active {
@@ -269,13 +266,13 @@ onMounted(() => {
 }
 
 :deep(.n-menu-item:hover) {
-  background: #f5f7fa;
-  color: #18a058;
+  background: var(--color-hover);
+  color: var(--color-primary);
 }
 
 :deep(.n-menu-item.n-menu-item--selected) {
-  background: linear-gradient(90deg, rgba(24, 160, 88, 0.1) 0%, rgba(24, 160, 88, 0.05) 100%);
-  color: #18a058;
+  background: var(--color-nav-active);
+  color: var(--color-primary);
   font-weight: 600;
 }
 </style>

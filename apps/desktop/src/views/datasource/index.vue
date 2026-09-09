@@ -309,23 +309,17 @@ onMounted(async () => {
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
   border-color: var(--color-border-strong); }
 .card-visual { height: 120px; position: relative; overflow: hidden; }
-.visual-bg { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+.visual-bg { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; background: var(--cover-gradient); }
 .visual-bg::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%); animation: shimmer 3s infinite; }
 @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
-.datasource-mysql .visual-bg { background: linear-gradient(135deg, #00758f 0%, #f29111 100%); }
-.datasource-mysql .visual-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.2) 100%); }
-.datasource-postgresql .visual-bg { background: linear-gradient(135deg, #336791 0%, #0064a5 100%); }
-.datasource-postgresql .visual-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.2) 100%); }
-.datasource-sqlite .visual-bg { background: linear-gradient(135deg, #0f8044 0%, #003b2e 100%); }
-.datasource-sqlite .visual-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.2) 100%); }
-.code-preview { font-family: 'Courier New', 'Consolas', monospace; font-size: 9px; line-height: 1.5; color: rgba(255,255,255,0.7); white-space: pre; text-align: left; padding: var(--spacing-md); position: relative; z-index: 1; width: 100%; box-sizing: border-box; }
-.code-kw { color: rgba(255,138,101,0.95); font-weight: 600; }
-.code-mod { color: rgba(102,153,204,0.95); }
+.code-preview { font-family: 'Courier New', 'Consolas', monospace; font-size: 9px; line-height: 1.5; color: rgba(148, 163, 184, 0.55); white-space: pre; text-align: left; padding: var(--spacing-md); position: relative; z-index: 1; width: 100%; box-sizing: border-box; }
+.code-kw { color: rgba(203, 213, 225, 0.9); font-weight: 600; }
+.code-mod { color: rgba(148, 163, 184, 0.8); }
 .code-var { color: rgba(152,195,121,0.95); }
 .code-fn { color: rgba(86,156,214,0.95); }
 .code-par { color: rgba(207,138,221,0.9); }
-.code-str { color: rgba(173,186,199,0.95); }
+.code-str { color: rgba(148, 163, 184, 0.7); }
 .code-num { color: rgba(189,147,249,0.95); }
 .card-content { padding: var(--spacing-sm) var(--spacing-md); }
 .datasource-name { margin: 0 0 8px 0; font-size: 15px; font-weight: 600; color: var(--color-text); transition: color 0.2s ease; }

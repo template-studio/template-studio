@@ -322,7 +322,7 @@ onMounted(async () => {
 .visual-bg {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  background: var(--cover-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -445,7 +445,7 @@ onMounted(async () => {
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+  background: var(--cover-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
