@@ -762,3 +762,27 @@
 **涉及文件：** `apps/desktop/src-tauri/icons/*`（全套再生成）、`views/settings/AboutSettings.vue`
 
 **验收结果：** `pnpm build` 通过；触发 cargo 重编译后提取 exe 内嵌 32px 图标验证为绿底白色 `< / >`（810 绿 + 115 白像素），任务栏图标已换新；ICO 七档帧结构校验通过，32px 帧笔画 ~3px 清晰。
+
+## 2026-09-09 桌面端 AI Agent 接入需求方向文档
+
+**变更内容：** 梳理 AI 仅存桌面端定位下的接入需求。盘点现状（provider 管理完整、AI 建表/描述优化在用、`AiAssistant`/`AiVariablePanel` 已接线 4 个后端缺失命令、`crates/ai_agent` 仅 CLI 使用），按模板生命周期梳理六大场景（提取模板/建议变量为 P0 核心），给出统一 AI 执行层架构方向与 5 个待拍板决策点。
+
+**涉及文件：** `dev-docs/ai-desktop-integration.md`（新增）
+
+**验收结果：** 方向文档产出，bcode 任务 #64 已带产物完成待审。
+
+## 2026-09-09 ai_runtime 统一 AI 执行层落地（rig-core）
+
+**变更内容：** AI 接入 P0 第一步（任务 #65）。① 新增 `src-tauri/src/ai_runtime.rs`：基于 rig-core 的多协议执行层，`Protocol` 枚举（openai_compatible/anthropic/gemini/ollama）+ `chat` 方法（preamble/多轮历史/温度/上限），rig 破坏性变更的影响面限制在该模块；structured/stream 接口位留给 P1。② 迁移 013：`ai_providers` 增加 `protocol` 列（默认 openai_compatible），DB 读写与 `ai_save_provider` 透传，前端零改动兼容。③ rig-core 0.42 适配要点：lib 名已改为 `rig_core`；经典 Agent API 拆分至 `rig-agent` crate，本层直接用核心契约；features 用 `reqwest + native-tls` 规避 aws-lc-sys 在 Windows 的 CMake/NASM 构建依赖。
+
+**涉及文件：** `apps/desktop/src-tauri/{src/ai_runtime.rs, src/lib.rs, src/database/migrations.rs, src/database/ai.rs, src/commands/ai.rs, Cargo.toml}`
+
+**验收结果：** `cargo build` 通过（唯一警告为既有 sqlx-postgres 提示）；运行中 tauri dev 自动重编译重启，迁移 013 验证落库（schema_migrations=13、protocol 列存在）；既有 7 家预置 provider 回落 openai_compatible 行为不变。
+
+## 2026-09-09 现有 AI 命令迁移至 ai_runtime（任务 #66）
+
+**变更内容：** `ai_generate_sql`/`ai_fix_sql` 从内联 reqwest（手拼端点 + Bearer 头 + 手解 choices）迁移至 ai_runtime 统一执行层。新增 `chat_openai_style` 入口：前端原样 OpenAI 风格消息数组直入（system 合并 preamble、末条 user 作 prompt、其余进 history），前端消息格式与命令签名零改动；采样参数行为等价（0.3/2000 与 0.2/2000）。自此桌面端所有 AI 调用走同一执行层，后续 anthropic/gemini/ollama 协议 provider 配置后即刻可用。
+
+**涉及文件：** `apps/desktop/src-tauri/src/{ai_runtime.rs, commands/ai.rs}`
+
+**验收结果：** `cargo build` 零新增警告；tauri dev 自动重编译重启正常。

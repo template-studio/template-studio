@@ -32,6 +32,10 @@ sqlparser = "0.51"
 # HTTP 客户端
 reqwest = { version = "0.12", features = ["json"] }
 
+# AI 运行时(多 provider 抽象;锁定版本,rig 破坏性变更的影响面限制在 ai_runtime 模块内)
+# native-tls 而非默认 rustls:规避 aws-lc-sys 在 Windows 上的 CMake/NASM 构建依赖
+rig-core = { version = "=0.42.0", default-features = false, features = ["reqwest", "native-tls"] }
+
 # 文件处理
 zip = "2.2"
 

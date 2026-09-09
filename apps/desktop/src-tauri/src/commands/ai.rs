@@ -67,6 +67,10 @@ pub async fn ai_save_provider(
         .get("maxTokens")
         .and_then(|v| v.as_i64())
         .unwrap_or(4096) as i32;
+    let protocol = params
+        .get("protocol")
+        .and_then(|v| v.as_str())
+        .unwrap_or(crate::ai_runtime::Protocol::OpenAiCompatible.as_str());
 
     let _id = db
         .save_ai_provider(
@@ -78,6 +82,7 @@ pub async fn ai_save_provider(
             is_enabled,
             temperature,
             max_tokens,
+            protocol,
         )
         .await
         .map_err(|e| format!("保存 AI 提供商失败: {}", e))?;
@@ -422,61 +427,23 @@ pub async fn ai_generate_sql(
         .map_err(|e| format!("获取提供商失败: {}", e))?
         .ok_or_else(|| "提供商不存在".to_string())?;
 
-    // 构建 AI API 请求
-    let api_key = provider_config["apiKey"]
-        .as_str()
-        .ok_or_else(|| "请先配置 API 密钥".to_string())?;
-    let base_url = provider_config["apiEndpoint"]
-        .as_str()
-        .unwrap_or_else(|| get_default_endpoint(&provider).leak());
-
-    // 构建完整的 API 端点（添加 /chat/completions 路径）
-    let api_endpoint = if base_url.ends_with("/chat/completions") {
-        base_url.to_string()
-    } else if base_url.ends_with('/') {
-        format!("{}chat/completions", base_url)
-    } else {
-        format!("{}/chat/completions", base_url)
-    };
+    let protocol = crate::ai_runtime::Protocol::parse(
+        provider_config["protocol"].as_str().unwrap_or("openai_compatible"),
+    );
 
     // 验证 messages 格式
     let messages_array = messages
         .as_array()
         .ok_or_else(|| "messages 格式错误：应为数组".to_string())?;
 
-    if messages_array.is_empty() {
-        return Err("messages 不能为空".to_string());
-    }
+    let mut target = crate::ai_runtime::call_target_from_provider(
+        &provider_config, &model, protocol,
+    )?;
+    // 行为等价迁移:沿用原命令的采样参数
+    target.temperature = 0.3;
+    target.max_tokens = 2000;
 
-    // 调用 OpenAI 兼容 API（支持多轮对话）
-    let client = reqwest::Client::new();
-    let response = client
-        .post(&api_endpoint)
-        .header("Authorization", format!("Bearer {}", api_key))
-        .json(&serde_json::json!({
-            "model": model,
-            "messages": messages,
-            "temperature": 0.3,
-            "max_tokens": 2000
-        }))
-        .send()
-        .await
-        .map_err(|e| format!("AI API 请求失败: {}", e))?;
-
-    if !response.status().is_success() {
-        return Err(format!("AI API 返回错误: {}", response.status()));
-    }
-
-    let response_json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("解析响应失败: {}", e))?;
-
-    let sql = response_json["choices"][0]["message"]["content"]
-        .as_str()
-        .ok_or_else(|| "AI 返回格式错误".to_string())?;
-
-    Ok(sql.to_string())
+    crate::ai_runtime::chat_openai_style(&target, messages_array).await
 }
 
 /// AI 修复 SQL
@@ -509,56 +476,17 @@ pub async fn ai_fix_sql(
         .map_err(|e| format!("获取提供商失败: {}", e))?
         .ok_or_else(|| "提供商不存在".to_string())?;
 
-    // 构建 AI API 请求
-    let api_key = provider_config["apiKey"]
-        .as_str()
-        .ok_or_else(|| "请先配置 API 密钥".to_string())?;
-    let base_url = provider_config["apiEndpoint"]
-        .as_str()
-        .unwrap_or_else(|| get_default_endpoint(&provider).leak());
+    let protocol = crate::ai_runtime::Protocol::parse(
+        provider_config["protocol"].as_str().unwrap_or("openai_compatible"),
+    );
 
-    // 构建完整的 API 端点（添加 /chat/completions 路径）
-    let api_endpoint = if base_url.ends_with("/chat/completions") {
-        base_url.to_string()
-    } else if base_url.ends_with('/') {
-        format!("{}chat/completions", base_url)
-    } else {
-        format!("{}/chat/completions", base_url)
-    };
+    let mut target = crate::ai_runtime::call_target_from_provider(
+        &provider_config, &model, protocol,
+    )?;
+    target.temperature = 0.2;
+    target.max_tokens = 2000;
 
-    let client = reqwest::Client::new();
-    let response = client
-        .post(&api_endpoint)
-        .header("Authorization", format!("Bearer {}", api_key))
-        .json(&serde_json::json!({
-            "model": model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "temperature": 0.2,
-            "max_tokens": 2000
-        }))
-        .send()
-        .await
-        .map_err(|e| format!("AI API 请求失败: {}", e))?;
-
-    if !response.status().is_success() {
-        return Err(format!("AI API 返回错误: {}", response.status()));
-    }
-
-    let response_json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("解析响应失败: {}", e))?;
-
-    let sql = response_json["choices"][0]["message"]["content"]
-        .as_str()
-        .ok_or_else(|| "AI 返回格式错误".to_string())?;
-
-    Ok(sql.to_string())
+    crate::ai_runtime::chat(&target, None, &prompt, &[]).await
 }
 
 /// 解析 AI 生成的 SQL（只返回表结构，不创建）

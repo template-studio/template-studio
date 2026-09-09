@@ -77,6 +77,10 @@ impl Database {
             self.migration_012_add_cherry_studio_provider().await?;
         }
 
+        if current_version < 13 {
+            self.migration_013_add_provider_protocol().await?;
+        }
+
         Ok(())
     }
 
@@ -1006,6 +1010,23 @@ impl Database {
         .await?;
 
         sqlx::query("INSERT INTO schema_migrations (version) VALUES (12)")
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    /// 迁移 013: AI 提供商增加协议字段(openai_compatible/anthropic/gemini/ollama)
+    async fn migration_013_add_provider_protocol(&self) -> Result<(), sqlx::Error> {
+        println!("执行迁移 013: AI 提供商增加协议字段");
+
+        sqlx::query(
+            "ALTER TABLE ai_providers ADD COLUMN protocol TEXT NOT NULL DEFAULT 'openai_compatible'",
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query("INSERT INTO schema_migrations (version) VALUES (13)")
             .execute(&self.pool)
             .await?;
 

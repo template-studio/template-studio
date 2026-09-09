@@ -1,5 +1,6 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
+pub mod ai_runtime;
 mod commands;
 mod config;
 pub mod database;

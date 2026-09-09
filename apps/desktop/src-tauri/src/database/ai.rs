@@ -8,7 +8,7 @@ impl Database {
         let rows = sqlx::query(
             "SELECT id, provider_name, display_name, provider_type, api_key, api_endpoint,
                     is_enabled, is_default, temperature, max_tokens, timeout_seconds,
-                    created_at, updated_at
+                    protocol, created_at, updated_at
              FROM ai_providers
              ORDER BY id ASC",
         )
@@ -32,6 +32,7 @@ impl Database {
                     "temperature": row.get::<f64, _>("temperature"),
                     "maxTokens": row.get::<i32, _>("max_tokens"),
                     "timeoutSeconds": row.get::<i32, _>("timeout_seconds"),
+                    "protocol": row.get::<String, _>("protocol"),
                     "createdAt": row.get::<String, _>("created_at"),
                     "updatedAt": row.get::<String, _>("updated_at"),
                 })
@@ -49,7 +50,7 @@ impl Database {
         let row = sqlx::query(
             "SELECT id, provider_name, display_name, provider_type, api_key, api_endpoint,
                     is_enabled, is_default, temperature, max_tokens, timeout_seconds,
-                    created_at, updated_at
+                    protocol, created_at, updated_at
              FROM ai_providers
              WHERE provider_name = ?1",
         )
@@ -72,6 +73,7 @@ impl Database {
                 "temperature": r.get::<f64, _>("temperature"),
                 "maxTokens": r.get::<i32, _>("max_tokens"),
                 "timeoutSeconds": r.get::<i32, _>("timeout_seconds"),
+                "protocol": r.get::<String, _>("protocol"),
                 "createdAt": r.get::<String, _>("created_at"),
                 "updatedAt": r.get::<String, _>("updated_at"),
             })
@@ -89,12 +91,13 @@ impl Database {
         is_enabled: bool,
         temperature: f64,
         max_tokens: i32,
+        protocol: &str,
     ) -> Result<i64, sqlx::Error> {
         let id = sqlx::query(
             "INSERT INTO ai_providers (
                 provider_name, display_name, provider_type, api_key, api_endpoint,
-                is_enabled, temperature, max_tokens
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+                is_enabled, temperature, max_tokens, protocol
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
             ON CONFLICT(provider_name) DO UPDATE SET
                 display_name = excluded.display_name,
                 provider_type = excluded.provider_type,
@@ -103,6 +106,7 @@ impl Database {
                 is_enabled = excluded.is_enabled,
                 temperature = excluded.temperature,
                 max_tokens = excluded.max_tokens,
+                protocol = excluded.protocol,
                 updated_at = datetime('now')
             RETURNING id",
         )
@@ -121,6 +125,7 @@ impl Database {
         .bind(if is_enabled { 1 } else { 0 })
         .bind(temperature)
         .bind(max_tokens)
+        .bind(protocol)
         .fetch_one(&self.pool)
         .await?
         .get::<i64, _>("id");
