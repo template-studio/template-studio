@@ -962,3 +962,51 @@
 **涉及文件：** `apps/desktop/src-tauri/src/ai_runtime.rs`
 
 **验收结果：** `cargo build` 零错误；tauri dev 自动重编译重启，用户重试编辑代理验证。
+
+## 2026-09-09 Agent 控制台体验待办清单（任务 #93）
+
+**变更内容：** 首次真实跑通编辑代理（工具调用正常）后整理体验缺口，写入 `dev-docs/agent-console-todos.md`：A 步骤卡片化与消息流分组渲染、B 智能滚动跟随与回底按钮、C 进度迷你面板与 plan/TODO 跟踪、D 上下文预算表与工具结果分级截断及 token 计量、E 压缩策略（触发/折叠/快照去重/水位展示）、F 健壮性（中止/限流退避/外部编辑警示）。附三批排期建议（体验骨架→可观测→长任务支撑）。
+
+**涉及文件：** `dev-docs/agent-console-todos.md(新增)`
+
+**验收结果：** 待办文档产出，bcode #93 带产物完成待审。
+
+## 2026-09-10 Agent 控制台开源调研与设计对照（任务 #94）
+
+**变更内容：** 调研 Zed Agent Panel、Cline/Roo、OpenCode、pi 及 Claude Code/Codex 公开文档，产出 `dev-docs/agent-console-research.md`：按 A-F 待办域逐项对照并给采纳方案——步骤卡片（Zed 消息卡 + Cline 时间线）、near-bottom 跟随、Cline plan 式结构化 todo（`update_todo` 工具）、Zed `@` 引用/选区即上下文/token 常显、压缩采用"先修剪后压缩"（85% 阈值、Codex 交接摘要结构、保留近 2 轮原文、OpenCode 式工具输出修剪）、应用即 release checkpoint（复用版本管理实现 Zed checkpoint 语义）、Follow 模式（工具操作文件自动在编辑器打开）。明确不抄 Roo 多模式/Amp 手动哲学/Zed worktree 并行。三批落地顺序据此修订，`agent-console-todos.md` 已加交叉引用。
+
+**涉及文件：** `dev-docs/agent-console-research.md(新增)`、`dev-docs/agent-console-todos.md`
+
+**验收结果：** 调研产出，bcode #94 带产物完成待审。
+
+## 2026-09-10 Agent 控制台采用 ant-design-x-vue 重构（任务 #95）
+
+**变更内容：** 引入 ant-design-x-vue 1.6.0（Ant Design X 的 Vue3 社区实现，与 ant-design-vue 同设计体系，现有单色/品牌绿主题令牌直接生效）。EditorAiAssistant 皮层全换：对话模式 BubbleList（内置 near-bottom 智能跟随）+ Bubble 加载态；编辑代理 Welcome 空态 + ThoughtChain 工具时间线（success/error/pending）+ 总结 Bubble；输入统一 Sender（loading 态内置停止按钮 → abortFlag，轮间/工具间检查实现中止）。`ai_agent_turn` 返回 usage，前端累计 token 水位常显头部。工作副本/七工具/三重守卫/diff 卡/应用放弃/拖宽等骨架不动。
+
+**涉及文件：** `apps/desktop/package.json`、`src-tauri/src/commands/ai.rs`、`views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** 双端构建零错误；浏览器实测停靠栏/Welcome/Sender 渲染正确，ThoughtChain 空态条件渲染符合预期。
+
+## 2026-09-10 工具时间线改紧凑单行式（任务 #96）
+
+**变更内容：** 反馈 ThoughtChain 默认项垂直铺张。工具时间线改为自绘终端式紧凑步骤行（参考 Claude Code/Codex）：单行 = 状态点（6px：绿=工具/红=错误/灰=信息）+ 工具名(路径) + 结果首行省略号，24px 行高/12px 字号/1px 间距；点击行展开完整输出（inset 块，180px 上限）。antdx 保留 Bubble/BubbleList/Sender/Welcome。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** `pnpm build` 通过。
+
+## 2026-09-10 修复 templateId 字符串导致 edit 422（任务 #97）
+
+**变更内容：** agent 应用修改时报 `invalid type: string "1766552271492", expected i64`（PUT templateFiles/edit 422）。根因：`route.params.id` 是字符串，组件直接透传给 body 型接口。修复：组件内 `tid() = Number(props.templateId)`，getTemplateFileContent/getTemplateFileTree/addTemplateFile/editTemplateFile 四处统一数字化。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** `pnpm build` 通过；重跑 agent 应用修改验证。
+
+## 2026-09-10 修复 agent 应用后文件树刷新报错（任务 #98）
+
+**变更内容：** 应用修改后报 `Cannot read properties of undefined (reading 'type')`。根因：`onAgentFilesUpdated` 调 `onTreeReload()` 无参——该函数预期带 `type` 的载荷（delete/folder 分支），无参即 TypeError。修复：改直调 `loadTree()`（重载分支的本体）。
+
+**涉及文件：** `views/editor/index.vue`
+
+**验收结果：** `pnpm build` 通过；重跑应用验证。

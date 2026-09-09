@@ -371,7 +371,7 @@
     }
   };
   const onAgentFilesUpdated = () => {
-    onTreeReload();
+    loadTree();
   };
 
   const editorSettings = ref({

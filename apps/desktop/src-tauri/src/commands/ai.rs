@@ -1484,10 +1484,15 @@ pub async fn ai_agent_turn(
         }
     }
 
+    let usage = serde_json::json!({
+        "input": resp.usage.input_tokens,
+        "output": resp.usage.output_tokens,
+    });
+
     if calls.is_empty() {
-        Ok(serde_json::json!({ "type": "final", "text": text }).to_string())
+        Ok(serde_json::json!({ "type": "final", "text": text, "usage": usage }).to_string())
     } else {
-        Ok(serde_json::json!({ "type": "tool_calls", "calls": calls }).to_string())
+        Ok(serde_json::json!({ "type": "tool_calls", "calls": calls, "usage": usage }).to_string())
     }
 }
 

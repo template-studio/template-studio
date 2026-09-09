@@ -6,14 +6,17 @@
     <div class="ai-dock-head">
       <div class="ai-dock-title">
         <AiIcon :size="16" class="ai-title-icon" />
-        <a-radio-group v-model:value="mode" size="small" button-style="solid" :disabled="agentRunning">
+        <a-radio-group v-model:value="mode" size="small" button-style="solid" :disabled="busy">
           <a-radio-button value="chat">对话</a-radio-button>
           <a-radio-button value="agent">编辑代理</a-radio-button>
         </a-radio-group>
       </div>
-      <div class="ai-dock-actions">
-        <a-button v-if="mode === 'agent'" type="text" size="small" :disabled="agentRunning" @click="resetAgent">重置</a-button>
-        <a-button v-if="mode === 'chat'" type="text" size="small" @click="clearChat">清空</a-button>
+      <div class="ai-dock-head-right">
+        <span v-if="mode === 'agent' && totalTokens > 0" class="ai-token-meter" :title="`累计 token(入 ${tokIn}/出 ${tokOut})`">
+          {{ (totalTokens / 1000).toFixed(1) }}k tok
+        </span>
+        <a-button v-if="mode === 'agent' && !busy && timeline.length > 0" type="text" size="small" @click="resetAgent">重置</a-button>
+        <a-button v-if="mode === 'chat' && !loading" type="text" size="small" @click="clearChat">清空</a-button>
         <a-button type="text" size="small" @click="open = false">
           <template #icon><CloseOutlined /></template>
         </a-button>
@@ -22,88 +25,69 @@
 
     <!-- ===== 对话模式 ===== -->
     <template v-if="mode === 'chat'">
-      <div ref="messagesRef" class="ai-messages">
-        <div v-if="messages.length === 0" class="ai-empty">
-          <AiIcon :size="40" class="ai-empty-icon" />
-          <p>问我关于当前模板、变量或代码的问题</p>
-          <div class="ai-hints">
-            <button v-for="h in hints" :key="h" class="ai-hint-chip" @click="send(h)">{{ h }}</button>
-          </div>
-        </div>
-        <div v-for="(m, i) in messages" :key="i" class="ai-msg" :class="m.role">
-          <div class="ai-bubble">{{ m.content }}</div>
-        </div>
-        <div v-if="loading" class="ai-msg assistant">
-          <div class="ai-bubble ai-typing"><span></span><span></span><span></span></div>
-        </div>
+      <div class="ai-body">
+        <Welcome v-if="messages.length === 0" class="ai-welcome"
+          :icon="() => h('span', { class: 'ai-welcome-icon' }, [h(AiIcon, { size: 36 })])"
+          title="AI 助手" description="问我关于当前模板、变量或代码的问题" />
+        <BubbleList v-else :items="chatItems" :roles="chatRoles" class="ai-bubble-list" />
+        <div v-if="loading" class="ai-loading-row"><Bubble :loading="true" /></div>
       </div>
-      <div class="ai-input-row">
-        <a-textarea v-model:value="input" placeholder="输入问题,Enter 发送,Shift+Enter 换行"
-          :auto-size="{ minRows: 2, maxRows: 6 }" :disabled="loading"
-          @keydown.enter.exact.prevent="send()" />
-        <a-button type="primary" :loading="loading" :disabled="!input.trim()" class="ai-send-btn" @click="send()">
-          <template #icon><SendOutlined /></template><span>发送</span>
-        </a-button>
+      <div class="ai-sender-wrap">
+        <Sender v-model:value="input" :loading="loading" placeholder="输入问题,Enter 发送"
+          submit-type="enter" @submit="send" />
       </div>
     </template>
 
     <!-- ===== 编辑代理模式 ===== -->
     <template v-else>
-      <div class="ai-messages">
-        <div v-if="timeline.length === 0" class="ai-empty">
-          <AiIcon :size="40" class="ai-empty-icon" />
-          <p>给 AI 一个编辑任务,它会读取文件、打补丁、渲染验证</p>
-          <div class="ai-hints">
-            <button v-for="h in agentHints" :key="h" class="ai-hint-chip" @click="runAgent(h)">{{ h }}</button>
+      <div class="ai-body">
+        <Welcome v-if="timeline.length === 0" class="ai-welcome"
+          :icon="() => h('span', { class: 'ai-welcome-icon' }, [h(AiIcon, { size: 36 })])"
+          title="编辑代理" description="给 AI 一个编辑任务,它会读取文件、打补丁、渲染验证" />
+        <div v-else class="agent-stream">
+          <!-- 紧凑步骤行(终端式:单行折叠,点击展开) -->
+          <div class="steps">
+            <div v-for="(e, i) in timeline" :key="i" class="step" :class="e.kind" @click="toggleStep(i)">
+              <span class="step-dot"></span>
+              <span class="step-title">{{ e.title }}</span>
+              <span v-if="e.detail" class="step-detail">{{ e.detail }}</span>
+              <span class="step-chev">›</span>
+            </div>
+            <div v-if="expandedStep !== null && timeline[expandedStep]?.full" class="step-full">{{ timeline[expandedStep].full }}</div>
           </div>
-        </div>
 
-        <!-- 工具时间线 -->
-        <div v-for="(e, i) in timeline" :key="i" class="tl-item" :class="e.kind">
-          <span class="tl-icon">{{ e.kind === 'tool' ? '⚙' : e.kind === 'error' ? '✕' : '✓' }}</span>
-          <div class="tl-body">
-            <div class="tl-title">{{ e.title }}</div>
-            <div v-if="e.detail" class="tl-detail">{{ e.detail }}</div>
+          <!-- diff 卡片 -->
+          <div v-for="(d, i) in dirtyFiles" :key="'d' + i" class="diff-card">
+            <div class="diff-head">
+              <span class="diff-path">{{ d.path }}</span>
+              <span class="diff-count">+{{ d.added }} / -{{ d.removed }}</span>
+            </div>
+            <pre class="diff-body">{{ d.preview }}</pre>
           </div>
-        </div>
 
-        <!-- diff 卡片 -->
-        <div v-for="(d, i) in dirtyFiles" :key="'d' + i" class="diff-card">
-          <div class="diff-head">
-            <span class="diff-path">{{ d.path }}</span>
-            <span class="diff-count">+{{ d.added }} / -{{ d.removed }}</span>
-          </div>
-          <pre class="diff-body">{{ d.preview }}</pre>
-        </div>
-
-        <div v-if="agentSummary" class="ai-msg assistant">
-          <div class="ai-bubble">{{ agentSummary }}</div>
+          <Bubble v-if="agentSummary" :content="agentSummary" class="ai-summary" />
         </div>
       </div>
 
-      <div class="ai-input-row">
-        <div v-if="dirtyFiles.length > 0 && !agentRunning" class="ai-apply-row">
+      <div class="ai-sender-wrap">
+        <div v-if="dirtyFiles.length > 0 && !busy" class="ai-apply-row">
           <a-button type="primary" size="small" :loading="applying" @click="applyAll">应用全部修改({{ dirtyFiles.length }})</a-button>
           <a-button size="small" :disabled="applying" @click="discardAll">全部放弃</a-button>
         </div>
-        <div class="ai-input-flex">
-          <a-textarea v-model:value="agentInput" :placeholder="agentRunning ? '代理执行中…' : '描述编辑任务,如:把端口 8080 改成变量 {{ server_port }}'"
-            :auto-size="{ minRows: 2, maxRows: 6 }" :disabled="agentRunning"
-            @keydown.enter.exact.prevent="runAgent()" />
-          <a-button type="primary" :loading="agentRunning" :disabled="!agentInput.trim() && !agentRunning" @click="runAgent()">
-            <template #icon><SendOutlined /></template><span>执行</span>
-          </a-button>
-        </div>
+        <Sender v-model:value="agentInput" :loading="agentRunning" :disabled="applying"
+          placeholder="描述编辑任务,如:把端口 8080 提取为变量"
+          submit-type="enter" @submit="runAgent" @cancel="abortAgent" />
       </div>
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, nextTick, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, watch, nextTick, reactive, computed, onMounted, onUnmounted, h } from 'vue'
 import { message } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
-import { CloseOutlined, SendOutlined } from '@ant-design/icons-vue'
+import { CloseOutlined } from '@ant-design/icons-vue'
+import { Bubble, BubbleList, Sender, Welcome } from 'ant-design-x-vue'
 import AiIcon from '@/components/icons/AiIcon.vue'
 import { getTemplateFileTree, getTemplateFileContent, editTemplateFile, addTemplateFile } from '@/api/editor/templateFiles'
 
@@ -115,6 +99,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['buffer-replace', 'files-updated'])
+
+// 路由参数是字符串,服务端 body 需要 i64
+const tid = () => Number(props.templateId)
 const open = defineModel('open', { type: Boolean, default: false })
 
 // ---- 布局:宽度拖拽 ----
@@ -153,17 +140,19 @@ onUnmounted(() => {
   document.removeEventListener('mouseup', onDragEnd)
 })
 
-// ===== 对话模式(与此前一致) =====
+// ===== 对话模式 =====
 const mode = ref('chat')
 const input = ref('')
 const loading = ref(false)
 const messages = ref([])
-const messagesRef = ref()
-const hints = ['这个模板还缺什么变量?', '帮我优化当前文件的模板语法', '变量命名有什么建议?']
 
-watch(messages, () => {
-  nextTick(() => { if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight })
-}, { deep: true })
+const chatItems = computed(() =>
+  messages.value.map((m, i) => ({ key: String(i), role: m.role, content: m.content }))
+)
+const chatRoles = {
+  user: { placement: 'end', variant: 'filled' },
+  assistant: { placement: 'start' },
+}
 
 const buildExtraContext = () => {
   const parts = []
@@ -173,8 +162,8 @@ const buildExtraContext = () => {
   return parts.join('\n')
 }
 
-const send = async (preset) => {
-  const text = (preset || input.value).trim()
+const send = async (textArg) => {
+  const text = (typeof textArg === 'string' ? textArg : input.value).trim()
   if (!text || loading.value) return
   messages.value.push({ role: 'user', content: text })
   input.value = ''
@@ -201,17 +190,18 @@ const agentRunning = ref(false)
 const applying = ref(false)
 const timeline = ref([])
 const agentSummary = ref('')
-const agentHints = [
-  '把硬编码的端口号提取为变量',
-  '给所有 SQL 文件加上统一文件头注释',
-  '检查并修复模板语法错误',
-]
+const abortFlag = ref(false)
+const busy = computed(() => agentRunning.value || applying.value)
 
-// 工作副本:path → {content, version, readVersion, hasRead}
+// token 水位
+const tokIn = ref(0)
+const tokOut = ref(0)
+const totalTokens = computed(() => tokIn.value + tokOut.value)
+
+// 工作副本:path → {content, base, version, readVersion, hasRead}
 const workset = reactive(new Map())
 let lastSeenBuffer = ''
 watch(() => [props.currentFilePath, props.currentFileContent], ([p, c]) => {
-  // 打开文件的内容变化(用户编辑)→ bump 版本,触发 AI 侧过期
   if (p && workset.has(p) && c !== lastSeenBuffer) {
     const f = workset.get(p)
     if (f.content !== c) f.version += 1
@@ -219,14 +209,13 @@ watch(() => [props.currentFilePath, props.currentFileContent], ([p, c]) => {
   lastSeenBuffer = c
 })
 
-const wcGet = (path) => workset.get(path)
 const ensureLoaded = async (path) => {
   if (workset.has(path)) return workset.get(path)
   let content = ''
   if (path === props.currentFilePath) {
     content = props.currentFileContent || ''
   } else {
-    const res = await getTemplateFileContent(props.templateId, path)
+    const res = await getTemplateFileContent(tid(), path)
     content = res.data?.data?.content ?? res.data?.data?.fileContent ?? ''
   }
   const f = { content, base: content, version: 0, readVersion: -1, hasRead: false }
@@ -234,7 +223,7 @@ const ensureLoaded = async (path) => {
   return f
 }
 
-// ---- 工具 schema(给模型) ----
+// ---- 工具 schema ----
 const str = (desc) => ({ type: 'string', description: desc })
 const TOOLS = [
   { name: 'list_files', description: '列出模板的全部文件路径', parameters: { type: 'object', properties: {}, required: [] } },
@@ -246,11 +235,11 @@ const TOOLS = [
   { name: 'list_variables', description: '列出模板已定义的变量', parameters: { type: 'object', properties: {}, required: [] } },
 ]
 
-// ---- 工具执行(含读前置/新鲜度守卫) ----
+// ---- 工具执行(读前置/新鲜度守卫) ----
 async function execTool(name, args) {
   switch (name) {
     case 'list_files': {
-      const res = await getTemplateFileTree(props.templateId)
+      const res = await getTemplateFileTree(tid())
       const tree = res.data?.data?.tree || []
       const paths = []
       const walk = (nodes) => nodes.forEach((n) => {
@@ -315,14 +304,19 @@ async function execTool(name, args) {
   }
 }
 
-// ---- diff 视图(朴素行级差异:公共前后缀) ----
+// ---- 紧凑步骤行展开态 ----
+const expandedStep = ref(null)
+const toggleStep = (i) => {
+  expandedStep.value = expandedStep.value === i ? null : i
+}
+
+// ---- diff 视图(公共前后缀行级差异) ----
 const dirtyFiles = ref([])
 const refreshDirty = () => {
   const list = []
   for (const [path, f] of workset) {
     if (path === props.currentFilePath && f.content === (props.currentFileContent || '')) continue
-    const orig = path === props.currentFilePath ? (props.currentFileContent || '').split('\n')
-      : f.hasRead ? [] : []
+    const orig = (f.base || '').split('\n')
     const now = (f.content || '').split('\n')
     let s = 0
     while (s < orig.length && s < now.length && orig[s] === now[s]) s += 1
@@ -338,30 +332,39 @@ const refreshDirty = () => {
 }
 watch(workset, () => nextTick(refreshDirty), { deep: true })
 
-const runAgent = async (preset) => {
-  const task = (preset || agentInput.value).trim()
+const abortAgent = () => {
+  abortFlag.value = true
+  timeline.value.push({ kind: 'error', title: '用户中止' })
+}
+
+const runAgent = async (textArg) => {
+  const task = (typeof textArg === 'string' ? textArg : agentInput.value).trim()
   if (!task || agentRunning.value) return
   agentInput.value = ''
   agentRunning.value = true
   agentSummary.value = ''
+  abortFlag.value = false
   timeline.value = [{ kind: 'tool', title: '任务', detail: task }]
 
-  // 系统提示词:Rust 资产 + 当前编辑上下文
   let system = ''
   try {
-    const r = await invoke('ai_get_agent_prompt')
-    system = r || ''
+    system = await invoke('ai_get_agent_prompt')
   } catch { system = '' }
   const ctx = buildExtraContext()
   const taskMessages = [
-    { role: 'system', content: system + (ctx ? `\n\n当前编辑上下文:\n${ctx}` : '') },
+    { role: 'system', content: (system || '') + (ctx ? `\n\n当前编辑上下文:\n${ctx}` : '') },
     { role: 'user', content: task },
   ]
 
   try {
     for (let round = 0; round < 12; round++) {
+      if (abortFlag.value) break
       const raw = await invoke('ai_agent_turn', { messages: taskMessages, tools: TOOLS })
       const res = JSON.parse(raw)
+      if (res.usage) {
+        tokIn.value += res.usage.input || 0
+        tokOut.value += res.usage.output || 0
+      }
       if (res.type === 'final') {
         agentSummary.value = res.text || '(无总结)'
         timeline.value.push({ kind: 'done', title: '完成' })
@@ -369,6 +372,7 @@ const runAgent = async (preset) => {
       }
       taskMessages.push({ role: 'assistant', tool_calls: res.calls })
       for (const c of res.calls) {
+        if (abortFlag.value) break
         let out
         try {
           out = await execTool(c.name, c.arguments || {})
@@ -376,11 +380,10 @@ const runAgent = async (preset) => {
           out = `工具执行异常: ${e.message || e}`
         }
         taskMessages.push({ role: 'tool_result', tool_call_id: c.id, name: c.name, content: String(out).slice(0, 8000) })
-        const brief = String(out).split('\n')[0].slice(0, 120)
         timeline.value.push({
           kind: out.startsWith('错误') ? 'error' : 'tool',
           title: `${c.name}(${(c.arguments?.path || '').slice(0, 40)})`,
-          detail: brief,
+          detail: String(out).split('\n')[0].slice(0, 120),
         })
       }
     }
@@ -389,29 +392,40 @@ const runAgent = async (preset) => {
     timeline.value.push({ kind: 'error', title: '中止', detail: e.message || String(e) })
   } finally {
     agentRunning.value = false
+    abortFlag.value = false
   }
 }
 
-// ---- 应用 / 放弃(走既有保存通道 editTemplateFile) ----
+// ---- 应用 / 放弃 ----
+const fileExistsCache = new Set()
+const fileExistsOnServer = async (path) => {
+  if (fileExistsCache.has(path)) return true
+  try {
+    await getTemplateFileContent(tid(), path)
+    fileExistsCache.add(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
 const applyAll = async () => {
   applying.value = true
   try {
     let applied = 0
     for (const d of dirtyFiles.value) {
-      const f = wcGet(d.path)
-      const existsBefore = d.path !== props.currentFilePath && !(await fileExistsOnServer(d.path))
-      if (existsBefore === false && !(f && f.hasRead)) {
-        // 新文件:先建条目
+      const f = workset.get(d.path)
+      if (!(await fileExistsOnServer(d.path))) {
         const parentPath = d.path.includes('/') ? d.path.slice(0, d.path.lastIndexOf('/')) : ''
-        await addTemplateFile({ templateId: props.templateId, fileName: d.path.split('/').pop(), parentPath, isDirectory: false })
+        await addTemplateFile({ templateId: tid(), fileName: d.path.split('/').pop(), parentPath, isDirectory: false })
+        fileExistsCache.add(d.path)
       }
-      await editTemplateFile({ templateId: props.templateId, filePath: d.path, content: f.content })
+      await editTemplateFile({ templateId: tid(), filePath: d.path, content: f.content })
       applied += 1
     }
     message.success(`已应用 ${applied} 个文件`)
-    // 打开中的文件直接换缓冲区,其余刷新文件树
     for (const d of dirtyFiles.value) {
-      if (d.path === props.currentFilePath) emit('buffer-replace', { path: d.path, content: wcGet(d.path).content })
+      if (d.path === props.currentFilePath) emit('buffer-replace', { path: d.path, content: workset.get(d.path).content })
     }
     emit('files-updated')
     workset.clear()
@@ -421,18 +435,6 @@ const applyAll = async () => {
     message.error('应用失败: ' + (e.message || e))
   } finally {
     applying.value = false
-  }
-}
-
-const fileExistsCache = new Set()
-const fileExistsOnServer = async (path) => {
-  if (fileExistsCache.has(path)) return true
-  try {
-    await getTemplateFileContent(props.templateId, path)
-    fileExistsCache.add(path)
-    return true
-  } catch {
-    return false
   }
 }
 
@@ -447,6 +449,8 @@ const resetAgent = () => {
   dirtyFiles.value = []
   timeline.value = []
   agentSummary.value = ''
+  tokIn.value = 0
+  tokOut.value = 0
 }
 </script>
 
@@ -457,40 +461,22 @@ const resetAgent = () => {
 .ai-dock-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--editor-border, #e0e0e6); flex-shrink: 0; }
 .ai-dock-title { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: var(--editor-primary, #1b1c1f); }
 .ai-title-icon { color: var(--editor-accent, #16a34a); }
-.ai-dock-actions { display: flex; gap: 4px; }
-.ai-messages { flex: 1; overflow-y: auto; padding: 16px 14px 12px; display: flex; flex-direction: column; gap: 12px; }
-.ai-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--editor-muted, #999); }
-.ai-empty-icon { opacity: 0.45; }
-.ai-empty p { margin: 0; font-size: 13px; }
-.ai-hints { display: flex; flex-direction: column; gap: 8px; align-items: stretch; width: 88%; }
-.ai-hint-chip { border: 1px solid var(--editor-border, #e0e0e6); background: var(--editor-inset-bg, #f8f9fa); color: var(--editor-primary, #333); border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; text-align: left; transition: border-color 0.15s ease; }
-.ai-hint-chip:hover { border-color: var(--editor-accent, #16a34a); }
-.ai-msg { display: flex; }
-.ai-msg.user { justify-content: flex-end; }
-.ai-bubble { max-width: 86%; padding: 10px 14px; border-radius: 12px; font-size: 13.5px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
-.ai-msg.user .ai-bubble { background: var(--editor-primary, #1b1c1f); color: var(--editor-bg, #fff); border-bottom-right-radius: 4px; }
-.ai-msg.assistant .ai-bubble { background: var(--editor-inset-bg, #f4f4f2); color: var(--editor-primary, #333); border-bottom-left-radius: 4px; }
-.ai-typing { display: flex; gap: 4px; align-items: center; padding: 14px 16px; }
-.ai-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--editor-muted, #999); animation: ai-dot 1.2s infinite ease-in-out; }
-.ai-typing span:nth-child(2) { animation-delay: 0.15s; }
-.ai-typing span:nth-child(3) { animation-delay: 0.3s; }
-@keyframes ai-dot { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
-.ai-input-row { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px 14px; border-top: 1px solid var(--editor-border, #e0e0e6); flex-shrink: 0; }
-.ai-input-flex { display: flex; flex-direction: column; gap: 8px; }
-.ai-send-btn { align-self: flex-end; }
+.ai-dock-head-right { display: flex; align-items: center; gap: 4px; }
+.ai-token-meter { font-size: 11.5px; color: var(--editor-muted, #999); padding: 0 6px; cursor: default; }
 
-/* agent 时间线与 diff */
-.tl-item { display: flex; gap: 8px; font-size: 12.5px; align-items: flex-start; }
-.tl-icon { flex: none; width: 18px; height: 18px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 11px; background: var(--editor-inset-bg, #f4f4f2); color: var(--editor-muted, #999); }
-.tl-item.error .tl-icon { color: #e5484d; }
-.tl-item.done .tl-icon { color: var(--editor-accent, #16a34a); }
-.tl-body { min-width: 0; }
-.tl-title { font-weight: 500; color: var(--editor-primary, #333); word-break: break-all; }
-.tl-detail { color: var(--editor-muted, #999); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
+.ai-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.ai-bubble-list { flex: 1; min-height: 0; padding: 12px 10px; }
+.agent-stream { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 14px 10px; display: flex; flex-direction: column; gap: 12px; }
+.ai-loading-row { padding: 0 14px 10px; }
+.ai-welcome { flex: 1; justify-content: center; }
+.ai-welcome-icon { color: var(--editor-accent, #16a34a); opacity: 0.7; display: inline-flex; }
+
+.ai-sender-wrap { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--editor-border, #e0e0e6); flex-shrink: 0; }
+.ai-apply-row { display: flex; gap: 8px; }
+
 .diff-card { border: 1px solid var(--editor-border, #e0e0e6); border-radius: 8px; overflow: hidden; }
 .diff-head { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--editor-inset-bg, #f4f4f2); font-size: 12px; }
 .diff-path { font-weight: 500; color: var(--editor-primary, #333); word-break: break-all; }
 .diff-count { color: var(--editor-accent, #16a34a); flex: none; }
 .diff-body { margin: 0; padding: 8px 10px; font-size: 11px; line-height: 1.5; max-height: 120px; overflow: auto; color: var(--editor-muted, #666); white-space: pre-wrap; word-break: break-all; }
-.ai-apply-row { display: flex; gap: 8px; }
 </style>
