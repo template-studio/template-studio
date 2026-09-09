@@ -1058,3 +1058,11 @@
 **涉及文件：** `views/editor/components/EditorAiAssistant.vue`
 
 **验收结果：** `pnpm build` 通过。
+
+## 2026-09-10 上下文预算与修剪（任务 #105）
+
+**变更内容：** 长任务上下文控制（三批-1）。预算 40k token（字符/3 粗估），每轮调用前检查，超 85% 触发规则修剪：保留首条 system + 最近 8 条原文，中间历史 tool_result（>80 字）折叠为占位；时间线标注"已修剪上下文"及修剪后水位。模型生成的结构化交接摘要（压缩层）留后续。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** `pnpm build` 通过。

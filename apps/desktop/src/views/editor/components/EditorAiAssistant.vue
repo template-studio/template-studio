@@ -224,6 +224,24 @@ const atSuffix = computed(() => {
 const atMatches = computed(() =>
   atSuffix.value === null ? [] : filePaths.value.filter((p) => p.includes(atSuffix.value)).slice(0, 8)
 )
+// ---- 上下文预算与修剪(先修剪后压缩的"修剪"层;模型摘要压缩后续) ----
+const CTX_BUDGET = 40000  // 安全窗 token(粗估)
+const estTokens = (arr) => Math.ceil(JSON.stringify(arr).length / 3)
+const trimContext = () => {
+  if (estTokens(taskMessages.value) <= CTX_BUDGET * 0.85) return false
+  const arr = taskMessages.value
+  const head = arr.length > 0 && arr[0].role === 'system' ? [arr[0]] : []
+  const rest = arr.slice(head.length)
+  const keep = 8  // 保留最近 8 条原文
+  const mid = rest.slice(0, Math.max(0, rest.length - keep)).map((m) =>
+    m.role === 'tool_result' && String(m.content || '').length > 80
+      ? { ...m, content: '(已折叠的历史工具结果)' }
+      : m
+  )
+  taskMessages.value = [...head, ...mid, ...rest.slice(-keep)]
+  return true
+}
+
 const pickAt = (path) => {
   agentInput.value = (agentInput.value || '').replace(/@([\w\/.\-]*)$/, '@' + path + ' ')
 }
@@ -461,6 +479,9 @@ const runAgent = async (textArg) => {
   try {
     for (let round = 0; round < 12; round++) {
       if (abortFlag.value) break
+      if (trimContext()) {
+        timeline.value.push({ kind: 'tool', title: '已修剪上下文', detail: `${(estTokens(taskMessages.value) / 1000).toFixed(1)}k tok` })
+      }
       const raw = await invoke('ai_agent_turn', { messages: taskMessages.value, tools: TOOLS })
       const res = JSON.parse(raw)
       if (res.usage) {
