@@ -706,3 +706,11 @@
 **涉及文件：** `views/editor/components/QuickDesignDrawer/index.vue`、`assets/styles/themes.css`
 
 **验收结果：** `pnpm build` 通过；实测开启面板前后父抽屉 transform 完全一致、left 恒为 0（零位移），面板 460px 正常渲染。
+
+## 2026-09-09 桌面端窗口默认尺寸与最小尺寸约束
+
+**变更内容：** 启动默认窗口 800×600 过小，页面与组件挤压变形。调整为默认 1440×900（常见桌面分辨率舒适尺寸，小屏由系统钳制到工作区）、最小 1100×700（防止继续缩到布局崩坏），并增加启动居中。
+
+**涉及文件：** `apps/desktop/src-tauri/tauri.conf.json`
+
+**验收结果：** 配置 JSON 校验通过；`tauri dev` 运行中保存配置自动触发应用重启，新窗口按 1440×900 居中创建，拖拽无法小于 1100×700。

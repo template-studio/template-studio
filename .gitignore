@@ -138,3 +138,4 @@ claude-progress.txt
 .scratch/
 .zcode/
 dev-docs/
+.bc/
