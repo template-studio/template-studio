@@ -15,7 +15,7 @@
           @filter="handleFilter"
           @sort="handleSort"
         />
-        <a-button type="primary" size="large" @click="openCreateDialog">
+        <a-button type="primary" @click="openCreateDialog">
           <template #icon><PlusOutlined /></template>
           新建项目
         </a-button>

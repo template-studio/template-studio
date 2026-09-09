@@ -1,7 +1,7 @@
 <template>
   <a-modal
     v-model:open="dialogVisible"
-    :title="mode === 'edit' ? '编辑语言' : '添加语言'"
+    :title="mode === 'edit' ? '编辑语言' : '新建语言'"
     width="500px"
     :confirm-loading="submitting"
     @ok="handleSubmit"
@@ -228,7 +228,7 @@ const handleSubmit = async () => {
       message.success('语言更新成功')
     } else {
       await languagesApi.createLanguage(data)
-      message.success('语言添加成功')
+      message.success('语言创建成功')
     }
     dialogVisible.value = false
     emit('saved')

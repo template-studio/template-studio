@@ -16,11 +16,11 @@
           @filter="handleFilter"
           @sort="handleSort"
         />
-        <a-button type="primary" size="large" @click="openCreateDialog">
+        <a-button type="primary" @click="openCreateDialog">
           <template #icon>
             <PlusOutlined />
           </template>
-          添加语言
+          新建语言
         </a-button>
       </div>
     </div>
@@ -50,7 +50,7 @@
             <template #icon>
               <PlusOutlined />
             </template>
-            添加第一个语言
+            创建第一个语言
           </a-button>
         </a-empty>
       </a-spin>

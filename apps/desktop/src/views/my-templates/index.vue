@@ -9,7 +9,7 @@
       <div class="toolbar-right">
         <a-button type="primary" @click="handleCreate">
           <template #icon><PlusOutlined /></template>
-          创建模板
+          新建模板
         </a-button>
       </div>
     </div>
@@ -30,7 +30,7 @@
       <FileTextOutlined class="empty-icon" />
       <p v-if="currentFilter === 'all'">还没有创建模板</p>
       <p v-else>没有{{ currentFilter === 'private' ? '草稿' : currentFilter === 'pending' ? '待审核' : '已发布' }}的模板</p>
-      <span v-if="currentFilter === 'all'">点击右上角「创建模板」开始</span>
+      <span v-if="currentFilter === 'all'">点击右上角「新建模板」开始</span>
     </div>
 
     <!-- 模板列表 -->
@@ -107,7 +107,7 @@
     </a-dropdown>
 
     <!-- 创建/编辑弹窗 -->
-    <a-modal v-model:open="showModal" :title="editingId ? '编辑模板' : '创建模板'" :mask-closable="false" :width="640" :footer="null">
+    <a-modal v-model:open="showModal" :title="editingId ? '编辑模板' : '新建模板'" :mask-closable="false" :width="640" :footer="null">
       <a-form ref="formRef" :model="formData" :rules="formRules" layout="vertical" style="margin-top: 12px;">
         <a-form-item label="模板名称" name="name">
           <a-input v-model:value="formData.name" placeholder="请输入模板名称" :maxlength="100" show-count />

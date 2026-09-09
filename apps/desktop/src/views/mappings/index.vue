@@ -39,7 +39,7 @@
           <div v-else class="lang-tabs-empty">
             <span>请先在</span>
             <a @click="$router.push('/languages')">语言管理</a>
-            <span>中添加语言</span>
+            <span>中新建语言</span>
           </div>
         </div>
 
@@ -242,7 +242,7 @@ const loadMappings = async () => {
   try {
     const langData = await getAllLanguages()
     availableLanguages.value = langData.map(lang => ({ key: lang.name.toLowerCase().replace(/\s+/g, '_'), label: lang.name, id: lang.id, icon: lang.icon }))
-    if (availableLanguages.value.length === 0) { availableLanguages.value = [{ key: 'empty', label: '请先添加语言', disabled: true }]; loading.value = false; return }
+    if (availableLanguages.value.length === 0) { availableLanguages.value = [{ key: 'empty', label: '请先新建语言', disabled: true }]; loading.value = false; return }
     if (!activeLang.value && availableLanguages.value.length > 0) activeLang.value = availableLanguages.value[0].key
     await loadLanguageFieldTypes()
 

@@ -70,7 +70,7 @@ const handleSave = async () => {
     }
     emit('saved')
     handleClose()
-  } catch (error) { message.error(props.mode === 'add' ? '添加表失败: ' + error : '更新表失败: ' + error) }
+  } catch (error) { message.error(props.mode === 'add' ? '新建表失败: ' + error : '更新表失败: ' + error) }
 }
 
 const handleClose = () => {
