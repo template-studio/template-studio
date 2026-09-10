@@ -974,15 +974,10 @@ onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop(); clearInterva
 /* composer 底栏(模型/思考/权限):输入框卡片内部底边(ZCode 式) */
 .ai-composer { border: 1px solid var(--editor-border, #e0e0e6); border-radius: 10px; background: var(--editor-panel-bg, #fff); overflow: hidden; transition: border-color 0.15s ease; }
 .ai-composer:focus-within { border-color: var(--editor-accent, #16a34a); }
-/* antdx Sender 的可视边框在根 boxShadow 与内层继承 border 上,一并剥掉,由卡片统一承载 */
-.ai-composer :deep(.ant-sender),
-.ai-composer :deep(.ant-sender:focus-within),
-.ai-composer :deep(.ant-sender *) {
-  border: none !important;
-  box-shadow: none !important;
-  background: transparent !important;
-}
-.ai-composer :deep(.ant-sender) { padding: 4px 6px 0 10px; }
+/* antdx Sender 可视边框=根 boxShadow+::after 伪元素描边(样式源码确认),只重置这两处;
+   切勿用 .ant-sender * 通配重置——会把发送按钮的填充背景一并清掉,白色图标隐身 */
+.ai-composer :deep(.ant-sender) { box-shadow: none !important; padding: 4px 6px 0 10px; }
+.ai-composer :deep(.ant-sender::after) { display: none !important; }
 .ai-composer-bar { display: flex; align-items: center; gap: 2px; padding: 2px 6px 4px; }
 .chip { display: inline-flex; align-items: center; gap: 5px; border: none; background: transparent; padding: 3px 8px; font-size: 11.5px; color: var(--editor-muted, #999); cursor: pointer; white-space: nowrap; overflow: hidden; border-radius: 6px; transition: background-color 0.15s ease; }
 .chip:hover { background: var(--editor-inset-bg, #f4f4f2); }

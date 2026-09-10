@@ -1154,3 +1154,11 @@
 **涉及文件：** `views/editor/components/EditorAiAssistant.vue`
 
 **验收结果：** `pnpm build` 通过。
+
+## 2026-09-10 修复：composer 卡片化后发送按钮隐身（任务 #115 回归）
+
+**变更内容：** #115 用 `.ant-sender *` 通配重置边框时把发送按钮的填充背景一并清成透明，深色按钮上的白色图标白底隐身。查 Sender 样式源码定位真实结构：可视边框仅由根元素 boxShadow 与 ::after 伪元素描边承担，改为精确重置这两处（根 box-shadow:none + ::after display:none），撤掉通配规则；按钮样式不再受影响。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** `pnpm build` 通过。
