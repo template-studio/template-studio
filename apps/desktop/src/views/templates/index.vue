@@ -7,10 +7,6 @@
         <span class="result-count">共 {{ filteredTemplates.length }} 个模板</span>
       </div>
       <div class="toolbar-right">
-        <a-button v-if="configStore.hasApiKey" @click="$router.push('/convert')">
-          <template #icon><FolderOpenOutlined /></template>
-          项目转换工作台
-        </a-button>
         <a-button v-if="configStore.hasApiKey" type="primary" @click="openCreateModal">
           <template #icon><PlusOutlined /></template>
           新建模板
@@ -76,6 +72,33 @@
       </a-spin>
     </div>
     <!-- 新建模板弹窗 -->
+    <!-- 新建方式选择:空白 / ZIP / 项目转换 -->
+    <a-modal v-model:open="showCreateChoice" title="新建模板" :footer="null" :width="520">
+      <div class="create-choice">
+        <div class="choice-card" @click="pickCreate('blank')">
+          <FileAddOutlined class="choice-ico" />
+          <div class="choice-text">
+            <div class="choice-title">空白创建</div>
+            <div class="choice-sub">从零开始,在编辑器中搭建</div>
+          </div>
+        </div>
+        <div class="choice-card" @click="pickCreate('zip')">
+          <FileZipOutlined class="choice-ico" />
+          <div class="choice-text">
+            <div class="choice-title">上传 ZIP</div>
+            <div class="choice-sub">创建模板后选择压缩包导入</div>
+          </div>
+        </div>
+        <div class="choice-card" @click="pickCreate('convert')">
+          <FolderOpenOutlined class="choice-ico convert" />
+          <div class="choice-text">
+            <div class="choice-title">从项目转换</div>
+            <div class="choice-sub">git 仓库克隆 → AI 分析 → 模板化</div>
+          </div>
+        </div>
+      </div>
+    </a-modal>
+    <input ref="zipInput" type="file" accept=".zip" style="display: none" @change="onZipPicked" />
     <a-modal v-model:open="showCreateModal" title="新建模板" :confirm-loading="creating" @ok="handleCreate" ok-text="创建并编辑" cancel-text="取消">
       <a-form layout="vertical" style="margin-top: 12px;">
         <a-form-item label="模板名称" required>
@@ -103,27 +126,21 @@
     </a-modal>
     <!-- 模板配置向导抽屉 -->
     <TemplateWizardDrawer v-model:open="showWizardModal" :template="selectedTemplate" @created="onProjectCreated" />
-    <!-- 从项目提取模板向导 -->
-    <ExtractTemplateWizard
-      v-model:open="showExtractWizard"
-      :template-types="templateTypes"
-      :categories="selectableCategories"
-    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useLayoutStore } from '@/stores/layout'
 import { useConfigStore } from '@/stores/config'
-import { SearchOutlined, UserOutlined, PlusOutlined, EditOutlined, FolderOpenOutlined } from '@ant-design/icons-vue'
+import { SearchOutlined, UserOutlined, PlusOutlined, EditOutlined, FolderOpenOutlined, FileAddOutlined, FileZipOutlined } from '@ant-design/icons-vue'
 import { getCategories, getLanguages, getTemplates } from '@/api/templates'
 import { getTemplateTypes } from '@/api/editor/templates'
 import { createUserTemplate } from '@/api/editor/templates/contribution'
+import { uploadZipFile } from '@/api/editor/templateFiles'
 import TemplateWizardDrawer from './components/TemplateWizardDrawer.vue'
-import ExtractTemplateWizard from './components/ExtractTemplateWizard.vue'
 
 const layoutStore = useLayoutStore()
 const configStore = useConfigStore()
@@ -141,7 +158,6 @@ const sortOptions = [
   { label: '推荐优先', value: 'featured' }
 ]
 const showWizardModal = ref(false)
-const showExtractWizard = ref(false)
 const categories = ref([{ id: 'all', name: '全部' }])
 const languages = ref([{ id: 'all', name: '全部' }])
 const templates = ref([])
@@ -260,9 +276,38 @@ const goEdit = (template) => {
   router.push(`/editor/${template.id}`)
 }
 
-const openCreateModal = () => {
+const showCreateChoice = ref(false)
+const zipMode = ref(false)
+const zipInput = ref(null)
+const pendingZipTemplateId = ref(null)
+
+const openCreateModal = () => { showCreateChoice.value = true }
+
+const pickCreate = (mode) => {
+  showCreateChoice.value = false
+  if (mode === 'convert') { router.push('/convert'); return }
+  zipMode.value = mode === 'zip'
   createForm.value = { name: '', templateType: undefined, categoryId: undefined, primaryLanguage: undefined, description: '' }
   showCreateModal.value = true
+}
+
+const onZipPicked = async (e) => {
+  const file = e.target.files?.[0]
+  e.target.value = ''
+  const tid = pendingZipTemplateId.value
+  if (!file || !tid) return
+  creating.value = true
+  try {
+    await uploadZipFile(tid, file)
+    message.success('ZIP 导入成功,正在打开编辑器...')
+    router.push(`/editor/${tid}`)
+  } catch (err) {
+    message.error('ZIP 导入失败: ' + (err.message || err) + '(已打开编辑器,可手动上传)')
+    router.push(`/editor/${tid}`)
+  } finally {
+    creating.value = false
+    pendingZipTemplateId.value = null
+  }
 }
 
 const handleCreate = async () => {
@@ -286,7 +331,11 @@ const handleCreate = async () => {
     })
     const newId = res?.data?.data?.id
     showCreateModal.value = false
-    if (newId) {
+    if (newId && zipMode.value) {
+      pendingZipTemplateId.value = newId
+      message.info('模板已创建,请选择 ZIP 压缩包')
+      nextTick(() => zipInput.value?.click())
+    } else if (newId) {
       message.success('模板创建成功，正在打开编辑器...')
       router.push(`/editor/${newId}`)
     } else {
@@ -351,4 +400,12 @@ onMounted(async () => {
 .author-name { font-size: 12px; color: var(--color-text-secondary); font-weight: 500; }
 .card-footer-right { display: flex; align-items: center; gap: 8px; }
 .creation-time { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-text-muted); }
+
+.create-choice { display: flex; flex-direction: column; gap: 10px; padding: 8px 4px 4px; }
+.choice-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--color-border, #e5e5e2); border-radius: 10px; cursor: pointer; transition: border-color 0.15s ease, background-color 0.15s ease; }
+.choice-card:hover { border-color: var(--color-brand, #16a34a); background: rgba(22, 163, 74, 0.04); }
+.choice-ico { font-size: 22px; color: var(--color-text-secondary, #999); }
+.choice-card:hover .choice-ico { color: var(--color-brand, #16a34a); }
+.choice-title { font-size: 14px; font-weight: 600; color: var(--color-text, #1b1c1f); }
+.choice-sub { font-size: 12px; color: var(--color-text-secondary, #999); margin-top: 2px; }
 </style>
