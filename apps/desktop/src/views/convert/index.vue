@@ -25,11 +25,39 @@
       <div class="cw-source-card">
         <div class="cw-source-title">从 git 项目转换</div>
         <div class="cw-source-sub">完整克隆到本地镜像后操作,原始仓库只读;转换基于已提交内容(HEAD)</div>
-        <a-input v-model:value="srcInput" placeholder="远程仓库 URL(github/gitee/gitlab)或本地 git 项目路径" size="large" @pressEnter="startConvert" />
-        <div class="cw-source-row">
-          <a-input v-model:value="srcBranch" placeholder="分支(可选,默认主分支)" style="width: 240px" allow-clear />
-          <a-button type="primary" :loading="busy" @click="startConvert">开始转换</a-button>
+        <div class="cw-mode">
+          <div class="cw-mode-item" :class="{ active: srcMode === 'remote' }" @click="switchMode('remote')">
+            <span class="cw-mode-name"><GithubOutlined /> 远程仓库</span>
+            <span class="cw-mode-desc">GitHub / Gitee / GitLab</span>
+          </div>
+          <div class="cw-mode-item" :class="{ active: srcMode === 'local' }" @click="switchMode('local')">
+            <span class="cw-mode-name"><FolderOutlined /> 本地仓库</span>
+            <span class="cw-mode-desc">本机已提交的 git 项目</span>
+          </div>
         </div>
+
+        <template v-if="srcMode === 'remote'">
+          <a-input v-model:value="srcRemote" placeholder="https://github.com/user/repo.git" size="large" class="cw-mono" allow-clear @pressEnter="startConvert" />
+          <div class="cw-source-row">
+            <a-input v-model:value="srcBranch" placeholder="分支(可选,默认主分支)" style="width: 240px" allow-clear @pressEnter="startConvert" />
+            <a-button type="primary" :loading="busy" @click="startConvert">开始转换</a-button>
+          </div>
+        </template>
+
+        <template v-else>
+          <div class="cw-local-row">
+            <a-input v-model:value="srcLocal" placeholder="本地 git 仓库路径,如 D:\projects\my-app" size="large" class="cw-mono" @pressEnter="startConvert" />
+            <a-button size="large" @click="pickLocalDir">
+              <template #icon><FolderOpenOutlined /></template>
+              浏览
+            </a-button>
+          </div>
+          <div class="cw-source-row">
+            <span class="cw-source-tip">要求目录内已 git init 且有提交;只读克隆,不改动原始目录</span>
+            <a-button type="primary" :loading="busy" @click="startConvert">开始转换</a-button>
+          </div>
+        </template>
+
         <div v-if="errorMsg" class="cw-error">{{ errorMsg }}</div>
       </div>
       <div class="cw-drafts">
@@ -144,7 +172,7 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
-import { ArrowLeftOutlined, DeleteOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons-vue'
+import { ArrowLeftOutlined, DeleteOutlined, CloseOutlined, EyeOutlined, GithubOutlined, FolderOutlined, FolderOpenOutlined } from '@ant-design/icons-vue'
 import { createUserTemplate } from '@/api/editor/templates/contribution'
 import { analyzeTemplateVariables } from '@/api/editor/templates'
 import { addTemplateFile, editTemplateFile } from '@/api/editor/templateFiles'
@@ -161,7 +189,9 @@ const ir = reactive({
   conflicts: [], warnings: [], validationErrors: [],
   outputs: [],
 })
-const srcInput = ref('')
+const srcMode = ref('remote')   // remote | local
+const srcRemote = ref('')
+const srcLocal = ref('')
 const srcBranch = ref('')
 const busy = ref(false)
 const storing = ref(false)
@@ -203,14 +233,39 @@ const toggleFile = (f) => {
 }
 
 // ---- 管线 ----
+const switchMode = (m) => {
+  if (busy.value) return
+  srcMode.value = m
+  errorMsg.value = ''
+}
+
+const pickLocalDir = async () => {
+  try {
+    const { open } = await import('@tauri-apps/plugin-dialog')
+    const sel = await open({ directory: true, multiple: false, title: '选择本地 git 仓库' })
+    if (sel) srcLocal.value = sel
+  } catch (e) {
+    message.error('选择目录失败: ' + (e.message || e))
+  }
+}
+
 const startConvert = async () => {
-  const src = srcInput.value.trim()
-  if (!src || busy.value) return
+  if (busy.value) return
+  const isRemote = srcMode.value === 'remote'
+  const src = (isRemote ? srcRemote.value : srcLocal.value).trim()
+  if (!src) {
+    errorMsg.value = isRemote ? '请输入远程仓库 URL' : '请选择或输入本地 git 仓库路径'
+    return
+  }
+  if (isRemote && !/^(https?:\/\/|git@|ssh:\/\/)/.test(src)) {
+    errorMsg.value = '远程仓库需以 http(s):// 或 git@ 开头;本地项目请切换到「本地仓库」模式'
+    return
+  }
   busy.value = true
   errorMsg.value = ''
   try {
     stageState.value = { clone: 'run', scan: '', analyze: '' }
-    const raw = await invoke('convert_clone', { source: src, branch: srcBranch.value.trim() || null })
+    const raw = await invoke('convert_clone', { source: src, branch: isRemote ? (srcBranch.value.trim() || null) : null })
     const c = JSON.parse(raw)
     draftId.value = String(Date.now())
     Object.assign(ir.source, { source: src, branch: c.branch, commit: c.commit, dir: c.dir })
@@ -307,7 +362,7 @@ const openStore = async () => {
       message.warning('存在冲突或渲染失败,已在中栏列出,请处理后重试')
       return
     }
-    if (!storeForm.name) storeForm.name = ir.source.source.split('/').pop()?.replace(/\.git$/, '') || '转换模板'
+    if (!storeForm.name) storeForm.name = ir.source.source.split(/[\\/]/).pop()?.replace(/\.git$/, '') || '转换模板'
     storeOpen.value = true
   } catch (e) {
     message.error('替换失败: ' + (e.message || e))
@@ -420,7 +475,15 @@ onMounted(() => {
 .cw-source-card { width: min(640px, 100%); background: var(--color-background, #fff); border-radius: 12px; padding: 24px; box-shadow: var(--shadow-panel, 0 1px 3px rgba(0,0,0,0.06)); display: flex; flex-direction: column; gap: 12px; }
 .cw-source-title { font-size: 16px; font-weight: 600; color: var(--color-text, #1b1c1f); }
 .cw-source-sub { font-size: 12px; color: var(--color-text-secondary, #999); }
-.cw-source-row { display: flex; gap: 8px; }
+.cw-source-row { display: flex; gap: 8px; align-items: center; }
+.cw-source-tip { flex: 1; font-size: 12px; color: var(--color-text-secondary, #999); }
+.cw-mode { display: flex; gap: 8px; }
+.cw-mode-item { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--color-border, #e5e5e2); border-radius: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.cw-mode-item:hover { border-color: var(--color-text-secondary, #bbb); }
+.cw-mode-item.active { border-color: var(--color-brand, #16a34a); background: rgba(22, 163, 74, 0.05); }
+.cw-mode-name { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--color-text, #1b1c1f); }
+.cw-mode-desc { font-size: 11px; color: var(--color-text-secondary, #999); padding-left: 20px; }
+.cw-local-row { display: flex; gap: 8px; }
 .cw-error { color: #dc2626; font-size: 12px; white-space: pre-wrap; }
 .cw-drafts { width: min(640px, 100%); }
 .cw-drafts-title { font-size: 12px; font-weight: 600; color: var(--color-text-secondary, #999); margin-bottom: 6px; }

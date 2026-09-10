@@ -1218,3 +1218,11 @@
 **涉及文件：** `apps/cli/src/cli/mod.rs`、`apps/cli/src/cli/commands.rs`、`apps/cli/src/client/mod.rs`、`dev-docs/project-to-template.md`
 
 **验收结果：** cargo check 通过；样例 IR dry-run 实测通过（2 文件/1 变量/2 替换/渲染校验全过）。至此项目转模板五期全部落地。
+
+## 2026-09-10 项目转模板页：独立全屏布局与来源输入分离（任务 #131）
+
+**变更内容：** ①/convert 加入 App.vue isStandalonePage 白名单,脱离主布局(无侧边栏/顶栏),与 /editor 同形态独立全屏;②来源输入拆分双模式卡片(远程仓库=URL+分支,本地仓库=路径+plugin-dialog 目录浏览按钮),切换清错,远程模式前置校验协议前缀(误贴本地路径提示切换模式);③存储模板默认名提取兼容 Windows 反斜杠路径。
+
+**涉及文件：** `apps/desktop/src/App.vue`、`apps/desktop/src/views/convert/index.vue`
+
+**验收结果：** pnpm build 通过;dev 页面实测——全屏无侧边栏、双模式卡渲染与切换正常(选中态绿框跟随)、本地模式出现路径框+浏览按钮+提示、分支框按设计隐藏。

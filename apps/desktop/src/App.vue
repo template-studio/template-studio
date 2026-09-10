@@ -51,9 +51,9 @@ const isProjectWorkspace = computed(() => {
   return route.path.startsWith('/project/')
 })
 
-// 独立全屏页（模板编辑器等）：不套布局，直接渲染路由组件
+// 独立全屏页（模板编辑器、项目转模板工作台等）：不套布局，直接渲染路由组件
 const isStandalonePage = computed(() => {
-  return route.path.startsWith('/editor/')
+  return route.path.startsWith('/editor/') || route.path.startsWith('/convert')
 })
 
 // 全局右键菜单禁用
@@ -111,7 +111,7 @@ onBeforeUnmount(() => {
       <!-- 项目工作区布局 -->
       <ProjectWorkspaceLayout v-else-if="isProjectWorkspace" />
 
-      <!-- 独立全屏页（编辑器） -->
+      <!-- 独立全屏页（编辑器/转换工作台） -->
       <router-view v-else />
 
       <!-- 全局搜索 -->
