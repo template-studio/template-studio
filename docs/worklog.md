@@ -1250,3 +1250,11 @@
 **涉及文件：** `src/views/templates/index.vue`、`src/views/my-templates/index.vue`
 
 **验收结果：** pnpm build 通过;浏览器实测:脚手架页无「新建模板/编辑模板」入口,我的模板页三选项弹窗正常,「从项目转换」关闭选项弹窗并打开来源弹窗。
+
+## 2026-09-10 模板转换更名+双类型+重点代码标注步骤（任务 #135）
+
+**变更内容：** ①用户可见文案统一「模板转换」(侧边栏/引导页标题/工作台标题/来源弹窗标题/我的模板新建选项卡);②ConvertSourceModal 新增目标模板类型选择:脚手架(整项目→生成新项目骨架)/数据驱动(配数据源生成 CRUD),随 start 事件透传,引导页与我的模板跳工作台带 type 参数;③数据驱动模式管线插入「重点标注」步骤:扫描后分析停在 wait 态(阶段点空心蓝),中栏新增重点标注页——文件预览中选中代码(selectionchange 监听限定代码区)→「标注重点」(去重),标注列表带备注编辑/点击路径跳预览/删除,空态可跳过,「完成标注,开始分析」手动续跑;分析完成后标注变更提示重新分析;④Rust convert_analyze 新增 annotations 参数,annotation_context 组装(路径+备注+片段按字符截断 400)注入每批 AI 提示词「用户标注的重点代码(优先理解)」,携带时记过程日志;⑤标注与类型随草稿持久化(meta.tplType/ir.annotations),存储为模板 templateType 用所选类型(替换原 'default')。
+
+**涉及文件：** `src-tauri/src/commands/convert.rs`、`src/views/convert/index.vue`、`src/views/convert/components/ConvertSourceModal.vue`、`src/views/convert/guide.vue`、`src/views/my-templates/index.vue`、`src/components/layout/NavigationMenu.vue`
+
+**验收结果：** cargo test 23/23;pnpm build 通过;浏览器实测(临时 demo 已移除):引导页/弹窗标题与双类型卡渲染,数据驱动工作台标注页(徽标计数/完成分析按钮/标注卡跳预览/标注重点按钮禁用态)全部正常。

@@ -3,7 +3,7 @@
     <!-- 顶部工具栏(与模板库同款) -->
     <div class="toolbar">
       <div class="toolbar-left">
-        <h2 class="page-title">项目转换</h2>
+        <h2 class="page-title">模板转换</h2>
         <span class="result-count">共 {{ drafts.length }} 个转换草稿</span>
       </div>
       <div class="toolbar-right">
@@ -100,9 +100,9 @@ const loadDrafts = async () => {
   }
 }
 
-const onStart = ({ source, branch }) => {
+const onStart = ({ source, branch, tplType }) => {
   sourceOpen.value = false
-  router.push({ path: '/convert/workbench', query: { src: source, ...(branch ? { branch } : {}) } })
+  router.push({ path: '/convert/workbench', query: { src: source, type: tplType || 'scaffold', ...(branch ? { branch } : {}) } })
 }
 
 const continueDraft = (id) => {

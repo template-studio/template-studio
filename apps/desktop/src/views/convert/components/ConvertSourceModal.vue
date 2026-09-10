@@ -1,7 +1,19 @@
 <template>
-  <a-modal :open="open" title="从项目转换" :footer="null" :width="560" @cancel="$emit('update:open', false)">
+  <a-modal :open="open" title="模板转换" :footer="null" :width="560" @cancel="$emit('update:open', false)">
     <div class="csm">
       <div class="csm-sub">完整克隆到本地镜像后操作,原始仓库只读;转换基于已提交内容(HEAD)</div>
+      <div class="csm-label">目标模板类型</div>
+      <div class="csm-type">
+        <div class="csm-type-item" :class="{ active: tplType === 'scaffold' }" @click="tplType = 'scaffold'">
+          <span class="csm-mode-name"><AppstoreOutlined /> 脚手架</span>
+          <span class="csm-mode-desc">整项目 → 生成新项目骨架</span>
+        </div>
+        <div class="csm-type-item" :class="{ active: tplType === 'data_driven' }" @click="tplType = 'data_driven'">
+          <span class="csm-mode-name"><DatabaseOutlined /> 数据驱动</span>
+          <span class="csm-mode-desc">配数据源生成 CRUD,支持重点标注</span>
+        </div>
+      </div>
+      <div class="csm-label">代码来源</div>
       <div class="csm-mode">
         <div class="csm-mode-item" :class="{ active: mode === 'remote' }" @click="mode = 'remote'">
           <span class="csm-mode-name"><GithubOutlined /> 远程仓库</span>
@@ -40,11 +52,12 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { GithubOutlined, FolderOutlined, FolderOpenOutlined } from '@ant-design/icons-vue'
+import { GithubOutlined, FolderOutlined, FolderOpenOutlined, AppstoreOutlined, DatabaseOutlined } from '@ant-design/icons-vue'
 
 const props = defineProps({ open: { type: Boolean, default: false } })
 const emit = defineEmits(['update:open', 'start'])
 
+const tplType = ref('scaffold')   // scaffold | data_driven
 const mode = ref('remote')
 const remote = ref('')
 const local = ref('')
@@ -76,13 +89,18 @@ const submit = () => {
     return
   }
   error.value = ''
-  emit('start', { source: src, branch: isRemote ? (branch.value.trim() || null) : null })
+  emit('start', { source: src, branch: isRemote ? (branch.value.trim() || null) : null, tplType: tplType.value })
 }
 </script>
 
 <style scoped>
 .csm { display: flex; flex-direction: column; gap: 12px; padding: 8px 4px 4px; }
 .csm-sub { font-size: 12px; color: var(--color-text-secondary, #999); }
+.csm-label { font-size: 12px; font-weight: 600; color: var(--color-text-secondary, #64748b); }
+.csm-type { display: flex; gap: 8px; }
+.csm-type-item { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border: 1px solid var(--color-border, #e5e5e2); border-radius: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.csm-type-item:hover { border-color: var(--color-text-secondary, #bbb); }
+.csm-type-item.active { border-color: var(--color-brand, #16a34a); background: rgba(22, 163, 74, 0.05); }
 .csm-mode { display: flex; gap: 8px; }
 .csm-mode-item { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--color-border, #e5e5e2); border-radius: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
 .csm-mode-item:hover { border-color: var(--color-text-secondary, #bbb); }

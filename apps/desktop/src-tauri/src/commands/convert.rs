@@ -1148,6 +1148,7 @@ fn merge_candidates(cands: Vec<VarCandidate>) -> Vec<VarCandidate> {
 }
 
 /// 分析镜像内 keep 文件:产出候选变量与 AI 文件分类;provider 缺省时纯启发式降级
+/// annotations:数据驱动模式的用户重点标注([{path,snippet,note}]),注入 AI 提示词降低理解成本
 #[tauri::command]
 pub async fn convert_analyze(
     app: tauri::AppHandle,
@@ -1156,10 +1157,36 @@ pub async fn convert_analyze(
     provider: Option<String>,
     model: Option<String>,
     thinking: Option<String>,
+    annotations: Option<Vec<serde_json::Value>>,
     database: tauri::State<'_, DbState>,
 ) -> Result<String, String> {
     let log = move |s: &str, t: &str| emit_log(&app, s, t);
-    analyze_impl(root, files, provider, model, thinking, database.as_ref(), &log).await
+    analyze_impl(root, files, provider, model, thinking, annotations, database.as_ref(), &log).await
+}
+
+/// 用户重点标注 → 提示词附加上下文;snippet 按字符截断防超长
+fn annotation_context(annotations: Option<&[serde_json::Value]>) -> String {
+    let Some(list) = annotations else { return String::new() };
+    let items: Vec<String> = list
+        .iter()
+        .filter_map(|a| {
+            let path = a["path"].as_str()?.trim().to_string();
+            let snippet = a["snippet"].as_str()?.trim().to_string();
+            if path.is_empty() || snippet.is_empty() {
+                return None;
+            }
+            let snippet: String = snippet.chars().take(400).collect();
+            match a["note"].as_str().map(str::trim).filter(|n| !n.is_empty()) {
+                Some(note) => Some(format!("- {path}(备注:{note}):\n{snippet}")),
+                None => Some(format!("- {path}:\n{snippet}")),
+            }
+        })
+        .collect();
+    if items.is_empty() {
+        String::new()
+    } else {
+        format!("\n\n用户标注的重点代码(优先理解,从这些片段提取可参数化模式):\n{}", items.join("\n"))
+    }
 }
 
 pub(crate) async fn analyze_impl(
@@ -1168,6 +1195,7 @@ pub(crate) async fn analyze_impl(
     provider: Option<String>,
     model: Option<String>,
     thinking: Option<String>,
+    annotations: Option<Vec<serde_json::Value>>,
     database: &crate::database::Database,
     log: ProgressLog<'_>,
 ) -> Result<String, String> {
@@ -1216,6 +1244,10 @@ pub(crate) async fn analyze_impl(
     let mut degraded = true;
     let mut ai_files: Vec<serde_json::Value> = Vec::new();
     let mut ai_batch_count = 0usize;
+    let ann_ctx = annotation_context(annotations.as_deref());
+    if !ann_ctx.is_empty() {
+        log("analyze", "携带用户重点标注进入 AI 通道(优先理解标注片段)");
+    }
     if let Ok(target) = super::ai::resolve_call_target(database, provider, model).await {
         let extra = super::ai::thinking_extra(&target.provider_name, &target.model, thinking.as_deref());
         let batches = build_batches(&loaded, &pack.entry_files);
@@ -1231,7 +1263,7 @@ pub(crate) async fn analyze_impl(
             let system = "你是项目模板化分析师。分析给定文件,给出模板转换建议。只输出 JSON,不要任何其他文本。";
             let json_spec = r#"{"files":[{"path":"...","action":"keep|exclude|templatize","reason":"一句话"}],"candidates":[{"name":"snake_case 变量名","type":"string|number","value":"字面原值","semantic":"port|host|identity|db|path|url|timeout|generic","confidence":0.0}]}"#;
             let user = format!(
-                "项目类型:{pid}(目录名:{root_name})。第 {}/{n} 批文件:\n{payload}\n\n输出 JSON(字段严格如下):\n{json_spec}\n要求:只提可参数化的环境/身份/业务参数(端口/host/URL/项目名/数据库名/超时等);逻辑常量(状态码/协议版本/数学常数)不要提;name 必须语义化。",
+                "项目类型:{pid}(目录名:{root_name})。第 {}/{n} 批文件:\n{payload}\n\n输出 JSON(字段严格如下):\n{json_spec}\n要求:只提可参数化的环境/身份/业务参数(端口/host/URL/项目名/数据库名/超时等);逻辑常量(状态码/协议版本/数学常数)不要提;name 必须语义化。{ann_ctx}",
                 i + 1, pid = pack.id
             );
             let reply = match crate::ai_runtime::chat(&target, Some(system), &user, &[], extra.clone()).await {

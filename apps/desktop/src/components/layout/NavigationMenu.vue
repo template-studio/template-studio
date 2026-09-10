@@ -62,7 +62,7 @@ const sections = computed(() => [
       { path: '/home', label: '首页', icon: HomeOutlined },
       { path: '/templates', label: '脚手架', icon: FileTextOutlined },
       // 独立全屏工作台:侧边栏是常驻重入口(进入后脱离主布局)
-      { path: '/convert', label: '项目转换', icon: ImportOutlined },
+      { path: '/convert', label: '模板转换', icon: ImportOutlined },
       // 登录态专属：配置了 API Token 才显示
       ...(configStore.hasApiKey
         ? [{ path: '/my-templates', label: '我的模板', icon: FolderOpenOutlined }]

@@ -126,8 +126,8 @@
         <div class="choice-card" @click="pickCreate('convert')">
           <FolderOpenOutlined class="choice-ico convert" />
           <div class="choice-text">
-            <div class="choice-title">从项目转换</div>
-            <div class="choice-sub">git 仓库克隆 → AI 分析 → 模板化</div>
+            <div class="choice-title">模板转换</div>
+            <div class="choice-sub">脚手架/数据驱动 · git 克隆 → AI 分析 → 模板化</div>
           </div>
         </div>
       </div>
@@ -363,9 +363,9 @@ const pickCreate = (mode) => {
   handleCreate()
 }
 
-const onConvertStart = ({ source, branch }) => {
+const onConvertStart = ({ source, branch, tplType }) => {
   showConvertSource.value = false
-  router.push({ path: '/convert/workbench', query: { src: source, ...(branch ? { branch } : {}) } })
+  router.push({ path: '/convert/workbench', query: { src: source, type: tplType || 'scaffold', ...(branch ? { branch } : {}) } })
 }
 
 const onZipPicked = async (e) => {
