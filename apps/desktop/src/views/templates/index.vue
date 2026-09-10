@@ -7,9 +7,9 @@
         <span class="result-count">共 {{ filteredTemplates.length }} 个模板</span>
       </div>
       <div class="toolbar-right">
-        <a-button v-if="configStore.hasApiKey" @click="showExtractWizard = true">
+        <a-button v-if="configStore.hasApiKey" @click="$router.push('/convert')">
           <template #icon><FolderOpenOutlined /></template>
-          从项目提取
+          项目转换工作台
         </a-button>
         <a-button v-if="configStore.hasApiKey" type="primary" @click="openCreateModal">
           <template #icon><PlusOutlined /></template>

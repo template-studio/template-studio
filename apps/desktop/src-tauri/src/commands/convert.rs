@@ -365,6 +365,214 @@ fn walk_scan(
     Ok(())
 }
 
+// ===== 阶段 C: 确定性替换(词边界+次数对账+渲染校验) =====
+
+fn is_word_char(c: char) -> bool {
+    c.is_alphanumeric() || c == '_'
+}
+
+/// 词边界感知替换:返回(新内容, 合法替换数);8080 不会命中 18080 内部
+fn replace_with_boundaries(content: &str, from: &str, to: &str) -> (String, usize) {
+    let first_is_word = from.chars().next().map(is_word_char).unwrap_or(false);
+    let last_is_word = from.chars().last().map(is_word_char).unwrap_or(false);
+    let mut positions: Vec<usize> = Vec::new();
+    let mut start = 0usize;
+    while let Some(idx) = content[start..].find(from) {
+        let pos = start + idx;
+        let end = pos + from.len();
+        let prev_ok = !first_is_word
+            || pos == 0
+            || !content[..pos].chars().next_back().is_some_and(is_word_char);
+        let next_ok = !last_is_word
+            || end >= content.len()
+            || !content[end..].chars().next().is_some_and(is_word_char);
+        if prev_ok && next_ok {
+            positions.push(pos);
+        }
+        start = end.max(pos + 1);
+    }
+    let mut out = content.to_string();
+    for &pos in positions.iter().rev() {
+        out.replace_range(pos..pos + from.len(), to);
+    }
+    (out, positions.len())
+}
+
+/// 对确认后的变量表执行模板化:AI 零参与,纯确定性代码。
+/// 输出 {outputs:[{path,content,replaced}], conflicts:[], warnings:[], validationErrors:[]}
+#[tauri::command]
+pub async fn convert_apply(
+    root: String,
+    files: Vec<String>,
+    variables: Vec<serde_json::Value>,
+) -> Result<String, String> {
+    let root_path = PathBuf::from(&root);
+    if !root_path.is_dir() {
+        return Err("镜像目录不存在".to_string());
+    }
+
+    // 变量校验集(默认值注入渲染)
+    let mut defaults = serde_json::Map::new();
+    for v in &variables {
+        let name = v["name"].as_str().unwrap_or("").to_string();
+        let value = v["defaultValue"].as_str().unwrap_or("").to_string();
+        if !name.is_empty() {
+            defaults.insert(name, serde_json::Value::String(value));
+        }
+    }
+    let vars_value = serde_json::Value::Object(defaults);
+
+    // 文件级替换计划:path → [(original, placeholder, expected_count)]
+    let mut plan: HashMap<String, Vec<(String, String, u64)>> = HashMap::new();
+    for v in &variables {
+        let name = v["name"].as_str().unwrap_or("");
+        if name.is_empty() {
+            continue;
+        }
+        let placeholder = format!("{{{{ {name} }}}}");
+        if let Some(occ) = v["occurrences"].as_array() {
+            for o in occ {
+                let p = o["path"].as_str().unwrap_or("");
+                let original = o["original"].as_str().unwrap_or("");
+                if p.is_empty() || original.is_empty() {
+                    continue;
+                }
+                let expected = o["count"].as_u64().unwrap_or(0);
+                plan.entry(p.to_string())
+                    .or_default()
+                    .push((original.to_string(), placeholder.clone(), expected));
+            }
+        }
+    }
+
+    let mut outputs: Vec<serde_json::Value> = Vec::new();
+    let mut conflicts: Vec<serde_json::Value> = Vec::new();
+    let mut warnings: Vec<serde_json::Value> = Vec::new();
+    let mut validation_errors: Vec<serde_json::Value> = Vec::new();
+
+    for rel in &files {
+        if rel.contains("..") || Path::new(rel).is_absolute() {
+            continue;
+        }
+        let full = root_path.join(rel);
+        let Ok(original_content) = std::fs::read_to_string(&full) else {
+            conflicts.push(serde_json::json!({ "path": rel, "reason": "读取失败(二进制/编码)" }));
+            continue;
+        };
+        let mut content = original_content.clone();
+        let mut replaced_total = 0usize;
+
+        if let Some(items) = plan.get(rel) {
+            for (from, to, expected) in items {
+                let raw_count = content.matches(from.as_str()).count() as u64;
+                let (new_content, legal) = replace_with_boundaries(&content, from, to);
+                if legal == 0 {
+                    conflicts.push(serde_json::json!({
+                        "path": rel, "original": from,
+                        "reason": format!("词边界匹配 0 处(原文统计 {raw_count} 处,可能被更长 token 包含)"),
+                    }));
+                    continue; // 该值不动,原文保留
+                }
+                if legal as u64 != *expected {
+                    warnings.push(serde_json::json!({
+                        "path": rel, "original": from, "expected": expected, "actual": legal,
+                        "note": "词边界过滤后与统计不一致(子串嵌套属正常),已替换全部合法位置",
+                    }));
+                }
+                content = new_content;
+                replaced_total += legal;
+            }
+        }
+
+        // 渲染校验:默认值注入,模板化后语法必须仍可渲染
+        if content != original_content {
+            let rendered = super::template::render_string_content(content.clone(), vars_value.clone()).await;
+            match rendered {
+                Ok(v) if v["success"].as_bool().unwrap_or(false) => {}
+                Ok(v) => validation_errors.push(serde_json::json!({
+                    "path": rel,
+                    "error": v["error"]["message"].as_str().unwrap_or("未知渲染错误"),
+                })),
+                Err(e) => validation_errors.push(serde_json::json!({ "path": rel, "error": e })),
+            }
+        }
+        outputs.push(serde_json::json!({ "path": rel, "content": content, "replaced": replaced_total }));
+    }
+
+    Ok(serde_json::json!({
+        "outputs": outputs, "conflicts": conflicts, "warnings": warnings,
+        "validationErrors": validation_errors,
+        "clean": conflicts.is_empty() && validation_errors.is_empty(),
+    })
+    .to_string())
+}
+
+// ===== 草稿持久化(converts/<id>/,终稿前不进模板库) =====
+
+fn convert_draft_dir(id: &str) -> Result<PathBuf, String> {
+    let id = id.trim();
+    if id.is_empty() || id.contains("..") || id.contains('/') || id.contains('\\') {
+        return Err("草稿 id 非法".to_string());
+    }
+    let dir = studio_home("converts").join(id);
+    std::fs::create_dir_all(&dir).map_err(|e| format!("创建草稿目录失败: {e}"))?;
+    Ok(dir)
+}
+
+/// 保存草稿(meta.json + ir.json,原子写)
+#[tauri::command]
+pub fn convert_draft_save(id: String, meta: serde_json::Value, ir: serde_json::Value) -> Result<(), String> {
+    let dir = convert_draft_dir(&id)?;
+    for (name, v) in [("meta.json", meta), ("ir.json", ir)] {
+        let path = dir.join(name);
+        let tmp = dir.join(format!("{name}.tmp"));
+        let data = serde_json::to_string(&v).map_err(|e| format!("序列化失败: {e}"))?;
+        std::fs::write(&tmp, data).map_err(|e| format!("写入失败: {e}"))?;
+        std::fs::rename(&tmp, &path).map_err(|e| format!("落盘失败: {e}"))?;
+    }
+    Ok(())
+}
+
+/// 读取草稿
+#[tauri::command]
+pub fn convert_draft_load(id: String) -> Result<String, String> {
+    let dir = convert_draft_dir(&id)?;
+    let meta = std::fs::read_to_string(dir.join("meta.json")).map_err(|_| "草稿不存在".to_string())?;
+    let ir = std::fs::read_to_string(dir.join("ir.json")).unwrap_or_else(|_| "{}".to_string());
+    Ok(serde_json::json!({ "meta": serde_json::from_str::<serde_json::Value>(&meta).ok(), "ir": serde_json::from_str::<serde_json::Value>(&ir).ok() }).to_string())
+}
+
+/// 草稿列表(按更新时间倒序)
+#[tauri::command]
+pub fn convert_draft_list() -> Result<String, String> {
+    let root = studio_home("converts");
+    let mut items: Vec<serde_json::Value> = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(&root) {
+        for e in entries.flatten() {
+            let Ok(meta_raw) = std::fs::read_to_string(e.path().join("meta.json")) else { continue };
+            let Ok(meta) = serde_json::from_str::<serde_json::Value>(&meta_raw) else { continue };
+            let mtime = e
+                .metadata()
+                .and_then(|m| m.modified())
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0);
+            items.push(serde_json::json!({ "id": e.file_name().to_string_lossy(), "meta": meta, "mtimeMs": mtime }));
+        }
+    }
+    items.sort_by(|a, b| b["mtimeMs"].as_u64().unwrap_or(0).cmp(&a["mtimeMs"].as_u64().unwrap_or(0)));
+    Ok(serde_json::json!({ "items": items }).to_string())
+}
+
+/// 删除草稿
+#[tauri::command]
+pub fn convert_draft_delete(id: String) -> Result<(), String> {
+    let dir = convert_draft_dir(&id)?;
+    let _ = std::fs::remove_dir_all(dir);
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -477,6 +685,75 @@ admin_port = 8081".to_string()),
         for b in &batches {
             assert!(b.len() <= AI_BATCH_FILES);
         }
+    }
+
+    #[test]
+    fn word_boundary_replace() {
+        let (out, n) = replace_with_boundaries("port=8080; x=18080; :8080", "8080", "{{ p }}");
+        assert_eq!(n, 2, "18080 内部不算");
+        assert!(out.contains("port={{ p }}"));
+        assert!(out.contains("x=18080"));
+        let (out2, n2) = replace_with_boundaries("a\"8080\"b", "8080", "X");
+        assert_eq!(n2, 1, "引号是合法边界");
+        assert_eq!(out2, "a\"X\"b");
+        let (_, n3) = replace_with_boundaries("id=80801", "8080", "X");
+        assert_eq!(n3, 0, "前缀紧贴数字不算");
+    }
+
+    #[tokio::test]
+    async fn convert_apply_flow() {
+        let tmp = std::env::temp_dir().join(format!("t126-apply-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        std::fs::create_dir_all(tmp.join("src")).unwrap();
+        std::fs::write(tmp.join("src/main.rs"), "listen(8080);\nconst OLD: u16 = 8080;\nlet x = 18080;\n").unwrap();
+        std::fs::write(tmp.join("README.md"), "# svc\nport 8080\n").unwrap();
+        let vars = vec![serde_json::json!({
+            "name": "server_port", "defaultValue": "8080",
+            "occurrences": [
+                {"path": "src/main.rs", "original": "8080", "count": 2},
+                {"path": "README.md", "original": "8080", "count": 1}
+            ]
+        })];
+        let out = convert_apply(
+            tmp.to_string_lossy().to_string(),
+            vec!["src/main.rs".to_string(), "README.md".to_string()],
+            vars,
+        )
+        .await
+        .unwrap();
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert!(v["clean"].as_bool().unwrap(), "应无冲突无校验错误: {out}");
+        let main = v["outputs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|f| f["path"].as_str() == Some("src/main.rs"))
+            .unwrap();
+        assert_eq!(main["replaced"].as_u64(), Some(2));
+        let content = main["content"].as_str().unwrap();
+        assert!(content.contains("{{ server_port }}"));
+        assert!(content.contains("18080"), "嵌套长 token 不被误伤");
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn draft_roundtrip() {
+        let id = format!("t126-draft-{}", std::process::id());
+        let meta = serde_json::json!({"source": "https://x/y", "branch": "main"});
+        let ir = serde_json::json!({"files": [], "variables": []});
+        convert_draft_save(id.clone(), meta, ir).unwrap();
+        let raw = convert_draft_load(id.clone()).unwrap();
+        let v: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(v["meta"]["source"].as_str(), Some("https://x/y"));
+        let list = convert_draft_list().unwrap();
+        let lv: serde_json::Value = serde_json::from_str(&list).unwrap();
+        assert!(lv["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|i| i["id"].as_str() == Some(id.as_str())));
+        convert_draft_delete(id.clone()).unwrap();
+        assert!(convert_draft_load(id.clone()).is_err());
     }
 
     /// 本仓库做本地 git 来源:clone 出镜像后 scan 应识别 rust 并产出非空清单

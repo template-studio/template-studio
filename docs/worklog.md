@@ -1194,3 +1194,11 @@
 **涉及文件：** `src-tauri/src/commands/convert.rs`、`src-tauri/src/commands/ai.rs`（heuristic_candidates/sanitize_var_name/resolve_call_target/thinking_extra 改 pub(crate)）、`src-tauri/src/lib.rs`、`src-tauri/Cargo.toml`（regex workspace 引用）
 
 **验收结果：** cargo check 干净；9/9 单测通过（JSON 容错/按值拆分/合并优先级/入口优先批次/端到端 clone+scan）。
+
+## 2026-09-10 项目转模板·三期：转换工作台（任务 #126，阶段 C+E）
+
+**变更内容：** 后端：①convert_apply——词边界感知替换（8080 不命中 18080）+ 次数对账（0 处合法匹配记冲突跳过、数量不一致记警告但替换全部合法位置）+ 每改动文件 render_string_content 默认值注入渲染校验，输出 outputs/conflicts/warnings/validationErrors/clean；②草稿持久化四命令（converts/<id>/ 的 meta.json+ir.json 原子写，列表按 mtime 倒序，id 防穿越）。前端：③新路由 /convert + ConvertWorkbench——来源输入（URL/本地路径+分支）→草稿列表；三栏布局（左文件树目录分组三色点击切换+入口标记+Eye 预览；中管线阶段流 clone→scan→analyze→存储+冲突/警告/渲染失败列表+模板化内容预览；右变量表启停/名称/默认值编辑+置信度色点+occurrence 悬浮）；④管线自动串行（clone→scan→analyze，AI 文件分类渐进落树仅剔非入口 keep 文件），可重跑分析；⑤存储为模板：runApply→clean 校验→createUserTemplate+目录先行+逐文件写入+analyzeTemplateVariables 注册占位符变量+首个 release→跳编辑器；⑥全程 IR 防抖 800ms 落草稿，重开恢复。Steering 自然语言对话延后（本版介入=结构化操作：文件切换/变量编辑/重跑）。入口：模板列表页「从项目提取」替换为「项目转换工作台」。
+
+**涉及文件：** `src-tauri/src/commands/convert.rs`、`src-tauri/src/lib.rs`、`src/views/convert/index.vue`（新增）、`src/router/index.js`、`src/views/templates/index.vue`
+
+**验收结果：** cargo test 12/12 通过（含词边界/apply 端到端/草稿往返）；pnpm build 通过。

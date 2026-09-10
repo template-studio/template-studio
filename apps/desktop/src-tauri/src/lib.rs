@@ -169,6 +169,11 @@ pub fn run() {
             commands::convert::convert_clone,
             commands::convert::convert_scan,
             commands::convert::convert_analyze,
+            commands::convert::convert_apply,
+            commands::convert::convert_draft_save,
+            commands::convert::convert_draft_load,
+            commands::convert::convert_draft_list,
+            commands::convert::convert_draft_delete,
             commands::ai::extract_read_files,
             commands::ai::extract_analyze,
         ])

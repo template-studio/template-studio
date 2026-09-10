@@ -18,6 +18,11 @@ const routes = [
     component: () => import('@/views/templates/index.vue')
   },
   {
+    path: '/convert',
+    name: 'ConvertWorkbench',
+    component: () => import('@/views/convert/index.vue')
+  },
+  {
     // 我的模板（登录态专属：侧边栏菜单按 hasApiKey 显隐）
     path: '/my-templates',
     name: 'MyTemplates',
