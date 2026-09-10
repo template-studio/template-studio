@@ -1202,3 +1202,19 @@
 **涉及文件：** `src-tauri/src/commands/convert.rs`、`src-tauri/src/lib.rs`、`src/views/convert/index.vue`（新增）、`src/router/index.js`、`src/views/templates/index.vue`
 
 **验收结果：** cargo test 12/12 通过（含词边界/apply 端到端/草稿往返）；pnpm build 通过。
+
+## 2026-09-10 项目转模板·四期：新建入口合并与旧向导清理（任务 #127，阶段 D）
+
+**变更内容：** 新建模板改为三选项卡片弹窗（空白创建/上传 ZIP/从项目转换→/convert 工作台）；ZIP 模式创建模板后触发文件选择器 uploadZipFile 导入再跳编辑器（失败也进编辑器提示手动上传）；移除模板列表页「项目转换工作台」独立按钮（入口归位新建流程）；删除 ExtractTemplateWizard.vue 及全部引用（功能已被转换工作台全面覆盖）。
+
+**涉及文件：** `views/templates/index.vue`、删除 `views/templates/components/ExtractTemplateWizard.vue`
+
+**验收结果：** `pnpm build` 通过；全仓无残留引用。
+
+## 2026-09-10 项目转模板·五期：CLI convert submit 与 IR 定稿（任务 #128）
+
+**变更内容：** ①CLI 新增 convert submit 命令：读 IR v1（version 校验/outputs 必填）→ 名称决策链（--name > IR.meta.name > repoUrl 尾段）→ 本地渲染校验（template_core Variables 默认值注入逐文件 render_string，--no-verify 可跳过）→ dry-run 统计或入库（ApiClient 新增写通道：统一信封 post_envelope 兼容 token/Bearer 双头，create_template/add_template_file/edit_template_file/create_release 四方法；目录先行深度排序再逐文件写入，完成后发布首个版本）；②IR v1 定稿冻结（设计文档 §3）：补 outputs（submit 内容源）与 meta 字段、消费方与兼容原则。
+
+**涉及文件：** `apps/cli/src/cli/mod.rs`、`apps/cli/src/cli/commands.rs`、`apps/cli/src/client/mod.rs`、`dev-docs/project-to-template.md`
+
+**验收结果：** cargo check 通过；样例 IR dry-run 实测通过（2 文件/1 变量/2 替换/渲染校验全过）。至此项目转模板五期全部落地。
