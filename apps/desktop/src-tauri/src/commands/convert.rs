@@ -17,10 +17,8 @@ fn emit_log(app: &tauri::AppHandle, stage: &str, text: &str) {
 
 // ===== 规则包(声明式,内置四份 + 用户目录覆盖) =====
 
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-// 消费方在二期分析管线(启发式通道),一期仅加载
-#[allow(dead_code)]
 pub struct ConstantRule {
     /// 捕获组 1 为候选值
     pub pattern: String,
@@ -37,10 +35,8 @@ fn default_max_file_size() -> u64 {
     1024 * 1024
 }
 
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-// constants 字段由二期分析管线消费
-#[allow(dead_code)]
 pub struct RulePack {
     pub id: String,
     /// 命中任一文件即识别为该技术栈
@@ -76,18 +72,20 @@ fn parse_pack(raw: &str, origin: &str) -> Option<RulePack> {
     }
 }
 
-/// 内置四份(include_str! 打包进二进制)
+/// 内置四份(include_str! 打包进二进制);BUILTIN_SOURCES 供规则视图回显原文
+const BUILTIN_SOURCES: [(&str, &str); 5] = [
+    ("node", include_str!("../../rules/node.json")),
+    ("go", include_str!("../../rules/go.json")),
+    ("java", include_str!("../../rules/java.json")),
+    ("python", include_str!("../../rules/python.json")),
+    ("rust", include_str!("../../rules/rust.json")),
+];
+
 fn builtin_packs() -> Vec<RulePack> {
-    [
-        include_str!("../../rules/node.json"),
-        include_str!("../../rules/go.json"),
-        include_str!("../../rules/java.json"),
-        include_str!("../../rules/python.json"),
-        include_str!("../../rules/rust.json"),
-    ]
-    .iter()
-    .filter_map(|raw| parse_pack(raw, "builtin"))
-    .collect()
+    BUILTIN_SOURCES
+        .iter()
+        .filter_map(|(_, raw)| parse_pack(raw, "builtin"))
+        .collect()
 }
 
 fn studio_home(sub: &str) -> PathBuf {
@@ -844,6 +842,66 @@ pub async fn convert_agent_bash(
         "output": truncate_chars(combined.trim(), 64 * 1024),
     })
     .to_string())
+}
+
+// ===== 规则包查看/覆盖(内置为底,用户目录同 id 覆盖) =====
+
+fn rules_file(dir: &Path, id: &str) -> Result<PathBuf, String> {
+    if id.is_empty() || id.contains("..") || id.contains('/') || id.contains('\\') {
+        return Err("规则包 id 非法".to_string());
+    }
+    Ok(dir.join(format!("{id}.json")))
+}
+
+/// 读取规则包:内置原文 + 用户覆盖原文 + 当前生效(覆盖优先),均原样文本
+#[tauri::command]
+pub fn convert_rules_get(id: String) -> Result<String, String> {
+    let builtin = builtin_packs()
+        .into_iter()
+        .find(|p| p.id == id)
+        .ok_or_else(|| format!("内置规则包不存在: {id}"))?;
+    let builtin_raw = match BUILTIN_SOURCES.iter().find(|(bid, _)| *bid == id) {
+        Some((_, raw)) => *raw,
+        None => "",
+    };
+    let dir = studio_home("rules");
+    let override_raw = std::fs::read_to_string(rules_file(&dir, &id)?).ok();
+    let effective = all_packs().into_iter().find(|p| p.id == id).unwrap_or(builtin);
+    Ok(serde_json::json!({
+        "id": id,
+        "builtinRaw": builtin_raw,
+        "overrideRaw": override_raw,
+        "effective": serde_json::to_value(&effective).map_err(|e| e.to_string())?,
+    })
+    .to_string())
+}
+
+/// 保存覆盖:校验可解析为 RulePack 且 id 一致后,原子写入用户规则目录
+#[tauri::command]
+pub fn convert_rules_save(id: String, json: String) -> Result<(), String> {
+    let pack: RulePack = serde_json::from_str(&json).map_err(|e| format!("JSON 不是合法规则包: {e}"))?;
+    if pack.id != id {
+        return Err(format!("规则包 id 不一致(正文 {} ≠ 目标 {id})", pack.id));
+    }
+    let path = rules_file(&studio_home("rules"), &id)?;
+    if let Some(p) = path.parent() {
+        std::fs::create_dir_all(p).map_err(|e| format!("创建规则目录失败: {e}"))?;
+    }
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, json).map_err(|e| format!("写入失败: {e}"))?;
+    std::fs::rename(&tmp, &path).map_err(|e| format!("落盘失败: {e}"))?;
+    Ok(())
+}
+
+/// 删除覆盖,恢复内置
+#[tauri::command]
+pub fn convert_rules_reset(id: String) -> Result<(), String> {
+    let path = rules_file(&studio_home("rules"), &id)?;
+    match std::fs::remove_file(&path) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(format!("删除失败: {e}")),
+    }
 }
 
 // ===== 构建验证(§13.1:渲染落盘 → buildCmd 冒烟,存储前可选门禁) =====

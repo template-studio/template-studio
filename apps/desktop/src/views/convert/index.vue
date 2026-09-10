@@ -78,10 +78,13 @@
           <VariableIcon :size="18" class="cw-act-ico" />
           <span v-if="ir.variables.length" class="cw-act-n">{{ ir.variables.length }}</span>
         </button>
+        <button class="cw-act-item rules" :class="{ on: activeView === 'rules' }" title="规则:剔除/入口/常量/构建命令,内置为底可覆盖" @click="enterRules">
+          <FilterFilled class="cw-act-ico" />
+        </button>
       </nav>
 
       <!-- Side Bar:当前分区视图 -->
-      <aside v-if="activeView !== 'focus'" class="cw-sidebar">
+      <aside v-if="showSidebar && activeView !== 'focus' && activeView !== 'rules'" class="cw-sidebar">
         <template v-if="activeView === 'source'">
           <div class="cw-panel-head">
             <span>源代码</span>
@@ -145,7 +148,7 @@
               @expand="onTreeExpand"
             >
               <template #title="opt">
-                <div class="cw-row" :title="opt.title">
+                <div class="cw-row" :title="opt.title" @contextmenu.prevent="onTreeContext($event, opt, 'template')">
                   <template v-if="!opt.isDir">
                     <span class="cw-name">{{ opt.title }}</span>
                     <span v-if="opt.file?.isEntry" class="cw-entry">入口</span>
@@ -186,20 +189,9 @@
       <div class="cw-center-col">
             <section class="cw-center">
         <div class="cw-chead">
-          <span class="cw-crumb cw-mono" :title="selectedPath">{{ selectedPath || activeLabel }}</span>
+          <button v-if="!['focus', 'rules'].includes(activeView)" class="cw-icon-btn" :class="{ on: showSidebar }" :title="showSidebar ? '隐藏侧栏' : '显示侧栏'" @click="showSidebar = !showSidebar"><FolderOpenOutlined /></button>
+          <span class="cw-crumb cw-mono" :title="selectedPath">{{ (activeView === 'source' || activeView === 'template') && selectedPath ? selectedPath : activeLabel }}</span>
           <div class="cw-chead-right">
-            <template v-if="selectedPath">
-              <button class="cw-icon-btn sm" title="关闭预览" @click="closePreview"><CloseOutlined /></button>
-              <div class="cw-seg">
-                <button :class="{ on: previewMode === 'render' }" title="变量默认值注入后的生成效果(编辑器同款渲染引擎)" @click="previewMode = 'render'">渲染</button>
-                <button :class="{ on: previewMode === 'tpl' }" @click="previewMode = 'tpl'">模板化</button>
-                <button :class="{ on: previewMode === 'raw' }" @click="previewMode = 'raw'">原文</button>
-              </div>
-              <span v-if="previewReplaced" class="cw-repl">替换 {{ previewReplaced }} 处</span>
-            </template>
-            <a-button v-if="ir.source.dir" size="small" :loading="buildChecking" title="渲染落盘后按技术栈构建命令冒烟验证(存储前可选门禁)" @click="runBuildCheck">
-              <template #icon><BuildOutlined /></template>构建验证
-            </a-button>
           </div>
         </div>
 
@@ -253,18 +245,67 @@
           </div>
         </div>
 
-        <!-- 文件内容区 -->
+        <!-- 规则视图(主内容区:左包列表 + 右 JSON 编辑) -->
+        <div v-else-if="activeView === 'rules'" class="cw-focus-main">
+          <div class="cw-rules-list">
+            <div class="cw-rules-lhead" title="内置为底;保存后落用户规则目录同 id 覆盖,重新扫描生效">内置规则包</div>
+            <div v-for="rid in RULE_IDS" :key="rid" class="cw-ra-item" :class="{ cur: rid === rulesId }" @click="loadRules(rid)">
+              <span class="cw-ra-name">{{ rid }}</span>
+              <span v-if="rid === ir.source.packId" class="cw-entry">当前</span>
+              <span v-if="rulesOverridden && rid === rulesId" class="cw-ra-badge">覆盖</span>
+            </div>
+          </div>
+          <div class="cw-rules-edit">
+            <div class="cw-rules-bar">
+              <span class="cw-crumb cw-mono">{{ rulesId }}.json</span>
+              <a-button size="small" type="primary" :loading="rulesSaving" @click="saveRules">保存覆盖</a-button>
+              <a-button v-if="rulesOverridden" size="small" @click="resetRules">恢复内置</a-button>
+              <a-button v-if="rulesId === ir.source.packId" size="small" :disabled="busy" @click="rescanWithRules">重新扫描</a-button>
+            </div>
+            <textarea v-model="rulesJson" class="cw-rules-json" spellcheck="false"></textarea>
+          </div>
+        </div>
+
+        <!-- 文件内容区:模板区分栏(模板|渲染),源码区原文 -->
         <div v-else-if="selectedPath" class="cw-filepane">
-          <div v-if="!selectedPath" class="cw-empty">点击左侧文件查看预览;行尾「保留/剔除」控制该文件是否进入模板</div>
-          <template v-else>
+          <template v-if="activeView === 'template'">
             <div v-if="tplStale" class="cw-stale">
-              变量或文件清单已变更,模板化预览已失效
+              变量或文件清单已变更,模板预览已失效
               <a-button size="small" type="link" @click="regenPreview">重新生成</a-button>
             </div>
-            <div v-if="renderError" class="cw-issue conflict"><b>渲染失败</b>{{ renderError }}</div>
+            <div class="cw-split" ref="splitEl">
+              <div class="cw-split-col" :style="{ width: renderCollapsed ? 'calc(100% - 45px)' : (splitRatio * 100) + '%', flex: 'none' }" @contextmenu.prevent="onSplitContext('tpl', $event)">
+                <div class="cw-split-head">模板<span v-if="previewReplaced" class="cw-repl">替换 {{ previewReplaced }} 处</span></div>
+                <div class="cw-code" @contextmenu.prevent.stop="onCodeContext($event, 'tpl')">
+                  <div v-for="(l, i) in previewLines" :key="i" class="cw-ln">
+                    <span class="cw-no">{{ i + 1 }}</span>
+                    <span class="cw-lc" v-html="l"></span>
+                  </div>
+                </div>
+              </div>
+              <div v-if="!renderCollapsed" class="cw-split-handle" @mousedown="startSplitDrag" title="拖拽调整分栏"></div>
+              <div class="cw-split-col" :class="{ collapsed: renderCollapsed }" :style="renderCollapsed ? { width: '40px', flex: 'none' } : { flex: '1' }" @contextmenu.prevent="onSplitContext('render', $event)">
+                <div class="cw-split-head">
+                  <template v-if="!renderCollapsed">
+                    渲染<span class="cw-split-sub">变量默认值注入后的生成效果</span>
+                    <button class="cw-icon-btn sm" title="立即重新渲染" style="margin-left: auto" @click="doRenderPreview"><RedoOutlined /></button>
+                  </template>
+                  <button class="cw-collapse-btn" :class="{ collapsed: renderCollapsed }" :title="renderCollapsed ? '展开渲染栏' : '收起渲染栏'" @click="renderCollapsed = !renderCollapsed">
+                    <ChevronBack v-if="renderCollapsed" style="font-size: 14px" />
+                    <ChevronForward v-else style="font-size: 14px" />
+                  </button>
+                </div>
+                <template v-if="!renderCollapsed">
+                  <div v-if="renderError" class="cw-issue conflict" style="margin: 10px"><b>渲染失败</b>{{ renderError }}</div>
+                  <CodeViewer v-else-if="renderedContent" :content="renderedContent" :filename="selectedPath" class="cw-ra-code" />
+                  <div v-else class="cw-empty">渲染中…</div>
+                </template>
+              </div>
+            </div>
+          </template>
+          <template v-else>
             <div v-if="previewError" class="cw-issue warn"><b>无法读取</b>{{ previewError }}</div>
-            <CodeViewer v-if="previewMode === 'render' && renderedContent && !renderError" :content="renderedContent" :filename="selectedPath" class="cw-code-cm" />
-            <div v-else class="cw-code">
+            <div class="cw-code" @contextmenu.prevent.stop="onCodeContext($event, 'raw')">
               <div v-for="(l, i) in previewLines" :key="i" class="cw-ln">
                 <span class="cw-no">{{ i + 1 }}</span>
                 <span class="cw-lc" v-html="l"></span>
@@ -272,6 +313,7 @@
             </div>
           </template>
         </div>
+
         <div v-else class="cw-filepane"><div class="cw-empty">{{ emptyHint }}</div></div>
       </section>
 
@@ -321,20 +363,20 @@
       />
     </div>
 
-    <!-- 构建验证结果 -->
-    <a-modal :open="!!buildResult" title="构建验证" :footer="null" :width="640" @cancel="buildResult = null">
-      <div v-if="buildResult" class="cw-bc">
-        <div class="cw-bc-state" :class="buildResult.ok ? 'ok' : 'fail'">
-          {{ buildResult.ok ? '✔ 构建通过' : (buildResult.stage === 'render' ? '✘ 渲染失败' : '✘ 构建失败') }}
-          <span v-if="buildResult.durationMs != null" class="cw-bc-dur">{{ buildResult.durationMs }}ms</span>
-        </div>
-        <div v-if="buildResult.stage === 'render'" class="cw-bc-row">文件:{{ buildResult.path }}</div>
-        <div v-if="buildResult.command" class="cw-bc-row cw-mono">$ {{ buildResult.command }}<span v-if="buildResult.exitCode != null && !buildResult.ok">(exit {{ buildResult.exitCode }})</span></div>
-        <div v-if="buildResult.error" class="cw-bc-err">{{ buildResult.error }}</div>
-        <pre v-if="buildResult.output" class="cw-bc-log">{{ buildResult.output }}</pre>
-        <div class="cw-bc-tip">产物目录:{{ buildResult.dir }}(临时,可随时清理;构建命令可在规则包 buildCmd 调整)</div>
+    <!-- 文件树右键菜单(借鉴编辑器) -->
+    <div v-if="ctxMenu.open" class="cw-ctx-overlay" @click="ctxMenu.open = false" @contextmenu.prevent="ctxMenu.open = false">
+      <div class="cw-ctx" :style="{ left: ctxMenu.x + 'px', top: ctxMenu.y + 'px' }">
+        <template v-for="(it, i) in ctxMenu.items" :key="i">
+          <div v-if="it.type === 'divider'" class="cw-ctx-divider"></div>
+          <div v-else class="cw-ctx-item" @click.stop="it.run(); ctxMenu.open = false">
+            <component v-if="it.icon" :is="it.icon" style="font-size: 14px; margin-right: 8px" />
+            {{ it.label }}
+          </div>
+        </template>
       </div>
-    </a-modal>
+    </div>
+
+
 
     <!-- 存储对话框 -->
     <a-modal v-model:open="storeOpen" title="存储为模板" ok-text="创建" cancel-text="取消" :confirm-loading="storing" @ok="doStore">
@@ -358,9 +400,11 @@ import { message } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
 import {
   ArrowLeftOutlined, CloseOutlined, RedoOutlined, SaveOutlined, MinusOutlined, BorderOutlined,
-  FileOutlined, FolderFilled, FolderOpenFilled, CopyOutlined, CloseCircleOutlined, BuildOutlined, FileTextFilled, StarFilled, ClockCircleFilled,
+  FileOutlined, FolderFilled, FolderOpenFilled, CopyOutlined, CloseCircleOutlined, BuildOutlined, FileTextFilled, StarFilled, ClockCircleFilled, FilterFilled, FolderOpenOutlined,
+  EyeOutlined, StopOutlined, CheckOutlined, FileSearchOutlined, MinusCircleOutlined, PlusCircleOutlined, SnippetsOutlined, SelectOutlined,
 } from '@ant-design/icons-vue'
 import ConvertAgentPanel from './components/ConvertAgentPanel.vue'
+import { ChevronBack, ChevronForward } from '@/icons/ionicons5'
 import CodeViewer from '@/components/common/CodeViewer.vue'
 import VariableIcon from '@/components/icons/VariableIcon.vue'
 import AiIcon from '@/components/icons/AiIcon.vue'
@@ -528,6 +572,32 @@ const toggleDir = (dir) => {
   for (const f of set) { f.action = toKeep ? 'keep' : 'exclude'; f.reason = toKeep ? '' : '手动剔除' }
 }
 const onTreeExpand = (keys) => { expandedKeys.value = keys }
+
+// ---- 文件树右键菜单(源码:预览/保留剔除/目录批量/复制路径;模板:打开/复制) ----
+const ctxMenu = reactive({ open: false, x: 0, y: 0, items: [] })
+const onTreeContext = (e, opt, zone) => {
+  const isDir = !!opt.isDir
+  const items = []
+  if (!isDir && opt.file) {
+    items.push({ label: zone === 'template' ? '打开模板' : '预览', run: () => zone === 'template' ? onTplSelect(opt.key) : (selectedPath.value = opt.key, previewMode.value = 'raw') })
+    items.push(opt.file.action === 'keep'
+      ? { label: '剔除该文件(移出模板)', run: () => toggleFile(opt.file) }
+      : { label: '保留该文件', run: () => toggleFile(opt.file) })
+    if (zone === 'template') {
+      items.push({ label: '复制模板内容', run: async () => { const c = ir.outputs.find((o) => o.path === opt.key)?.content ?? ''; try { await navigator.clipboard.writeText(c); message.success('已复制') } catch { message.error('复制失败') } } })
+      items.push({ label: '在源码区查看原文', run: () => { activeView.value = 'source'; selectedPath.value = opt.key; previewMode.value = 'raw' } })
+    }
+  }
+  if (isDir) {
+    items.push({ label: '全部剔除该目录', run: () => toggleDir(opt.key) })
+    items.push({ label: '全部保留该目录', run: () => { const toKeep = dirAllExcluded(opt.key); for (const f of filesUnder(opt.key)) { f.action = toKeep ? 'keep' : 'exclude'; f.reason = '' } } })
+  }
+  items.push({ label: '复制路径', run: () => { navigator.clipboard?.writeText(opt.key); message.success('已复制') } })
+  ctxMenu.items = items
+  ctxMenu.x = Math.min(e.clientX, window.innerWidth - 180)
+  ctxMenu.y = Math.min(e.clientY, window.innerHeight - items.length * 32 - 20)
+  ctxMenu.open = true
+}
 const onTreeSelect = (keys, info) => {
   const d = info?.node?.dataRef || info?.node || {}
   if (!d.isDir && d.file) {
@@ -535,7 +605,6 @@ const onTreeSelect = (keys, info) => {
     previewMode.value = 'raw'
   }
 }
-const closePreview = () => { selectedPath.value = '' }
 
 // 勾选/暴露策略变更:落草稿 + 若分析已完成则提示重新分析生效
 watch([() => focusChecked.value.join('|'), exposeAll], () => {
@@ -596,31 +665,126 @@ const onTplSelect = async (path) => {
     try { await runApply() } catch (e) { message.error('生成替换结果失败: ' + (e.message || e)) }
   }
 }
-const activeLabel = computed(() => ({ source: '源代码区', template: '模板区', focus: '重点文件', vars: '变量' }[activeView.value] || ''))
+const activeLabel = computed(() => ({ source: '源代码区', template: '模板区', focus: '重点文件', vars: '变量', rules: '规则' }[activeView.value] || ''))
+
+// ---- 规则视图(内置为底,同 id 覆盖;重扫描生效) ----
+const RULE_IDS = ['node', 'go', 'java', 'python', 'rust']
+const rulesId = ref('')
+const rulesJson = ref('')
+const rulesOverridden = ref(false)
+const rulesSaving = ref(false)
+const enterRules = () => { activeView.value = 'rules'; if (!rulesId.value) loadRules(ir.source.packId || RULE_IDS[0]) }
+const loadRules = async (id) => {
+  rulesId.value = id
+  try {
+    const raw = await invoke('convert_rules_get', { id })
+    const r = JSON.parse(raw)
+    rulesJson.value = r.overrideRaw ?? r.builtinRaw ?? ''
+    rulesOverridden.value = !!r.overrideRaw
+  } catch (e) { message.error('读取规则失败: ' + (e.message || e)) }
+}
+const saveRules = async () => {
+  rulesSaving.value = true
+  try {
+    await invoke('convert_rules_save', { id: rulesId.value, json: rulesJson.value })
+    rulesOverridden.value = true
+    message.success('已保存覆盖' + (rulesId.value === ir.source.packId ? ',点击「重新扫描」生效' : ''))
+  } catch (e) { message.error('保存失败: ' + (e.message || e)) }
+  finally { rulesSaving.value = false }
+}
+const resetRules = async () => {
+  try {
+    await invoke('convert_rules_reset', { id: rulesId.value })
+    await loadRules(rulesId.value)
+    message.success('已恢复内置规则')
+  } catch (e) { message.error('恢复失败: ' + (e.message || e)) }
+}
+const rescanWithRules = async () => {
+  if (busy.value) return
+  busy.value = true
+  try { await doScan() } catch (e) { message.error('扫描失败: ' + (e.message || e)) } finally { busy.value = false }
+}
 const emptyHint = computed(() => (activeView.value === 'vars'
   ? '尚无候选变量——完成分析后在「变量」中调整'
   : activeView.value === 'template'
   ? '在左侧选择模板文件,查看模板化内容;绿色高亮为变量占位符'
   : '点击左侧文件查看内容;行尾「保留/剔除」控制是否进入模板'))
 const tplReplacedOf = (path) => ir.outputs.find((o) => o.path === path)?.replaced || 0
-const buildChecking = ref(false)
-const buildResult = ref(null)
-const runBuildCheck = async () => {
-  if (buildChecking.value) return
-  buildChecking.value = true
-  buildResult.value = null
-  try {
-    if (!ir.outputs.length) await runApply()
-    const vars = {}
-    for (const v of enabledVars.value) { const n = (v.name || '').trim(); if (n) vars[n] = v.defaultValue ?? '' }
-    pushActivity('build', '存储前构建验证:渲染落盘 + ' + (ir.source.packId || '') + ' 构建冒烟…')
-    const raw = await invoke('convert_build_check', { outputs: ir.outputs, variables: vars, packId: ir.source.packId })
-    buildResult.value = JSON.parse(raw)
-  } catch (e) {
-    buildResult.value = { ok: false, stage: 'error', error: String(e) }
-  } finally {
-    buildChecking.value = false
+// ---- 内容区右键(编辑器内容区语义:复制/粘贴/全选 + 原样显示 + 渲染/剔除) ----
+const selectedText = () => String(window.getSelection() || '')
+const wrapRaw = async () => {
+  const sel = selectedText()
+  if (!sel) { message.warning('请选中需要原样显示的文本'); return }
+  const out = ir.outputs.find((o) => o.path === selectedPath.value)
+  if (!out) { message.warning('模板内容尚未生成'); return }
+  out.content = out.content.split(sel).join('{% raw %}' + sel + '{% endraw %}')
+  message.success('已包裹 {% raw %}(重新分析前不会进入变量替换)')
+}
+const onCodeContext = (e, zone) => {
+  const items = []
+  items.push({ label: '复制 (Ctrl+C)', icon: CopyOutlined, run: () => document.execCommand('copy') })
+  if (zone === 'tpl') {
+    items.push({ label: '粘贴 (Ctrl+V)', icon: SnippetsOutlined, run: () => document.execCommand('paste') })
   }
+  items.push({ label: '全选 (Ctrl+A)', icon: SelectOutlined, run: () => {
+    const sel = window.getSelection()
+    const code = document.querySelector('.cw-code')
+    if (sel && code) { sel.removeAllRanges(); const r = document.createRange(); r.selectNodeContents(code); sel.addRange(r) }
+  } })
+  if (zone === 'tpl') {
+    const hasSel = selectedText().length > 0
+    if (hasSel) {
+      items.push({ type: 'divider' })
+      items.push({ label: '原样显示 ({% raw %})', icon: StopOutlined, run: wrapRaw })
+    }
+    items.push({ type: 'divider' })
+    items.push({ label: '立即渲染 (Ctrl+R)', icon: RedoOutlined, run: () => doRenderPreview() })
+    items.push({ label: '剔除该文件(移出模板)', icon: MinusCircleOutlined, run: () => { const f = ir.files.find((x) => x.path === selectedPath.value); if (f) toggleFile(f) } })
+  }
+  ctxMenu.items = items
+  ctxMenu.x = Math.min(e.clientX, window.innerWidth - 210)
+  ctxMenu.y = Math.min(e.clientY, window.innerHeight - items.length * 36 - 16)
+  ctxMenu.open = true
+}
+
+// ---- 模板区分栏拖拽 + 右键 ----
+const splitEl = ref(null)
+const splitRatio = ref(parseFloat(localStorage.getItem('cw-split') || '0.5'))
+const renderCollapsed = ref(localStorage.getItem('cw-render-col') === '0')
+watch(renderCollapsed, (v) => localStorage.setItem('cw-render-col', v ? '0' : '1'))
+const showSidebar = ref(localStorage.getItem('cw-sidebar') !== '0')
+watch(showSidebar, (v) => localStorage.setItem('cw-sidebar', v ? '1' : '0'))
+const startSplitDrag = (e) => {
+  e.preventDefault()
+  const move = (ev) => {
+    const r = splitEl.value?.getBoundingClientRect()
+    if (!r) return
+    splitRatio.value = Math.min(0.8, Math.max(0.2, (ev.clientX - r.left) / r.width))
+  }
+  const up = () => {
+    document.removeEventListener('mousemove', move)
+    document.removeEventListener('mouseup', up)
+    localStorage.setItem('cw-split', String(splitRatio.value))
+  }
+  document.addEventListener('mousemove', move)
+  document.addEventListener('mouseup', up)
+}
+const onSplitContext = (zone, e) => {
+  const items = zone === 'render'
+    ? [
+        { label: '立即重新渲染', run: () => doRenderPreview() },
+        { label: '复制渲染结果', run: async () => { try { await navigator.clipboard.writeText(renderedContent.value); message.success('已复制') } catch { message.error('复制失败') } } },
+        { label: '在源码区查看原文', run: () => { activeView.value = 'source'; previewMode.value = 'raw' } },
+      ]
+    : [
+        { label: '复制模板内容', run: async () => { const c = ir.outputs.find((o) => o.path === selectedPath.value)?.content ?? ''; try { await navigator.clipboard.writeText(c); message.success('已复制') } catch { message.error('复制失败') } } },
+        { label: '在源码区查看原文', run: () => { activeView.value = 'source'; previewMode.value = 'raw' } },
+        { label: '剔除该文件(移出模板)', run: () => { const f = ir.files.find((x) => x.path === selectedPath.value); if (f) toggleFile(f) } },
+      ]
+  ctxMenu.items = items
+  ctxMenu.x = e?.clientX || 300
+  ctxMenu.y = e?.clientY || 300
+  ctxMenu.open = true
 }
 
 // ---- 整体渲染预览页 ----
@@ -642,8 +806,8 @@ const doRenderPreview = async () => {
     renderError.value = String(e)
   }
 }
-watch([previewMode, selectedPath, () => enabledVars.value.map((v) => [v.name, v.defaultValue]).join('|')], () => {
-  if (previewMode.value === 'render') doRenderPreview()
+watch([activeView, selectedPath, () => enabledVars.value.map((v) => [v.name, v.defaultValue]).join('|')], () => {
+  if (activeView.value === 'template' && selectedPath.value) doRenderPreview()
   else { renderedContent.value = ''; renderError.value = '' }
 })
 
@@ -1093,6 +1257,39 @@ onBeforeUnmount(() => { unlistenLog?.() })
 .cw-focus-side { width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
 .cw-focus-main .cw-focus-tree { flex: 1; }
 .cw-focus-main .cw-focus-head { flex-direction: column; align-items: stretch; }
+/* 模板区分栏(编辑器式:模板|渲染) */
+.cw-split { flex: 1; min-height: 0; display: flex; }
+.cw-split-col { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.cw-split-col + .cw-split-col { border-left: none; }
+.cw-split-handle { width: 5px; flex-shrink: 0; cursor: ew-resize; position: relative; }
+.cw-split-handle::after { content: ''; position: absolute; inset: 0 2px; background: var(--editor-border, #e2e8f0); }
+.cw-split-handle:hover::after { background: var(--color-brand, #16a34a); }
+/* 渲染栏收起窄条(编辑器预览同款) */
+.cw-split-col.collapsed .cw-split-head { padding: 0; justify-content: center; }
+.cw-collapse-btn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: none; background: transparent; border-radius: 6px; cursor: pointer; color: var(--color-text-secondary, #64748b); }
+.cw-collapse-btn:hover { background: var(--color-hover, #f1f5f9); color: var(--color-text, #1b1c1f); }
+.cw-split-head { height: 30px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 12px; font-size: 11.5px; font-weight: 600; color: var(--color-text-secondary, #64748b); border-bottom: 1px solid var(--editor-border, #e2e8f0); background: var(--editor-panel-bg, #fff); }
+.cw-split-sub { font-weight: 400; font-size: 10.5px; color: var(--color-text-muted, #9aa0a6); }
+
+/* 右键菜单 */
+.cw-ctx-overlay { position: fixed; inset: 0; z-index: 1200; }
+.cw-ctx { position: fixed; background: var(--editor-panel-bg, #fff); border: 1px solid var(--editor-border, #e8e8e8); border-radius: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); min-width: 190px; padding: 4px 0; z-index: 1201; }
+.cw-ctx-item { display: flex; align-items: center; padding: 8px 12px; cursor: pointer; font-size: 13px; color: var(--color-text, #333); transition: background 0.15s; }
+.cw-ctx-item:hover { background: var(--color-hover, #f5f5f5); }
+.cw-ctx-divider { height: 1px; background: var(--color-border-light, #e8e8e8); margin: 4px 0; }
+
+/* 规则视图 */
+.cw-rules-list { width: 230px; flex-shrink: 0; overflow-y: auto; padding: 0 0 8px; display: flex; flex-direction: column; gap: 2px; background: var(--editor-panel-bg, #fff); border: 1px solid var(--editor-border, #e2e8f0); border-radius: 10px; }
+.cw-rules-lhead { height: 40px; flex-shrink: 0; display: flex; align-items: center; font-size: 12px; font-weight: 600; color: var(--color-text-secondary, #64748b); padding: 0 12px; border-bottom: 1px solid var(--editor-border, #e2e8f0); margin-bottom: 6px; }
+.cw-rules-list .cw-ra-item { padding: 7px 10px; flex-direction: row; align-items: center; gap: 6px; }
+.cw-rules-list .cw-ra-name { flex: 1; min-width: 0; }
+.cw-rules-list .cw-ra-name { font-family: Consolas, 'JetBrains Mono', monospace; font-size: 12.5px; }
+.cw-rules-edit { flex: 1; min-width: 0; display: flex; flex-direction: column; border: 1px solid var(--editor-border, #e2e8f0); border-radius: 8px; overflow: hidden; }
+.cw-rules-bar { height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 14px; border-bottom: 1px solid var(--editor-border, #e2e8f0); background: var(--editor-panel-bg, #fff); }
+.cw-rules-bar .cw-crumb { font-weight: 600; color: var(--color-text, #1b1c1f); }
+.cw-rules-bar .cw-crumb { flex: 1; }
+.cw-rules-json { flex: 1; min-height: 0; border: none; outline: none; resize: none; padding: 14px 16px; font-family: Consolas, 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.65; tab-size: 2; background: var(--color-canvas, #f8fafc); color: var(--color-text, #333); transition: background 0.15s; }
+.cw-rules-json:focus { background: var(--editor-panel-bg, #fff); }
 .cw-focus-head { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
 .cw-focus-desc { flex: 1; min-width: 0; font-size: 12px; line-height: 1.7; color: var(--color-text-secondary, #64748b); }
 .cw-focus-desc b { color: var(--color-text, #1b1c1f); }

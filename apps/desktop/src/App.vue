@@ -63,7 +63,10 @@ const handleGlobalContextMenu = (event) => {
   const target = event.target
   const isInEditor = target.closest('.cm-editor') ||
                      target.closest('.codemirror-container') ||
-                     target.closest('.code-preview')
+                     target.closest('.code-preview') ||
+                     target.closest('.cw-code') ||          // 转换工作台代码区(自定义右键)
+                     target.closest('.cw-ctx') ||           // 右键菜单浮层自身
+                     target.closest('.ant-tree')            // 转换工作台文件树(自定义右键)
 
   if (isInEditor) {
     // 编辑器内不阻止，使用自定义右键菜单
