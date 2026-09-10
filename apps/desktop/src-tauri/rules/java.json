@@ -1,14 +1,67 @@
 {
   "id": "java",
-  "match": ["pom.xml", "build.gradle", "build.gradle.kts"],
-  "excludeDirs": ["target", "build", ".gradle", "out", ".vscode", ".idea", "node_modules"],
+  "match": [
+    "pom.xml",
+    "build.gradle",
+    "build.gradle.kts"
+  ],
+  "excludeDirs": [
+    "target",
+    "build",
+    ".gradle",
+    "out",
+    ".vscode",
+    ".idea",
+    "node_modules"
+  ],
   "excludeFiles": [],
-  "excludePatterns": ["*.log", "*.class", "*.jar", "*.war", ".DS_Store"],
-  "binaryExtensions": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".woff", ".woff2", ".ttf", ".zip", ".gz", ".tar", ".exe", ".dll", ".pdf"],
+  "excludePatterns": [
+    "*.log",
+    "*.class",
+    "*.jar",
+    "*.war",
+    ".DS_Store"
+  ],
+  "binaryExtensions": [
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".ico",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".zip",
+    ".gz",
+    ".tar",
+    ".exe",
+    ".dll",
+    ".pdf"
+  ],
   "maxFileSize": 1048576,
-  "entryFiles": ["pom.xml", "build.gradle", "build.gradle.kts", "README.md", "Dockerfile", "docker-compose.yml", "application.yml", "application.properties", "src/main/resources/application.yml", "src/main/resources/application.properties"],
+  "entryFiles": [
+    "pom.xml",
+    "build.gradle",
+    "build.gradle.kts",
+    "README.md",
+    "Dockerfile",
+    "docker-compose.yml",
+    "application.yml",
+    "application.properties",
+    "src/main/resources/application.yml",
+    "src/main/resources/application.properties"
+  ],
   "constants": [
-    { "pattern": "(?i)port\\s*[:=]\\s*(\\d{2,5})", "varName": "server_port", "type": "number" },
-    { "pattern": "(?i)(host|url)\\s*[:=]\\s*([^\\s\\n]{4,128})", "varName": "server_host" }
-  ]
+    {
+      "pattern": "(?i)port\\s*[:=]\\s*(\\d{2,5})",
+      "varName": "server_port",
+      "type": "number"
+    },
+    {
+      "pattern": "(?i)(host|url)\\s*[:=]\\s*([^\\s\\n]{4,128})",
+      "varName": "server_host"
+    }
+  ],
+  "buildCmd": "mvn -q compile"
 }

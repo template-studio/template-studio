@@ -1314,3 +1314,11 @@
 **涉及文件：** `src/components/common/CodeViewer.vue`(新增)、`src/views/convert/index.vue`
 
 **验收结果：** pnpm build 通过;浏览器实测头部(Cloud 标签/替换数/复制)与编辑器式错误面板(类型+行号+上下文)渲染正确;CodeMirror 内容视图为 TemplatePreview 同配置(桌面端后端渲染后可见)。
+
+## 2026-09-10 转换工作台分区:源代码区/模板区+构建验证（任务 #144）
+
+**变更内容：** ①设计文档 §13:源代码(不可变输入)/模板(制造中产品)/项目(实例化验证)三段分离,tab 显式隔离;转换侧两区,编辑器项目区列二期(#145),构建验证为存储前可选门禁;②Rust:规则包新增 buildCmd 字段(五套内置包配齐 node/rust/go/java/python 命令);convert_build_check——outputs 按启用变量默认值逐文件渲染(失败短路返回渲染错误)→落盘 workspace/buildcheck/<ts>/ →执行 buildCmd(超时 240s/输出截断 64KB/过程事件 stage=build);③前端:中栏 tab 分组(源代码区:转换过程/文件预览/重点文件 ‖ 模板区:模板文件/渲染预览,zone 标签+分隔线);新增「模板文件」视图(保留文件列表+替换徽标+模板化内容行号视图+占位符高亮+复制);模板区常驻「构建验证」按钮,结果弹窗(通过/渲染失败/构建失败三态+命令+耗时+深色日志面板+产物目录说明)。
+
+**涉及文件：** `dev-docs/project-to-template.md`(§13)、`src-tauri/src/commands/convert.rs`、`src-tauri/src/lib.rs`、`src-tauri/rules/*.json`(5 份)、`src/views/convert/index.vue`
+
+**验收结果：** cargo test 28/28(新增构建通过+渲染短路两测);pnpm build 通过;浏览器实测分区标签/tab 分组/构建验证按钮/模板文件列表与内容(占位符高亮)正常;真实构建需桌面端。

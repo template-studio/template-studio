@@ -109,19 +109,30 @@
       <!-- 中:文件预览 / 转换过程 -->
       <section class="cw-center">
         <div class="cw-tabs">
+          <!-- 源代码区(镜像只读):过程/源文件/重点文件 -->
+          <span class="cw-zone">源代码区</span>
           <button class="cw-tab" :class="{ active: centerTab === 'process' }" @click="centerTab = 'process'">
             转换过程<span v-if="pipelineRunning" class="cw-live"></span>
           </button>
           <button class="cw-tab" :class="{ active: centerTab === 'file' }" :disabled="!selectedPath" @click="centerTab = 'file'">
             文件预览
           </button>
-          <button v-if="ir.source.dir" class="cw-tab" :class="{ active: centerTab === 'renderall' }" title="整套模板按变量默认值渲染的结果" @click="enterRenderAll">
-            渲染预览
-          </button>
           <button v-if="isDataDriven" class="cw-tab" :class="{ active: centerTab === 'focus' }" @click="centerTab = 'focus'">
             重点文件<span v-if="focusFiles.length" class="cw-tab-n">{{ focusFiles.length }}</span>
           </button>
+          <span class="cw-zone-sep"></span>
+          <!-- 模板区(制造中的产品):模板文件/渲染预览/构建验证 -->
+          <span class="cw-zone tpl">模板区</span>
+          <button class="cw-tab" :class="{ active: centerTab === 'tplfiles' }" @click="enterTplFiles">
+            模板文件<span v-if="keptCount" class="cw-tab-n dim2">{{ keptCount }}</span>
+          </button>
+          <button class="cw-tab" :class="{ active: centerTab === 'renderall' }" title="整套模板按变量默认值渲染的结果" @click="enterRenderAll">
+            渲染预览
+          </button>
           <div class="cw-tabs-right">
+            <a-button v-if="ir.source.dir" size="small" :loading="buildChecking" title="渲染落盘后按技术栈构建命令冒烟验证(存储前可选门禁)" @click="runBuildCheck">
+              <template #icon><BuildOutlined /></template>构建验证
+            </a-button>
             <template v-if="centerTab === 'file' && selectedPath">
               <div class="cw-seg">
                 <button :class="{ on: previewMode === 'render' }" title="变量默认值注入后的生成效果(编辑器同款渲染引擎)" @click="previewMode = 'render'">渲染</button>
@@ -158,6 +169,40 @@
               <span class="cw-act-text">{{ a.text }}</span>
               <span class="cw-act-ts">{{ fmtTs(a.ts) }}</span>
             </div>
+          </div>
+        </div>
+
+        <!-- 模板文件页:模板自身的文件集(剔除后+模板化产物) -->
+        <div v-else-if="centerTab === 'tplfiles'" class="cw-rapane">
+          <div class="cw-ra-list">
+            <div
+              v-for="f in keptFiles" :key="f.path"
+              class="cw-ra-item" :class="{ cur: f.path === tplSel }"
+              @click="pickTplFile(f.path)"
+            >
+              <span class="cw-ra-name">{{ f.base }}</span>
+              <span class="cw-ra-path">{{ f.path }}</span>
+              <span v-if="tplReplacedOf(f.path)" class="cw-ra-badge">{{ tplReplacedOf(f.path) }}</span>
+            </div>
+            <div v-if="!keptFiles.length" class="cw-tl-empty">模板暂无文件——在源代码区勾选保留</div>
+          </div>
+          <div class="cw-ra-view">
+            <div v-if="tplSel" class="cw-ra-head">
+              <span class="cw-ra-hpath cw-mono">{{ tplSel }}</span>
+              <div class="cw-ra-meta">
+                <span class="cw-repl">替换 {{ tplReplacedOf(tplSel) || 0 }} 处</span>
+                <a-button size="small" @click="copyTplContent">
+                  <template #icon><CopyOutlined /></template>复制
+                </a-button>
+              </div>
+            </div>
+            <div v-if="tplSel" class="cw-code">
+              <div v-for="(l, i) in tplLines" :key="i" class="cw-ln">
+                <span class="cw-no">{{ i + 1 }}</span>
+                <span class="cw-lc" v-html="l"></span>
+              </div>
+            </div>
+            <div v-else class="cw-empty">选择左侧文件查看模板化内容(绿色高亮为变量占位符)</div>
           </div>
         </div>
 
@@ -305,6 +350,21 @@
       />
     </div>
 
+    <!-- 构建验证结果 -->
+    <a-modal :open="!!buildResult" title="构建验证" :footer="null" :width="640" @cancel="buildResult = null">
+      <div v-if="buildResult" class="cw-bc">
+        <div class="cw-bc-state" :class="buildResult.ok ? 'ok' : 'fail'">
+          {{ buildResult.ok ? '✔ 构建通过' : (buildResult.stage === 'render' ? '✘ 渲染失败' : '✘ 构建失败') }}
+          <span v-if="buildResult.durationMs != null" class="cw-bc-dur">{{ buildResult.durationMs }}ms</span>
+        </div>
+        <div v-if="buildResult.stage === 'render'" class="cw-bc-row">文件:{{ buildResult.path }}</div>
+        <div v-if="buildResult.command" class="cw-bc-row cw-mono">$ {{ buildResult.command }}<span v-if="buildResult.exitCode != null && !buildResult.ok">(exit {{ buildResult.exitCode }})</span></div>
+        <div v-if="buildResult.error" class="cw-bc-err">{{ buildResult.error }}</div>
+        <pre v-if="buildResult.output" class="cw-bc-log">{{ buildResult.output }}</pre>
+        <div class="cw-bc-tip">产物目录:{{ buildResult.dir }}(临时,可随时清理;构建命令可在规则包 buildCmd 调整)</div>
+      </div>
+    </a-modal>
+
     <!-- 存储对话框 -->
     <a-modal v-model:open="storeOpen" title="存储为模板" ok-text="创建" cancel-text="取消" :confirm-loading="storing" @ok="doStore">
       <a-form layout="vertical">
@@ -327,7 +387,7 @@ import { message } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
 import {
   ArrowLeftOutlined, CloseOutlined, RedoOutlined, SaveOutlined, MinusOutlined, BorderOutlined,
-  FileOutlined, FolderFilled, FolderOpenFilled, CopyOutlined, CloseCircleOutlined,
+  FileOutlined, FolderFilled, FolderOpenFilled, CopyOutlined, CloseCircleOutlined, BuildOutlined,
 } from '@ant-design/icons-vue'
 import ConvertAgentPanel from './components/ConvertAgentPanel.vue'
 import CodeViewer from '@/components/common/CodeViewer.vue'
@@ -366,7 +426,7 @@ const stageState = ref({ clone: '', scan: '', analyze: '' })
 
 // ---- 过程记录(convert://log 事件 + 前端本地事件) ----
 const activity = ref([])
-const stageNames = { clone: '克隆', scan: '扫描', analyze: '分析', apply: '替换', store: '存储', agent: '助手' }
+const stageNames = { clone: '克隆', scan: '扫描', analyze: '分析', apply: '替换', store: '存储', agent: '助手', build: '构建' }
 const pushActivity = (stage, text) => activity.value.push({ stage, text, ts: Date.now() })
 const cloneTail = computed(() => activity.value.slice(-12))
 const logEl = ref(null)
@@ -551,6 +611,54 @@ watch(selectedPath, async (p) => {
 const regenPreview = async () => {
   if (busy.value) return
   try { await runApply() } catch (e) { message.error('生成失败: ' + (e.message || e)) }
+}
+
+// ---- 模板文件页(模板区) ----
+const tplSel = ref('')
+const keptFiles = computed(() => ir.files.filter((f) => f.action === 'keep'))
+const tplReplacedOf = (path) => ir.outputs.find((o) => o.path === path)?.replaced || 0
+const tplLines = computed(() => {
+  const c = ir.outputs.find((o) => o.path === tplSel.value)?.content ?? ''
+  const arr = String(c || '').split('\n')
+  const out = arr.slice(0, 3000).map(escHighlight)
+  if (arr.length > 3000) out.push('<span class="dim">… 已截断(共 ' + arr.length + ' 行)</span>')
+  return out.length ? out : ['']
+})
+const enterTplFiles = async () => {
+  centerTab.value = 'tplfiles'
+  if (!ir.outputs.length && !busy.value) {
+    try { await runApply() } catch (e) { message.error('生成替换结果失败: ' + (e.message || e)) }
+  }
+  if (!tplSel.value) {
+    const first = keptFiles.value.find((f) => tplReplacedOf(f.path) > 0) || keptFiles.value[0]
+    if (first) tplSel.value = first.path
+  }
+}
+const pickTplFile = (path) => { tplSel.value = path }
+const copyTplContent = async () => {
+  const c = ir.outputs.find((o) => o.path === tplSel.value)?.content ?? ''
+  try { await navigator.clipboard.writeText(c); message.success('已复制模板化内容') } catch { message.error('复制失败') }
+}
+
+// ---- 构建验证(§13.1 存储前可选门禁) ----
+const buildChecking = ref(false)
+const buildResult = ref(null)
+const runBuildCheck = async () => {
+  if (buildChecking.value) return
+  buildChecking.value = true
+  buildResult.value = null
+  try {
+    if (!ir.outputs.length) await runApply()
+    const vars = {}
+    for (const v of enabledVars.value) { const n = (v.name || '').trim(); if (n) vars[n] = v.defaultValue ?? '' }
+    pushActivity('build', '存储前构建验证:渲染落盘 + ' + (ir.source.packId || '') + ' 构建冒烟…')
+    const raw = await invoke('convert_build_check', { outputs: ir.outputs, variables: vars, packId: ir.source.packId })
+    buildResult.value = JSON.parse(raw)
+  } catch (e) {
+    buildResult.value = { ok: false, stage: 'error', error: String(e) }
+  } finally {
+    buildChecking.value = false
+  }
 }
 
 // ---- 整体渲染预览页 ----
@@ -954,6 +1062,21 @@ onBeforeUnmount(() => { unlistenLog?.() })
 .cw-tab:disabled { opacity: 0.45; cursor: not-allowed; }
 .cw-live { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #d97706; margin-left: 6px; animation: cw-breathe 1.2s ease-in-out infinite; }
 .cw-tabs-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+/* 分区:源代码区/模板区(zone 标签 + 分隔) */
+.cw-zone { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; color: var(--color-text-muted, #9aa0a6); padding: 2px 6px 2px 2px; user-select: none; white-space: nowrap; }
+.cw-zone.tpl { color: var(--color-brand, #16a34a); }
+.cw-zone-sep { width: 1px; height: 14px; background: var(--editor-border, #d8dde3); margin: 0 6px 0 2px; }
+.cw-tab-n.dim2 { background: var(--color-border, #d8dde3); color: var(--color-text-secondary, #64748b); }
+.cw-act-dot.build { background: #0ea5e9; }
+.cw-bc { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
+.cw-bc-state { font-size: 14px; font-weight: 600; }
+.cw-bc-state.ok { color: var(--color-brand, #16a34a); }
+.cw-bc-state.fail { color: #dc2626; }
+.cw-bc-dur { font-size: 11px; color: var(--color-text-muted, #9aa0a6); font-family: Consolas, monospace; margin-left: 8px; }
+.cw-bc-row { font-size: 12.5px; color: var(--color-text, #333); }
+.cw-bc-err { font-size: 12.5px; color: #b91c1c; background: rgba(220, 38, 38, 0.06); border-radius: 6px; padding: 8px 10px; word-break: break-all; }
+.cw-bc-log { margin: 0; padding: 10px 12px; background: #1e1e2e; color: #cdd6f4; border-radius: 8px; font-family: Consolas, 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.6; max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+.cw-bc-tip { font-size: 11px; color: var(--color-text-muted, #9aa0a6); }
 .cw-seg { display: flex; border: 1px solid var(--editor-border, #d8dde3); border-radius: 6px; overflow: hidden; }
 .cw-seg button { border: none; background: transparent; font-size: 11.5px; padding: 3px 10px; cursor: pointer; color: var(--color-text-secondary, #64748b); }
 .cw-seg button.on { background: var(--color-nav-active, #eef0ec); color: var(--color-text, #1b1c1f); font-weight: 600; }

@@ -59,6 +59,9 @@ pub struct RulePack {
     /// 入口文件(分析阶段优先读取);支持 * 通配
     #[serde(default)]
     pub entry_files: Vec<String>,
+    /// 构建验证命令(§13.1 存储前门禁;渲染产物落盘后执行)
+    #[serde(default)]
+    pub build_cmd: Option<String>,
     #[serde(default)]
     pub constants: Vec<ConstantRule>,
 }
@@ -843,6 +846,128 @@ pub async fn convert_agent_bash(
     .to_string())
 }
 
+// ===== 构建验证(§13.1:渲染落盘 → buildCmd 冒烟,存储前可选门禁) =====
+
+pub(crate) async fn build_check_impl(
+    outputs: Vec<serde_json::Value>,
+    variables: serde_json::Value,
+    build_cmd: &str,
+    log: ProgressLog<'_>,
+) -> Result<String, String> {
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    let dir = studio_home("buildcheck").join(ts.to_string());
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).map_err(|e| format!("创建构建目录失败: {e}"))?;
+
+    // 逐文件渲染落盘(失败即止——模板渲染不过,构建无从谈起)
+    for o in &outputs {
+        let path = o["path"].as_str().unwrap_or("").trim().to_string();
+        let content = o["content"].as_str().unwrap_or("");
+        if path.is_empty() || path.contains("..") || Path::new(&path).is_absolute() {
+            continue;
+        }
+        let rendered = super::template::render_string_content(content.to_string(), variables.clone()).await;
+        match rendered {
+            Ok(v) if v["success"].as_bool().unwrap_or(false) => {
+                let text = v["content"].as_str().unwrap_or("");
+                let full = dir.join(&path);
+                if let Some(p) = full.parent() {
+                    std::fs::create_dir_all(p).map_err(|e| format!("创建目录失败: {e}"))?;
+                }
+                std::fs::write(&full, text).map_err(|e| format!("写入失败: {e}"))?;
+            }
+            Ok(v) => {
+                let msg = v["error"]["message"].as_str().unwrap_or("未知渲染错误");
+                return Ok(serde_json::json!({
+                    "ok": false, "stage": "render", "path": path, "error": msg, "dir": dir.to_string_lossy(),
+                })
+                .to_string());
+            }
+            Err(e) => {
+                return Ok(serde_json::json!({
+                    "ok": false, "stage": "render", "path": path, "error": e, "dir": dir.to_string_lossy(),
+                })
+                .to_string());
+            }
+        }
+    }
+    log("build", &format!("渲染落盘 {} 文件,执行: {build_cmd}", outputs.len()));
+
+    // 构建执行(与 agent bash 同防护语义:超时/截断;命令是我们配置的,无 push 风险)
+    let t0 = std::time::Instant::now();
+    let timeout = 240_000u64;
+    let mut proc = std::process::Command::new("bash");
+    proc.args(["-lc", build_cmd])
+        .current_dir(&dir)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        proc.creation_flags(0x0800_0000);
+    }
+    let spawned = proc.spawn();
+    let (exit_ok, code, combined) = match spawned {
+        Err(e) => (false, -1, format!("无法启动 bash: {e}(请确认 Git Bash 在 PATH)")),
+        Ok(mut child) => {
+            let out_pipe = child.stdout.take();
+            let err_pipe = child.stderr.take();
+            let oh = std::thread::spawn(move || { use std::io::Read; let mut b = String::new(); if let Some(mut o) = out_pipe { let _ = o.read_to_string(&mut b); } b });
+            let eh = std::thread::spawn(move || { use std::io::Read; let mut b = String::new(); if let Some(mut e) = err_pipe { let _ = e.read_to_string(&mut b); } b });
+            let deadline = std::time::Instant::now() + std::time::Duration::from_millis(timeout);
+            let status = loop {
+                match child.try_wait() {
+                    Ok(Some(s)) => break Some(s),
+                    Ok(None) if std::time::Instant::now() >= deadline => {
+                        let _ = child.kill();
+                        break None;
+                    }
+                    Ok(None) => std::thread::sleep(std::time::Duration::from_millis(50)),
+                    Err(_) => break None,
+                }
+            };
+            let combined = format!("{}{}", oh.join().unwrap_or_default(), eh.join().unwrap_or_default());
+            match status {
+                Some(s) => (s.success(), s.code().unwrap_or(-1), combined),
+                None => (false, -1, format!("{combined}\n(构建超时 {timeout}ms 已终止)")),
+            }
+        }
+    };
+    let duration = t0.elapsed().as_millis();
+    let ok = exit_ok;
+    if ok {
+        log("build", &format!("构建通过({duration}ms)"));
+    } else {
+        log("build", &format!("构建失败(exit {code},{duration}ms)"));
+    }
+    Ok(serde_json::json!({
+        "ok": ok, "stage": "build", "command": build_cmd, "exitCode": code,
+        "durationMs": duration, "output": truncate_chars(combined.trim(), 64 * 1024),
+        "dir": dir.to_string_lossy(),
+    })
+    .to_string())
+}
+
+/// 存储前构建验证:outputs 按启用变量默认值渲染 → 落盘 buildcheck/<ts>/ → 规则包 buildCmd 冒烟
+#[tauri::command]
+pub async fn convert_build_check(
+    app: tauri::AppHandle,
+    outputs: Vec<serde_json::Value>,
+    variables: serde_json::Value,
+    pack_id: String,
+) -> Result<String, String> {
+    let log = move |s: &str, t: &str| emit_log(&app, s, t);
+    let build_cmd = all_packs()
+        .into_iter()
+        .find(|p| p.id == pack_id)
+        .and_then(|p| p.build_cmd)
+        .ok_or_else(|| format!("技术栈 {pack_id} 未配置构建命令(可在规则包 buildCmd 字段补充)"))?;
+    build_check_impl(outputs, variables, &build_cmd, &log).await
+}
+
 // ===== 草稿持久化(converts/<id>/,终稿前不进模板库) =====
 
 fn convert_draft_dir(id: &str) -> Result<PathBuf, String> {
@@ -1195,6 +1320,36 @@ admin_port = 8081".to_string()),
         let err = convert_agent_bash(root, "sleep 3".into(), Some(200)).await.unwrap_err();
         assert!(err.contains("超时"), "应超时: {err}");
         let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[tokio::test]
+    async fn build_check_renders_and_runs() {
+        let outputs = vec![serde_json::json!({ "path": "src/a.txt", "content": "hello {{ name }}" })];
+        let vars = serde_json::json!({ "name": "world" });
+        let out = build_check_impl(outputs, vars, "echo build-ok", &|_, _| {})
+            .await
+            .unwrap();
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert!(v["ok"].as_bool().unwrap(), "应构建通过: {out}");
+        assert_eq!(v["stage"].as_str(), Some("build"));
+        assert!(v["output"].as_str().unwrap_or("").contains("build-ok"));
+        // 渲染落盘内容正确(变量已注入)
+        let dir = std::path::PathBuf::from(v["dir"].as_str().unwrap());
+        assert_eq!(std::fs::read_to_string(dir.join("src/a.txt")).unwrap(), "hello world");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn build_check_render_failure_short_circuits() {
+        let outputs = vec![serde_json::json!({ "path": "b.txt", "content": "{{ name }" })]; // 未闭合
+        let out = build_check_impl(outputs, serde_json::json!({ "name": "x" }), "echo never", &|_, _| {})
+            .await
+            .unwrap();
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert!(!v["ok"].as_bool().unwrap());
+        assert_eq!(v["stage"].as_str(), Some("render"));
+        let dir = std::path::PathBuf::from(v["dir"].as_str().unwrap());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
 

@@ -174,6 +174,7 @@ pub fn run() {
             commands::convert::convert_agent_list,
             commands::convert::convert_agent_write,
             commands::convert::convert_agent_bash,
+            commands::convert::convert_build_check,
             commands::convert::convert_draft_save,
             commands::convert::convert_draft_load,
             commands::convert::convert_draft_list,
