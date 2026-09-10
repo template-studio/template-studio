@@ -112,18 +112,11 @@
           <button class="cw-tab" :class="{ active: centerTab === 'file' }" :disabled="!selectedPath" @click="centerTab = 'file'">
             文件预览
           </button>
-          <button v-if="isDataDriven" class="cw-tab" :class="{ active: centerTab === 'annotate' }" @click="centerTab = 'annotate'">
-            重点标注<span v-if="annotations.length" class="cw-ann-n">{{ annotations.length }}</span>
+          <button v-if="isDataDriven" class="cw-tab" :class="{ active: centerTab === 'focus' }" @click="centerTab = 'focus'">
+            重点文件<span v-if="focusFiles.length" class="cw-tab-n">{{ focusFiles.length }}</span>
           </button>
           <div class="cw-tabs-right">
             <template v-if="centerTab === 'file' && selectedPath">
-              <button
-                v-if="isDataDriven"
-                class="cw-mark-btn"
-                :disabled="!hasCodeSelection"
-                :title="hasCodeSelection ? '将选中代码标记为重点,分析时优先理解' : '在下方代码中选中片段后可标注'"
-                @click="addAnnotationFromSelection"
-              >标注重点</button>
               <div class="cw-seg">
                 <button :class="{ on: previewMode === 'tpl' }" @click="previewMode = 'tpl'">模板化</button>
                 <button :class="{ on: previewMode === 'raw' }" @click="previewMode = 'raw'">原文</button>
@@ -161,30 +154,49 @@
           </div>
         </div>
 
-        <!-- 重点标注页(数据驱动) -->
-        <div v-else-if="centerTab === 'annotate'" class="cw-annotpane">
-          <div class="cw-ann-head">
-            <div class="cw-ann-desc">
-              <b>重点代码标注</b>(可选)——在「文件预览」中选中代码片段后点「标注重点」。手工标注能让 AI 优先理解这些片段的模式(controller/service/mapper 等接入方式),显著降低理解成本。
+        <!-- 重点文件页(数据驱动):勾选 + AI 暴露范围 -->
+        <div v-else-if="centerTab === 'focus'" class="cw-focuspane">
+          <div class="cw-focus-head">
+            <div class="cw-focus-desc">
+              <b>勾选重点文件</b>——以文件为最小单元:例如 controller → service → mapper 的一条链路,或某个交互流程(树形菜单等)涉及的文件。
             </div>
-            <a-button v-if="stageState.analyze === 'wait'" type="primary" size="small" @click="rerunAnalyze">
-              完成标注,开始分析
-            </a-button>
-            <a-button v-else-if="annDirty" size="small" @click="rerunAnalyze">重新分析以应用标注</a-button>
+            <a-button v-if="stageState.analyze === 'wait'" type="primary" size="small" @click="rerunAnalyze">下一步 · 开始分析</a-button>
+            <a-button v-else-if="focusDirty" size="small" @click="rerunAnalyze">重新分析以应用勾选</a-button>
           </div>
 
-          <div v-if="annotations.length === 0" class="cw-empty">
-            暂无标注——跳过也可以直接开始分析;标注得越准,数据驱动模板的 CRUD 模式提取越好
+          <div class="cw-focus-opts">
+            <div class="cw-focus-opt-label">其它文件对 AI:</div>
+            <a-radio-group v-model:value="exposeAll">
+              <a-radio :value="true">全部暴露<small>内容都提供给 AI,细节更全,更耗 token</small></a-radio>
+              <a-radio :value="false">聚焦勾选<small>仅勾选文件内容 + 全项目目录结构,其它文件对 AI 不可见</small></a-radio>
+            </a-radio-group>
+            <span class="cw-focus-count">已勾选 {{ focusFiles.length }} 个文件</span>
           </div>
-          <div v-else class="cw-ann-list">
-            <div v-for="(a, i) in annotations" :key="i" class="cw-ann">
-              <div class="cw-ann-top">
-                <span class="cw-ann-path cw-mono" title="点击在预览中打开" @click="jumpToAnnotation(a)">{{ a.path }}</span>
-                <button class="cw-icon-btn sm" title="删除标注" @click="annotations.splice(i, 1)"><CloseOutlined /></button>
-              </div>
-              <pre class="cw-ann-code">{{ a.snippet }}</pre>
-              <input v-model="a.note" class="cw-ann-note" placeholder="备注(可选): 如 用户模块 controller CRUD 样例" spellcheck="false" />
-            </div>
+
+          <div class="cw-focus-tree">
+            <a-tree
+              v-model:checkedKeys="focusChecked"
+              checkable
+              :tree-data="treeData"
+              :selected-keys="selectedPath ? [selectedPath] : []"
+              :expanded-keys="expandedKeys"
+              :field-names="{ key: 'key', title: 'title', children: 'children' }"
+              @select="onTreeSelect"
+              @expand="onTreeExpand"
+            >
+              <template #title="opt">
+                <div class="cw-row" :class="{ excluded: opt.file && opt.file.action === 'exclude' }" :title="opt.file?.reason || opt.title">
+                  <template v-if="!opt.isDir">
+                    <span class="cw-dot" :class="opt.file?.action"></span>
+                    <span class="cw-name">{{ opt.title }}</span>
+                    <span v-if="opt.file?.isEntry" class="cw-entry">入口</span>
+                  </template>
+                  <template v-else>
+                    <span class="cw-name">{{ opt.title }}</span>
+                  </template>
+                </div>
+              </template>
+            </a-tree>
           </div>
         </div>
 
@@ -201,7 +213,7 @@
               <a-button size="small" type="link" @click="regenPreview">重新生成</a-button>
             </div>
             <div v-if="previewError" class="cw-issue warn"><b>无法读取</b>{{ previewError }}</div>
-            <div class="cw-code" ref="codeEl">
+            <div class="cw-code">
               <div v-for="(l, i) in previewLines" :key="i" class="cw-ln">
                 <span class="cw-no">{{ i + 1 }}</span>
                 <span class="cw-lc" v-html="l"></span>
@@ -278,8 +290,9 @@ const ir = reactive({
 })
 const lastSrc = ref('')
 const tplType = ref('scaffold')          // scaffold | data_driven(创建入口选择,存模板时使用)
-const annotations = ref([])              // 数据驱动重点标注 [{path, snippet, note}]
-const annDirty = ref(false)              // 标注在分析后有变更,提示重新分析
+const focusChecked = ref([])             // 数据驱动重点文件勾选(a-tree keys,含目录级联)
+const exposeAll = ref(true)              // 其它文件是否暴露给 AI(true=全部内容,false=聚焦勾选+目录结构)
+const focusDirty = ref(false)            // 勾选在分析后有变更,提示重新分析
 const isDataDriven = computed(() => tplType.value === 'data_driven')
 const busy = ref(false)
 const storing = ref(false)
@@ -311,6 +324,8 @@ const previewError = ref('')
 
 const tid = () => draftId.value
 const keptCount = computed(() => ir.files.filter((f) => f.action === 'keep').length)
+const filePathSet = computed(() => new Set(ir.files.map((f) => f.path)))
+const focusFiles = computed(() => focusChecked.value.filter((k) => filePathSet.value.has(k)))
 const enabledVars = computed(() => ir.variables.filter((v) => v.enabled))
 const canStore = computed(() => ir.source.dir && keptCount.value > 0 && !busy.value)
 const pipelineRunning = computed(() => Object.values(stageState.value).some((s) => s === 'run'))
@@ -381,31 +396,11 @@ const onTreeSelect = (keys, info) => {
 }
 const closePreview = () => { selectedPath.value = ''; centerTab.value = 'process' }
 
-// ---- 重点标注(数据驱动):预览中选中文本 → 标注 ----
-const codeEl = ref(null)
-const hasCodeSelection = ref(false)
-let codeSelectionText = ''
-const onDocSelectionChange = () => {
-  const sel = window.getSelection()
-  const text = sel ? String(sel) : ''
-  const inCode = !!sel?.anchorNode && !!codeEl.value && codeEl.value.contains(sel.anchorNode)
-  codeSelectionText = inCode ? text.trim() : ''
-  hasCodeSelection.value = codeSelectionText.length >= 2
-}
-const addAnnotationFromSelection = () => {
-  if (!hasCodeSelection.value || !selectedPath.value) return
-  const dup = annotations.value.some((a) => a.path === selectedPath.value && a.snippet === codeSelectionText)
-  if (dup) { message.info('该片段已标注过'); return }
-  annotations.value.push({ path: selectedPath.value, snippet: codeSelectionText, note: '' })
-  window.getSelection()?.removeAllRanges()
-  hasCodeSelection.value = false
-  message.success('已标注,可在「重点标注」页查看与管理')
-}
-const jumpToAnnotation = (a) => { selectedPath.value = a.path; centerTab.value = 'file' }
-// 标注变更:落草稿 + 若分析已完成则提示重新分析生效
-watch(() => JSON.stringify(annotations.value), () => {
+
+// 勾选/暴露策略变更:落草稿 + 若分析已完成则提示重新分析生效
+watch([() => focusChecked.value.join('|'), exposeAll], () => {
   scheduleSave()
-  if (stageState.value.analyze === 'done') annDirty.value = true
+  if (stageState.value.analyze === 'done') focusDirty.value = true
 })
 
 // ---- 预览(行号 + 占位符高亮;原文走 convert_read_file,模板化走 apply 结果) ----
@@ -484,8 +479,8 @@ const doScan = async () => {
   // 数据驱动:扫描后停在「重点标注」步骤(可选),由用户手动开始分析;脚手架:自动串行
   if (isDataDriven.value) {
     stageState.value.analyze = 'wait'
-    centerTab.value = 'annotate'
-    pushActivity('analyze', '数据驱动模式:可在「重点标注」中标注关键片段,完成后手动开始分析(也可跳过)')
+    centerTab.value = 'focus'
+    pushActivity('analyze', '数据驱动模式:在「重点文件」中勾选关键文件并选择 AI 暴露范围,点「下一步」开始分析(也可跳过)')
   } else {
     await doAnalyze()
   }
@@ -497,7 +492,8 @@ const doAnalyze = async () => {
   try {
     const raw = await invoke('convert_analyze', {
       root: ir.source.dir, files: keeps, provider: null, model: null, thinking: null,
-      annotations: isDataDriven.value ? annotations.value : [],
+      focusFiles: isDataDriven.value ? focusFiles.value : null,
+      exposeAllFiles: isDataDriven.value ? exposeAll.value : null,
     })
     const a = JSON.parse(raw)
     degraded.value = !!a.degraded
@@ -512,7 +508,7 @@ const doAnalyze = async () => {
       enabled: (v.confidence ?? 0) >= 0.6 || v.occurrenceCount > 2,
     }))
     stageState.value.analyze = 'done'
-    annDirty.value = false
+    focusDirty.value = false
   } catch (e) {
     degraded.value = true
     stageState.value.analyze = 'error'
@@ -616,7 +612,7 @@ const scheduleSave = () => {
         ir: {
           files: ir.files.map(({ path, action, reason }) => ({ path, action, reason })),
           variables: ir.variables,
-          annotations: isDataDriven.value ? annotations.value : [],
+          focus: isDataDriven.value ? { files: focusFiles.value, exposeAll: exposeAll.value } : null,
         },
       })
     } catch { /* 静默 */ }
@@ -635,7 +631,9 @@ const openDraft = async (id) => {
     tplType.value = d.meta?.tplType === 'data_driven' ? 'data_driven' : 'scaffold'
     ir.files = (d.ir?.files || []).map((f) => ({ ...f, base: f.path.split('/').pop(), dir: f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : '' }))
     ir.variables = d.ir?.variables || []
-    annotations.value = (d.ir?.annotations || []).map((a) => ({ path: a.path || '', snippet: a.snippet || '', note: a.note || '' })).filter((a) => a.path && a.snippet)
+    const f = d.ir?.focus
+    focusChecked.value = (f?.files || []).map(String)
+    exposeAll.value = f ? f.exposeAll !== false : true
     expandRoots()
     stageState.value = { clone: 'done', scan: 'done', analyze: 'done' }
     pushActivity('clone', `恢复草稿:${ir.source.source}`)
@@ -656,7 +654,6 @@ const winClose = async () => { try { await tauriApi.window.close() } catch {} }
 // ---- 事件监听(convert://log 过程流) ----
 let unlistenLog = null
 onMounted(async () => {
-  document.addEventListener('selectionchange', onDocSelectionChange)
   // 参数消费:src/branch/type(引导页或新建弹窗发起)→ 自动开跑;draft → 恢复;空参数 → 回落引导页
   if (route.query.draft) {
     openDraft(String(route.query.draft))
@@ -677,10 +674,7 @@ onMounted(async () => {
     })
   } catch { /* 非 tauri 环境(浏览器 dev)无事件 */ }
 })
-onBeforeUnmount(() => {
-  document.removeEventListener('selectionchange', onDocSelectionChange)
-  unlistenLog?.()
-})
+onBeforeUnmount(() => { unlistenLog?.() })
 </script>
 
 <style scoped>
@@ -819,25 +813,18 @@ onBeforeUnmount(() => {
 .cw-var-occ { font-size: 10.5px; color: var(--color-text-secondary, #999); }
 .cw-store-sum { font-size: 12px; color: var(--color-text-secondary, #999); }
 
-/* ===== 数据驱动:重点标注 ===== */
-.cw-ann-n { display: inline-flex; align-items: center; justify-content: center; min-width: 15px; height: 15px; padding: 0 4px; margin-left: 5px; border-radius: 8px; background: #3e7bfa; color: #fff; font-size: 10px; }
-.cw-mark-btn { border: 1px solid var(--editor-border, #d8dde3); background: #fff; color: var(--color-brand, #16a34a); font-size: 11.5px; padding: 3px 10px; border-radius: 6px; cursor: pointer; }
-.cw-mark-btn:hover:not(:disabled) { border-color: currentColor; }
-.cw-mark-btn:disabled { color: var(--color-text-muted, #b6bcc2); cursor: not-allowed; opacity: 0.7; }
-.cw-annotpane { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 14px 16px; gap: 12px; overflow: hidden; }
-.cw-ann-head { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-.cw-ann-desc { flex: 1; min-width: 0; font-size: 12px; line-height: 1.7; color: var(--color-text-secondary, #64748b); }
-.cw-ann-desc b { color: var(--color-text, #1b1c1f); }
-.cw-ann-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-.cw-ann { border: 1px solid var(--editor-border, #e2e8f0); border-radius: 8px; background: var(--editor-panel-bg, #fff); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
-.cw-ann-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.cw-ann-path { font-size: 12px; color: #3e7bfa; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cw-ann-path:hover { text-decoration: underline; }
-.cw-ann-code { margin: 0; padding: 8px 10px; background: var(--color-canvas, #f6f8fa); border-radius: 6px; font-family: Consolas, 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.55; color: var(--color-text, #333); white-space: pre-wrap; word-break: break-all; max-height: 160px; overflow-y: auto; }
-.cw-ann-note { border: none; outline: none; border-bottom: 1px dashed var(--editor-border, #d8dde3); font-size: 12px; color: var(--color-text-secondary, #666); padding: 2px 0; background: transparent; }
-.cw-ann-note:focus { border-bottom-color: var(--color-brand, #16a34a); border-bottom-style: solid; }
-
-/* 分析等待态(数据驱动标注步骤) */
+/* ===== 数据驱动:重点文件勾选 ===== */
+.cw-tab-n { display: inline-flex; align-items: center; justify-content: center; min-width: 15px; height: 15px; padding: 0 4px; margin-left: 5px; border-radius: 8px; background: #3e7bfa; color: #fff; font-size: 10px; }
+.cw-focuspane { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 14px 16px; gap: 10px; overflow: hidden; }
+.cw-focus-head { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.cw-focus-desc { flex: 1; min-width: 0; font-size: 12px; line-height: 1.7; color: var(--color-text-secondary, #64748b); }
+.cw-focus-desc b { color: var(--color-text, #1b1c1f); }
+.cw-focus-opts { display: flex; align-items: center; gap: 14px; flex-shrink: 0; padding: 8px 12px; border: 1px solid var(--editor-border, #e2e8f0); border-radius: 8px; background: var(--editor-panel-bg, #fff); font-size: 12.5px; }
+.cw-focus-opt-label { color: var(--color-text-secondary, #64748b); }
+.cw-focus-opts small { display: block; font-size: 11px; color: var(--color-text-muted, #9aa0a6); margin-top: 1px; }
+.cw-focus-count { margin-left: auto; font-size: 12px; color: #3e7bfa; white-space: nowrap; }
+.cw-focus-tree { flex: 1; min-height: 0; overflow-y: auto; border: 1px solid var(--editor-border, #e2e8f0); border-radius: 8px; background: var(--editor-panel-bg, #fff); padding: 6px 8px 12px; }
+/* 分析等待态(数据驱动重点文件步骤) */
 .cw-pstage.wait .cw-pdot, .cw-rstage.wait .cw-rdot { background: transparent; border: 2px solid #3e7bfa; width: 7px; height: 7px; }
 .cw-pstage.wait, .cw-rstage.wait { color: #3e7bfa; }
 </style>

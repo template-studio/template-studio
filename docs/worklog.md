@@ -1258,3 +1258,11 @@
 **涉及文件：** `src-tauri/src/commands/convert.rs`、`src/views/convert/index.vue`、`src/views/convert/components/ConvertSourceModal.vue`、`src/views/convert/guide.vue`、`src/views/my-templates/index.vue`、`src/components/layout/NavigationMenu.vue`
 
 **验收结果：** cargo test 23/23;pnpm build 通过;浏览器实测(临时 demo 已移除):引导页/弹窗标题与双类型卡渲染,数据驱动工作台标注页(徽标计数/完成分析按钮/标注卡跳预览/标注重点按钮禁用态)全部正常。
+
+## 2026-09-10 重点标注改为文件级勾选+AI 暴露范围控制（任务 #136）
+
+**变更内容：** 数据驱动模式「重点标注」重做为「重点文件」步骤(文件为最小单元)。①前端:片段选中文本标注 UI(selectionchange/标注重点按钮/标注列表)全部移除,改为树形勾选(a-tree checkable,目录级联,勾选计数联动页签徽标)+暴露策略单选(全部暴露=内容都给 AI 细节全更耗 token/聚焦勾选=仅勾选文件内容+全项目目录结构,其它文件对 AI 不可见),CTA「下一步 · 开始分析」,分析后勾选变更提示重新分析;②Rust convert_analyze:annotations 参数移除,新增 focus_files+expose_all_files——聚焦模式 AI 批次仅用勾选文件(不可读回退全量)、提示词附带全量目录结构(路径列表 cap 400);全部暴露+有勾选时提示词附重点文件标记;启发式通道始终全量(本地零成本,变量候选不因聚焦变窄);③草稿 ir.focus{files,exposeAll} 替代 ir.annotations。修复:focus watch getter 漏 .value 导致页面空白。
+
+**涉及文件：** `src-tauri/src/commands/convert.rs`、`src/views/convert/index.vue`
+
+**验收结果：** cargo test 23/23;pnpm build 通过;浏览器实测(临时 demo 已移除):重点文件页勾选树/双策略单选/勾选计数与页签徽标联动/下一步 CTA 正常。
