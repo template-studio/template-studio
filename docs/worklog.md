@@ -1530,3 +1530,11 @@
 **涉及文件：** `src/views/convert/index.vue`
 
 **验收结果：** pnpm build 通过。
+
+## 2026-09-10 编辑器 VSCode 化布局+SCM（任务 #147）
+
+**变更内容：** ①设计文档 §14(布局骨架/SCM 数据流/项目区归属);②新增 EditorActivityBar(资源/变量/SCM/AI 四项,AI 常驻底位,SCM 角标计数)与 ScmPanel(基线=最近 release 后首拉快照;变更=服务端内容相对基线 M/A/D+diffstat;行点击开文件,悬停放弃单文件=写回基线内容;全部放弃=resetToLatest;发布版本=createRelease(changelog)后基线前移);③编辑器布局改 ActivityBar|SideBar(视图切换:资源=TemplateExplorer,变量=VariableSidebar 整体搬入保留全部能力,SCM=ScmPanel)|编辑器+预览|AI;EditHeader 文件树/变量开关改映射 activeView;AI 应用/保存成功后刷新 SCM 计数。
+
+**涉及文件：** `src/views/editor/index.vue`、`src/views/editor/components/EditorActivityBar.vue`(新增)、`src/views/editor/components/ScmPanel.vue`(新增)、`dev-docs/project-to-template.md`(§14)
+
+**验收结果：** pnpm build 通过;SCM 真实比对需登录态后端,浏览器结构验证。

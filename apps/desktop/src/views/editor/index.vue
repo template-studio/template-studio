@@ -29,11 +29,12 @@
     </transition>
 
     <div class="edit-main">
-      <!-- 左侧栏：文件树 + 变量面板 -->
-      <div v-show="shouldShowLeftSidebar" class="left-sidebar">
-        <!-- 文件树面板 -->
+      <!-- Activity Bar(VSCode 式,#147) -->
+      <EditorActivityBar v-model:view="activeView" :scm-count="scmCount" :ai-open="aiDockOpen" @toggle-ai="aiDockOpen = !aiDockOpen" />
+
+      <!-- Side Bar:按 ActivityBar 视图切换 -->
+      <div v-show="activeView === 'explorer'" class="side-pane">
         <TemplateExplorer
-          v-show="isFileTreeVisible"
           v-model:treeData="treeData"
           :currentFile="currentFile"
           :template-name="templateInfo?.name || ''"
@@ -46,10 +47,11 @@
           @set-condition="onSetCondition"
           @show-releases="showReleasesModal = true"
         />
+      </div>
 
+      <div v-show="activeView === 'vars'" class="side-pane">
         <!-- 变量侧边栏 -->
         <VariableSidebar
-          v-show="isVariableSidebarVisible"
           :template-variables="templateVariables"
           :template-syntax-categories="templateSyntaxCategories"
           :builtin-function-categories="builtinFunctionCategories"
@@ -65,6 +67,10 @@
           @show-quick-design="showQuickDesign"
           @show-test-data="showTestDataFromHeader"
         />
+      </div>
+
+      <div v-show="activeView === 'scm'" class="side-pane">
+        <ScmPanel ref="scmRef" :template-id="route.params.id" @open-file="onSelectFileByPath" @changed="(n) => scmCount = n" />
       </div>
 
       <!-- 中间：编辑器区域 -->
@@ -189,6 +195,8 @@
   import ReleaseManager from './components/ReleaseManager.vue';
   import QuickDesignDrawer from './components/QuickDesignDrawer/index.vue';
   import EditorAiAssistant from './components/EditorAiAssistant.vue';
+  import EditorActivityBar from './components/EditorActivityBar.vue';
+  import ScmPanel from './components/ScmPanel.vue';
   import { templateSyntaxCategories as syntaxData } from './data/templateSyntax';
   import { useTemplateFileStore } from '@/stores/templateFileStore';
   import { message } from 'ant-design-vue';
@@ -359,6 +367,15 @@
   );
 
   const showAdvancedDrawer = ref(false);
+  // VSCode 化(#147):ActivityBar 视图与 SCM 计数
+  const activeView = ref(localStorage.getItem('ed-active-view') || 'explorer');
+  watch(activeView, (v) => localStorage.setItem('ed-active-view', v));
+  const scmCount = ref(0);
+  const scmRef = ref(null);
+  const onSelectFileByPath = (filePath) => {
+    const node = findNodeByPath(treeData.value, filePath);
+    if (node) onSelectFile(String(node.key || node.id));
+  };
   const showFullRenderDrawer = ref(false);
   const aiDockOpen = ref(false);
   const showReleasesModal = ref(false);
@@ -372,6 +389,7 @@
   };
   const onAgentFilesUpdated = () => {
     loadTree();
+    scmRef.value?.refresh?.();
   };
 
   const editorSettings = ref({
@@ -418,23 +436,14 @@
     return templateType.value === 'basic';
   });
 
-  const toggleVariableSidebar = () => {
-    isVariableSidebarVisible.value = !isVariableSidebarVisible.value;
-    localStorage.setItem(
-      'template-variable-sidebar-visible',
-      isVariableSidebarVisible.value.toString()
-    );
-  };
+  const toggleVariableSidebar = () => { activeView.value = activeView.value === 'vars' ? 'explorer' : 'vars' };
 
   const updateVariableSidebarWidth = (width) => {
     variableSidebarWidth.value = width;
     localStorage.setItem('template-variable-sidebar-width', width.toString());
   };
 
-  const toggleFileTree = () => {
-    isFileTreeVisible.value = !isFileTreeVisible.value;
-    localStorage.setItem('template-file-tree-visible', isFileTreeVisible.value.toString());
-  };
+  const toggleFileTree = () => { activeView.value = activeView.value === 'explorer' ? 'scm' : 'explorer' };
 
   const loadSettings = () => {
     const savedSettings = localStorage.getItem('template-editor-settings');
@@ -1121,6 +1130,7 @@
 
   // 保存成功后，如果预览面板处于展开状态，自动触发渲染
   function onSaveSuccess({ fileId, fileName, filePath }) {
+    scmRef.value?.refresh?.();
     console.log('文件已保存:', fileName);
 
     // 检查预览面板是否已展开
@@ -1309,12 +1319,11 @@
     transition: all 0.2s ease;
   }
 
-  .left-sidebar {
+  .side-pane {
     display: flex;
     min-height: 0;
     border-right: 1px solid var(--editor-border, #e2e8f0);
     background: var(--editor-panel-bg, #fafbfc);
-    transition: all 0.2s ease;
   }
 
   .editor-container {
