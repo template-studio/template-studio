@@ -19,7 +19,7 @@
       </div>
       <div class="cw-head-right">
         <a-button v-if="ir.source.dir" size="small" :class="{ 'cw-ai-on': aiDock }" :title="aiDock ? '收起转换助手' : '打开转换助手(实时过程+调整方向)'" @click="aiDock = !aiDock">
-          <template #icon><RobotOutlined /></template>助手
+          <template #icon><AiIcon :size="14" /></template>助手
         </a-button>
         <a-button v-if="ir.source.dir" size="small" :disabled="busy" @click="rerunAnalyze">
           <template #icon><RedoOutlined /></template>重新分析
@@ -226,15 +226,6 @@
         </div>
       </section>
 
-      <!-- 转换助手(Agent):本地工具+bash+IR 操作,见设计文档 §12 -->
-      <ConvertAgentPanel
-        v-if="aiDock"
-        :snapshot="agentSnapshot"
-        :exec-op="execAgentOp"
-        @close="aiDock = false"
-        @log="onAgentLog"
-      />
-
       <!-- 右:变量表 -->
       <aside class="cw-panel cw-right">
         <div class="cw-panel-head">
@@ -257,6 +248,15 @@
           </div>
         </div>
       </aside>
+
+      <!-- 转换助手(Agent):本地工具+bash+IR 操作,最右栏;见设计文档 §12 -->
+      <ConvertAgentPanel
+        v-if="aiDock"
+        :snapshot="agentSnapshot"
+        :exec-op="execAgentOp"
+        @close="aiDock = false"
+        @log="onAgentLog"
+      />
     </div>
 
     <!-- 存储对话框 -->
@@ -281,9 +281,10 @@ import { message } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
 import {
   ArrowLeftOutlined, CloseOutlined, RedoOutlined, SaveOutlined, MinusOutlined, BorderOutlined,
-  FileOutlined, FolderFilled, FolderOpenFilled, RobotOutlined,
+  FileOutlined, FolderFilled, FolderOpenFilled,
 } from '@ant-design/icons-vue'
 import ConvertAgentPanel from './components/ConvertAgentPanel.vue'
+import AiIcon from '@/components/icons/AiIcon.vue'
 import { tauriApi } from '@/utils/tauriApi'
 import { createUserTemplate } from '@/api/editor/templates/contribution'
 import { analyzeTemplateVariables } from '@/api/editor/templates'

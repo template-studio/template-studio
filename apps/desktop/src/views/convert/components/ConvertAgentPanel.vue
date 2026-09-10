@@ -1,7 +1,7 @@
 <template>
   <aside class="ag-panel">
     <div class="ag-head">
-      <RobotOutlined class="ag-logo" />
+      <AiIcon :size="16" class="ag-logo" />
       <span class="ag-title">转换助手</span>
       <span v-if="running" class="ag-live">运行中</span>
       <button class="ag-close" title="收起" @click="$emit('close')"><CloseOutlined /></button>
@@ -39,21 +39,23 @@
     </div>
 
     <div class="ag-composer">
-      <textarea
-        v-model="input"
-        class="ag-input"
-        rows="3"
-        placeholder="发消息指挥助手,Enter 发送 / Shift+Enter 换行"
-        :disabled="running"
-        @keydown.enter.exact.prevent="submit()"
-      ></textarea>
-      <div class="ag-bar">
+      <div class="ag-card">
+        <textarea
+          v-model="input"
+          class="ag-input"
+          rows="3"
+          placeholder="发消息指挥助手,Enter 发送 / Shift+Enter 换行"
+          :disabled="running"
+          @keydown.enter.exact.prevent="submit()"
+        ></textarea>
+        <div class="ag-bar">
         <button class="ag-chip" @click="modelOpen = !modelOpen">{{ modelLabel }}<DownOutlined /></button>
         <button class="ag-chip" @click="thinkOpen = !thinkOpen">思考:{{ thinkLabel }}<DownOutlined /></button>
         <button class="ag-chip" @click="permOpen = !permOpen">{{ permLabel }}<DownOutlined /></button>
         <div class="ag-send">
-          <button v-if="running" class="ag-stop" @click="abortFlag = true">停止</button>
-          <button v-else class="ag-go" :disabled="!input.trim()" @click="submit()">发送</button>
+          <button v-if="running" class="ag-stop" title="停止" @click="abortFlag = true"><PauseCircleOutlined /></button>
+          <button v-else class="ag-go" :disabled="!input.trim()" title="发送 (Enter)" @click="submit()"><SendOutlined /></button>
+        </div>
         </div>
       </div>
       <div v-if="modelOpen" class="ag-drop">
@@ -88,7 +90,8 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, reactive } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { RobotOutlined, CloseOutlined, DownOutlined, EditOutlined, ThunderboltOutlined, AuditOutlined, SafetyOutlined } from '@ant-design/icons-vue'
+import { CloseOutlined, DownOutlined, EditOutlined, ThunderboltOutlined, AuditOutlined, SafetyOutlined, SendOutlined, PauseCircleOutlined } from '@ant-design/icons-vue'
+import AiIcon from '@/components/icons/AiIcon.vue'
 import { useAIConfigStore } from '@/stores/ai-config'
 
 const props = defineProps({
@@ -415,16 +418,19 @@ defineExpose({ submit })
 .ag-pre { margin: 0; padding: 8px; background: var(--color-canvas, #f6f8fa); border-radius: 6px; font-family: Consolas, 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.55; white-space: pre-wrap; word-break: break-all; max-height: 220px; overflow-y: auto; color: var(--color-text, #333); }
 .ag-pre.out { color: var(--color-text-secondary, #555); }
 
-.ag-composer { flex-shrink: 0; border-top: 1px solid var(--editor-border, #e2e8f0); padding: 10px 12px 8px; display: flex; flex-direction: column; gap: 6px; position: relative; }
-.ag-input { width: 100%; border: 1px solid var(--editor-border, #e0e0e6); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; font-family: inherit; resize: none; outline: none; background: var(--ai-composer-bg, var(--editor-panel-bg, #fff)); color: var(--color-text, #1b1c1f); }
-.ag-input:focus { border-color: var(--color-brand, #16a34a); }
-.ag-bar { display: flex; align-items: center; gap: 4px; }
+.ag-composer { flex-shrink: 0; padding: 10px 12px; position: relative; }
+/* 输入卡片:textarea 与 chips 同卡(chips 在卡内底边,ZCode 式) */
+.ag-card { border: 1px solid var(--editor-border, #e0e0e6); border-radius: 10px; background: var(--ai-composer-bg, var(--editor-panel-bg, #fff)); overflow: hidden; transition: border-color 0.15s ease; }
+.ag-card:focus-within { border-color: var(--color-brand, #16a34a); }
+.ag-input { width: 100%; border: none; outline: none; resize: none; padding: 8px 10px 4px; font-size: 12.5px; font-family: inherit; background: transparent; color: var(--color-text, #1b1c1f); }
+.ag-input:disabled { opacity: 0.6; }
+.ag-bar { display: flex; align-items: center; gap: 4px; padding: 2px 6px 6px 8px; }
 .ag-chip { display: inline-flex; align-items: center; gap: 4px; border: none; background: transparent; font-size: 11px; color: var(--color-text-secondary, #64748b); padding: 3px 8px; border-radius: 6px; cursor: pointer; }
 .ag-chip:hover { background: var(--color-hover, #f1f5f9); color: var(--color-text, #1b1c1f); }
 .ag-send { margin-left: auto; display: flex; gap: 6px; }
-.ag-go { border: none; background: var(--color-primary, #1b1c1f); color: var(--color-text-light, #fff); font-size: 11.5px; padding: 4px 14px; border-radius: 6px; cursor: pointer; }
-.ag-go:disabled { opacity: 0.4; cursor: not-allowed; }
-.ag-stop { border: 1px solid #dc2626; color: #dc2626; background: transparent; font-size: 11.5px; padding: 3px 12px; border-radius: 6px; cursor: pointer; }
+.ag-go { width: 26px; height: 26px; border: none; border-radius: 6px; background: var(--color-primary, #1b1c1f); color: var(--color-text-light, #fff); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; }
+.ag-go:disabled { background: var(--color-surface, #ececea); color: var(--color-text-muted, #a6a8ad); cursor: not-allowed; }
+.ag-stop { width: 26px; height: 26px; border: none; border-radius: 6px; background: rgba(220, 38, 38, 0.08); color: #dc2626; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; }
 
 .ag-drop { position: absolute; bottom: 100%; left: 12px; right: 12px; max-height: 260px; overflow-y: auto; background: var(--editor-panel-bg, #fff); border: 1px solid var(--editor-border, #e2e8f0); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); padding: 4px; z-index: 20; margin-bottom: 4px; }
 .ag-drop.wide { left: auto; width: 320px; }

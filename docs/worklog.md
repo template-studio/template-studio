@@ -1274,3 +1274,19 @@
 **涉及文件：** `dev-docs/project-to-template.md`(§12)、`src-tauri/src/commands/convert.rs`、`src-tauri/src/lib.rs`、`src/views/convert/components/ConvertAgentPanel.vue`(新增)、`src/views/convert/index.vue`
 
 **验收结果：** cargo test 26/26(新增哈希守卫/list 跳 .git/bash 拦截+执行+超时三测);pnpm build 通过;浏览器实测(临时 demo 已移除):助手面板渲染/欢迎语/composer 三 chips/权限下拉四模式/关闭面板正常。真实 agent 轮次需桌面端配 provider 后验收。
+
+## 2026-09-10 转换助手:图标与栏位修正（任务 #138）
+
+**变更内容：** 助手图标由 RobotOutlined 换为项目 AiIcon(面板头部与工作台头部按钮,与编辑器一致);ConvertAgentPanel 移至最右栏(文件树|中栏|变量|助手)。
+
+**涉及文件：** `src/views/convert/index.vue`、`src/views/convert/components/ConvertAgentPanel.vue`
+
+**验收结果：** pnpm build 通过;DOM 顺序确认面板位于变量栏之后。
+
+## 2026-09-10 转换助手 composer 修正（任务 #139）
+
+**变更内容：** chips(模型/思考/权限)移入输入框卡片内部底边(卡片外框化,textarea 去独立边框,focus 高亮整卡);发送改为图标按钮(启用深色/禁用浅灰,停止为红色图标)。
+
+**涉及文件：** `src/views/convert/components/ConvertAgentPanel.vue`
+
+**验收结果：** pnpm build 通过;浏览器实测 chips 在卡内(3 枚)、发送为图标按钮、textarea 无边框。
