@@ -81,7 +81,7 @@
       </nav>
 
       <!-- Side Bar:当前分区视图 -->
-      <aside class="cw-sidebar">
+      <aside v-if="activeView !== 'focus'" class="cw-sidebar">
         <template v-if="activeView === 'source'">
           <div class="cw-panel-head">
             <span>源代码</span>
@@ -160,73 +160,25 @@
             <div v-if="!keptFiles.length" class="cw-tl-empty">模板暂无文件——在源代码区切换保留</div>
           </div>
         </template>
-        <template v-else-if="activeView === 'focus'">
-          <div class="cw-panel-head">
-            <span>重点文件</span>
-            <span class="cw-count">已勾选 {{ focusFiles.length }}</span>
-          </div>
-                    <div class="cw-focus-head">
-            <div class="cw-focus-desc">
-              <b>勾选重点文件</b>——以文件为最小单元:例如 controller → service → mapper 的一条链路,或某个交互流程(树形菜单等)涉及的文件。
-            </div>
-            <a-button v-if="stageState.analyze === 'wait'" type="primary" size="small" @click="rerunAnalyze">下一步 · 开始分析</a-button>
-            <a-button v-else-if="focusDirty" size="small" @click="rerunAnalyze">重新分析以应用勾选</a-button>
-          </div>
-
-          <div class="cw-focus-opts">
-            <div class="cw-focus-opt-label">其它文件对 AI:</div>
-            <a-radio-group v-model:value="exposeAll">
-              <a-radio :value="true">全部暴露<small>内容都提供给 AI,细节更全,更耗 token</small></a-radio>
-              <a-radio :value="false">聚焦勾选<small>仅勾选文件内容 + 全项目目录结构,其它文件对 AI 不可见</small></a-radio>
-            </a-radio-group>
-            <span class="cw-focus-count">已勾选 {{ focusFiles.length }} 个文件</span>
-          </div>
-
-          <div class="cw-focus-tree">
-            <a-tree
-              v-model:checkedKeys="focusChecked"
-              checkable
-              :tree-data="treeData"
-              :selected-keys="selectedPath ? [selectedPath] : []"
-              :expanded-keys="expandedKeys"
-              :field-names="{ key: 'key', title: 'title', children: 'children' }"
-              @select="onTreeSelect"
-              @expand="onTreeExpand"
-            >
-              <template #title="opt">
-                <div class="cw-row" :class="{ excluded: opt.file && opt.file.action === 'exclude' }" :title="opt.file?.reason || opt.title">
-                  <template v-if="!opt.isDir">
-                    <span class="cw-dot" :class="opt.file?.action"></span>
-                    <span class="cw-name">{{ opt.title }}</span>
-                    <span v-if="opt.file?.isEntry" class="cw-entry">入口</span>
-                  </template>
-                  <template v-else>
-                    <span class="cw-name">{{ opt.title }}</span>
-                  </template>
-                </div>
-              </template>
-            </a-tree>
-          </div>
-        
-        </template>
         <template v-else-if="activeView === 'vars'">
           <div class="cw-panel-head">
             <span>变量</span>
             <span class="cw-count">{{ enabledVars.length }}/{{ ir.variables.length }} 启用</span>
           </div>
           <div class="cw-vars">
-        <div v-for="(v, i) in ir.variables" :key="i" class="cw-var" :class="{ off: !v.enabled }">
-            <div class="cw-var-top">
-              <a-checkbox v-model:checked="v.enabled" size="small" />
-              <input v-model="v.name" class="cw-var-name cw-mono" :disabled="!v.enabled" spellcheck="false" />
-              <span class="cw-conf" :title="`置信度 ${v.confidence}`" :style="{ color: confColor(v.confidence) }">●</span>
+            <div v-if="ir.variables.length === 0" class="cw-tl-empty">尚无候选变量——完成分析后在此调整</div>
+            <div v-for="(v, i) in ir.variables" :key="i" class="cw-var" :class="{ off: !v.enabled }">
+              <div class="cw-var-top">
+                <a-checkbox v-model:checked="v.enabled" size="small" />
+                <input v-model="v.name" class="cw-var-name cw-mono" :disabled="!v.enabled" spellcheck="false" />
+                <span class="cw-conf" :title="`置信度 ${v.confidence}`" :style="{ color: confColor(v.confidence) }">●</span>
+              </div>
+              <div class="cw-var-mid">
+                <span class="cw-var-sem">{{ v.semantic }}</span>
+                <input v-model="v.defaultValue" class="cw-var-def" :disabled="!v.enabled" spellcheck="false" />
+              </div>
+              <div class="cw-var-occ" :title="occTooltip(v)">{{ v.occurrenceCount || 0 }} 处 · {{ v.occurrences?.length || 0 }} 文件</div>
             </div>
-            <div class="cw-var-mid">
-              <span class="cw-var-sem">{{ v.semantic }}</span>
-              <input v-model="v.defaultValue" class="cw-var-def" :disabled="!v.enabled" spellcheck="false" />
-            </div>
-            <div class="cw-var-occ" :title="occTooltip(v)">{{ v.occurrenceCount || 0 }} 处 · {{ v.occurrences?.length || 0 }} 文件</div>
-          </div>
           </div>
         </template>
       </aside>
@@ -237,6 +189,7 @@
           <span class="cw-crumb cw-mono" :title="selectedPath">{{ selectedPath || activeLabel }}</span>
           <div class="cw-chead-right">
             <template v-if="selectedPath">
+              <button class="cw-icon-btn sm" title="关闭预览" @click="closePreview"><CloseOutlined /></button>
               <div class="cw-seg">
                 <button :class="{ on: previewMode === 'render' }" title="变量默认值注入后的生成效果(编辑器同款渲染引擎)" @click="previewMode = 'render'">渲染</button>
                 <button :class="{ on: previewMode === 'tpl' }" @click="previewMode = 'tpl'">模板化</button>
@@ -250,14 +203,60 @@
           </div>
         </div>
 
+        <!-- 重点文件工作台(主内容区:左勾选树 + 右策略面板) -->
+        <div v-if="activeView === 'focus'" class="cw-focus-main">
+          <div class="cw-focus-treebox">
+            <div class="cw-focus-tree">
+              <a-tree
+                v-model:checkedKeys="focusChecked"
+                checkable
+                :tree-data="treeData"
+                :selected-keys="selectedPath ? [selectedPath] : []"
+                :expanded-keys="expandedKeys"
+                :field-names="{ key: 'key', title: 'title', children: 'children' }"
+                @select="onTreeSelect"
+                @expand="onTreeExpand"
+              >
+                <template #title="opt">
+                  <div class="cw-row" :class="{ excluded: opt.file && opt.file.action === 'exclude' }" :title="opt.file?.reason || opt.title">
+                    <template v-if="!opt.isDir">
+                      <span class="cw-dot" :class="opt.file?.action"></span>
+                      <span class="cw-name">{{ opt.title }}</span>
+                      <span v-if="opt.file?.isEntry" class="cw-entry">入口</span>
+                    </template>
+                    <template v-else>
+                      <span class="cw-name">{{ opt.title }}</span>
+                    </template>
+                  </div>
+                </template>
+              </a-tree>
+            </div>
+          </div>
+          <div class="cw-focus-side">
+            <div class="cw-panel-head">
+              <span>重点文件</span>
+              <span class="cw-count">已勾选 {{ focusFiles.length }}</span>
+            </div>
+            <div class="cw-focus-desc">
+              <b>勾选重点文件</b>——以文件为最小单元:例如 controller → service → mapper 的一条链路,或某个交互流程(树形菜单等)涉及的文件。
+            </div>
+            <a-button v-if="stageState.analyze === 'wait'" type="primary" size="small" @click="rerunAnalyze">下一步 · 开始分析</a-button>
+            <a-button v-else-if="focusDirty" size="small" @click="rerunAnalyze">重新分析以应用勾选</a-button>
+            <div class="cw-focus-opts">
+              <div class="cw-focus-opt-label">其它文件对 AI:</div>
+              <a-radio-group v-model:value="exposeAll">
+                <a-radio :value="true">全部暴露<small>内容都提供给 AI,细节更全,更耗 token</small></a-radio>
+                <a-radio :value="false">聚焦勾选<small>仅勾选文件内容 + 全项目目录结构,其它文件对 AI 不可见</small></a-radio>
+              </a-radio-group>
+            </div>
+            <span class="cw-focus-count">已勾选 {{ focusFiles.length }} 个文件</span>
+          </div>
+        </div>
+
         <!-- 文件内容区 -->
-        <div v-if="selectedPath" class="cw-filepane">
+        <div v-else-if="selectedPath" class="cw-filepane">
           <div v-if="!selectedPath" class="cw-empty">点击左侧文件查看预览;行尾「保留/剔除」控制该文件是否进入模板</div>
           <template v-else>
-            <div class="cw-file-head">
-              <span class="cw-mono">{{ selectedPath }}</span>
-              <button class="cw-icon-btn sm" title="关闭预览" @click="closePreview"><CloseOutlined /></button>
-            </div>
             <div v-if="tplStale" class="cw-stale">
               变量或文件清单已变更,模板化预览已失效
               <a-button size="small" type="link" @click="regenPreview">重新生成</a-button>
@@ -1088,6 +1087,12 @@ onBeforeUnmount(() => { unlistenLog?.() })
 /* ===== 数据驱动:重点文件勾选 ===== */
 .cw-tab-n { display: inline-flex; align-items: center; justify-content: center; min-width: 15px; height: 15px; padding: 0 4px; margin-left: 5px; border-radius: 8px; background: #3e7bfa; color: #fff; font-size: 10px; }
 .cw-focuspane { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 10px 12px; gap: 8px; overflow: hidden; }
+/* 重点文件主内容区:左树右策略 */
+.cw-focus-main { flex: 1; min-height: 0; display: flex; gap: 14px; padding: 14px 16px; }
+.cw-focus-treebox { flex: 1.5; min-width: 0; display: flex; flex-direction: column; }
+.cw-focus-side { width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
+.cw-focus-main .cw-focus-tree { flex: 1; }
+.cw-focus-main .cw-focus-head { flex-direction: column; align-items: stretch; }
 .cw-focus-head { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
 .cw-focus-desc { flex: 1; min-width: 0; font-size: 12px; line-height: 1.7; color: var(--color-text-secondary, #64748b); }
 .cw-focus-desc b { color: var(--color-text, #1b1c1f); }
