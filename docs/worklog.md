@@ -1346,3 +1346,19 @@
 **涉及文件：** `src/views/convert/index.vue`
 
 **验收结果：** pnpm build 通过;变量 v-for 单处无重复,旧栏已删净。
+
+## 2026-09-10 文件树默认折叠+模板视图树形化（任务 #151）
+
+**变更内容：** 文件树默认全折叠(VSCode 式,expandRoots 置空);buildTree 抽为 buildTreeFiles(files) 函数,模板 Side Bar 视图由平铺列表改为 a-tree 嵌套树(仅保留文件,目录级联展开,选中默认模板化视图,替换徽标/入口标记保留)。
+
+**涉及文件：** `src/views/convert/index.vue`
+
+**验收结果：** pnpm build 通过。
+
+## 2026-09-10 源代码侧栏重复栏头修复（任务 #151 补）
+
+**变更内容：** #146 搬运源码树时旧「文件 N/M 保留」栏头残留,与「源代码」头叠两行,删除旧头。
+
+**涉及文件：** `src/views/convert/index.vue`
+
+**验收结果：** pnpm build 通过。

@@ -87,10 +87,6 @@
             <span>源代码</span>
             <span class="cw-count">{{ keptCount }}/{{ ir.files.length }} 保留</span>
           </div>
-          <div class="cw-panel-head">
-          <span>文件</span>
-          <span class="cw-count">{{ keptCount }}/{{ ir.files.length }} 保留</span>
-        </div>
         <div class="cw-tree">
           <a-tree
             :tree-data="treeData"
@@ -139,16 +135,28 @@
             <span>模板文件</span>
             <span class="cw-count">{{ keptFiles.length }} 文件</span>
           </div>
-          <div class="cw-ra-list flat">
-            <div
-              v-for="f in keptFiles" :key="f.path"
-              class="cw-ra-item" :class="{ cur: f.path === selectedPath }"
-              @click="onTplSelect(f.path)"
+          <div class="cw-tree">
+            <a-tree
+              :tree-data="tplTreeData"
+              :selected-keys="selectedPath ? [selectedPath] : []"
+              :expanded-keys="expandedKeys"
+              :field-names="{ key: 'key', title: 'title', children: 'children' }"
+              @select="onTplTreeSelect"
+              @expand="onTreeExpand"
             >
-              <span class="cw-ra-name">{{ f.base }}</span>
-              <span class="cw-ra-path">{{ f.path }}</span>
-              <span v-if="tplReplacedOf(f.path)" class="cw-ra-badge">{{ tplReplacedOf(f.path) }}</span>
-            </div>
+              <template #title="opt">
+                <div class="cw-row" :title="opt.title">
+                  <template v-if="!opt.isDir">
+                    <span class="cw-name">{{ opt.title }}</span>
+                    <span v-if="opt.file?.isEntry" class="cw-entry">入口</span>
+                    <span v-if="tplReplacedOf(opt.key)" class="cw-ra-badge">{{ tplReplacedOf(opt.key) }}</span>
+                  </template>
+                  <template v-else>
+                    <span class="cw-name">{{ opt.title }}</span>
+                  </template>
+                </div>
+              </template>
+            </a-tree>
             <div v-if="!keptFiles.length" class="cw-tl-empty">模板暂无文件——在源代码区切换保留</div>
           </div>
         </template>
@@ -482,7 +490,7 @@ const stages = computed(() => [
 // ---- 文件树(嵌套) ----
 const expandedKeys = ref([])
 const expandedSet = computed(() => new Set(expandedKeys.value.map(String)))
-const treeData = computed(() => {
+const buildTreeFiles = (files) => {
   const dirMap = new Map()
   const roots = []
   const ensureDir = (dirPath) => {
@@ -496,19 +504,18 @@ const treeData = computed(() => {
     parent.push(node)
     return node.children
   }
-  for (const f of ir.files) ensureDir(f.dir).push({ key: f.path, title: f.base, isDir: false, file: f })
+  for (const f of files) ensureDir(f.dir).push({ key: f.path, title: f.base, isDir: false, file: f })
   const sortNodes = (arr) => {
     arr.sort((a, b) => (a.isDir === b.isDir ? a.title.localeCompare(b.title) : a.isDir ? -1 : 1))
     arr.forEach((n) => n.isDir && sortNodes(n.children))
   }
   sortNodes(roots)
   return roots
-})
-const expandRoots = () => {
-  const s = new Set()
-  for (const f of ir.files) if (f.path.includes('/')) s.add(f.path.split('/')[0])
-  expandedKeys.value = [...s]
 }
+const treeData = computed(() => buildTreeFiles(ir.files))
+const tplTreeData = computed(() => buildTreeFiles(keptFiles.value))
+// 默认全折叠(VSCode 式),用户自行展开
+const expandRoots = () => { expandedKeys.value = [] }
 const filesUnder = (dir) => ir.files.filter((f) => f.path.startsWith(dir + '/'))
 const dirKept = (dir) => filesUnder(dir).filter((f) => f.action === 'keep').length
 const dirAllExcluded = (dir) => { const s = filesUnder(dir); return s.length > 0 && s.every((f) => f.action === 'exclude') }
@@ -579,6 +586,10 @@ const regenPreview = async () => {
 
 // ---- 模板文件页(模板区) ----
 const keptFiles = computed(() => ir.files.filter((f) => f.action === 'keep'))
+const onTplTreeSelect = (keys, info) => {
+  const d = info?.node?.dataRef || info?.node || {}
+  if (!d.isDir && d.file) onTplSelect(String(d.key))
+}
 const onTplSelect = async (path) => {
   selectedPath.value = path
   previewMode.value = 'tpl'
