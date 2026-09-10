@@ -1242,3 +1242,11 @@
 **涉及文件：** `src/views/convert/guide.vue`(新增)、`src/views/convert/components/ConvertSourceModal.vue`(新增)、`src/views/convert/index.vue`、`src/views/templates/index.vue`、`src/router/index.js`、`src/App.vue`
 
 **验收结果：** pnpm build 通过;浏览器实测:引导页在主布局内渲染(侧边栏/顶栏在),新建卡点击弹窗(双模式切换/浏览按钮/取消),无参数访问 /convert/workbench 自动回落引导页。
+
+## 2026-09-10 脚手架页去 CRUD:三选项新建流程合并到我的模板（任务 #134）
+
+**变更内容：** 职责归位——脚手架页(/templates)纯市场化,创建/编辑入口全部迁至我的模板页(/my-templates)。①脚手架页移除:新建模板按钮、三选项弹窗、空白创建表单、ZIP 导入流、从项目转换弹窗、卡片编辑按钮,及相关脚本/样式/依赖导入,仅保留浏览/筛选/排序/使用向导;②我的模板页新建模板改为三选项(空白创建/上传 ZIP/从项目转换):空白与 ZIP 复用现有表单(ZIP 模式创建后触发压缩包选择,导入后进编辑器),从项目转换弹 ConvertSourceModal(与引导页共用)跳工作台;创建后统一跳编辑器(编辑分支维持原刷新列表行为)。
+
+**涉及文件：** `src/views/templates/index.vue`、`src/views/my-templates/index.vue`
+
+**验收结果：** pnpm build 通过;浏览器实测:脚手架页无「新建模板/编辑模板」入口,我的模板页三选项弹窗正常,「从项目转换」关闭选项弹窗并打开来源弹窗。

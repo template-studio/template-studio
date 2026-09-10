@@ -7,7 +7,7 @@
         <span class="result-count">管理你创建的模板，编辑内容并提交发布</span>
       </div>
       <div class="toolbar-right">
-        <a-button type="primary" @click="handleCreate">
+        <a-button type="primary" @click="openCreateChoice">
           <template #icon><PlusOutlined /></template>
           新建模板
         </a-button>
@@ -106,6 +106,36 @@
       </template>
     </a-dropdown>
 
+    <!-- 新建方式选择:空白 / ZIP / 项目转换 -->
+    <a-modal v-model:open="showCreateChoice" title="新建模板" :footer="null" :width="520">
+      <div class="create-choice">
+        <div class="choice-card" @click="pickCreate('blank')">
+          <FileAddOutlined class="choice-ico" />
+          <div class="choice-text">
+            <div class="choice-title">空白创建</div>
+            <div class="choice-sub">从零开始,在编辑器中搭建</div>
+          </div>
+        </div>
+        <div class="choice-card" @click="pickCreate('zip')">
+          <FileZipOutlined class="choice-ico" />
+          <div class="choice-text">
+            <div class="choice-title">上传 ZIP</div>
+            <div class="choice-sub">创建模板后选择压缩包导入</div>
+          </div>
+        </div>
+        <div class="choice-card" @click="pickCreate('convert')">
+          <FolderOpenOutlined class="choice-ico convert" />
+          <div class="choice-text">
+            <div class="choice-title">从项目转换</div>
+            <div class="choice-sub">git 仓库克隆 → AI 分析 → 模板化</div>
+          </div>
+        </div>
+      </div>
+    </a-modal>
+    <input ref="zipInput" type="file" accept=".zip" style="display: none" @change="onZipPicked" />
+    <!-- 从项目转换:来源选择(与项目转换引导页共用组件) -->
+    <ConvertSourceModal v-model:open="showConvertSource" @start="onConvertStart" />
+
     <!-- 创建/编辑弹窗 -->
     <a-modal v-model:open="showModal" :title="editingId ? '编辑模板' : '新建模板'" :mask-closable="false" :width="640" :footer="null">
       <a-form ref="formRef" :model="formData" :rules="formRules" layout="vertical" style="margin-top: 12px;">
@@ -130,7 +160,7 @@
       </a-form>
       <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px">
         <a-button @click="showModal = false">取消</a-button>
-        <a-button type="primary" @click="handleSubmit" :loading="submitting">{{ editingId ? '更新' : '创建' }}</a-button>
+        <a-button type="primary" @click="handleSubmit" :loading="submitting">{{ editingId ? '更新' : (zipMode ? '创建并导入 ZIP' : '创建并编辑') }}</a-button>
       </div>
     </a-modal>
 
@@ -162,15 +192,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import {
   PlusOutlined, EditOutlined, ProfileOutlined, ForkOutlined, FileTextOutlined,
+  FileAddOutlined, FileZipOutlined, FolderOpenOutlined,
 } from '@ant-design/icons-vue'
 import { listMyTemplates, createUserTemplate, updateUserTemplate, deleteUserTemplate, submitForReview } from '@/api/editor/templates/contribution'
 import { forkTemplate } from '@/api/editor/templates'
 import { getCategories, getLanguages } from '@/api/templates'
+import { uploadZipFile } from '@/api/editor/templateFiles'
+import ConvertSourceModal from '@/views/convert/components/ConvertSourceModal.vue'
 
 const router = useRouter()
 
@@ -314,6 +347,44 @@ function handleCreate() {
   showModal.value = true
 }
 
+// ---- 新建三选项:空白 / ZIP / 项目转换 ----
+const showCreateChoice = ref(false)
+const zipMode = ref(false)
+const zipInput = ref(null)
+const pendingZipTemplateId = ref(null)
+const showConvertSource = ref(false)
+
+const openCreateChoice = () => { showCreateChoice.value = true }
+
+const pickCreate = (mode) => {
+  showCreateChoice.value = false
+  if (mode === 'convert') { showConvertSource.value = true; return }
+  zipMode.value = mode === 'zip'
+  handleCreate()
+}
+
+const onConvertStart = ({ source, branch }) => {
+  showConvertSource.value = false
+  router.push({ path: '/convert/workbench', query: { src: source, ...(branch ? { branch } : {}) } })
+}
+
+const onZipPicked = async (e) => {
+  const file = e.target.files?.[0]
+  e.target.value = ''
+  const tid = pendingZipTemplateId.value
+  if (!file || !tid) return
+  try {
+    await uploadZipFile(tid, file)
+    message.success('ZIP 导入成功,正在打开编辑器...')
+    router.push(`/editor/${tid}`)
+  } catch (err) {
+    message.error('ZIP 导入失败: ' + (err.message || err) + '(已打开编辑器,可手动上传)')
+    router.push(`/editor/${tid}`)
+  } finally {
+    pendingZipTemplateId.value = null
+  }
+}
+
 function handleEdit(tmpl) {
   editingId.value = tmpl.id
   formData.value = {
@@ -345,12 +416,26 @@ async function handleSubmit() {
     if (editingId.value) {
       await updateUserTemplate(editingId.value, data)
       message.success('模板更新成功')
+      showModal.value = false
+      loadTemplates()
     } else {
-      await createUserTemplate(data)
-      message.success('模板创建成功')
+      // 新建三选项收口:创建后 ZIP 导入或直接进编辑器
+      const res = await createUserTemplate(data)
+      const newId = res?.data?.data?.id
+      showModal.value = false
+      if (newId && zipMode.value) {
+        pendingZipTemplateId.value = newId
+        message.info('模板已创建,请选择 ZIP 压缩包')
+        nextTick(() => zipInput.value?.click())
+      } else if (newId) {
+        message.success('模板创建成功，正在打开编辑器...')
+        router.push(`/editor/${newId}`)
+      } else {
+        message.success('模板创建成功')
+        loadTemplates()
+      }
+      zipMode.value = false
     }
-    showModal.value = false
-    loadTemplates()
   } catch {
     message.error(editingId.value ? '更新失败' : '创建失败')
   } finally {
@@ -580,4 +665,12 @@ function formatDate(d) {
   padding: 8px 12px; background: var(--color-hover); border-radius: 6px;
   color: var(--color-text-secondary); width: 100%; border: 1px solid var(--color-border);
 }
+
+.create-choice { display: flex; flex-direction: column; gap: 10px; padding: 8px 4px 4px; }
+.choice-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--color-border, #e5e5e2); border-radius: 10px; cursor: pointer; transition: border-color 0.15s ease, background-color 0.15s ease; }
+.choice-card:hover { border-color: var(--color-brand, #16a34a); background: rgba(22, 163, 74, 0.04); }
+.choice-ico { font-size: 22px; color: var(--color-text-secondary, #999); }
+.choice-card:hover .choice-ico { color: var(--color-brand, #16a34a); }
+.choice-title { font-size: 14px; font-weight: 600; color: var(--color-text, #1b1c1f); }
+.choice-sub { font-size: 12px; color: var(--color-text-secondary, #999); margin-top: 2px; }
 </style>

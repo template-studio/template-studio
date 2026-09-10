@@ -7,10 +7,6 @@
         <span class="result-count">共 {{ filteredTemplates.length }} 个模板</span>
       </div>
       <div class="toolbar-right">
-        <a-button v-if="configStore.hasApiKey" type="primary" @click="openCreateModal">
-          <template #icon><PlusOutlined /></template>
-          新建模板
-        </a-button>
         <a-input v-model:value="searchKeyword" placeholder="搜索模板..." style="width: 200px;" allow-clear>
           <template #prefix><SearchOutlined /></template>
         </a-input>
@@ -58,11 +54,6 @@
                   <span class="author-name">{{ template.ownerName || 'Template Studio' }}</span>
                 </div>
                 <div class="card-footer-right">
-                  <a-tooltip v-if="configStore.hasApiKey" title="编辑模板">
-                    <a-button type="text" size="small" class="edit-entry" @click.stop="goEdit(template)">
-                      <template #icon><EditOutlined /></template>
-                    </a-button>
-                  </a-tooltip>
                   <span class="creation-time">{{ formatCreationTime(template.createdAt) }}</span>
                 </div>
               </div>
@@ -71,83 +62,20 @@
         </div>
       </a-spin>
     </div>
-    <!-- 新建模板弹窗 -->
-    <!-- 新建方式选择:空白 / ZIP / 项目转换 -->
-    <a-modal v-model:open="showCreateChoice" title="新建模板" :footer="null" :width="520">
-      <div class="create-choice">
-        <div class="choice-card" @click="pickCreate('blank')">
-          <FileAddOutlined class="choice-ico" />
-          <div class="choice-text">
-            <div class="choice-title">空白创建</div>
-            <div class="choice-sub">从零开始,在编辑器中搭建</div>
-          </div>
-        </div>
-        <div class="choice-card" @click="pickCreate('zip')">
-          <FileZipOutlined class="choice-ico" />
-          <div class="choice-text">
-            <div class="choice-title">上传 ZIP</div>
-            <div class="choice-sub">创建模板后选择压缩包导入</div>
-          </div>
-        </div>
-        <div class="choice-card" @click="pickCreate('convert')">
-          <FolderOpenOutlined class="choice-ico convert" />
-          <div class="choice-text">
-            <div class="choice-title">从项目转换</div>
-            <div class="choice-sub">git 仓库克隆 → AI 分析 → 模板化</div>
-          </div>
-        </div>
-      </div>
-    </a-modal>
-    <input ref="zipInput" type="file" accept=".zip" style="display: none" @change="onZipPicked" />
-    <!-- 从项目转换:来源选择(与项目转换引导页共用组件) -->
-    <ConvertSourceModal v-model:open="showConvertSource" @start="onConvertStart" />
-    <a-modal v-model:open="showCreateModal" title="新建模板" :confirm-loading="creating" @ok="handleCreate" ok-text="创建并编辑" cancel-text="取消">
-      <a-form layout="vertical" style="margin-top: 12px;">
-        <a-form-item label="模板名称" required>
-          <a-input v-model:value="createForm.name" placeholder="例如：GoFrame 脚手架" />
-        </a-form-item>
-        <a-form-item label="模板类型" required>
-          <a-select v-model:value="createForm.templateType" placeholder="选择类型" style="width: 100%;">
-            <a-select-option v-for="t in templateTypes" :key="t.value ?? t" :value="t.value ?? t">{{ t.label ?? t.value ?? t }}</a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item label="分类" required>
-          <a-select v-model:value="createForm.categoryId" placeholder="选择分类" style="width: 100%;">
-            <a-select-option v-for="cat in selectableCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item label="主语言">
-          <a-select v-model:value="createForm.primaryLanguage" placeholder="选择主语言（可选）" style="width: 100%;" allow-clear>
-            <a-select-option v-for="lang in selectableLanguages" :key="lang.id" :value="lang.id">{{ lang.name }}</a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item label="模板描述" required>
-          <a-textarea v-model:value="createForm.description" placeholder="一句话描述模板用途" :rows="3" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
     <!-- 模板配置向导抽屉 -->
     <TemplateWizardDrawer v-model:open="showWizardModal" :template="selectedTemplate" @created="onProjectCreated" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useLayoutStore } from '@/stores/layout'
-import { useConfigStore } from '@/stores/config'
-import { SearchOutlined, UserOutlined, PlusOutlined, EditOutlined, FolderOpenOutlined, FileAddOutlined, FileZipOutlined } from '@ant-design/icons-vue'
+import { SearchOutlined, UserOutlined } from '@ant-design/icons-vue'
 import { getCategories, getLanguages, getTemplates } from '@/api/templates'
-import { getTemplateTypes } from '@/api/editor/templates'
-import { createUserTemplate } from '@/api/editor/templates/contribution'
-import { uploadZipFile } from '@/api/editor/templateFiles'
 import TemplateWizardDrawer from './components/TemplateWizardDrawer.vue'
-import ConvertSourceModal from '@/views/convert/components/ConvertSourceModal.vue'
 
 const layoutStore = useLayoutStore()
-const configStore = useConfigStore()
-const router = useRouter()
 
 const loading = ref(false)
 const searchKeyword = ref('')
@@ -257,112 +185,10 @@ const loadTemplates = async () => {
 
 watch(filteredTemplates, (newVal) => { layoutStore.showFooterPagination(newVal.length, layoutStore.footerPagination.current, layoutStore.footerPagination.pageSize) })
 
-// ---------------------------------------------------------------------------
-// 模板编辑入口（方案A：需在设置页配置 API Token 后可用）
-// ---------------------------------------------------------------------------
-const templateTypes = ref([])
-const showCreateModal = ref(false)
-const creating = ref(false)
-const createForm = ref({ name: '', templateType: undefined, categoryId: undefined, primaryLanguage: undefined, description: '' })
-
-const selectableCategories = computed(() => categories.value.filter(c => c.id !== 'all'))
-const selectableLanguages = computed(() => languages.value.filter(l => l.id !== 'all'))
-
-const loadTemplateTypes = async () => {
-  try {
-    const res = await getTemplateTypes()
-    templateTypes.value = res?.data?.templateTypes || res?.data?.template_types || []
-  } catch { templateTypes.value = [] }
-}
-
-const goEdit = (template) => {
-  router.push(`/editor/${template.id}`)
-}
-
-const showCreateChoice = ref(false)
-const zipMode = ref(false)
-const zipInput = ref(null)
-const pendingZipTemplateId = ref(null)
-
-const openCreateModal = () => { showCreateChoice.value = true }
-
-const pickCreate = (mode) => {
-  showCreateChoice.value = false
-  if (mode === 'convert') { showConvertSource.value = true; return }
-  zipMode.value = mode === 'zip'
-  createForm.value = { name: '', templateType: undefined, categoryId: undefined, primaryLanguage: undefined, description: '' }
-  showCreateModal.value = true
-}
-
-const showConvertSource = ref(false)
-const onConvertStart = ({ source, branch }) => {
-  showConvertSource.value = false
-  router.push({ path: '/convert/workbench', query: { src: source, ...(branch ? { branch } : {}) } })
-}
-
-const onZipPicked = async (e) => {
-  const file = e.target.files?.[0]
-  e.target.value = ''
-  const tid = pendingZipTemplateId.value
-  if (!file || !tid) return
-  creating.value = true
-  try {
-    await uploadZipFile(tid, file)
-    message.success('ZIP 导入成功,正在打开编辑器...')
-    router.push(`/editor/${tid}`)
-  } catch (err) {
-    message.error('ZIP 导入失败: ' + (err.message || err) + '(已打开编辑器,可手动上传)')
-    router.push(`/editor/${tid}`)
-  } finally {
-    creating.value = false
-    pendingZipTemplateId.value = null
-  }
-}
-
-const handleCreate = async () => {
-  const form = createForm.value
-  if (!form.name.trim() || !form.templateType || !form.categoryId || !form.description.trim()) {
-    message.warning('请填写名称、类型、分类与描述')
-    return
-  }
-  creating.value = true
-  try {
-    const languagesPayload = form.primaryLanguage
-      ? [{ languageId: form.primaryLanguage, isPrimary: 1 }]
-      : []
-    const res = await createUserTemplate({
-      name: form.name.trim(),
-      templateType: form.templateType,
-      categoryId: form.categoryId,
-      description: form.description.trim(),
-      visibility: 'private',
-      languages: languagesPayload,
-    })
-    const newId = res?.data?.data?.id
-    showCreateModal.value = false
-    if (newId && zipMode.value) {
-      pendingZipTemplateId.value = newId
-      message.info('模板已创建,请选择 ZIP 压缩包')
-      nextTick(() => zipInput.value?.click())
-    } else if (newId) {
-      message.success('模板创建成功，正在打开编辑器...')
-      router.push(`/editor/${newId}`)
-    } else {
-      message.success('模板创建成功')
-      loadTemplates()
-    }
-  } catch (error) {
-    console.error('创建模板失败:', error)
-  } finally {
-    creating.value = false
-  }
-}
-
 onMounted(async () => {
   await loadCategories()
   await loadLanguages()
   await loadTemplates()
-  if (configStore.hasApiKey) loadTemplateTypes()
   layoutStore.showFooterPagination(filteredTemplates.value.length, 1, 10)
 })
 </script>
@@ -383,8 +209,6 @@ onMounted(async () => {
 .filter-row:not(:last-child) { margin-bottom: var(--spacing-xs); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--spacing-xs); }
 .filter-label { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); white-space: nowrap; min-width: 50px; }
 .templates-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--spacing-md); }
-.edit-entry { color: var(--color-text-secondary); }
-.edit-entry:hover { color: var(--color-primary) !important; }
 .template-card { background: var(--color-background); border: 1px solid var(--color-border); border-radius: var(--border-radius-lg); overflow: hidden; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 .template-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12); border-color: var(--color-border-strong); }
 .template-card.selected { border-color: var(--color-border-strong); box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1); }
@@ -409,12 +233,4 @@ onMounted(async () => {
 .author-name { font-size: 12px; color: var(--color-text-secondary); font-weight: 500; }
 .card-footer-right { display: flex; align-items: center; gap: 8px; }
 .creation-time { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--color-text-muted); }
-
-.create-choice { display: flex; flex-direction: column; gap: 10px; padding: 8px 4px 4px; }
-.choice-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--color-border, #e5e5e2); border-radius: 10px; cursor: pointer; transition: border-color 0.15s ease, background-color 0.15s ease; }
-.choice-card:hover { border-color: var(--color-brand, #16a34a); background: rgba(22, 163, 74, 0.04); }
-.choice-ico { font-size: 22px; color: var(--color-text-secondary, #999); }
-.choice-card:hover .choice-ico { color: var(--color-brand, #16a34a); }
-.choice-title { font-size: 14px; font-weight: 600; color: var(--color-text, #1b1c1f); }
-.choice-sub { font-size: 12px; color: var(--color-text-secondary, #999); margin-top: 2px; }
 </style>
