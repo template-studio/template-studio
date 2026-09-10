@@ -552,7 +552,7 @@ async fn default_call_target(db: &crate::database::Database) -> Result<CallTarge
 }
 
 /// 解析调用目标:provider/model 为 composer 选择器的覆盖项,缺省回落默认提供商与其首个模型。
-async fn resolve_call_target(
+pub(crate) async fn resolve_call_target(
     db: &crate::database::Database,
     provider: Option<String>,
     model: Option<String>,
@@ -582,7 +582,7 @@ async fn resolve_call_target(
 
 /// 思考级别 → 厂商扩展参数(经 rig additional_params 平铺进 OpenAI 兼容请求体)。
 /// 级别:auto(跟随模型默认)/off/medium/high;按 provider/模型名启发式选键,未知厂商不注入。
-fn thinking_extra(
+pub(crate) fn thinking_extra(
     provider_name: &str,
     model: &str,
     level: Option<&str>,
@@ -1195,7 +1195,7 @@ pub async fn extract_read_files(
 }
 
 /// 启发式候选:引号字符串与目录名,出现次数达标者
-fn heuristic_candidates(root_name: &str, files: &[(String, String)]) -> Vec<(String, usize)> {
+pub(crate) fn heuristic_candidates(root_name: &str, files: &[(String, String)]) -> Vec<(String, usize)> {
     use std::collections::HashMap;
     let mut counts: HashMap<String, usize> = HashMap::new();
 
@@ -1380,7 +1380,7 @@ pub async fn extract_analyze(
 }
 
 /// 值 → 合法 snake_case 变量名(仅 ASCII 字母数字,其它边界转下划线)
-fn sanitize_var_name(value: &str, fallback: &str) -> String {
+pub(crate) fn sanitize_var_name(value: &str, fallback: &str) -> String {
     let mut name = String::new();
     let mut prev_us = false;
     for c in value.chars() {

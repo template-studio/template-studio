@@ -1,4 +1,5 @@
 pub mod ai;
+pub mod convert;
 pub mod datasource;
 pub mod language;
 pub mod project;

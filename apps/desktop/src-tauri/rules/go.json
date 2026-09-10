@@ -1,0 +1,14 @@
+{
+  "id": "go",
+  "match": ["go.mod"],
+  "excludeDirs": ["vendor", "bin", "dist", ".vscode", ".idea"],
+  "excludeFiles": ["go.sum"],
+  "excludePatterns": ["*.log", "*.exe", "*.test", "*.out", ".DS_Store"],
+  "binaryExtensions": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".woff", ".woff2", ".ttf", ".zip", ".gz", ".tar", ".dll", ".pdf"],
+  "maxFileSize": 1048576,
+  "entryFiles": ["go.mod", "README.md", "Dockerfile", "docker-compose.yml", "Makefile", "main.go", "cmd/*/main.go"],
+  "constants": [
+    { "pattern": ":[\"']?(\\d{4,5})[\"']?\\)?", "varName": "server_port", "type": "number" },
+    { "pattern": "(?i)(host|addr)\\s*[:=]\\s*[\"']([^\"'\\n]{2,64})[\"']", "varName": "server_host" }
+  ]
+}

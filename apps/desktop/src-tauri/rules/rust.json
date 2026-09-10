@@ -1,0 +1,14 @@
+{
+  "id": "rust",
+  "match": ["Cargo.toml"],
+  "excludeDirs": ["target", ".vscode", ".idea"],
+  "excludeFiles": ["Cargo.lock"],
+  "excludePatterns": ["*.log", ".DS_Store"],
+  "binaryExtensions": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".woff", ".woff2", ".ttf", ".zip", ".gz", ".tar", ".exe", ".dll", ".pdb", ".pdf"],
+  "maxFileSize": 1048576,
+  "entryFiles": ["Cargo.toml", "README.md", "Dockerfile", "docker-compose.yml", "main.rs", "src/main.rs", "src/lib.rs"],
+  "constants": [
+    { "pattern": "(?i)port\\s*[:=]\\s*[\"']?(\\d{2,5})[\"']?", "varName": "server_port", "type": "number" },
+    { "pattern": "(?i)(host|addr)\\s*[:=]\\s*[\"']([^\"'\\n]{2,64})[\"']", "varName": "server_host" }
+  ]
+}

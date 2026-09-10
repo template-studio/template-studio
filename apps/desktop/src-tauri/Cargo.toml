@@ -25,6 +25,7 @@ tauri-plugin-dialog = "2"
 
 # 数据库
 sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "mysql", "postgres"] }
+regex = { workspace = true }
 
 # SQL解析
 sqlparser = "0.51"

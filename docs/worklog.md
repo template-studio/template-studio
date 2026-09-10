@@ -1178,3 +1178,19 @@
 **涉及文件：** `assets/styles/variables.css`、`views/editor/components/EditorAiAssistant.vue`
 
 **验收结果：** `pnpm build` 通过。
+
+## 2026-09-10 项目转模板·一期：克隆镜像与规则扫描（任务 #124，长任务工作流 #124-128）
+
+**变更内容：** 阶段 0+A 落地（设计见 dev-docs/project-to-template.md）。新增 commands/convert.rs：①convert_clone——系统 git 子进程（Windows CREATE_NO_WINDOW，stderr 原样透传），远程 URL/本地 git 仓库皆完整 clone 至持久镜像 workspace/repos/<repoUrl 指纹>/，已存在则 fetch+reset 增量复用，返回 {dir,branch,commit,reused} 基线；本地非 git 目录明确拒绝。②声明式规则包 RulePack（含 constants 供二期），内置 node/go/java/python/rust 五份（include_str! 打包），用户目录 ~/.cicbyte/template_studio/rules/ 同 id 覆盖。③convert_scan——项目类型识别（match 文件命中）+ 目录/文件/通配剔除 + 二进制/大小过滤 + 入口文件标记，产出 IR.files 雏形（keep/exclude+reason+isEntry）。
+
+**涉及文件：** `src-tauri/src/commands/convert.rs`（新增）、`src-tauri/rules/*.json`（新增五份）、`src-tauri/src/commands/mod.rs`、`src-tauri/src/lib.rs`
+
+**验收结果：** cargo check 通过；5 项单测全过（含端到端：clone 本仓库→识别 rust→.git/Cargo.lock 剔除语义验证）；glob 分段匹配 * 不跨 /。
+
+## 2026-09-10 项目转模板·二期：分析管线（任务 #125，阶段 B）
+
+**变更内容：** 双通道分析落地。①启发式通道：规则包 constants 正则提取（同规则不同值拆分多候选、跨文件聚合 occurrences）+ 复用 heuristic_candidates（引号字符串/目录名，低置信 generic/identity 语义）；②AI 通道：入口文件优先分批（≤8 文件/≤48KB/≤12 批，单文件 64KB/总量 1MB 截断），结构化 JSON 提示词（文件分类+候选变量含语义/置信度），围栏容错解析，候选值本地复核 occurrences（模型幻觉值直接丢弃），任一批失败静默降级；③合并去重：跨通道（heuristic×ai）同值直接融合且 AI 命名/语义优先、置信取 max、occurrences 按 path 归并；AI 候选之间按语义相容判定（generic/identity 宽容，不同具体语义同值拆分）；④convert_analyze 命令（provider/model/thinking 覆盖，复用 resolve_call_target/thinking_extra），无 provider 纯启发式降级（degraded 标记）。修复真实设计缺口：启发式语义标签（varName）与 AI 语义类（port）字符串不一致导致跨通道永不融合——改为跨通道按值融合。
+
+**涉及文件：** `src-tauri/src/commands/convert.rs`、`src-tauri/src/commands/ai.rs`（heuristic_candidates/sanitize_var_name/resolve_call_target/thinking_extra 改 pub(crate)）、`src-tauri/src/lib.rs`、`src-tauri/Cargo.toml`（regex workspace 引用）
+
+**验收结果：** cargo check 干净；9/9 单测通过（JSON 容错/按值拆分/合并优先级/入口优先批次/端到端 clone+scan）。

@@ -165,6 +165,10 @@ pub fn run() {
             commands::ai::ai_session_clear,
             // 模板提取向导
             commands::ai::extract_scan_dir,
+            // 项目转模板
+            commands::convert::convert_clone,
+            commands::convert::convert_scan,
+            commands::convert::convert_analyze,
             commands::ai::extract_read_files,
             commands::ai::extract_analyze,
         ])

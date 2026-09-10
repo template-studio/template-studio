@@ -1,0 +1,14 @@
+{
+  "id": "python",
+  "match": ["pyproject.toml", "setup.py", "requirements.txt"],
+  "excludeDirs": ["__pycache__", ".venv", "venv", "env", ".pytest_cache", ".mypy_cache", ".ruff_cache", "dist", "build", "*.egg-info", ".vscode", ".idea"],
+  "excludeFiles": ["poetry.lock", "uv.lock", "Pipfile.lock"],
+  "excludePatterns": ["*.log", "*.pyc", ".DS_Store"],
+  "binaryExtensions": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".woff", ".woff2", ".ttf", ".zip", ".gz", ".tar", ".exe", ".dll", ".pdf", ".db", ".sqlite3"],
+  "maxFileSize": 1048576,
+  "entryFiles": ["pyproject.toml", "setup.py", "requirements.txt", "README.md", "Dockerfile", "docker-compose.yml", "main.py", "app.py", "manage.py"],
+  "constants": [
+    { "pattern": "(?i)port\\s*[=:]\\s*(\\d{2,5})", "varName": "server_port", "type": "number" },
+    { "pattern": "(?i)(host|addr)\\s*[=:]\\s*[\"']([^\"'\\n]{2,64})[\"']", "varName": "server_host" }
+  ]
+}

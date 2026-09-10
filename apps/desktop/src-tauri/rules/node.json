@@ -1,0 +1,14 @@
+{
+  "id": "node",
+  "match": ["package.json"],
+  "excludeDirs": ["node_modules", "dist", "build", "out", ".cache", "coverage", ".next", ".nuxt", ".output", ".vscode", ".idea", ".turbo", ".parcel-cache"],
+  "excludeFiles": ["package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb", "npm-shrinkwrap.json", ".env", ".env.local", ".env.production", ".env.development"],
+  "excludePatterns": ["*.log", "*.min.js", "*.min.css", "*.map", "*.tsbuildinfo", ".DS_Store"],
+  "binaryExtensions": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".woff", ".woff2", ".ttf", ".eot", ".zip", ".gz", ".tar", ".exe", ".dll", ".pdf"],
+  "maxFileSize": 1048576,
+  "entryFiles": ["package.json", "README.md", "Dockerfile", "docker-compose.yml", ".env.example", "vite.config.js", "vite.config.ts", "next.config.js", "next.config.mjs", "tsconfig.json", "src/index.js", "src/index.ts", "src/main.js", "src/main.ts", "src/app.js", "src/app.ts"],
+  "constants": [
+    { "pattern": "(?i)[\"']?port[\"']?\\s*[:=]\\s*[\"']?(\\d{2,5})[\"']?", "varName": "server_port", "type": "number" },
+    { "pattern": "(?i)[\"']?(host|hostname)[\"']?\\s*[:=]\\s*[\"']([^\"'\\n]{2,64})[\"']", "varName": "server_host" }
+  ]
+}
