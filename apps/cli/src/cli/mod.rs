@@ -46,6 +46,41 @@ pub enum Commands {
         #[command(subcommand)]
         ai_subcommand: AiCommands,
     },
+
+    /// 项目转模板(消费 IR,对接 dsh 插件等外部工具)
+    Convert {
+        #[command(subcommand)]
+        convert_subcommand: ConvertCommands,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ConvertCommands {
+    /// 提交转换结果(IR JSON)到模板库:渲染校验→建模板→写文件→首个版本
+    Submit {
+        /// IR 文件路径(v1 格式,工作台或外部工具产出)
+        ir_path: String,
+
+        /// 模板名称(默认取 IR.meta.name,再退回仓库名)
+        #[arg(long)]
+        name: Option<String>,
+
+        /// 模板描述
+        #[arg(long)]
+        description: Option<String>,
+
+        /// 分类 ID(服务端可能必填,见错误提示)
+        #[arg(long)]
+        category_id: Option<i64>,
+
+        /// 跳过本地渲染校验(信任产出方已校验)
+        #[arg(long)]
+        no_verify: bool,
+
+        /// 只校验与统计,不入库
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -286,6 +321,9 @@ pub async fn execute(args: CliArgs) -> Result<()> {
         }
         Commands::Ai { ai_subcommand } => {
             commands::handle_ai(ai_subcommand, args.config, args.server_url, args.api_key).await
+        }
+        Commands::Convert { convert_subcommand } => {
+            commands::handle_convert(convert_subcommand, args.config, args.server_url, args.api_key).await
         }
     }
 }

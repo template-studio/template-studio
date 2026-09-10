@@ -802,3 +802,164 @@ async fn handle_ai_config(cmd: AiConfigCommands, config_path: Option<String>) ->
 
     Ok(())
 }
+
+// ===== 项目转模板:convert submit(IR v1) =====
+
+/// IR v1 最小消费视图:字段宽松(缺省容忍),outputs 必填
+#[derive(Debug, serde::Deserialize)]
+pub struct ConvertIr {
+    pub version: u32,
+    #[serde(default)]
+    pub source: Option<serde_json::Value>,
+    #[serde(default)]
+    pub files: Option<Vec<serde_json::Value>>,
+    #[serde(default)]
+    pub variables: Option<Vec<IrVariable>>,
+    pub outputs: Vec<IrOutput>,
+    #[serde(default)]
+    pub meta: Option<IrMeta>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct IrVariable {
+    pub name: String,
+    #[serde(default = "default_string_type")]
+    pub r#type: String,
+    #[serde(default)]
+    pub default_value: Option<String>,
+}
+
+fn default_string_type() -> String {
+    "string".to_string()
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct IrOutput {
+    pub path: String,
+    pub content: String,
+    #[serde(default)]
+    pub replaced: Option<u64>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct IrMeta {
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+}
+
+pub async fn handle_convert(
+    cmd: crate::cli::ConvertCommands,
+    config: Option<String>,
+    server_url: Option<String>,
+    api_key: Option<String>,
+) -> anyhow::Result<()> {
+    let crate::cli::ConvertCommands::Submit {
+        ir_path,
+        name,
+        description,
+        category_id,
+        no_verify,
+        dry_run,
+    } = cmd;
+
+    let raw = std::fs::read_to_string(&ir_path)
+        .map_err(|e| anyhow::anyhow!("读取 IR 失败 {}: {}", ir_path, e))?;
+    let ir: ConvertIr = serde_json::from_str(&raw)
+        .map_err(|e| anyhow::anyhow!("IR 解析失败(应为 v1 格式): {}", e))?;
+    if ir.version != 1 {
+        anyhow::bail!("仅支持 IR version 1,实际 {}", ir.version);
+    }
+    if ir.outputs.is_empty() {
+        anyhow::bail!("IR.outputs 为空:没有可入库的模板化文件");
+    }
+
+    // 名称决策:参数 > IR.meta.name > 仓库名(取 IR.source.repoUrl 尾段)
+    let repo_tail = ir
+        .source
+        .as_ref()
+        .and_then(|s| s["repoUrl"].as_str())
+        .map(|u| u.trim_end_matches('/').trim_end_matches(".git"))
+        .and_then(|u| u.rsplit('/').next().map(str::to_string));
+    let tpl_name = name
+        .or_else(|| ir.meta.as_ref().and_then(|m| m.name.clone()))
+        .or(repo_tail)
+        .ok_or_else(|| anyhow::anyhow!("缺少模板名称:请用 --name 或在 IR.meta.name 提供"))?;
+    let tpl_desc = description
+        .or_else(|| ir.meta.as_ref().and_then(|m| m.description.clone()))
+        .unwrap_or_else(|| "项目转换模板".to_string());
+
+    // 本地渲染校验:全部变量默认值注入,逐文件 render_string
+    let mut vars = std::collections::HashMap::new();
+    for v in ir.variables.iter().flatten() {
+        vars.insert(v.name.clone(), v.default_value.clone().unwrap_or_default());
+    }
+    let vars_value = serde_json::to_value(&vars)?;
+    let variables = template_studio_template_core::Variables::from_value(vars_value);
+    let total_replaced: u64 = ir.outputs.iter().filter_map(|o| o.replaced).sum();
+
+    println!("IR v1: {} 个文件, {} 个变量, 累计替换 {} 处", ir.outputs.len(), vars.len(), total_replaced);
+
+    if !no_verify {
+        let tvars = variables.clone();
+        for o in &ir.outputs {
+            template_studio_template_core::render_string(&o.content, &tvars, None)
+                .map_err(|e| anyhow::anyhow!("渲染校验失败 {}: {}", o.path, e))?;
+        }
+        println!("渲染校验: 全部通过");
+    }
+
+    if dry_run {
+        println!("dry-run 结束,未入库");
+        return Ok(());
+    }
+
+    // 加载配置(命令行参数覆盖)
+    let mut conf = crate::config::Config::load(config)?;
+    if let Some(url) = server_url {
+        conf.server.url = url;
+    }
+    if let Some(key) = api_key {
+        conf.server.api_key = key;
+    }
+    let client = crate::client::ApiClient::new(&conf.server.url, &conf.server.api_key);
+
+    let template_id = client.create_template(&tpl_name, &tpl_desc, category_id).await?;
+    println!("模板已创建: id={template_id} name={tpl_name}");
+
+    // 目录先行(深度排序),再写文件
+    let mut dir_set = std::collections::BTreeSet::new();
+    for o in &ir.outputs {
+        let parts: Vec<&str> = o.path.split('/').collect();
+        for i in 1..parts.len() {
+            dir_set.insert(parts[..i].join("/"));
+        }
+    }
+    for dir in &dir_set {
+        let parent = match dir.rfind('/') {
+            Some(idx) => &dir[..idx],
+            None => "",
+        };
+        client
+            .add_template_file(template_id, dir.rsplit('/').next().unwrap_or(dir), parent, true)
+            .await?;
+    }
+    for o in &ir.outputs {
+        let parent = match o.path.rfind('/') {
+            Some(idx) => &o.path[..idx],
+            None => "",
+        };
+        client
+            .add_template_file(template_id, o.path.rsplit('/').next().unwrap_or(&o.path), parent, false)
+            .await?;
+        client.edit_template_file(template_id, &o.path, &o.content).await?;
+        println!("  + {} ({} 处替换)", o.path, o.replaced.unwrap_or(0));
+    }
+
+    client
+        .create_release(template_id, "项目转换初始版本(CLI)")
+        .await?;
+    println!("已发布首个版本。模板 id: {template_id}");
+    Ok(())
+}

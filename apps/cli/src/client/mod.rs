@@ -317,3 +317,113 @@ impl ApiClient {
         Ok(zip_bytes.to_vec())
     }
 }
+
+
+// ===== 项目转模板写通道(convert submit) =====
+impl ApiClient {
+    /// 统一信封 POST: {code,message,data};兼容 token 与 Bearer 两种认证头
+    async fn post_envelope<T: serde::de::DeserializeOwned>(
+        &self,
+        url: &str,
+        body: &serde_json::Value,
+        method_put: bool,
+    ) -> anyhow::Result<T> {
+        let full = format!("{}{}", self.base_url, url);
+        let mut req = if method_put {
+            self.http_client.put(&full)
+        } else {
+            self.http_client.post(&full)
+        };
+        let resp = req
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("token", &self.api_key)
+            .json(body)
+            .send()
+            .await?;
+        let status = resp.status();
+        let text = resp.text().await?;
+        if !status.is_success() {
+            anyhow::bail!("请求失败 {} {}: {}", Self::method_put_str(method_put), url, text);
+        }
+        #[derive(serde::Deserialize)]
+        struct Envelope<T> {
+            code: i64,
+            message: String,
+            data: Option<T>,
+        }
+        let env: Envelope<T> = serde_json::from_str(&text)
+            .map_err(|e| anyhow::anyhow!("解析响应失败: {} - {}", e, text))?;
+        if env.code != 0 {
+            anyhow::bail!("业务失败 {}: {}", env.code, env.message);
+        }
+        env.data.ok_or_else(|| anyhow::anyhow!("响应缺少 data 字段"))
+    }
+
+    fn method_put_str(put: bool) -> &'static str {
+        if put { "PUT" } else { "POST" }
+    }
+
+    /// 创建用户模板,返回模板 id
+    pub async fn create_template(
+        &self,
+        name: &str,
+        description: &str,
+        category_id: Option<i64>,
+    ) -> anyhow::Result<i64> {
+        let body = serde_json::json!({
+            "name": name,
+            "templateType": "default",
+            "categoryId": category_id,
+            "description": description,
+            "visibility": "private",
+            "languages": [],
+        });
+        #[derive(serde::Deserialize)]
+        struct Created { id: i64 }
+        let created: Created = self.post_envelope("/api/v1/template/templates/add", &body, false).await?;
+        Ok(created.id)
+    }
+
+    /// 新建模板文件/目录条目
+    pub async fn add_template_file(
+        &self,
+        template_id: i64,
+        file_name: &str,
+        parent_path: &str,
+        is_directory: bool,
+    ) -> anyhow::Result<()> {
+        let body = serde_json::json!({
+            "templateId": template_id, "fileName": file_name,
+            "parentPath": parent_path, "isDirectory": is_directory,
+        });
+        let _: serde_json::Value = self
+            .post_envelope("/api/v1/editor/templateFiles/add", &body, false)
+            .await?;
+        Ok(())
+    }
+
+    /// 写入模板文件内容
+    pub async fn edit_template_file(
+        &self,
+        template_id: i64,
+        file_path: &str,
+        content: &str,
+    ) -> anyhow::Result<()> {
+        let body = serde_json::json!({
+            "templateId": template_id, "filePath": file_path, "content": content,
+        });
+        let _: serde_json::Value = self
+            .post_envelope("/api/v1/editor/templateFiles/edit", &body, true)
+            .await?;
+        Ok(())
+    }
+
+    /// 发布版本
+    pub async fn create_release(&self, template_id: i64, changelog: &str) -> anyhow::Result<()> {
+        let body = serde_json::json!({ "changelog": changelog });
+        let _: serde_json::Value = self
+            .post_envelope(&format!("/api/v1/template/templates/{}/releases", template_id), &body, false)
+            .await?;
+        Ok(())
+    }
+}
