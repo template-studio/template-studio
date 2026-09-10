@@ -119,6 +119,9 @@
   --editor-primary: var(--color-text);
   --editor-muted: var(--color-text-secondary);
   --editor-accent: var(--color-brand);
+  /* AI 对话停靠栏:浅色=纯白面板,输入卡白底描边 */
+  --ai-dock-bg: #ffffff;
+  --ai-composer-bg: #ffffff;
 
   /* Z-index */
   --z-dropdown: 1000;
@@ -169,4 +172,7 @@
   --editor-primary: var(--color-text-dark);
   --editor-muted: var(--color-text-secondary-dark);
   --editor-accent: var(--color-brand-dark);
+  /* AI 对话停靠栏:暗色=近黑深底(深于面板灰,对齐 ZCode),输入卡亮一档形成悬浮层次 */
+  --ai-dock-bg: #17181d;
+  --ai-composer-bg: #24262b;
 }

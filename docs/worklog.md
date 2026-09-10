@@ -1162,3 +1162,19 @@
 **涉及文件：** `views/editor/components/EditorAiAssistant.vue`
 
 **验收结果：** `pnpm build` 通过。
+
+## 2026-09-10 聊天回复区去灰底（任务 #117）
+
+**变更内容：** 采纳用户反馈——回复块灰底难看。.answer 去掉 inset 灰底与圆角，参考 ZCode 纯文本回复流：2px 品牌绿细左线做锚点，12.5px/1.7 行距纯排版区分；代码展开区(step-full)灰底保留（代码语境合理）。
+
+**涉及文件：** `views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** `pnpm build` 通过。
+
+## 2026-09-10 AI 侧边栏整体底色重做（任务 #122）
+
+**变更内容：** 采纳用户反馈——AI 侧边栏整体区域灰色难看。定位：暗色主题下 dock 沿用 --editor-panel-bg（#1d1e23 中灰），整板发灰；对比 ZCode 近黑深底缺乏层次。新增 --ai-dock-bg/--ai-composer-bg 专用令牌：暗色 dock #17181d（近黑，深于面板灰）、输入卡 #24262b（surface 亮一档，悬浮感）；浅色保持纯白 dock + 白卡描边不变。dock 与 composer 样式改用新令牌；chips hover 改中性 rgba 叠层（避免暗色下与卡片同色不可见）。
+
+**涉及文件：** `assets/styles/variables.css`、`views/editor/components/EditorAiAssistant.vue`
+
+**验收结果：** `pnpm build` 通过。

@@ -954,7 +954,7 @@ onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop(); clearInterva
 </script>
 
 <style scoped>
-.ai-dock { position: relative; height: 100%; flex-shrink: 0; display: flex; flex-direction: column; background: var(--editor-panel-bg, #fff); border-left: 1px solid var(--editor-border, #e0e0e6); overflow: hidden; }
+.ai-dock { position: relative; height: 100%; flex-shrink: 0; display: flex; flex-direction: column; background: var(--ai-dock-bg, var(--editor-panel-bg, #fff)); border-left: 1px solid var(--editor-border, #e0e0e6); overflow: hidden; }
 .ai-resize-handle { position: absolute; left: 0; top: 0; width: 5px; height: 100%; cursor: col-resize; z-index: 10; transition: background-color 0.15s ease; }
 .ai-resize-handle:hover { background: var(--editor-accent, #16a34a); }
 .ai-dock-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--editor-border, #e0e0e6); flex-shrink: 0; }
@@ -972,7 +972,7 @@ onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop(); clearInterva
 .ai-apply-row { display: flex; gap: 8px; }
 
 /* composer 底栏(模型/思考/权限):输入框卡片内部底边(ZCode 式) */
-.ai-composer { border: 1px solid var(--editor-border, #e0e0e6); border-radius: 10px; background: var(--editor-panel-bg, #fff); overflow: hidden; transition: border-color 0.15s ease; }
+.ai-composer { border: 1px solid var(--editor-border, #e0e0e6); border-radius: 10px; background: var(--ai-composer-bg, var(--editor-panel-bg, #fff)); overflow: hidden; transition: border-color 0.15s ease; }
 .ai-composer:focus-within { border-color: var(--editor-accent, #16a34a); }
 /* antdx Sender 可视边框=根 boxShadow+::after 伪元素描边(样式源码确认),只重置这两处;
    切勿用 .ant-sender * 通配重置——会把发送按钮的填充背景一并清掉,白色图标隐身 */
@@ -980,7 +980,7 @@ onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop(); clearInterva
 .ai-composer :deep(.ant-sender::after) { display: none !important; }
 .ai-composer-bar { display: flex; align-items: center; gap: 2px; padding: 2px 6px 4px; }
 .chip { display: inline-flex; align-items: center; gap: 5px; border: none; background: transparent; padding: 3px 8px; font-size: 11.5px; color: var(--editor-muted, #999); cursor: pointer; white-space: nowrap; overflow: hidden; border-radius: 6px; transition: background-color 0.15s ease; }
-.chip:hover { background: var(--editor-inset-bg, #f4f4f2); }
+.chip:hover { background: rgba(128, 128, 128, 0.14); }
 .chip-ico { font-size: 12px; }
 .chip-caret { font-size: 9px; opacity: 0.6; }
 .chip-model { color: var(--editor-primary, #1b1c1f); font-weight: 500; }
@@ -1046,8 +1046,8 @@ onUnmounted(() => { clearTimeout(saveTimer.t); persistWatch.stop(); clearInterva
 .step.open .step-chev { transform: rotate(90deg); }
 .step-full { margin: 2px 6px 6px 20px; padding: 8px 10px; background: var(--editor-inset-bg, #f4f4f2); border-radius: 6px; font-family: var(--editor-mono, monospace); font-size: 11px; line-height: 1.5; color: var(--editor-muted, #666); white-space: pre-wrap; word-break: break-all; max-height: 260px; overflow: auto; }
 
-/* AI 文本回复(内联在步骤流中) */
-.answer { padding: 8px 10px; border-left: 3px solid var(--editor-accent, #16a34a); border-radius: 6px; background: var(--editor-inset-bg, #f4f4f2); font-size: 12.5px; line-height: 1.65; color: var(--editor-primary, #1b1c1f); white-space: pre-wrap; word-break: break-word; }
+/* AI 文本回复(内联在步骤流中):纯文本无气泡底,细品牌绿左线做锚点(ZCode 式) */
+.answer { padding: 2px 2px 2px 12px; border-left: 2px solid var(--editor-accent, #16a34a); font-size: 12.5px; line-height: 1.7; color: var(--editor-primary, #1b1c1f); white-space: pre-wrap; word-break: break-word; }
 
 /* 计划清单 */
 .todo-box { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1px solid var(--editor-border, #e0e0e6); border-radius: 8px; }
