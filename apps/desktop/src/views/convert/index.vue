@@ -115,12 +115,16 @@
           <button class="cw-tab" :class="{ active: centerTab === 'file' }" :disabled="!selectedPath" @click="centerTab = 'file'">
             文件预览
           </button>
+          <button v-if="ir.source.dir" class="cw-tab" :class="{ active: centerTab === 'renderall' }" title="整套模板按变量默认值渲染的结果" @click="enterRenderAll">
+            渲染预览
+          </button>
           <button v-if="isDataDriven" class="cw-tab" :class="{ active: centerTab === 'focus' }" @click="centerTab = 'focus'">
             重点文件<span v-if="focusFiles.length" class="cw-tab-n">{{ focusFiles.length }}</span>
           </button>
           <div class="cw-tabs-right">
             <template v-if="centerTab === 'file' && selectedPath">
               <div class="cw-seg">
+                <button :class="{ on: previewMode === 'render' }" title="变量默认值注入后的生成效果(编辑器同款渲染引擎)" @click="previewMode = 'render'">渲染</button>
                 <button :class="{ on: previewMode === 'tpl' }" @click="previewMode = 'tpl'">模板化</button>
                 <button :class="{ on: previewMode === 'raw' }" @click="previewMode = 'raw'">原文</button>
               </div>
@@ -154,6 +158,46 @@
               <span class="cw-act-text">{{ a.text }}</span>
               <span class="cw-act-ts">{{ fmtTs(a.ts) }}</span>
             </div>
+          </div>
+        </div>
+
+        <!-- 渲染预览页:整套输出文件的渲染结果 -->
+        <div v-else-if="centerTab === 'renderall'" class="cw-rapane">
+          <div class="cw-ra-list">
+            <div
+              v-for="o in ir.outputs" :key="o.path"
+              class="cw-ra-item" :class="{ cur: o.path === renderAllSel }"
+              @click="pickRenderAll(o.path)"
+            >
+              <span class="cw-ra-name">{{ o.path.split('/').pop() }}</span>
+              <span class="cw-ra-path">{{ o.path }}</span>
+              <span v-if="o.replaced" class="cw-ra-badge">{{ o.replaced }}</span>
+            </div>
+            <div v-if="!ir.outputs.length" class="cw-tl-empty">{{ raLoading ? '正在生成替换结果…' : '尚无替换结果——调整文件/变量后自动生成' }}</div>
+          </div>
+          <div class="cw-ra-view">
+            <div v-if="renderAllSel" class="cw-ra-head">
+              <span class="cw-ra-hpath cw-mono">{{ renderAllSel }}</span>
+              <div class="cw-ra-meta">
+                <span class="engine-tag">Cloud</span>
+                <span v-if="raDuration != null" class="render-time">{{ raDuration }}ms</span>
+                <span class="cw-repl">替换 {{ raCurrent?.replaced || 0 }} 处</span>
+                <a-button size="small" @click="copyRendered">
+                  <template #icon><CopyOutlined /></template>复制
+                </a-button>
+              </div>
+            </div>
+
+            <div v-if="raError" class="cw-ra-error">
+              <div class="ra-err-head"><CloseCircleOutlined /> 模板渲染错误</div>
+              <div class="ra-err-type">{{ raErrText }}<span v-if="raError.line"> · 第 {{ raError.line }} 行</span></div>
+              <div class="ra-err-msg">{{ raError.message }}</div>
+              <pre v-if="raError.context" class="ra-err-ctx">{{ raError.context }}</pre>
+            </div>
+
+            <CodeViewer v-else-if="renderAllSel && raRendered" :content="raRendered" :filename="renderAllSel" class="cw-ra-code" />
+            <div v-else-if="renderAllSel" class="cw-empty">渲染中…</div>
+            <div v-else class="cw-empty">选择左侧文件查看渲染结果(变量默认值取自右侧变量面板)</div>
           </div>
         </div>
 
@@ -215,8 +259,10 @@
               变量或文件清单已变更,模板化预览已失效
               <a-button size="small" type="link" @click="regenPreview">重新生成</a-button>
             </div>
+            <div v-if="renderError" class="cw-issue conflict"><b>渲染失败</b>{{ renderError }}</div>
             <div v-if="previewError" class="cw-issue warn"><b>无法读取</b>{{ previewError }}</div>
-            <div class="cw-code">
+            <CodeViewer v-if="previewMode === 'render' && renderedContent && !renderError" :content="renderedContent" :filename="selectedPath" class="cw-code-cm" />
+            <div v-else class="cw-code">
               <div v-for="(l, i) in previewLines" :key="i" class="cw-ln">
                 <span class="cw-no">{{ i + 1 }}</span>
                 <span class="cw-lc" v-html="l"></span>
@@ -281,9 +327,10 @@ import { message } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
 import {
   ArrowLeftOutlined, CloseOutlined, RedoOutlined, SaveOutlined, MinusOutlined, BorderOutlined,
-  FileOutlined, FolderFilled, FolderOpenFilled,
+  FileOutlined, FolderFilled, FolderOpenFilled, CopyOutlined, CloseCircleOutlined,
 } from '@ant-design/icons-vue'
 import ConvertAgentPanel from './components/ConvertAgentPanel.vue'
+import CodeViewer from '@/components/common/CodeViewer.vue'
 import AiIcon from '@/components/icons/AiIcon.vue'
 import { tauriApi } from '@/utils/tauriApi'
 import { createUserTemplate } from '@/api/editor/templates/contribution'
@@ -335,6 +382,8 @@ const selectedPath = ref('')
 const previewMode = ref('tpl')
 const previewRaw = ref('')
 const previewError = ref('')
+const renderedContent = ref('')
+const renderError = ref('')
 
 const aiDock = ref(localStorage.getItem('convert-ai-dock') === '1')
 watch(aiDock, (v) => localStorage.setItem('convert-ai-dock', v ? '1' : '0'))
@@ -465,7 +514,11 @@ watch([() => focusChecked.value.join('|'), exposeAll], () => {
 
 // ---- 预览(行号 + 占位符高亮;原文走 convert_read_file,模板化走 apply 结果) ----
 const tplOutput = computed(() => ir.outputs.find((o) => o.path === selectedPath.value) || null)
-const previewContent = computed(() => (previewMode.value === 'raw' ? previewRaw.value : (tplOutput.value ? tplOutput.value.content : previewRaw.value)))
+const previewContent = computed(() => {
+  if (previewMode.value === 'raw') return previewRaw.value
+  if (previewMode.value === 'render') return renderedContent.value
+  return tplOutput.value ? tplOutput.value.content : previewRaw.value
+})
 const previewReplaced = computed(() => (previewMode.value === 'tpl' && tplOutput.value ? tplOutput.value.replaced || 0 : 0))
 const tplStale = computed(() => previewMode.value === 'tpl' && selectedPath.value && !tplOutput.value && ir.variables.length > 0)
 
@@ -484,6 +537,8 @@ const previewLines = computed(() => {
 watch(selectedPath, async (p) => {
   previewRaw.value = ''
   previewError.value = ''
+  renderedContent.value = ''
+  renderError.value = ''
   previewMode.value = 'tpl'
   if (!p) return
   try {
@@ -497,6 +552,91 @@ const regenPreview = async () => {
   if (busy.value) return
   try { await runApply() } catch (e) { message.error('生成失败: ' + (e.message || e)) }
 }
+
+// ---- 整体渲染预览页 ----
+const renderAllSel = ref('')
+const raRendered = ref('')
+const raError = ref(null)   // {type?, line?, message, context?}
+const raDuration = ref(null)
+const raErrTypes = { parse_error: '解析错误', execute_error: '执行错误', function_error: '函数错误', variable_error: '变量错误', unknown_error: '未知错误' }
+const raErrText = computed(() => raErrTypes[raError.value?.type] || '渲染失败')
+const copyRendered = async () => {
+  try { await navigator.clipboard.writeText(raRendered.value); message.success('已复制渲染结果') } catch { message.error('复制失败') }
+}
+const raLoading = ref(false)
+const raCache = new Map() // path -> {content} | {error}
+const raCurrent = computed(() => ir.outputs.find((o) => o.path === renderAllSel.value) || null)
+const enterRenderAll = async () => {
+  centerTab.value = 'renderall'
+  if (!ir.outputs.length && !busy.value) {
+    raLoading.value = true
+    try { await runApply() } catch (e) { message.error('生成替换结果失败: ' + (e.message || e)) }
+    raLoading.value = false
+  }
+  if (!renderAllSel.value) {
+    const first = ir.outputs.find((o) => o.replaced > 0) || ir.outputs[0]
+    if (first) pickRenderAll(first.path)
+  }
+}
+const pickRenderAll = async (path) => {
+  renderAllSel.value = path
+  raError.value = null
+  raRendered.value = ''
+  raDuration.value = null
+  const o = ir.outputs.find((x) => x.path === path)
+  if (!o) return
+  const cached = raCache.get(path)
+  if (cached) {
+    if (cached.error) raError.value = cached.error
+    else { raRendered.value = cached.content || ''; raDuration.value = cached.duration ?? null }
+    return
+  }
+  const t0 = performance.now()
+  try {
+    const vars = {}
+    for (const v of enabledVars.value) { const n = (v.name || '').trim(); if (n) vars[n] = v.defaultValue ?? '' }
+    const r = await invoke('render_string_content', { template: o.content, variables: vars })
+    raDuration.value = Math.max(1, Math.round(performance.now() - t0))
+    if (r && r.success) { raCache.set(path, { content: r.content || '', duration: raDuration.value }); raRendered.value = r.content || '' }
+    else {
+      const err = { type: r?.error?.type, line: r?.error?.line, message: r?.error?.message || '未知错误', context: r?.error?.context }
+      raCache.set(path, { error: err })
+      raError.value = err
+    }
+  } catch (e) {
+    const err = { message: String(e) }
+    raCache.set(path, { error: err })
+    raError.value = err
+  }
+}
+// 变量/清单变更 → 渲染缓存失效,重渲当前
+watch(() => ir.files.map((f) => f.path + f.action).join('|') + JSON.stringify(enabledVars.value.map((v) => [v.name, v.defaultValue])), () => {
+  raCache.clear()
+  if (centerTab.value === 'renderall' && renderAllSel.value) pickRenderAll(renderAllSel.value)
+})
+
+// 渲染预览(编辑器同款引擎):启用变量默认值注入模板化内容
+const doRenderPreview = async () => {
+  renderError.value = ''
+  if (!selectedPath.value) { renderedContent.value = ''; return }
+  try {
+    if (!ir.outputs.length) await runApply()
+    const o = ir.outputs.find((x) => x.path === selectedPath.value)
+    if (!o) { renderedContent.value = ''; return }
+    const vars = {}
+    for (const v of enabledVars.value) { const n = (v.name || '').trim(); if (n) vars[n] = v.defaultValue ?? '' }
+    const r = await invoke('render_string_content', { template: o.content, variables: vars })
+    if (r && r.success) renderedContent.value = r.content || ''
+    else { renderedContent.value = ''; renderError.value = r?.error?.message || r?.error?.type || '未知错误' }
+  } catch (e) {
+    renderedContent.value = ''
+    renderError.value = String(e)
+  }
+}
+watch([previewMode, selectedPath, () => enabledVars.value.map((v) => [v.name, v.defaultValue]).join('|')], () => {
+  if (previewMode.value === 'render') doRenderPreview()
+  else { renderedContent.value = ''; renderError.value = '' }
+})
 
 // ---- 管线 ----
 const startConvert = async (src, branch = null) => {
@@ -596,6 +736,8 @@ const runApply = async () => {
 // 状态变化使替换结果失效
 watch(() => ir.files.map((f) => f.path + f.action).join('|') + JSON.stringify(enabledVars.value.map((v) => [v.name, v.defaultValue])), () => {
   ir.outputs = []
+  renderedContent.value = ''
+  renderError.value = ''
   ir.conflicts = []; ir.warnings = []; ir.validationErrors = []
 })
 
@@ -873,6 +1015,29 @@ onBeforeUnmount(() => { unlistenLog?.() })
 .cw-var-def:focus { border-bottom: 1px solid var(--color-brand, #16a34a); }
 .cw-var-occ { font-size: 10.5px; color: var(--color-text-secondary, #999); }
 .cw-store-sum { font-size: 12px; color: var(--color-text-secondary, #999); }
+
+.cw-rapane { flex: 1; min-height: 0; display: flex; overflow: hidden; }
+.cw-ra-list { width: 240px; flex-shrink: 0; border-right: 1px solid var(--editor-border, #e2e8f0); overflow-y: auto; background: var(--editor-panel-bg, #fff); padding: 6px 6px 12px; }
+.cw-ra-item { display: flex; flex-direction: column; gap: 1px; padding: 6px 8px; border-radius: 6px; cursor: pointer; position: relative; }
+.cw-ra-item:hover { background: var(--color-surface, #f7f7f5); }
+.cw-ra-item.cur { background: var(--color-nav-active, #eef0ec); }
+.cw-ra-name { font-size: 12px; color: var(--color-text, #333); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cw-ra-item.cur .cw-ra-name { font-weight: 600; }
+.cw-ra-path { font-size: 10px; color: var(--color-text-muted, #9aa0a6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.cw-ra-badge { position: absolute; right: 6px; top: 6px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px; background: var(--color-brand, #16a34a); color: #fff; font-size: 9px; display: flex; align-items: center; justify-content: center; }
+.cw-ra-view { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--editor-panel-bg, #fff); }
+.cw-ra-head { height: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 10px 0 14px; border-bottom: 1px solid var(--editor-border, #e2e8f0); }
+.cw-ra-hpath { font-size: 12px; color: var(--color-text-secondary, #555); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cw-ra-meta { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.engine-tag { font-size: 10px; font-weight: 600; color: #64748b; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 5px; letter-spacing: 0.3px; }
+.render-time { font-size: 11px; color: var(--color-text-muted, #9aa0a6); font-family: Consolas, monospace; }
+.cw-ra-code { flex: 1; min-height: 0; }
+.cw-code-cm { flex: 1; min-height: 0; }
+.cw-ra-error { flex: 1; min-height: 0; overflow-y: auto; margin: 14px; padding: 14px 16px; background: #fff5f4; border: 1px solid #ffd7d3; border-radius: 8px; display: flex; flex-direction: column; gap: 8px; }
+.ra-err-head { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #d93025; }
+.ra-err-type { font-size: 12px; color: #b3261e; font-weight: 600; }
+.ra-err-msg { font-size: 12.5px; color: #5f2120; line-height: 1.6; word-break: break-all; }
+.ra-err-ctx { margin: 0; padding: 8px 10px; background: rgba(255, 255, 255, 0.7); border-radius: 6px; font-family: Consolas, monospace; font-size: 11.5px; color: #5f2120; white-space: pre-wrap; }
 
 /* ===== 数据驱动:重点文件勾选 ===== */
 .cw-tab-n { display: inline-flex; align-items: center; justify-content: center; min-width: 15px; height: 15px; padding: 0 4px; margin-left: 5px; border-radius: 8px; background: #3e7bfa; color: #fff; font-size: 10px; }
