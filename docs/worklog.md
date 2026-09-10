@@ -1538,3 +1538,43 @@
 **涉及文件：** `src/views/editor/index.vue`、`src/views/editor/components/EditorActivityBar.vue`(新增)、`src/views/editor/components/ScmPanel.vue`(新增)、`dev-docs/project-to-template.md`(§14)
 
 **验收结果：** pnpm build 通过;SCM 真实比对需登录态后端,浏览器结构验证。
+
+## 2026-09-10 SCM 文件树/列表双视图（任务 #155）
+
+**变更内容：** ScmPanel 头部新增树形/列表切换(默认树,localStorage 记忆):树形按目录分组(目录行聚合计数+折叠展开,子行缩进),平铺保留原全路径列表;图标 ApartmentOutlined/UnorderedListOutlined。
+
+**涉及文件：** `src/views/editor/components/ScmPanel.vue`
+
+**验收结果：** pnpm build 通过。
+
+## 2026-09-10 SCM 面板 VSCode 风格重做（任务 #155 补）
+
+**变更内容：** 整面板重写对齐 VSCode:标题行「更改 (N)」11px 粗体+动作图标悬停显现(视图切换/放弃全部/刷新);树视图目录节段(箭头+目录名+计数),文件行=文件名+路径淡色+diffstat(+绿-红)+状态字母右置色块+悬停放弃;列表视图平铺;提交框改 textarea+Ctrl+Enter+块级「提交」按钮。
+
+**涉及文件：** `src/views/editor/components/ScmPanel.vue`
+
+**验收结果：** pnpm build 通过。
+
+## 2026-09-10 SCM 树视图真嵌套修复（任务 #155 补2）
+
+**变更内容：** 树视图由一层目录分组改为递归嵌套树(ScmNode 递归组件,深度缩进,目录节点聚合后代变更数,仅含变更分支);根目录散文件归"(根目录)"节段。
+
+**涉及文件：** `src/views/editor/components/ScmPanel.vue`
+
+**验收结果：** pnpm build 通过。
+
+## 2026-09-10 SCM 树视图空白修复（任务 #155 补3）
+
+**变更内容：** 根因:递归节点以内联 const+字符串 template 声明,自引用解析不到(script setup 不注册)致渲染空白。拆为独立 SFC ScmNode.vue(文件名隐式自引用)导入。
+
+**涉及文件：** `src/views/editor/components/ScmPanel.vue`、`src/views/editor/components/ScmNode.vue`(新增)
+
+**验收结果：** pnpm build 通过。
+
+## 2026-09-10 SCM 点击后消失修复（任务 #155 补4）
+
+**变更内容：** 根因:上一轮删除内联 ScmNode 时误删 refresh/commit/discard/discardAll/flatten/diffStat/onMounted(面板只剩树 computed,refresh 未定义点击即报错卸载)。补回全部逻辑;refresh 单文件读取失败容错跳过。
+
+**涉及文件：** `src/views/editor/components/ScmPanel.vue`
+
+**验收结果：** pnpm build 通过。
