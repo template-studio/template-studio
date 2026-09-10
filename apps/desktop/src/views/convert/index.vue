@@ -18,6 +18,9 @@
         </template>
       </div>
       <div class="cw-head-right">
+        <a-button v-if="ir.source.dir" size="small" :class="{ 'cw-ai-on': aiDock }" :title="aiDock ? '收起转换助手' : '打开转换助手(实时过程+调整方向)'" @click="aiDock = !aiDock">
+          <template #icon><RobotOutlined /></template>助手
+        </a-button>
         <a-button v-if="ir.source.dir" size="small" :disabled="busy" @click="rerunAnalyze">
           <template #icon><RedoOutlined /></template>重新分析
         </a-button>
@@ -223,6 +226,15 @@
         </div>
       </section>
 
+      <!-- 转换助手(Agent):本地工具+bash+IR 操作,见设计文档 §12 -->
+      <ConvertAgentPanel
+        v-if="aiDock"
+        :snapshot="agentSnapshot"
+        :exec-op="execAgentOp"
+        @close="aiDock = false"
+        @log="onAgentLog"
+      />
+
       <!-- 右:变量表 -->
       <aside class="cw-panel cw-right">
         <div class="cw-panel-head">
@@ -269,8 +281,9 @@ import { message } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
 import {
   ArrowLeftOutlined, CloseOutlined, RedoOutlined, SaveOutlined, MinusOutlined, BorderOutlined,
-  FileOutlined, FolderFilled, FolderOpenFilled,
+  FileOutlined, FolderFilled, FolderOpenFilled, RobotOutlined,
 } from '@ant-design/icons-vue'
+import ConvertAgentPanel from './components/ConvertAgentPanel.vue'
 import { tauriApi } from '@/utils/tauriApi'
 import { createUserTemplate } from '@/api/editor/templates/contribution'
 import { analyzeTemplateVariables } from '@/api/editor/templates'
@@ -305,7 +318,7 @@ const stageState = ref({ clone: '', scan: '', analyze: '' })
 
 // ---- 过程记录(convert://log 事件 + 前端本地事件) ----
 const activity = ref([])
-const stageNames = { clone: '克隆', scan: '扫描', analyze: '分析', apply: '替换', store: '存储' }
+const stageNames = { clone: '克隆', scan: '扫描', analyze: '分析', apply: '替换', store: '存储', agent: '助手' }
 const pushActivity = (stage, text) => activity.value.push({ stage, text, ts: Date.now() })
 const cloneTail = computed(() => activity.value.slice(-12))
 const logEl = ref(null)
@@ -321,6 +334,52 @@ const selectedPath = ref('')
 const previewMode = ref('tpl')
 const previewRaw = ref('')
 const previewError = ref('')
+
+const aiDock = ref(localStorage.getItem('convert-ai-dock') === '1')
+watch(aiDock, (v) => localStorage.setItem('convert-ai-dock', v ? '1' : '0'))
+
+// ---- 转换助手(Agent)宿主适配 ----
+const agentSnapshot = computed(() => ({
+  dir: ir.source.dir,
+  source: ir.source.source,
+  packId: ir.source.packId,
+  tplType: tplType.value,
+  files: ir.files.map(({ path, action }) => ({ path, action })),
+  variables: ir.variables.map(({ name, defaultValue, enabled }) => ({ name, defaultValue, enabled })),
+  focusFiles: focusFiles.value,
+  exposeAll: exposeAll.value,
+  logTail: activity.value.slice(-20),
+}))
+const execAgentOp = (name, args) => {
+  if (name === 'set_file_action') {
+    const f = ir.files.find((x) => x.path === args.path)
+    if (!f) return `错误:文件 ${args.path} 不在清单中(新文件需重新扫描)`
+    f.action = args.action === 'exclude' ? 'exclude' : 'keep'
+    f.reason = f.action === 'exclude' ? '助手剔除' : ''
+    return `已${f.action === 'keep' ? '保留' : '剔除'} ${args.path}`
+  }
+  if (name === 'set_focus') {
+    const set = new Set((args.files || []).map(String))
+    focusChecked.value = [...set]
+    if (typeof args.expose_all === 'boolean') exposeAll.value = args.expose_all
+    return `重点文件已设为 ${set.size} 个(暴露策略:${exposeAll.value ? '全部' : '聚焦勾选'})`
+  }
+  if (name === 'update_variable') {
+    const v = ir.variables.find((x) => x.name === args.name)
+    if (!v) return `错误:变量 ${args.name} 不存在`
+    if (args.new_name) v.name = String(args.new_name)
+    if (args.default_value !== undefined) v.defaultValue = String(args.default_value)
+    if (typeof args.enabled === 'boolean') v.enabled = args.enabled
+    return `变量 ${args.name} 已更新`
+  }
+  if (name === 'rerun_analysis') {
+    if (busy.value) return '分析进行中,请稍候'
+    rerunAnalyze()
+    return '已触发重新分析,结果见「转换过程」'
+  }
+  return `未知操作 ${name}`
+}
+const onAgentLog = (text) => pushActivity('agent', text)
 
 const tid = () => draftId.value
 const keptCount = computed(() => ir.files.filter((f) => f.action === 'keep').length)
@@ -782,6 +841,7 @@ onBeforeUnmount(() => { unlistenLog?.() })
 .cw-act-dot.analyze { background: #d97706; }
 .cw-act-dot.apply { background: #0ea5e9; }
 .cw-act-dot.store { background: var(--color-brand, #16a34a); }
+.cw-act-dot.agent { background: #8b5cf6; }
 .cw-act-stage { flex: none; font-size: 10.5px; color: var(--color-text-muted, #9aa0a6); width: 26px; }
 .cw-act-text { flex: 1; min-width: 0; color: var(--color-text, #333); word-break: break-all; }
 .cw-act-ts { flex: none; font-size: 10px; color: var(--color-text-muted, #b6bcc2); font-family: Consolas, monospace; }
@@ -824,6 +884,8 @@ onBeforeUnmount(() => { unlistenLog?.() })
 .cw-focus-opts small { display: block; font-size: 11px; color: var(--color-text-muted, #9aa0a6); margin-top: 1px; }
 .cw-focus-count { margin-left: auto; font-size: 12px; color: #3e7bfa; white-space: nowrap; }
 .cw-focus-tree { flex: 1; min-height: 0; overflow-y: auto; border: 1px solid var(--editor-border, #e2e8f0); border-radius: 8px; background: var(--editor-panel-bg, #fff); padding: 6px 8px 12px; }
+.cw-ai-on { color: var(--color-brand, #16a34a) !important; border-color: var(--color-brand, #16a34a) !important; }
+
 /* 分析等待态(数据驱动重点文件步骤) */
 .cw-pstage.wait .cw-pdot, .cw-rstage.wait .cw-rdot { background: transparent; border: 2px solid #3e7bfa; width: 7px; height: 7px; }
 .cw-pstage.wait, .cw-rstage.wait { color: #3e7bfa; }

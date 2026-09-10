@@ -669,6 +669,180 @@ pub async fn convert_read_file(root: String, path: String) -> Result<String, Str
     Ok(serde_json::json!({ "path": path, "content": content }).to_string())
 }
 
+// ===== Agent 本地工具(转换宿主:镜像目录内执行,见设计文档 §12) =====
+
+/// 相对路径合法性(防穿越/禁 .git 内部)
+fn agent_path_ok(rel: &str) -> bool {
+    !rel.is_empty() && !rel.contains("..") && !Path::new(rel).is_absolute() && !rel.starts_with(".git/") && !rel.contains("/.git/")
+}
+
+/// 列出镜像内文件(跳过 .git;含被剔除文件——agent 需见镜像真实状态)
+#[tauri::command]
+pub async fn convert_agent_list(root: String, sub: Option<String>) -> Result<String, String> {
+    let root_path = PathBuf::from(&root);
+    if !root_path.is_dir() {
+        return Err("镜像目录不存在".to_string());
+    }
+    let mut base = root_path.clone();
+    if let Some(s) = sub.as_deref().filter(|s| !s.is_empty()) {
+        if !agent_path_ok(s) {
+            return Err("非法路径".to_string());
+        }
+        base = base.join(s);
+        if !base.is_dir() {
+            return Err("子目录不存在".to_string());
+        }
+    }
+    const MAX_ENTRIES: usize = 2000;
+    let mut files: Vec<serde_json::Value> = Vec::new();
+    let mut stack = vec![base];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+        for e in entries.flatten() {
+            let name = e.file_name().to_string_lossy().to_string();
+            if name == ".git" {
+                continue;
+            }
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                let rel = p
+                    .strip_prefix(&root_path)
+                    .map(|x| x.to_string_lossy().replace('\\', "/"))
+                    .unwrap_or_default();
+                let size = e.metadata().map(|m| m.len()).unwrap_or(0);
+                files.push(serde_json::json!({ "path": rel, "size": size }));
+                if files.len() >= MAX_ENTRIES {
+                    return Ok(serde_json::json!({ "files": files, "truncated": true }).to_string());
+                }
+            }
+        }
+    }
+    Ok(serde_json::json!({ "files": files, "truncated": false }).to_string())
+}
+
+/// agent 写文件。expect_hash 提供时做新鲜度守卫(§8.5):不匹配即拒,要求先读取。
+#[tauri::command]
+pub async fn convert_agent_write(
+    root: String,
+    path: String,
+    content: String,
+    expect_hash: Option<String>,
+) -> Result<String, String> {
+    let root_path = PathBuf::from(&root);
+    if !root_path.is_dir() {
+        return Err("镜像目录不存在".to_string());
+    }
+    if !agent_path_ok(&path) {
+        return Err("非法路径".to_string());
+    }
+    let full = root_path.join(&path);
+    if let Some(expected) = expect_hash.as_deref().filter(|s| !s.is_empty()) {
+        match std::fs::read_to_string(&full) {
+            Ok(cur) => {
+                if fnv1a(&cur) != expected {
+                    return Err("文件已变更(哈希不匹配),请先 read_file 获取最新内容再修改".to_string());
+                }
+            }
+            Err(_) => return Err("文件不存在(或为二进制),新建文件不要传 expect_hash".to_string()),
+        }
+    }
+    if let Some(parent) = full.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {e}"))?;
+    }
+    std::fs::write(&full, &content).map_err(|e| format!("写入失败: {e}"))?;
+    Ok(serde_json::json!({ "path": path, "hash": fnv1a(&content) }).to_string())
+}
+
+/// 按字符截断(防 UTF-8 边界 panic)
+fn truncate_chars(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        s.to_string()
+    } else {
+        let t: String = s.chars().take(max).collect();
+        format!("{t}\n…(输出已截断)")
+    }
+}
+
+/// agent bash:cwd 钉死镜像;超时默认 30s 上限 120s;输出合并截断 64KB;push 类硬拦截。
+/// 非零退出码不算错误(结果返回给 agent 自行判断)。
+#[tauri::command]
+pub async fn convert_agent_bash(
+    root: String,
+    command: String,
+    timeout_ms: Option<u64>,
+) -> Result<String, String> {
+    let root_path = PathBuf::from(&root);
+    if !root_path.is_dir() {
+        return Err("镜像目录不存在".to_string());
+    }
+    let cmd = command.trim();
+    if cmd.is_empty() {
+        return Err("命令为空".to_string());
+    }
+    let lower = cmd.to_lowercase();
+    for bad in ["git push", "git send-pack"] {
+        if lower.contains(bad) {
+            return Err(format!("已拦截:禁止 {bad}(镜像是本地副本,不允许推送远端)"));
+        }
+    }
+    let timeout = timeout_ms.unwrap_or(30_000).min(120_000);
+
+    let mut proc = std::process::Command::new("bash");
+    proc.args(["-lc", cmd])
+        .current_dir(&root_path)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        proc.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    let mut child = proc
+        .spawn()
+        .map_err(|_| "无法启动 bash:请确认 Git Bash 在 PATH 中(git 安装通常自带)".to_string())?;
+
+    let out_pipe = child.stdout.take();
+    let err_pipe = child.stderr.take();
+    let out_handle = std::thread::spawn(move || {
+        use std::io::Read;
+        let mut buf = String::new();
+        if let Some(mut o) = out_pipe {
+            let _ = o.read_to_string(&mut buf);
+        }
+        buf
+    });
+    let err_handle = std::thread::spawn(move || {
+        use std::io::Read;
+        let mut buf = String::new();
+        if let Some(mut e) = err_pipe {
+            let _ = e.read_to_string(&mut buf);
+        }
+        buf
+    });
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(timeout);
+    let status = loop {
+        match child.try_wait().map_err(|e| format!("等待进程失败: {e}"))? {
+            Some(s) => break s,
+            None if std::time::Instant::now() >= deadline => {
+                let _ = child.kill();
+                return Err(format!("命令超时({timeout}ms)已终止"));
+            }
+            None => std::thread::sleep(std::time::Duration::from_millis(50)),
+        }
+    };
+    let stdout = out_handle.join().unwrap_or_default();
+    let stderr = err_handle.join().unwrap_or_default();
+    let combined = format!("{stdout}{stderr}");
+    Ok(serde_json::json!({
+        "exitCode": status.code().unwrap_or(-1),
+        "output": truncate_chars(combined.trim(), 64 * 1024),
+    })
+    .to_string())
+}
+
 // ===== 草稿持久化(converts/<id>/,终稿前不进模板库) =====
 
 fn convert_draft_dir(id: &str) -> Result<PathBuf, String> {
@@ -955,6 +1129,72 @@ admin_port = 8081".to_string()),
         assert!(files
             .iter()
             .any(|f| f["path"].as_str() == Some("Cargo.lock") && f["action"].as_str() == Some("exclude")));
+    }
+
+    #[tokio::test]
+    async fn agent_write_hash_guard() {
+        let tmp = std::env::temp_dir().join(format!("t137-w-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        std::fs::create_dir_all(&tmp).unwrap();
+        std::fs::write(tmp.join("a.txt"), "old").unwrap();
+        let root = tmp.to_string_lossy().to_string();
+
+        // 错误哈希 → 拒写并要求先读
+        let err = convert_agent_write(root.clone(), "a.txt".into(), "new".into(), Some("deadbeef".into()))
+            .await
+            .unwrap_err();
+        assert!(err.contains("read_file"), "应提示先读取: {err}");
+        // 正确哈希 → 通过并返回新哈希
+        let ok = convert_agent_write(root.clone(), "a.txt".into(), "new".into(), Some(fnv1a("old")))
+            .await
+            .unwrap();
+        let v: serde_json::Value = serde_json::from_str(&ok).unwrap();
+        assert_eq!(v["hash"].as_str(), Some(fnv1a("new")).as_deref());
+        // 新建(无哈希,父目录自动创建)
+        convert_agent_write(root, "b/c.txt".into(), "x".into(), None).await.unwrap();
+        assert_eq!(std::fs::read_to_string(tmp.join("b/c.txt")).unwrap(), "x");
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[tokio::test]
+    async fn agent_list_skips_git() {
+        let tmp = std::env::temp_dir().join(format!("t137-l-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        std::fs::create_dir_all(tmp.join(".git")).unwrap();
+        std::fs::create_dir_all(tmp.join("src")).unwrap();
+        std::fs::write(tmp.join(".git/config"), "x").unwrap();
+        std::fs::write(tmp.join("src/main.rs"), "fn main(){}").unwrap();
+        let out = convert_agent_list(tmp.to_string_lossy().to_string(), None).await.unwrap();
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        let paths: Vec<&str> = v["files"].as_array().unwrap().iter().filter_map(|f| f["path"].as_str()).collect();
+        assert!(paths.contains(&"src/main.rs"));
+        assert!(!paths.iter().any(|p| p.starts_with(".git/")));
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[tokio::test]
+    async fn agent_bash_guards() {
+        let tmp = std::env::temp_dir().join(format!("t137-b-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        std::fs::create_dir_all(&tmp).unwrap();
+        let root = tmp.to_string_lossy().to_string();
+
+        // push 拦截
+        let err = convert_agent_bash(root.clone(), "git push origin main".into(), None)
+            .await
+            .unwrap_err();
+        assert!(err.contains("拦截"), "应拦截 push: {err}");
+
+        // 正常执行:echo + 退出码
+        let ok = convert_agent_bash(root.clone(), "echo agent-ok".into(), Some(20_000)).await.unwrap();
+        let v: serde_json::Value = serde_json::from_str(&ok).unwrap();
+        assert_eq!(v["exitCode"].as_i64(), Some(0));
+        assert!(v["output"].as_str().unwrap_or("").contains("agent-ok"));
+
+        // 超时终止
+        let err = convert_agent_bash(root, "sleep 3".into(), Some(200)).await.unwrap_err();
+        assert!(err.contains("超时"), "应超时: {err}");
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 }
 

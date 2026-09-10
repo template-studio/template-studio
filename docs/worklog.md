@@ -1266,3 +1266,11 @@
 **涉及文件：** `src-tauri/src/commands/convert.rs`、`src/views/convert/index.vue`
 
 **验收结果：** cargo test 23/23;pnpm build 通过;浏览器实测(临时 demo 已移除):重点文件页勾选树/双策略单选/勾选计数与页签徽标联动/下一步 CTA 正常。
+
+## 2026-09-10 Agent 集成转换工作台:设计+本地工具+bash+助手面板（任务 #137）
+
+**变更内容：** ①设计文档 §12:共享大脑+宿主皮肤架构(ai_agent_turn 本就前端执行工具,宿主抽象在前端控制台)、工具矩阵(编辑器=API 工作副本/转换=本地镜像+bash+IR 操作)、bash 防护四条硬边界、编辑器本地化二期方向(§8.5/8.6 衔接,本轮明确不做);②Rust 三个 agent 本地命令:convert_agent_list(跳 .git/cap 2000,含被剔除文件)、convert_agent_write(expect_hash 新鲜度守卫,不匹配拒写要求先读)、convert_agent_bash(cwd 钉死镜像/bash -lc/超时 30s 上限 120s/输出截断 64KB/git push 与 send-pack 硬拦截,非零退出码不算错误);③前端 ConvertAgentPanel(转换宿主皮肤):composer(模型分组下拉/思考级别/权限四模式,localStorage 持久)、agent 循环(ai_agent_turn+tool_result 回传,上下文修剪折叠)、工具集 10 个(list/read/edit/create/bash/set_file_action/set_focus/update_variable/rerun_analysis/update_todo)、bash 恒确认+confirm 模式写文件确认(完全访问豁免)、FNV-1a 64 JS 实现与 Rust 哈希守卫闭环、系统提示词每轮刷新工作台快照(IR 统计+重点文件+变量+过程流尾部);④工作台接入:头部「助手」开关(localStorage),右栏停靠,IR 操作经 execOp 函数 prop 同步执行,agent 动作以 'agent' 阶段进过程时间线。
+
+**涉及文件：** `dev-docs/project-to-template.md`(§12)、`src-tauri/src/commands/convert.rs`、`src-tauri/src/lib.rs`、`src/views/convert/components/ConvertAgentPanel.vue`(新增)、`src/views/convert/index.vue`
+
+**验收结果：** cargo test 26/26(新增哈希守卫/list 跳 .git/bash 拦截+执行+超时三测);pnpm build 通过;浏览器实测(临时 demo 已移除):助手面板渲染/欢迎语/composer 三 chips/权限下拉四模式/关闭面板正常。真实 agent 轮次需桌面端配 provider 后验收。
