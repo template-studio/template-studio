@@ -99,6 +99,8 @@
       </div>
     </a-modal>
     <input ref="zipInput" type="file" accept=".zip" style="display: none" @change="onZipPicked" />
+    <!-- 从项目转换:来源选择(与项目转换引导页共用组件) -->
+    <ConvertSourceModal v-model:open="showConvertSource" @start="onConvertStart" />
     <a-modal v-model:open="showCreateModal" title="新建模板" :confirm-loading="creating" @ok="handleCreate" ok-text="创建并编辑" cancel-text="取消">
       <a-form layout="vertical" style="margin-top: 12px;">
         <a-form-item label="模板名称" required>
@@ -141,6 +143,7 @@ import { getTemplateTypes } from '@/api/editor/templates'
 import { createUserTemplate } from '@/api/editor/templates/contribution'
 import { uploadZipFile } from '@/api/editor/templateFiles'
 import TemplateWizardDrawer from './components/TemplateWizardDrawer.vue'
+import ConvertSourceModal from '@/views/convert/components/ConvertSourceModal.vue'
 
 const layoutStore = useLayoutStore()
 const configStore = useConfigStore()
@@ -285,10 +288,16 @@ const openCreateModal = () => { showCreateChoice.value = true }
 
 const pickCreate = (mode) => {
   showCreateChoice.value = false
-  if (mode === 'convert') { router.push('/convert'); return }
+  if (mode === 'convert') { showConvertSource.value = true; return }
   zipMode.value = mode === 'zip'
   createForm.value = { name: '', templateType: undefined, categoryId: undefined, primaryLanguage: undefined, description: '' }
   showCreateModal.value = true
+}
+
+const showConvertSource = ref(false)
+const onConvertStart = ({ source, branch }) => {
+  showConvertSource.value = false
+  router.push({ path: '/convert/workbench', query: { src: source, ...(branch ? { branch } : {}) } })
 }
 
 const onZipPicked = async (e) => {

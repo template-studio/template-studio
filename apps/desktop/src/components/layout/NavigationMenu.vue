@@ -44,6 +44,7 @@ import {
   SwapOutlined,
   AppstoreOutlined,
   SettingOutlined,
+  ImportOutlined,
 } from '@ant-design/icons-vue'
 
 const router = useRouter()
@@ -60,6 +61,8 @@ const sections = computed(() => [
     items: [
       { path: '/home', label: '首页', icon: HomeOutlined },
       { path: '/templates', label: '脚手架', icon: FileTextOutlined },
+      // 独立全屏工作台:侧边栏是常驻重入口(进入后脱离主布局)
+      { path: '/convert', label: '项目转换', icon: ImportOutlined },
       // 登录态专属：配置了 API Token 才显示
       ...(configStore.hasApiKey
         ? [{ path: '/my-templates', label: '我的模板', icon: FolderOpenOutlined }]

@@ -52,8 +52,9 @@ const isProjectWorkspace = computed(() => {
 })
 
 // 独立全屏页（模板编辑器、项目转模板工作台等）：不套布局，直接渲染路由组件
+// 注意 /convert 本身是主布局内的引导页，只有工作台子路径全屏
 const isStandalonePage = computed(() => {
-  return route.path.startsWith('/editor/') || route.path.startsWith('/convert')
+  return route.path.startsWith('/editor/') || route.path.startsWith('/convert/workbench')
 })
 
 // 全局右键菜单禁用

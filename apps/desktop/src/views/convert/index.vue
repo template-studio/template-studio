@@ -1,141 +1,186 @@
 <template>
   <div class="cw-page">
+    <!-- ===== 顶栏(类编辑器 EditHeader) ===== -->
     <header class="cw-head">
       <div class="cw-head-left">
-        <a-button type="text" size="small" @click="$router.push('/templates')">
-          <template #icon><ArrowLeftOutlined /></template>
-        </a-button>
+        <button class="cw-icon-btn" title="返回引导页" @click="$router.push('/convert')">
+          <ArrowLeftOutlined />
+        </button>
         <span class="cw-title">项目转模板</span>
         <template v-if="ir.source.dir">
-          <a-tag class="cw-src">{{ ir.source.source }}</a-tag>
-          <a-tag v-if="ir.source.branch">{{ ir.source.branch }}</a-tag>
-          <a-tag v-if="ir.source.commit" class="cw-mono">{{ ir.source.commit.slice(0, 7) }}</a-tag>
-          <a-tag v-if="ir.source.packId" color="green">{{ ir.source.packId }}</a-tag>
-          <a-tag v-if="degraded" color="orange" title="未配置 AI 或调用失败,结果为纯启发式">降级模式</a-tag>
+          <span class="cw-vbar"></span>
+          <span class="cw-src cw-mono" :title="ir.source.source">{{ srcShort }}</span>
+          <a-tag v-if="ir.source.branch" style="margin-inline-end: 0">{{ ir.source.branch }}</a-tag>
+          <a-tag v-if="ir.source.commit" class="cw-mono" style="margin-inline-end: 0">{{ ir.source.commit.slice(0, 7) }}</a-tag>
+          <a-tag v-if="ir.source.packId" color="green" style="margin-inline-end: 0">{{ ir.source.packId }}</a-tag>
+          <a-tag v-if="degraded" color="orange" title="未配置 AI 或调用失败,结果为纯启发式" style="margin-inline-end: 0">降级模式</a-tag>
         </template>
       </div>
       <div class="cw-head-right">
-        <a-button v-if="ir.source.dir" size="small" :disabled="busy" @click="rerunAnalyze">重新分析</a-button>
-        <a-button type="primary" size="small" :disabled="!canStore || busy" :loading="storing" @click="openStore">存储为模板</a-button>
+        <a-button v-if="ir.source.dir" size="small" :disabled="busy" @click="rerunAnalyze">
+          <template #icon><RedoOutlined /></template>重新分析
+        </a-button>
+        <a-button type="primary" size="small" :disabled="!canStore || busy" :loading="storing" @click="openStore">
+          <template #icon><SaveOutlined /></template>存储为模板
+        </a-button>
+        <!-- 窗口控制(独立全屏页自带,与编辑器一致) -->
+        <div class="cw-win">
+          <button class="cw-icon-btn" title="最小化" @click="winMin"><MinusOutlined /></button>
+          <button class="cw-icon-btn" title="最大化/还原" @click="winMax"><BorderOutlined /></button>
+          <button class="cw-icon-btn danger" title="关闭窗口" @click="winClose"><CloseOutlined /></button>
+        </div>
       </div>
     </header>
 
-    <!-- ===== 未克隆:来源输入 + 草稿列表 ===== -->
+    <!-- ===== 初始运行态:来源由引导页/新建弹窗传入,克隆中显示实时进度 ===== -->
     <div v-if="!ir.source.dir" class="cw-source">
       <div class="cw-source-card">
-        <div class="cw-source-title">从 git 项目转换</div>
-        <div class="cw-source-sub">完整克隆到本地镜像后操作,原始仓库只读;转换基于已提交内容(HEAD)</div>
-        <div class="cw-mode">
-          <div class="cw-mode-item" :class="{ active: srcMode === 'remote' }" @click="switchMode('remote')">
-            <span class="cw-mode-name"><GithubOutlined /> 远程仓库</span>
-            <span class="cw-mode-desc">GitHub / Gitee / GitLab</span>
-          </div>
-          <div class="cw-mode-item" :class="{ active: srcMode === 'local' }" @click="switchMode('local')">
-            <span class="cw-mode-name"><FolderOutlined /> 本地仓库</span>
-            <span class="cw-mode-desc">本机已提交的 git 项目</span>
+        <div class="cw-source-title">{{ stageState.clone === 'error' ? '引入项目失败' : '正在引入项目…' }}</div>
+        <div class="cw-src-now cw-mono" :title="lastSrc">{{ lastSrc }}</div>
+        <div class="cw-run-stages">
+          <div v-for="(s, i) in stages" :key="i" class="cw-rstage" :class="s.state">
+            <span class="cw-rdot"></span>{{ s.label }}
           </div>
         </div>
-
-        <template v-if="srcMode === 'remote'">
-          <a-input v-model:value="srcRemote" placeholder="https://github.com/user/repo.git" size="large" class="cw-mono" allow-clear @pressEnter="startConvert" />
-          <div class="cw-source-row">
-            <a-input v-model:value="srcBranch" placeholder="分支(可选,默认主分支)" style="width: 240px" allow-clear @pressEnter="startConvert" />
-            <a-button type="primary" :loading="busy" @click="startConvert">开始转换</a-button>
-          </div>
-        </template>
-
-        <template v-else>
-          <div class="cw-local-row">
-            <a-input v-model:value="srcLocal" placeholder="本地 git 仓库路径,如 D:\projects\my-app" size="large" class="cw-mono" @pressEnter="startConvert" />
-            <a-button size="large" @click="pickLocalDir">
-              <template #icon><FolderOpenOutlined /></template>
-              浏览
-            </a-button>
-          </div>
-          <div class="cw-source-row">
-            <span class="cw-source-tip">要求目录内已 git init 且有提交;只读克隆,不改动原始目录</span>
-            <a-button type="primary" :loading="busy" @click="startConvert">开始转换</a-button>
-          </div>
-        </template>
-
         <div v-if="errorMsg" class="cw-error">{{ errorMsg }}</div>
-      </div>
-      <div class="cw-drafts">
-        <div class="cw-drafts-title">转换草稿</div>
-        <div v-if="drafts.length === 0" class="cw-drafts-empty">暂无草稿</div>
-        <div v-for="d in drafts" :key="d.id" class="cw-draft-item" @click="openDraft(d.id)">
-          <span class="cw-draft-name">{{ d.meta?.source || d.id }}</span>
-          <span class="cw-draft-time">{{ fmtTime(d.mtimeMs) }}</span>
-          <DeleteOutlined class="cw-draft-del" @click.stop="removeDraft(d.id)" />
+        <div class="cw-run-log" ref="runLogEl">
+          <div v-for="(a, i) in cloneTail" :key="i" class="cw-run-line"><span class="cw-run-ts">{{ fmtTs(a.ts) }}</span>{{ a.text }}</div>
+          <div v-if="cloneTail.length === 0" class="cw-run-line dim">等待 git 输出…</div>
         </div>
+        <a-button v-if="stageState.clone === 'error'" size="small" style="align-self: flex-start" @click="$router.replace('/convert')">返回引导页重试</a-button>
       </div>
     </div>
 
-    <!-- ===== 已克隆:三栏 ===== -->
+    <!-- ===== 工作台三栏 ===== -->
     <div v-else class="cw-main">
-      <!-- 左:文件树 -->
-      <aside class="cw-left">
+      <!-- 左:嵌套文件树 -->
+      <aside class="cw-panel cw-left">
         <div class="cw-panel-head">
-          文件 <span class="cw-count">{{ keptCount }}/{{ ir.files.length }}</span>
+          <span>文件</span>
+          <span class="cw-count">{{ keptCount }}/{{ ir.files.length }} 保留</span>
         </div>
         <div class="cw-tree">
-          <div v-for="g in fileGroups" :key="g.dir" class="cw-group">
-            <div class="cw-group-head" @click="g.open = !g.open">
-              <span class="cw-chev" :class="{ open: g.open }">›</span>
-              <span class="cw-group-name">{{ g.dir || '(根目录)' }}</span>
-              <span class="cw-count">{{ g.files.length }}</span>
-            </div>
-            <template v-if="g.open">
-              <div v-for="f in g.files" :key="f.path" class="cw-file" :class="f.action" @click="toggleFile(f)">
-                <span class="cw-dot"></span>
-                <span class="cw-file-name" :title="f.reason">{{ f.base }}</span>
-                <span v-if="f.isEntry" class="cw-entry">入口</span>
-                <EyeOutlined v-if="f.action === 'keep'" class="cw-eye" title="预览模板化内容" @click.stop="preview(f.path)" />
+          <a-tree
+            :tree-data="treeData"
+            :selected-keys="selectedPath ? [selectedPath] : []"
+            :expanded-keys="expandedKeys"
+            :field-names="{ key: 'key', title: 'title', children: 'children' }"
+            @select="onTreeSelect"
+            @expand="onTreeExpand"
+          >
+            <template #icon="{ data }">
+              <FolderOpenFilled v-if="data.isDir && expandedSet.has(String(data.key))" class="cw-fic dir" />
+              <FolderFilled v-else-if="data.isDir" class="cw-fic dir" />
+              <FileOutlined v-else class="cw-fic" />
+            </template>
+            <template #title="opt">
+              <div
+                class="cw-row"
+                :class="{ excluded: opt.file && opt.file.action === 'exclude' }"
+                :title="opt.file?.reason || opt.title"
+              >
+                <template v-if="!opt.isDir">
+                  <span class="cw-dot" :class="opt.file?.action"></span>
+                  <span class="cw-name">{{ opt.title }}</span>
+                  <span v-if="opt.file?.isEntry" class="cw-entry">入口</span>
+                  <button
+                    class="cw-toggle"
+                    :class="{ off: opt.file?.action === 'exclude' }"
+                    @click.stop="toggleFile(opt.file)"
+                  >{{ opt.file?.action === 'exclude' ? '剔除' : '保留' }}</button>
+                </template>
+                <template v-else>
+                  <span class="cw-name">{{ opt.title }}</span>
+                  <span class="cw-dircount">{{ dirKept(opt.key) }}/{{ filesUnder(opt.key).length }}</span>
+                  <button class="cw-toggle" @click.stop="toggleDir(opt.key)">
+                    {{ dirAllExcluded(opt.key) ? '全留' : '全剔' }}
+                  </button>
+                </template>
               </div>
             </template>
-          </div>
+          </a-tree>
         </div>
       </aside>
 
-      <!-- 中:管线流 + 预览 -->
+      <!-- 中:文件预览 / 转换过程 -->
       <section class="cw-center">
-        <div class="cw-stages">
-          <div v-for="(s, i) in stages" :key="i" class="cw-stage" :class="s.state">
-            <span class="cw-stage-dot"></span>
-            <span>{{ s.label }}</span>
-            <span v-if="s.detail" class="cw-stage-detail">{{ s.detail }}</span>
+        <div class="cw-tabs">
+          <button class="cw-tab" :class="{ active: centerTab === 'process' }" @click="centerTab = 'process'">
+            转换过程<span v-if="pipelineRunning" class="cw-live"></span>
+          </button>
+          <button class="cw-tab" :class="{ active: centerTab === 'file' }" :disabled="!selectedPath" @click="centerTab = 'file'">
+            文件预览
+          </button>
+          <div class="cw-tabs-right">
+            <template v-if="centerTab === 'file' && selectedPath">
+              <div class="cw-seg">
+                <button :class="{ on: previewMode === 'tpl' }" @click="previewMode = 'tpl'">模板化</button>
+                <button :class="{ on: previewMode === 'raw' }" @click="previewMode = 'raw'">原文</button>
+              </div>
+              <span v-if="previewReplaced" class="cw-repl">替换 {{ previewReplaced }} 处</span>
+            </template>
           </div>
         </div>
 
-        <div v-for="(c, i) in ir.conflicts" :key="'c' + i" class="cw-issue conflict">
-          <b>冲突</b> {{ c.path }} · {{ c.original || '' }} {{ c.reason }}
-        </div>
-        <div v-for="(w, i) in ir.warnings" :key="'w' + i" class="cw-issue warn">
-          <b>提示</b> {{ w.path }} · {{ w.original }}(预期 {{ w.expected }}/实际 {{ w.actual }})已替换全部合法位置
-        </div>
-        <div v-for="(e, i) in ir.validationErrors" :key="'e' + i" class="cw-issue conflict">
-          <b>渲染失败</b> {{ e.path }} · {{ e.error }}
+        <!-- 过程页:阶段条 + 问题 + 时间线 -->
+        <div v-if="centerTab === 'process'" class="cw-proc">
+          <div class="cw-stagestrip">
+            <template v-for="(s, i) in stages" :key="i">
+              <div class="cw-pstage" :class="s.state">
+                <span class="cw-pdot"></span>
+                <span>{{ s.label }}</span>
+                <span v-if="s.detail" class="cw-pdetail">{{ s.detail }}</span>
+              </div>
+              <span v-if="i < stages.length - 1" class="cw-plink"></span>
+            </template>
+          </div>
+
+          <div v-for="(c, i) in ir.conflicts" :key="'c' + i" class="cw-issue conflict"><b>冲突</b>{{ c.path }} · {{ c.original || '' }} {{ c.reason }}</div>
+          <div v-for="(w, i) in ir.warnings" :key="'w' + i" class="cw-issue warn"><b>提示</b>{{ w.path }} · {{ w.original }}(预期 {{ w.expected }}/实际 {{ w.actual }})已替换全部合法位置</div>
+          <div v-for="(e, i) in ir.validationErrors" :key="'e' + i" class="cw-issue conflict"><b>渲染失败</b>{{ e.path }} · {{ e.error }}</div>
+
+          <div class="cw-timeline" ref="logEl">
+            <div v-if="activity.length === 0" class="cw-tl-empty">尚无过程记录——重新分析或调整文件/变量后,管线运行轨迹会实时出现在这里</div>
+            <div v-for="(a, i) in activity" :key="i" class="cw-act">
+              <span class="cw-act-dot" :class="a.stage"></span>
+              <span class="cw-act-stage">{{ stageNames[a.stage] || a.stage }}</span>
+              <span class="cw-act-text">{{ a.text }}</span>
+              <span class="cw-act-ts">{{ fmtTs(a.ts) }}</span>
+            </div>
+          </div>
         </div>
 
-        <div v-if="previewFile" class="cw-preview">
-          <div class="cw-preview-head">
-            <span class="cw-mono">{{ previewFile.path }}</span>
-            <span v-if="previewFile.replaced != null" class="cw-preview-count">替换 {{ previewFile.replaced }} 处</span>
-            <a-button type="text" size="small" @click="previewFile = null">
-              <template #icon><CloseOutlined /></template>
-            </a-button>
-          </div>
-          <pre class="cw-preview-body">{{ previewFile.content }}</pre>
+        <!-- 文件页 -->
+        <div v-else class="cw-filepane">
+          <div v-if="!selectedPath" class="cw-empty">点击左侧文件查看预览;行尾「保留/剔除」控制该文件是否进入模板</div>
+          <template v-else>
+            <div class="cw-file-head">
+              <span class="cw-mono">{{ selectedPath }}</span>
+              <button class="cw-icon-btn sm" title="关闭预览" @click="closePreview"><CloseOutlined /></button>
+            </div>
+            <div v-if="tplStale" class="cw-stale">
+              变量或文件清单已变更,模板化预览已失效
+              <a-button size="small" type="link" @click="regenPreview">重新生成</a-button>
+            </div>
+            <div v-if="previewError" class="cw-issue warn"><b>无法读取</b>{{ previewError }}</div>
+            <div class="cw-code">
+              <div v-for="(l, i) in previewLines" :key="i" class="cw-ln">
+                <span class="cw-no">{{ i + 1 }}</span>
+                <span class="cw-lc" v-html="l"></span>
+              </div>
+            </div>
+          </template>
         </div>
-        <div v-else-if="ir.source.dir" class="cw-hint">点击左侧文件预览模板化后的内容;绿点保留 / 红点剔除(点击切换)</div>
       </section>
 
       <!-- 右:变量表 -->
-      <aside class="cw-right">
+      <aside class="cw-panel cw-right">
         <div class="cw-panel-head">
-          变量 <span class="cw-count">{{ enabledVars.length }}/{{ ir.variables.length }}</span>
+          <span>变量</span>
+          <span class="cw-count">{{ enabledVars.length }}/{{ ir.variables.length }} 启用</span>
         </div>
         <div class="cw-vars">
+          <div v-if="ir.variables.length === 0" class="cw-tl-empty">尚无候选变量——完成分析后在此调整</div>
           <div v-for="(v, i) in ir.variables" :key="i" class="cw-var" :class="{ off: !v.enabled }">
             <div class="cw-var-top">
               <a-checkbox v-model:checked="v.enabled" size="small" />
@@ -168,11 +213,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
-import { ArrowLeftOutlined, DeleteOutlined, CloseOutlined, EyeOutlined, GithubOutlined, FolderOutlined, FolderOpenOutlined } from '@ant-design/icons-vue'
+import {
+  ArrowLeftOutlined, CloseOutlined, RedoOutlined, SaveOutlined, MinusOutlined, BorderOutlined,
+  FileOutlined, FolderFilled, FolderOpenFilled,
+} from '@ant-design/icons-vue'
+import { tauriApi } from '@/utils/tauriApi'
 import { createUserTemplate } from '@/api/editor/templates/contribution'
 import { analyzeTemplateVariables } from '@/api/editor/templates'
 import { addTemplateFile, editTemplateFile } from '@/api/editor/templateFiles'
@@ -189,25 +238,47 @@ const ir = reactive({
   conflicts: [], warnings: [], validationErrors: [],
   outputs: [],
 })
-const srcMode = ref('remote')   // remote | local
-const srcRemote = ref('')
-const srcLocal = ref('')
-const srcBranch = ref('')
+const lastSrc = ref('')
 const busy = ref(false)
 const storing = ref(false)
 const errorMsg = ref('')
 const degraded = ref(false)
-const previewFile = ref(null)
 const storeOpen = ref(false)
 const storeForm = reactive({ name: '', description: '' })
-const drafts = ref([])
 const draftId = ref('')
 const stageState = ref({ clone: '', scan: '', analyze: '' })
+
+// ---- 过程记录(convert://log 事件 + 前端本地事件) ----
+const activity = ref([])
+const stageNames = { clone: '克隆', scan: '扫描', analyze: '分析', apply: '替换', store: '存储' }
+const pushActivity = (stage, text) => activity.value.push({ stage, text, ts: Date.now() })
+const cloneTail = computed(() => activity.value.slice(-12))
+const logEl = ref(null)
+const runLogEl = ref(null)
+watch(() => activity.value.length, async () => {
+  await nextTick()
+  for (const el of [logEl.value, runLogEl.value]) if (el) el.scrollTop = el.scrollHeight
+})
+
+// ---- 中栏:文件预览 / 过程 ----
+const centerTab = ref('process')
+const selectedPath = ref('')
+const previewMode = ref('tpl')
+const previewRaw = ref('')
+const previewError = ref('')
 
 const tid = () => draftId.value
 const keptCount = computed(() => ir.files.filter((f) => f.action === 'keep').length)
 const enabledVars = computed(() => ir.variables.filter((v) => v.enabled))
 const canStore = computed(() => ir.source.dir && keptCount.value > 0 && !busy.value)
+const pipelineRunning = computed(() => Object.values(stageState.value).some((s) => s === 'run'))
+const srcShort = computed(() => {
+  const s = ir.source.source || ''
+  return s.length > 42 ? s.slice(0, 18) + '…' + s.slice(-20) : s
+})
+
+// 管线运行时自动切到过程页
+watch(pipelineRunning, (r) => { if (r && ir.source.dir) centerTab.value = 'process' })
 
 const stages = computed(() => [
   { label: '克隆', state: stageState.value.clone, detail: ir.source.commit ? ir.source.commit.slice(0, 7) : '' },
@@ -216,56 +287,103 @@ const stages = computed(() => [
   { label: '存储', state: '', detail: '' },
 ])
 
-// ---- 文件分组(左栏) ----
-const fileGroups = computed(() => {
-  const map = new Map()
-  for (const f of ir.files) {
-    const dir = f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : ''
-    if (!map.has(dir)) map.set(dir, { dir, open: true, files: [] })
-    map.get(dir).files.push(f)
+// ---- 文件树(嵌套) ----
+const expandedKeys = ref([])
+const expandedSet = computed(() => new Set(expandedKeys.value.map(String)))
+const treeData = computed(() => {
+  const dirMap = new Map()
+  const roots = []
+  const ensureDir = (dirPath) => {
+    if (!dirPath) return roots
+    if (dirMap.has(dirPath)) return dirMap.get(dirPath).children
+    const parts = dirPath.split('/')
+    const name = parts.pop()
+    const parent = ensureDir(parts.join('/'))
+    const node = { key: dirPath, title: name, isDir: true, children: [] }
+    dirMap.set(dirPath, node)
+    parent.push(node)
+    return node.children
   }
-  return [...map.values()]
+  for (const f of ir.files) ensureDir(f.dir).push({ key: f.path, title: f.base, isDir: false, file: f })
+  const sortNodes = (arr) => {
+    arr.sort((a, b) => (a.isDir === b.isDir ? a.title.localeCompare(b.title) : a.isDir ? -1 : 1))
+    arr.forEach((n) => n.isDir && sortNodes(n.children))
+  }
+  sortNodes(roots)
+  return roots
 })
+const expandRoots = () => {
+  const s = new Set()
+  for (const f of ir.files) if (f.path.includes('/')) s.add(f.path.split('/')[0])
+  expandedKeys.value = [...s]
+}
+const filesUnder = (dir) => ir.files.filter((f) => f.path.startsWith(dir + '/'))
+const dirKept = (dir) => filesUnder(dir).filter((f) => f.action === 'keep').length
+const dirAllExcluded = (dir) => { const s = filesUnder(dir); return s.length > 0 && s.every((f) => f.action === 'exclude') }
 const toggleFile = (f) => {
   f.action = f.action === 'keep' ? 'exclude' : 'keep'
-  if (f.action === 'exclude') f.reason = '手动剔除'
-  else f.reason = ''
+  f.reason = f.action === 'exclude' ? '手动剔除' : ''
+}
+const toggleDir = (dir) => {
+  const set = filesUnder(dir)
+  const toKeep = dirAllExcluded(dir)
+  for (const f of set) { f.action = toKeep ? 'keep' : 'exclude'; f.reason = toKeep ? '' : '手动剔除' }
+}
+const onTreeExpand = (keys) => { expandedKeys.value = keys }
+const onTreeSelect = (keys, info) => {
+  const d = info?.node?.dataRef || info?.node || {}
+  if (!d.isDir && d.file) {
+    selectedPath.value = String(d.key)
+    centerTab.value = 'file'
+  }
+}
+const closePreview = () => { selectedPath.value = ''; centerTab.value = 'process' }
+
+// ---- 预览(行号 + 占位符高亮;原文走 convert_read_file,模板化走 apply 结果) ----
+const tplOutput = computed(() => ir.outputs.find((o) => o.path === selectedPath.value) || null)
+const previewContent = computed(() => (previewMode.value === 'raw' ? previewRaw.value : (tplOutput.value ? tplOutput.value.content : previewRaw.value)))
+const previewReplaced = computed(() => (previewMode.value === 'tpl' && tplOutput.value ? tplOutput.value.replaced || 0 : 0))
+const tplStale = computed(() => previewMode.value === 'tpl' && selectedPath.value && !tplOutput.value && ir.variables.length > 0)
+
+const escHighlight = (line) => {
+  const esc = String(line).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return esc.replace(/\{\{[^{}]{1,160}\}\}/g, (m) => `<span class="cw-ph">${m}</span>`)
+}
+const MAX_LINES = 3000
+const previewLines = computed(() => {
+  const lines = String(previewContent.value || '').split('\n')
+  const out = lines.slice(0, MAX_LINES).map(escHighlight)
+  if (lines.length > MAX_LINES) out.push(`<span class="dim">… 已截断(共 ${lines.length} 行)</span>`)
+  return out.length ? out : ['']
+})
+
+watch(selectedPath, async (p) => {
+  previewRaw.value = ''
+  previewError.value = ''
+  previewMode.value = 'tpl'
+  if (!p) return
+  try {
+    const raw = await invoke('convert_read_file', { root: ir.source.dir, path: p })
+    previewRaw.value = JSON.parse(raw).content ?? ''
+  } catch (e) {
+    previewError.value = String(e)
+  }
+})
+const regenPreview = async () => {
+  if (busy.value) return
+  try { await runApply() } catch (e) { message.error('生成失败: ' + (e.message || e)) }
 }
 
 // ---- 管线 ----
-const switchMode = (m) => {
-  if (busy.value) return
-  srcMode.value = m
-  errorMsg.value = ''
-}
-
-const pickLocalDir = async () => {
-  try {
-    const { open } = await import('@tauri-apps/plugin-dialog')
-    const sel = await open({ directory: true, multiple: false, title: '选择本地 git 仓库' })
-    if (sel) srcLocal.value = sel
-  } catch (e) {
-    message.error('选择目录失败: ' + (e.message || e))
-  }
-}
-
-const startConvert = async () => {
-  if (busy.value) return
-  const isRemote = srcMode.value === 'remote'
-  const src = (isRemote ? srcRemote.value : srcLocal.value).trim()
-  if (!src) {
-    errorMsg.value = isRemote ? '请输入远程仓库 URL' : '请选择或输入本地 git 仓库路径'
-    return
-  }
-  if (isRemote && !/^(https?:\/\/|git@|ssh:\/\/)/.test(src)) {
-    errorMsg.value = '远程仓库需以 http(s):// 或 git@ 开头;本地项目请切换到「本地仓库」模式'
-    return
-  }
+const startConvert = async (src, branch = null) => {
+  if (busy.value || !src) return
   busy.value = true
   errorMsg.value = ''
+  lastSrc.value = src
+  activity.value = []
   try {
     stageState.value = { clone: 'run', scan: '', analyze: '' }
-    const raw = await invoke('convert_clone', { source: src, branch: isRemote ? (srcBranch.value.trim() || null) : null })
+    const raw = await invoke('convert_clone', { source: src, branch })
     const c = JSON.parse(raw)
     draftId.value = String(Date.now())
     Object.assign(ir.source, { source: src, branch: c.branch, commit: c.commit, dir: c.dir })
@@ -289,8 +407,10 @@ const doScan = async () => {
   ir.files = s.files.map((f) => ({
     ...f,
     base: f.path.split('/').pop(),
+    dir: f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : '',
     action: f.action === 'exclude' ? 'exclude' : 'keep',
   }))
+  expandRoots()
   stageState.value.scan = 'done'
   await doAnalyze()
 }
@@ -321,7 +441,7 @@ const doAnalyze = async () => {
 }
 const rerunAnalyze = () => { if (!busy.value) { busy.value = true; doAnalyze().finally(() => { busy.value = false }) } }
 
-// ---- 预览(应用替换结果) ----
+// ---- 替换(确定性) ----
 const runApply = async () => {
   const keeps = ir.files.filter((f) => f.action === 'keep').map((f) => f.path)
   const vars = enabledVars.value.map((v) => ({
@@ -337,18 +457,8 @@ const runApply = async () => {
   return r
 }
 
-// 预览:无替换结果时先试运行 apply,再取该文件模板化内容
-const preview = async (path) => {
-  try {
-    if (!ir.outputs.length) await runApply()
-    const o = ir.outputs.find((x) => x.path === path)
-    if (!o) { message.info('该文件无模板化内容'); return }
-    previewFile.value = o
-  } catch (e) { message.error('预览失败: ' + (e.message || e)) }
-}
 // 状态变化使替换结果失效
 watch(() => ir.files.map((f) => f.path + f.action).join('|') + JSON.stringify(enabledVars.value.map((v) => [v.name, v.defaultValue])), () => {
-  previewFile.value = null
   ir.outputs = []
   ir.conflicts = []; ir.warnings = []; ir.validationErrors = []
 })
@@ -357,9 +467,11 @@ watch(() => ir.files.map((f) => f.path + f.action).join('|') + JSON.stringify(en
 const openStore = async () => {
   busy.value = true
   try {
+    pushActivity('store', '校验替换结果…')
     const r = await runApply()
     if (!r.clean) {
-      message.warning('存在冲突或渲染失败,已在中栏列出,请处理后重试')
+      message.warning('存在冲突或渲染失败,已在「转换过程」页列出,请处理后重试')
+      centerTab.value = 'process'
       return
     }
     if (!storeForm.name) storeForm.name = ir.source.source.split(/[\\/]/).pop()?.replace(/\.git$/, '') || '转换模板'
@@ -375,6 +487,7 @@ const doStore = async () => {
   if (!storeForm.name.trim()) { message.error('请填写模板名称'); return }
   storing.value = true
   try {
+    pushActivity('store', `创建模板「${storeForm.name.trim()}」…`)
     const outputs = ir.outputs.length ? ir.outputs : (await runApply()).outputs
     const res = await createUserTemplate({
       name: storeForm.name.trim(), templateType: 'default', categoryId: null,
@@ -399,6 +512,7 @@ const doStore = async () => {
     // 占位符注册为变量(类型/默认值细化在编辑器变量设计器完成)
     try { await analyzeTemplateVariables(templateId) } catch { /* 不阻断 */ }
     try { await createRelease(templateId, { changelog: '项目转换初始版本' }) } catch { /* 版本失败不阻断 */ }
+    pushActivity('store', `模板创建成功(${outputs.length} 文件),已进入编辑器`)
     message.success(`模板创建成功(${outputs.length} 文件)`)
     if (tid()) { try { await invoke('convert_draft_delete', { id: tid() }) } catch {} }
     router.push(`/editor/${templateId}`)
@@ -426,12 +540,6 @@ const scheduleSave = () => {
 }
 watch([() => ir.files.map((f) => f.path + f.action).join('|'), () => JSON.stringify(ir.variables)], scheduleSave)
 
-const loadDrafts = async () => {
-  try {
-    const raw = await invoke('convert_draft_list')
-    drafts.value = JSON.parse(raw).items || []
-  } catch { drafts.value = [] }
-}
 const openDraft = async (id) => {
   try {
     const raw = await invoke('convert_draft_load', { id })
@@ -440,111 +548,181 @@ const openDraft = async (id) => {
     draftId.value = id
     Object.assign(ir.source, d.meta.source)
     degraded.value = !!d.meta.degraded
-    ir.files = (d.ir?.files || []).map((f) => ({ ...f, base: f.path.split('/').pop() }))
+    ir.files = (d.ir?.files || []).map((f) => ({ ...f, base: f.path.split('/').pop(), dir: f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : '' }))
     ir.variables = d.ir?.variables || []
+    expandRoots()
     stageState.value = { clone: 'done', scan: 'done', analyze: 'done' }
+    pushActivity('clone', `恢复草稿:${ir.source.source}`)
   } catch (e) { message.error('打开草稿失败: ' + (e.message || e)) }
 }
-const removeDraft = async (id) => {
-  try { await invoke('convert_draft_delete', { id }); await loadDrafts() } catch {}
-}
 
-const fmtTime = (ms) => {
-  const d = new Date(Number(ms))
-  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+// ---- 杂项 ----
+const fmtTs = (ts) => {
+  const d = new Date(Number(ts))
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
 }
 const confColor = (c) => (c >= 0.7 ? 'var(--color-brand, #16a34a)' : c >= 0.5 ? '#d97706' : '#999')
 const occTooltip = (v) => (v.occurrences || []).map((o) => `${o.path} ×${o.count}`).join('\n')
+const winMin = async () => { try { await tauriApi.window.minimize() } catch {} }
+const winMax = async () => { try { await tauriApi.window.maximize() } catch {} }
+const winClose = async () => { try { await tauriApi.window.close() } catch {} }
 
-onMounted(() => {
-  loadDrafts()
-  if (route.query.draft) openDraft(String(route.query.draft))
+// ---- 事件监听(convert://log 过程流) ----
+let unlistenLog = null
+onMounted(async () => {
+  // 参数消费:src/branch(引导页或新建弹窗发起)→ 自动开跑;draft → 恢复;空参数 → 回落引导页
+  if (route.query.draft) {
+    openDraft(String(route.query.draft))
+  } else if (route.query.src) {
+    const src = String(route.query.src)
+    const branch = route.query.branch ? String(route.query.branch) : null
+    router.replace({ query: {} })
+    startConvert(src, branch)
+  } else if (!ir.source.dir) {
+    router.replace('/convert')
+  }
+  try {
+    const { listen } = await import('@tauri-apps/api/event')
+    unlistenLog = await listen('convert://log', (e) => {
+      const { stage, text } = e.payload || {}
+      if (stage && text) pushActivity(stage, text)
+    })
+  } catch { /* 非 tauri 环境(浏览器 dev)无事件 */ }
 })
+onBeforeUnmount(() => { unlistenLog?.() })
 </script>
 
 <style scoped>
-.cw-page { height: 100%; display: flex; flex-direction: column; background: var(--color-canvas, #f1f1ee); }
-.cw-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--color-background, #fff); border-bottom: 1px solid var(--color-border, #e5e5e2); flex-shrink: 0; }
-.cw-head-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.cw-title { font-size: 14px; font-weight: 600; color: var(--color-text, #1b1c1f); margin-right: 6px; }
-.cw-src { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cw-mono { font-family: Consolas, 'JetBrains Mono', monospace; }
-.cw-head-right { display: flex; gap: 8px; }
+.cw-page { height: 100%; display: flex; flex-direction: column; background: var(--editor-bg, #f5f5f5); }
 
-.cw-source { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 24px; }
-.cw-source-card { width: min(640px, 100%); background: var(--color-background, #fff); border-radius: 12px; padding: 24px; box-shadow: var(--shadow-panel, 0 1px 3px rgba(0,0,0,0.06)); display: flex; flex-direction: column; gap: 12px; }
+/* ===== 顶栏 ===== */
+.cw-head { height: 48px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 12px; background: var(--editor-panel-bg, #fff); border-bottom: 1px solid var(--editor-border, #e2e8f0); }
+.cw-head-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cw-title { font-size: 13px; font-weight: 600; color: var(--color-text, #1b1c1f); letter-spacing: 0.3px; }
+.cw-vbar { width: 1px; height: 16px; background: var(--editor-border, #e2e8f0); }
+.cw-src { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--color-text-secondary, #666); }
+.cw-mono { font-family: Consolas, 'JetBrains Mono', monospace; }
+.cw-head-right { display: flex; align-items: center; gap: 8px; }
+.cw-win { display: flex; align-items: center; gap: 2px; margin-left: 6px; }
+.cw-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; background: transparent; border-radius: 6px; cursor: pointer; color: var(--color-text-secondary, #64748b); font-size: 14px; transition: background 0.15s, color 0.15s; }
+.cw-icon-btn:hover { background: var(--color-hover, #f1f5f9); color: var(--color-text, #1b1c1f); }
+.cw-icon-btn.danger:hover { background: #fee2e2; color: #dc2626; }
+.cw-icon-btn.sm { width: 22px; height: 22px; font-size: 12px; }
+
+/* ===== 入口屏 ===== */
+.cw-source { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 24px; overflow-y: auto; }
+.cw-source-card { width: min(640px, 100%); background: var(--editor-panel-bg, #fff); border-radius: 12px; padding: 24px; box-shadow: var(--shadow-panel, 0 1px 3px rgba(0,0,0,0.06)); display: flex; flex-direction: column; gap: 12px; }
 .cw-source-title { font-size: 16px; font-weight: 600; color: var(--color-text, #1b1c1f); }
 .cw-source-sub { font-size: 12px; color: var(--color-text-secondary, #999); }
-.cw-source-row { display: flex; gap: 8px; align-items: center; }
-.cw-source-tip { flex: 1; font-size: 12px; color: var(--color-text-secondary, #999); }
-.cw-mode { display: flex; gap: 8px; }
-.cw-mode-item { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--color-border, #e5e5e2); border-radius: 8px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
-.cw-mode-item:hover { border-color: var(--color-text-secondary, #bbb); }
-.cw-mode-item.active { border-color: var(--color-brand, #16a34a); background: rgba(22, 163, 74, 0.05); }
-.cw-mode-name { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--color-text, #1b1c1f); }
-.cw-mode-desc { font-size: 11px; color: var(--color-text-secondary, #999); padding-left: 20px; }
-.cw-local-row { display: flex; gap: 8px; }
-.cw-error { color: #dc2626; font-size: 12px; white-space: pre-wrap; }
-.cw-drafts { width: min(640px, 100%); }
-.cw-drafts-title { font-size: 12px; font-weight: 600; color: var(--color-text-secondary, #999); margin-bottom: 6px; }
-.cw-drafts-empty { font-size: 12px; color: var(--color-text-secondary, #999); padding: 8px 0; }
-.cw-draft-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--color-background, #fff); border-radius: 8px; margin-bottom: 4px; cursor: pointer; font-size: 13px; }
-.cw-draft-item:hover { background: var(--color-surface, #f7f7f5); }
-.cw-draft-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cw-draft-time { font-size: 11px; color: var(--color-text-secondary, #999); }
-.cw-draft-del { color: var(--color-text-secondary, #999); font-size: 12px; }
-.cw-draft-del:hover { color: #dc2626; }
-
-.cw-main { flex: 1; min-height: 0; display: flex; }
-.cw-left, .cw-right { width: 280px; flex-shrink: 0; background: var(--color-background, #fff); display: flex; flex-direction: column; min-height: 0; }
-.cw-left { border-right: 1px solid var(--color-border, #e5e5e2); }
-.cw-right { border-left: 1px solid var(--color-border, #e5e5e2); }
-.cw-panel-head { padding: 10px 12px 6px; font-size: 12px; font-weight: 600; color: var(--color-text, #1b1c1f); flex-shrink: 0; display: flex; gap: 6px; align-items: center; }
-.cw-count { font-weight: 400; color: var(--color-text-secondary, #999); }
-.cw-tree, .cw-vars { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 12px; }
-.cw-group-head { display: flex; align-items: center; gap: 6px; padding: 4px 6px; font-size: 11.5px; color: var(--color-text-secondary, #999); cursor: pointer; border-radius: 6px; }
-.cw-group-head:hover { background: var(--color-surface, #f7f7f5); }
-.cw-chev { display: inline-block; transition: transform 0.15s ease; }
-.cw-chev.open { transform: rotate(90deg); }
-.cw-group-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
-.cw-file { display: flex; align-items: center; gap: 8px; padding: 3px 6px 3px 18px; font-size: 12px; border-radius: 6px; cursor: pointer; color: var(--color-text, #333); }
-.cw-file:hover { background: var(--color-surface, #f7f7f5); }
-.cw-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--color-brand, #16a34a); }
-.cw-file.exclude .cw-dot { background: #dc2626; }
-.cw-file.exclude .cw-file-name { color: var(--color-text-secondary, #999); text-decoration: line-through; }
-.cw-file-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cw-eye { flex: none; font-size: 11px; color: var(--color-text-secondary, #999); }
-.cw-eye:hover { color: var(--color-brand, #16a34a); }
-.cw-entry { flex: none; font-size: 9px; color: var(--color-brand, #16a34a); border: 1px solid currentColor; border-radius: 4px; padding: 0 3px; }
-
-.cw-center { flex: 1; min-width: 0; padding: 16px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-.cw-stages { display: flex; flex-direction: column; gap: 2px; }
-.cw-stage { display: flex; align-items: center; gap: 8px; min-height: 24px; font-size: 12px; padding: 2px 6px; border-radius: 6px; }
-.cw-stage-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-border, #ddd); }
-.cw-stage.done .cw-stage-dot { background: var(--color-brand, #16a34a); }
-.cw-stage.run .cw-stage-dot { background: #d97706; animation: cw-breathe 1.2s ease-in-out infinite; }
-.cw-stage.error .cw-stage-dot { background: #dc2626; }
-.cw-stage-detail { color: var(--color-text-secondary, #999); font-size: 11.5px; }
+.cw-src-now { font-size: 12px; color: var(--color-text-secondary, #666); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cw-run-stages { display: flex; gap: 18px; }
+.cw-rstage { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--color-text-secondary, #999); }
+.cw-rdot { width: 8px; height: 8px; border-radius: 50%; background: var(--editor-border, #ddd); }
+.cw-rstage.done .cw-rdot { background: var(--color-brand, #16a34a); }
+.cw-rstage.run .cw-rdot { background: #d97706; animation: cw-breathe 1.2s ease-in-out infinite; }
+.cw-rstage.error .cw-rdot { background: #dc2626; }
+.cw-run-log { background: var(--color-canvas, #f6f8fa); border: 1px solid var(--editor-border, #e2e8f0); border-radius: 8px; padding: 10px 12px; max-height: 220px; min-height: 120px; overflow-y: auto; font-family: Consolas, 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.7; color: var(--color-text-secondary, #555); }
+.cw-run-line { white-space: pre-wrap; word-break: break-all; }
+.cw-run-ts { color: var(--color-text-muted, #b0b0aa); margin-right: 8px; }
+.cw-run-line.dim { color: var(--color-text-muted, #aaa); }
 @keyframes cw-breathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
-.cw-issue { font-size: 12px; padding: 6px 10px; border-radius: 8px; }
+.cw-source-row { display: flex; gap: 8px; align-items: center; }
+.cw-error { color: #dc2626; font-size: 12px; white-space: pre-wrap; }
+
+/* ===== 三栏骨架 ===== */
+.cw-main { flex: 1; min-height: 0; display: flex; }
+.cw-panel { background: var(--editor-panel-bg, #fff); display: flex; flex-direction: column; min-height: 0; flex-shrink: 0; }
+.cw-left { width: 280px; border-right: 1px solid var(--editor-border, #e2e8f0); }
+.cw-right { width: 320px; border-left: 1px solid var(--editor-border, #e2e8f0); }
+.cw-panel-head { height: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-secondary, #64748b); border-bottom: 1px solid var(--editor-border, #e2e8f0); }
+.cw-count { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--color-text-muted, #94a3b8); }
+
+/* ===== 文件树 ===== */
+.cw-tree { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 8px 12px; }
+.cw-tree::-webkit-scrollbar, .cw-vars::-webkit-scrollbar, .cw-code::-webkit-scrollbar, .cw-timeline::-webkit-scrollbar, .cw-run-log::-webkit-scrollbar { width: 6px; }
+.cw-tree::-webkit-scrollbar-thumb, .cw-vars::-webkit-scrollbar-thumb, .cw-code::-webkit-scrollbar-thumb, .cw-timeline::-webkit-scrollbar-thumb, .cw-run-log::-webkit-scrollbar-thumb { background: #c8c8c4; border-radius: 3px; }
+.cw-fic { font-size: 13px; color: var(--color-text-muted, #8a919c); }
+.cw-fic.dir { color: #eab308; }
+.cw-row { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12.5px; line-height: 1; padding: 4px 2px; }
+.cw-row.excluded .cw-name { color: var(--color-text-muted, #9aa0a6); text-decoration: line-through; }
+.cw-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cw-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--color-brand, #16a34a); }
+.cw-dot.exclude { background: #dc2626; }
+.cw-entry { flex: none; font-size: 9px; color: var(--color-brand, #16a34a); border: 1px solid currentColor; border-radius: 4px; padding: 1px 3px 0; }
+.cw-dircount { flex: none; font-size: 10px; color: var(--color-text-muted, #9aa0a6); }
+.cw-toggle { flex: none; visibility: hidden; border: 1px solid var(--editor-border, #d8dde3); background: transparent; color: var(--color-brand, #16a34a); font-size: 10px; line-height: 1; padding: 3px 6px; border-radius: 4px; cursor: pointer; }
+.cw-toggle.off { color: #dc2626; }
+.cw-row:hover .cw-toggle, .cw-toggle:focus-visible { visibility: visible; }
+.cw-toggle:hover { border-color: currentColor; }
+:deep(.ant-tree-treenode) { padding: 0; }
+:deep(.ant-tree-node-content-wrapper) { display: inline-flex; align-items: center; min-width: 0; flex: 1; }
+:deep(.ant-tree .ant-tree-node-content-wrapper:hover) { background: transparent; }
+
+/* ===== 中栏 ===== */
+.cw-center { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--editor-bg, #fafbfc); }
+.cw-tabs { height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--editor-border, #e2e8f0); background: var(--editor-panel-bg, #fff); }
+.cw-tab { position: relative; border: none; background: transparent; font-size: 12.5px; color: var(--color-text-secondary, #64748b); padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+.cw-tab:hover:not(:disabled) { background: var(--color-hover, #f1f5f9); }
+.cw-tab.active { color: var(--color-text, #1b1c1f); font-weight: 600; background: var(--color-nav-active, #eef0ec); }
+.cw-tab:disabled { opacity: 0.45; cursor: not-allowed; }
+.cw-live { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #d97706; margin-left: 6px; animation: cw-breathe 1.2s ease-in-out infinite; }
+.cw-tabs-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.cw-seg { display: flex; border: 1px solid var(--editor-border, #d8dde3); border-radius: 6px; overflow: hidden; }
+.cw-seg button { border: none; background: transparent; font-size: 11.5px; padding: 3px 10px; cursor: pointer; color: var(--color-text-secondary, #64748b); }
+.cw-seg button.on { background: var(--color-nav-active, #eef0ec); color: var(--color-text, #1b1c1f); font-weight: 600; }
+.cw-repl { font-size: 11px; color: var(--color-brand, #16a34a); }
+
+/* 过程页 */
+.cw-proc { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 14px 16px; gap: 10px; overflow: hidden; }
+.cw-stagestrip { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
+.cw-pstage { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text-secondary, #64748b); }
+.cw-pdot { width: 9px; height: 9px; border-radius: 50%; background: var(--editor-border, #d5dbe1); }
+.cw-pstage.done { color: var(--color-text, #1b1c1f); }
+.cw-pstage.done .cw-pdot { background: var(--color-brand, #16a34a); }
+.cw-pstage.run .cw-pdot { background: #d97706; animation: cw-breathe 1.2s ease-in-out infinite; }
+.cw-pstage.error .cw-pdot { background: #dc2626; }
+.cw-pdetail { font-size: 11px; color: var(--color-text-muted, #9aa0a6); }
+.cw-plink { width: 26px; height: 1px; background: var(--editor-border, #d5dbe1); }
+.cw-issue { font-size: 12px; padding: 6px 10px; border-radius: 8px; flex-shrink: 0; }
 .cw-issue b { margin-right: 6px; }
 .cw-issue.conflict { background: rgba(220, 38, 38, 0.06); color: #b91c1c; }
 .cw-issue.warn { background: rgba(217, 119, 6, 0.06); color: #b45309; }
-.cw-preview { display: flex; flex-direction: column; border: 1px solid var(--color-border, #e5e5e2); border-radius: 8px; overflow: hidden; }
-.cw-preview-head { display: flex; align-items: center; gap: 10px; padding: 6px 10px; background: var(--color-surface, #f7f7f5); font-size: 12px; }
-.cw-preview-count { color: var(--color-brand, #16a34a); }
-.cw-preview-head button { margin-left: auto; }
-.cw-preview-body { margin: 0; padding: 10px 12px; font-size: 11.5px; line-height: 1.55; font-family: Consolas, 'JetBrains Mono', monospace; max-height: 420px; overflow: auto; white-space: pre-wrap; word-break: break-all; color: var(--color-text, #333); }
-.cw-hint { font-size: 12px; color: var(--color-text-secondary, #999); padding: 8px; }
+.cw-timeline { flex: 1; min-height: 0; overflow-y: auto; background: var(--editor-panel-bg, #fff); border: 1px solid var(--editor-border, #e2e8f0); border-radius: 8px; padding: 8px 0; }
+.cw-tl-empty { padding: 18px 16px; font-size: 12px; color: var(--color-text-muted, #9aa0a6); }
+.cw-act { display: flex; align-items: baseline; gap: 8px; padding: 3px 12px; font-size: 12px; }
+.cw-act:hover { background: var(--color-surface, #f7f7f5); }
+.cw-act-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; align-self: center; background: var(--color-text-muted, #9aa0a6); }
+.cw-act-dot.clone { background: #3e7bfa; }
+.cw-act-dot.scan { background: #8b5cf6; }
+.cw-act-dot.analyze { background: #d97706; }
+.cw-act-dot.apply { background: #0ea5e9; }
+.cw-act-dot.store { background: var(--color-brand, #16a34a); }
+.cw-act-stage { flex: none; font-size: 10.5px; color: var(--color-text-muted, #9aa0a6); width: 26px; }
+.cw-act-text { flex: 1; min-width: 0; color: var(--color-text, #333); word-break: break-all; }
+.cw-act-ts { flex: none; font-size: 10px; color: var(--color-text-muted, #b6bcc2); font-family: Consolas, monospace; }
 
-.cw-var { border: 1px solid var(--color-border, #e5e5e2); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; display: flex; flex-direction: column; gap: 4px; }
+/* 文件预览页 */
+.cw-filepane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cw-empty { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 12.5px; color: var(--color-text-muted, #9aa0a6); padding: 24px; text-align: center; }
+.cw-file-head { height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 14px; background: var(--editor-panel-bg, #fff); border-bottom: 1px solid var(--editor-border, #e2e8f0); font-size: 12px; color: var(--color-text-secondary, #555); }
+.cw-stale { display: flex; align-items: center; gap: 8px; padding: 6px 14px; font-size: 12px; color: #b45309; background: rgba(217, 119, 6, 0.06); flex-shrink: 0; }
+.cw-code { flex: 1; min-height: 0; overflow: auto; background: var(--editor-panel-bg, #fff); padding: 8px 0; font-family: Consolas, 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6; }
+.cw-ln { display: flex; }
+.cw-no { flex: none; width: 46px; text-align: right; padding-right: 12px; color: var(--color-text-muted, #b6bcc2); user-select: none; }
+.cw-lc { white-space: pre; color: var(--color-text, #333); }
+:deep(.cw-ph) { background: rgba(22, 163, 74, 0.12); color: var(--color-brand, #15803d); border-radius: 3px; padding: 0 1px; }
+:deep(.dim) { color: var(--color-text-muted, #9aa0a6); }
+
+/* ===== 变量面板 ===== */
+.cw-vars { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 10px 12px; }
+.cw-var { border: 1px solid var(--editor-border, #e2e8f0); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; display: flex; flex-direction: column; gap: 4px; }
 .cw-var.off { opacity: 0.55; }
 .cw-var-top { display: flex; align-items: center; gap: 6px; }
 .cw-var-name { flex: 1; min-width: 0; border: none; outline: none; font-size: 12.5px; font-weight: 600; color: var(--color-text, #1b1c1f); background: transparent; }
 .cw-var-name:focus { border-bottom: 1px solid var(--color-brand, #16a34a); }
 .cw-conf { font-size: 10px; flex: none; }
 .cw-var-mid { display: flex; align-items: center; gap: 8px; }
-.cw-var-sem { flex: none; font-size: 10px; color: var(--color-text-secondary, #999); border: 1px solid var(--color-border, #e5e5e2); border-radius: 4px; padding: 0 4px; }
+.cw-var-sem { flex: none; font-size: 10px; color: var(--color-text-secondary, #999); border: 1px solid var(--editor-border, #e2e8f0); border-radius: 4px; padding: 0 4px; }
 .cw-var-def { flex: 1; min-width: 0; border: none; outline: none; font-size: 12px; color: var(--color-text-secondary, #666); background: transparent; font-family: Consolas, monospace; }
 .cw-var-def:focus { border-bottom: 1px solid var(--color-brand, #16a34a); }
 .cw-var-occ { font-size: 10.5px; color: var(--color-text-secondary, #999); }

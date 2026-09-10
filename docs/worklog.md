@@ -1226,3 +1226,19 @@
 **涉及文件：** `apps/desktop/src/App.vue`、`apps/desktop/src/views/convert/index.vue`
 
 **验收结果：** pnpm build 通过;dev 页面实测——全屏无侧边栏、双模式卡渲染与切换正常(选中态绿框跟随)、本地模式出现路径框+浏览按钮+提示、分支框按设计隐藏。
+
+## 2026-09-10 项目转模板工作台交互重做:过程可视化+文件树+重入口（任务 #132）
+
+**变更内容：** ①侧边栏工作台分组新增「项目转换」常驻入口(页面本身仍为独立全屏)；②Rust 管线全程进度事件:四个管线命令(convert_clone/scan/analyze/apply)注入 AppHandle 发 `convert://log` 事件(命令签名不变,核心逻辑抽 *_impl 带 ProgressLog 回调,测试传 no-op),clone 走 `--progress` + stderr 流式逐行转发(run_git_streaming,增量切 \r/\n 防 pipe 死锁),analyze 埋点含读取量/启发式候选数/AI 批次进度与幻觉丢弃数/合并结果,apply 埋点输出对账;新增 convert_read_file(256KB 上限+防穿越,供原文预览);③前端工作台参考编辑器页重做:顶栏带窗口控制(decorations:false 必需);左栏 a-tree 嵌套文件树(目录聚合计数/入口徽标/保留-剔除行尾悬浮切换/目录级全剔全留,根目录默认展开);中栏双页签——文件预览(行号+`{{ }}` 占位符高亮+模板化/原文切换+替换数+失效重生成横幅)与转换过程(阶段条+冲突警告列表+实时时间线自动滚动,管线运行自动切换);右栏变量面板对齐面板头部样式;入口屏克隆中显示阶段点+git 输出尾流;窗口控制/降级标签等细节补齐。
+
+**涉及文件：** `src-tauri/src/commands/convert.rs`、`src-tauri/src/lib.rs`、`src/views/convert/index.vue`、`src/components/layout/NavigationMenu.vue`
+
+**验收结果：** cargo test 23/23 通过(含真克隆本仓库走流式路径);pnpm build 通过;浏览器实测:过程页时间线/文件树嵌套与计数/点击文件出预览与占位符高亮(像素级验证)/失效横幅路径/入口屏回归均正常。
+
+## 2026-09-10 项目转换入口重构:引导卡片页+来源表单抽组件入新建弹窗（任务 #133）
+
+**变更内容：** ①路由拆分:/convert 变回主布局内引导页(参考模板库卡片样式:工具栏+卡片网格),工作台挪至 /convert/workbench 保持独立全屏(App.vue isStandalonePage 相应收窄);②新增 ConvertSourceModal 组件(远程/本地双模式+分支+目录浏览,原工作台来源表单抽取),模板页「新建模板→从项目转换」与引导页共用,开始后跳工作台带 src/branch 参数自动开跑;③引导页:新建转换虚线卡+草稿卡片(cover 渐变头图/packId 徽标/branch+commit 标签/继续与删除/相对时间),替换原丑列表;④工作台精简:移除来源表单与草稿列表,初始态仅显示克隆实时进度卡(失败给返回重试),返回按钮指向引导页,query 消费后 replace 防刷新重复触发。
+
+**涉及文件：** `src/views/convert/guide.vue`(新增)、`src/views/convert/components/ConvertSourceModal.vue`(新增)、`src/views/convert/index.vue`、`src/views/templates/index.vue`、`src/router/index.js`、`src/App.vue`
+
+**验收结果：** pnpm build 通过;浏览器实测:引导页在主布局内渲染(侧边栏/顶栏在),新建卡点击弹窗(双模式切换/浏览按钮/取消),无参数访问 /convert/workbench 自动回落引导页。

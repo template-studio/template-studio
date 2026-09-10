@@ -18,7 +18,13 @@ const routes = [
     component: () => import('@/views/templates/index.vue')
   },
   {
+    // 项目转换引导页(主布局内,卡片网格);工作台在 /convert/workbench 独立全屏
     path: '/convert',
+    name: 'ConvertGuide',
+    component: () => import('@/views/convert/guide.vue')
+  },
+  {
+    path: '/convert/workbench',
     name: 'ConvertWorkbench',
     component: () => import('@/views/convert/index.vue')
   },

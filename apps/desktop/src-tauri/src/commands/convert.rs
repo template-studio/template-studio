@@ -3,6 +3,17 @@
 //! 隔离原则: 所有来源统一 clone 到持久镜像(workspace/repos/<指纹>/),原始目录只读。
 
 use std::path::{Path, PathBuf};
+use tauri::Emitter;
+
+/// 进度日志回调:(stage, text)。命令包装层转发为 convert://log 事件,测试传 no-op。
+type ProgressLog<'a> = &'a (dyn Fn(&str, &str) + Send + Sync);
+
+fn emit_log(app: &tauri::AppHandle, stage: &str, text: &str) {
+    let _ = app.emit(
+        "convert://log",
+        serde_json::json!({ "stage": stage, "text": text }),
+    );
+}
 
 // ===== 规则包(声明式,内置四份 + 用户目录覆盖) =====
 
@@ -149,6 +160,81 @@ fn run_git(args: &[&str], cwd: Option<&Path>) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
 }
 
+/// 流式 git:stderr 按 \r/\n 增量切块转发 progress(clone --progress 的下载进度在 stderr)。
+/// 与 run_git 的差异:进度实时可见,而非结束后一次性返回。
+fn run_git_streaming(
+    args: &[&str],
+    cwd: Option<&Path>,
+    log: ProgressLog<'_>,
+) -> Result<String, String> {
+    use std::io::Read;
+    let mut cmd = std::process::Command::new("git");
+    cmd.args(args)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    if let Some(c) = cwd {
+        cmd.current_dir(c);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| format!("无法启动 git(请确认已安装): {e}"))?;
+
+    // stdout 单独线程排空,防止管道写满死锁(clone 的 stdout 很小)
+    let stdout = child.stdout.take();
+    let out_handle = std::thread::spawn(move || {
+        let mut buf = String::new();
+        if let Some(mut o) = stdout {
+            let _ = o.read_to_string(&mut buf);
+        }
+        buf
+    });
+
+    let mut err_raw: Vec<u8> = Vec::new();
+    let mut pending: Vec<u8> = Vec::new();
+    if let Some(mut se) = child.stderr.take() {
+        let mut chunk = [0u8; 4096];
+        loop {
+            match se.read(&mut chunk) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => {
+                    err_raw.extend_from_slice(&chunk[..n]);
+                    pending.extend_from_slice(&chunk[..n]);
+                    while let Some(pos) = pending.iter().position(|&b| b == b'\r' || b == b'\n') {
+                        let line: Vec<u8> = pending.drain(..=pos).collect();
+                        let l = String::from_utf8_lossy(&line).trim().to_string();
+                        if !l.is_empty() {
+                            log("clone", &l);
+                        }
+                    }
+                }
+            }
+        }
+        if !pending.is_empty() {
+            let l = String::from_utf8_lossy(&pending).trim().to_string();
+            if !l.is_empty() {
+                log("clone", &l);
+            }
+        }
+    }
+
+    let status = child.wait().map_err(|e| format!("等待 git 失败: {e}"))?;
+    let stdout_text = out_handle.join().unwrap_or_default();
+    if !status.success() {
+        let stderr = String::from_utf8_lossy(&err_raw).trim().to_string();
+        return Err(if stderr.is_empty() {
+            format!("git {:?} 失败(退出码 {:?})", args, status.code())
+        } else {
+            stderr
+        });
+    }
+    Ok(stdout_text.trim().to_string())
+}
+
 /// 镜像根目录 workspace/repos/
 fn repos_dir() -> PathBuf {
     studio_home("workspace").join("repos")
@@ -157,7 +243,20 @@ fn repos_dir() -> PathBuf {
 /// 克隆来源到持久镜像:已存在则 fetch 增量并 fast-forward;返回 {dir, branch, commit, reused}
 /// source 支持远程 URL(github/gitee/gitlab,凭据走本机 git 配置)与本地 git 仓库路径。
 #[tauri::command]
-pub async fn convert_clone(source: String, branch: Option<String>) -> Result<String, String> {
+pub async fn convert_clone(
+    app: tauri::AppHandle,
+    source: String,
+    branch: Option<String>,
+) -> Result<String, String> {
+    let log = move |s: &str, t: &str| emit_log(&app, s, t);
+    clone_impl(source, branch, &log).await
+}
+
+pub(crate) async fn clone_impl(
+    source: String,
+    branch: Option<String>,
+    log: ProgressLog<'_>,
+) -> Result<String, String> {
     let src = source.trim().to_string();
     if src.is_empty() {
         return Err("来源不能为空".to_string());
@@ -183,8 +282,10 @@ pub async fn convert_clone(source: String, branch: Option<String>) -> Result<Str
 
     if reused {
         // 增量更新:fetch + 重置到远端分支(镜像是我们的副本,reset 安全)
+        log("clone", "镜像已存在,增量更新(fetch --all --prune)…");
         run_git(&["fetch", "--all", "--prune"], Some(&repo_dir))?;
         if let Some(b) = branch.as_deref().filter(|s| !s.is_empty()) {
+            log("clone", &format!("切换分支 {b} 并对齐远端…"));
             run_git(&["checkout", b], Some(&repo_dir))?;
             let tracking = format!("origin/{b}");
             // 远端分支存在则对齐;本地仅分支则保留现状
@@ -200,7 +301,7 @@ pub async fn convert_clone(source: String, branch: Option<String>) -> Result<Str
         }
     } else {
         std::fs::create_dir_all(repos_dir()).map_err(|e| format!("创建镜像目录失败: {e}"))?;
-        let mut args: Vec<&str> = vec!["clone"];
+        let mut args: Vec<&str> = vec!["clone", "--progress"];
         if let Some(b) = branch.as_deref().filter(|s| !s.is_empty()) {
             args.extend(["--branch", b]);
         }
@@ -208,11 +309,13 @@ pub async fn convert_clone(source: String, branch: Option<String>) -> Result<Str
         args.push(&src);
         let dir_str = repo_dir.to_string_lossy().to_string();
         args.push(&dir_str);
-        run_git(&args, None)?;
+        log("clone", &format!("完整克隆到 {}…", repo_dir.display()));
+        run_git_streaming(&args, None, log)?;
     }
 
     let commit = run_git(&["rev-parse", "HEAD"], Some(&repo_dir))?;
     let cur_branch = run_git(&["rev-parse", "--abbrev-ref", "HEAD"], Some(&repo_dir))?;
+    log("clone", &format!("克隆完成:{cur_branch} @ {}", &commit[..7.min(commit.len())]));
 
     Ok(serde_json::json!({
         "dir": repo_dir.to_string_lossy(),
@@ -278,7 +381,12 @@ struct ScanStat {
 
 /// 扫描克隆镜像:识别类型 → 应用剔除规则 → 二进制/大小过滤 → IR.files 雏形
 #[tauri::command]
-pub async fn convert_scan(root: String) -> Result<String, String> {
+pub async fn convert_scan(app: tauri::AppHandle, root: String) -> Result<String, String> {
+    let log = move |s: &str, t: &str| emit_log(&app, s, t);
+    scan_impl(root, &log).await
+}
+
+pub(crate) async fn scan_impl(root: String, log: ProgressLog<'_>) -> Result<String, String> {
     let root_path = PathBuf::from(&root);
     if !root_path.is_dir() {
         return Err("镜像目录不存在,请先克隆".to_string());
@@ -295,10 +403,21 @@ pub async fn convert_scan(root: String) -> Result<String, String> {
             )
         }
     };
+    log("scan", &format!("识别项目类型:{}", pack.id));
 
     let mut files: Vec<serde_json::Value> = Vec::new();
     let mut stat = ScanStat { kept: 0, excluded: 0, total_size: 0 };
     walk_scan(&root_path, &root_path, &pack, &mut files, &mut stat)?;
+    log(
+        "scan",
+        &format!(
+            "扫描完成:共 {} 文件,保留 {} / 规则剔除 {}({:.1} MB)",
+            stat.kept + stat.excluded,
+            stat.kept,
+            stat.excluded,
+            stat.total_size as f64 / 1024.0 / 1024.0
+        ),
+    );
 
     Ok(serde_json::json!({
         "packId": pack.id,
@@ -402,9 +521,20 @@ fn replace_with_boundaries(content: &str, from: &str, to: &str) -> (String, usiz
 /// 输出 {outputs:[{path,content,replaced}], conflicts:[], warnings:[], validationErrors:[]}
 #[tauri::command]
 pub async fn convert_apply(
+    app: tauri::AppHandle,
     root: String,
     files: Vec<String>,
     variables: Vec<serde_json::Value>,
+) -> Result<String, String> {
+    let log = move |s: &str, t: &str| emit_log(&app, s, t);
+    apply_impl(root, files, variables, &log).await
+}
+
+pub(crate) async fn apply_impl(
+    root: String,
+    files: Vec<String>,
+    variables: Vec<serde_json::Value>,
+    log: ProgressLog<'_>,
 ) -> Result<String, String> {
     let root_path = PathBuf::from(&root);
     if !root_path.is_dir() {
@@ -499,12 +629,44 @@ pub async fn convert_apply(
         outputs.push(serde_json::json!({ "path": rel, "content": content, "replaced": replaced_total }));
     }
 
+    log(
+        "apply",
+        &format!(
+            "替换完成:{} 文件(其中 {} 文件有替换),冲突 {} / 警告 {} / 渲染失败 {}",
+            outputs.len(),
+            outputs.iter().filter(|o| o["replaced"].as_u64().unwrap_or(0) > 0).count(),
+            conflicts.len(),
+            warnings.len(),
+            validation_errors.len()
+        ),
+    );
+
     Ok(serde_json::json!({
         "outputs": outputs, "conflicts": conflicts, "warnings": warnings,
         "validationErrors": validation_errors,
         "clean": conflicts.is_empty() && validation_errors.is_empty(),
     })
     .to_string())
+}
+
+/// 读取镜像内单个文件供前端预览(原文对照);拒绝二进制/超大/路径穿越
+#[tauri::command]
+pub async fn convert_read_file(root: String, path: String) -> Result<String, String> {
+    let root_path = PathBuf::from(&root);
+    if !root_path.is_dir() {
+        return Err("镜像目录不存在".to_string());
+    }
+    if path.contains("..") || Path::new(&path).is_absolute() {
+        return Err("非法路径".to_string());
+    }
+    const MAX_PREVIEW: u64 = 256 * 1024;
+    let full = root_path.join(&path);
+    let meta = std::fs::metadata(&full).map_err(|e| format!("读取失败: {e}"))?;
+    if meta.len() > MAX_PREVIEW {
+        return Err("文件超过 256 KB,不支持预览".to_string());
+    }
+    let content = std::fs::read_to_string(&full).map_err(|_| "二进制文件,不支持预览".to_string())?;
+    Ok(serde_json::json!({ "path": path, "content": content }).to_string())
 }
 
 // ===== 草稿持久化(converts/<id>/,终稿前不进模板库) =====
@@ -714,10 +876,11 @@ admin_port = 8081".to_string()),
                 {"path": "README.md", "original": "8080", "count": 1}
             ]
         })];
-        let out = convert_apply(
+        let out = apply_impl(
             tmp.to_string_lossy().to_string(),
             vec!["src/main.rs".to_string(), "README.md".to_string()],
             vars,
+            &|_, _| {},
         )
         .await
         .unwrap();
@@ -765,12 +928,12 @@ admin_port = 8081".to_string()),
             .unwrap()
             .to_string_lossy()
             .to_string();
-        let out = convert_clone(repo_root, None).await.expect("clone 本仓库失败");
+        let out = clone_impl(repo_root, None, &|_, _| {}).await.expect("clone 本仓库失败");
         let v: serde_json::Value = serde_json::from_str(&out).unwrap();
         assert!(v["commit"].as_str().is_some_and(|c| c.len() >= 7), "缺基线 commit");
         assert!(v["branch"].as_str().is_some_and(|b| !b.is_empty()));
 
-        let scan = convert_scan(v["dir"].as_str().unwrap().to_string())
+        let scan = scan_impl(v["dir"].as_str().unwrap().to_string(), &|_, _| {})
             .await
             .expect("scan 失败");
         let sv: serde_json::Value = serde_json::from_str(&scan).unwrap();
@@ -987,12 +1150,26 @@ fn merge_candidates(cands: Vec<VarCandidate>) -> Vec<VarCandidate> {
 /// 分析镜像内 keep 文件:产出候选变量与 AI 文件分类;provider 缺省时纯启发式降级
 #[tauri::command]
 pub async fn convert_analyze(
+    app: tauri::AppHandle,
     root: String,
     files: Vec<String>,
     provider: Option<String>,
     model: Option<String>,
     thinking: Option<String>,
     database: tauri::State<'_, DbState>,
+) -> Result<String, String> {
+    let log = move |s: &str, t: &str| emit_log(&app, s, t);
+    analyze_impl(root, files, provider, model, thinking, database.as_ref(), &log).await
+}
+
+pub(crate) async fn analyze_impl(
+    root: String,
+    files: Vec<String>,
+    provider: Option<String>,
+    model: Option<String>,
+    thinking: Option<String>,
+    database: &crate::database::Database,
+    log: ProgressLog<'_>,
 ) -> Result<String, String> {
     let root_path = PathBuf::from(&root);
     if !root_path.is_dir() {
@@ -1028,20 +1205,24 @@ pub async fn convert_analyze(
     if loaded.is_empty() {
         return Err("没有可分析的可读文件".to_string());
     }
+    log("analyze", &format!("读取 {} 个文件(约 {} KB,单文件/总量截断已应用)", loaded.len(), total / 1024));
 
     // 启发式双路
     let mut cands = heuristic_regex_candidates(&pack, &loaded);
     cands.extend(heuristic_string_candidates(&root_name, &loaded));
+    log("analyze", &format!("启发式通道:规则正则 + 字符串扫描 → {} 个候选", cands.len()));
 
     // AI 通道(默认 provider;任一批失败静默降级已产出的启发式结果)
     let mut degraded = true;
     let mut ai_files: Vec<serde_json::Value> = Vec::new();
     let mut ai_batch_count = 0usize;
-    if let Ok(target) = super::ai::resolve_call_target(database.as_ref(), provider, model).await {
+    if let Ok(target) = super::ai::resolve_call_target(database, provider, model).await {
         let extra = super::ai::thinking_extra(&target.provider_name, &target.model, thinking.as_deref());
         let batches = build_batches(&loaded, &pack.entry_files);
         let n = batches.len();
+        log("analyze", &format!("AI 通道:{} · 共 {} 批(入口文件优先)", target.model, n));
         for (i, batch) in batches.iter().enumerate() {
+            log("analyze", &format!("AI 批次 {}/{}:{} 个文件…", i + 1, n, batch.len()));
             let payload = serde_json::json!(batch
                 .iter()
                 .map(|(p, c)| serde_json::json!({ "path": p, "content": c }))
@@ -1059,6 +1240,8 @@ pub async fn convert_analyze(
             };
             ai_batch_count += 1;
             if let Some(v) = parse_json_block(&reply) {
+                let mut accepted = 0usize;
+                let mut hallucinated = 0usize;
                 if let Some(arr) = v["candidates"].as_array() {
                     for c in arr {
                         let value = c["value"].as_str().unwrap_or("").trim().to_string();
@@ -1067,6 +1250,7 @@ pub async fn convert_analyze(
                         }
                         let occ = count_occurrences(&value, &loaded);
                         if occ.is_empty() {
+                            hallucinated += 1;
                             continue; // 模型幻觉:值在文件中不存在,丢弃
                         }
                         let semantic = c["semantic"].as_str().unwrap_or("generic").to_lowercase();
@@ -1079,17 +1263,24 @@ pub async fn convert_analyze(
                             source: "ai".into(),
                             occurrences: occ,
                         });
+                        accepted += 1;
                     }
                 }
                 if let Some(arr) = v["files"].as_array() {
                     ai_files.extend(arr.iter().cloned());
                 }
+                let dropped_note = if hallucinated > 0 { format!(",丢弃幻觉候选 {hallucinated}") } else { String::new() };
+                log("analyze", &format!("AI 批次 {}/{} 完成:接受 {accepted} 候选{dropped_note}", i + 1, n));
             }
         }
         degraded = ai_batch_count == 0;
+        if degraded {
+            log("analyze", "AI 通道不可用(未配置或调用失败),结果为纯启发式(降级模式)");
+        }
     }
 
     let variables: Vec<serde_json::Value> = merge_candidates(cands).iter().map(to_json).collect();
+    log("analyze", &format!("双通道合并去重 → {} 个变量", variables.len()));
     Ok(serde_json::json!({
         "packId": pack.id,
         "rootName": root_name,
