@@ -1322,3 +1322,27 @@
 **涉及文件：** `dev-docs/project-to-template.md`(§13)、`src-tauri/src/commands/convert.rs`、`src-tauri/src/lib.rs`、`src-tauri/rules/*.json`(5 份)、`src/views/convert/index.vue`
 
 **验收结果：** cargo test 28/28(新增构建通过+渲染短路两测);pnpm build 通过;浏览器实测分区标签/tab 分组/构建验证按钮/模板文件列表与内容(占位符高亮)正常;真实构建需桌面端。
+
+## 2026-09-10 转换工作台 VSCode 化布局（任务 #146）
+
+**变更内容：** ①Activity Bar(44px 窄竖条,图标+active 指示条):源代码/模板/重点文件(数据驱动,带勾选计数角标)/过程(带运行呼吸点,切底部面板显隐);②Side Bar(250px)按分区切换视图:源码树(保留/剔除)/模板文件列表(替换徽标,点击默认模板化视图)/重点文件勾选清单+暴露策略;③中栏减负:面包屑+渲染/模板化/原文 seg+构建验证,删除全部 tab 分组;冗余的模板文件/渲染预览中栏页删除(能力并入模板树+seg,渲染缓存逻辑随之清理);④转换过程(阶段条+冲突警告+时间线)移至可折叠底部面板(230px,管线运行自动展开,头部带下一步/重新分析 CTA);⑤zone 决定点击默认视图(源码→原文,模板→模板化,输出懒生成)。编辑器 VSCode 化+SCM 挂 #147。
+
+**涉及文件：** `src/views/convert/index.vue`
+
+**验收结果：** pnpm build 通过;浏览器实测:三图标/源码树/模板列表切换/模板点击出占位符高亮/构建验证按钮/底部面板展开收起全部正常。
+
+## 2026-09-10 Activity Bar 图标可读性修复（任务 #149）
+
+**变更内容：** 模板/重点文件/过程图标换实心(FileTextFilled/StarFilled/ClockCircleFilled),图标 17→19px,非激活色 muted→text-secondary。
+
+**涉及文件：** `src/views/convert/index.vue`
+
+**验收结果：** pnpm build 通过。
+
+## 2026-09-10 变量栏并入 ActivityBar/SideBar（任务 #150）
+
+**变更内容：** Activity Bar 新增「变量」项(编辑器同款 VariableIcon,变量数角标),Side Bar 增加 vars 视图承接变量卡列表;移除右侧固定变量栏,布局收敛为 actbar|sidebar|中栏|助手。
+
+**涉及文件：** `src/views/convert/index.vue`
+
+**验收结果：** pnpm build 通过;变量 v-for 单处无重复,旧栏已删净。

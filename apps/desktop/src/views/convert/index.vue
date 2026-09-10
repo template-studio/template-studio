@@ -57,9 +57,37 @@
 
     <!-- ===== 工作台三栏 ===== -->
     <div v-else class="cw-main">
-      <!-- 左:嵌套文件树 -->
-      <aside class="cw-panel cw-left">
-        <div class="cw-panel-head">
+      <!-- 中:文件预览 / 转换过程 -->
+      <!-- Activity Bar:分区切换(VSCode 式窄竖条) -->
+      <nav class="cw-actbar">
+        <button class="cw-act-item" :class="{ on: activeView === 'source' }" title="源代码区:镜像源文件与保留/剔除" @click="activeView = 'source'">
+          <FolderFilled class="cw-act-ico" />
+        </button>
+        <button class="cw-act-item tpl" :class="{ on: activeView === 'template' }" title="模板区:模板文件集与渲染" @click="activeView = 'template'">
+          <FileTextFilled class="cw-act-ico" />
+        </button>
+        <button v-if="isDataDriven" class="cw-act-item focus" :class="{ on: activeView === 'focus' }" title="重点文件:勾选与 AI 暴露策略" @click="activeView = 'focus'">
+          <StarFilled class="cw-act-ico" />
+          <span v-if="focusFiles.length" class="cw-act-n">{{ focusFiles.length }}</span>
+        </button>
+        <button class="cw-act-item proc" :class="{ on: bottomOpen }" title="转换过程:时间线与问题" @click="bottomOpen = !bottomOpen">
+          <ClockCircleFilled class="cw-act-ico" />
+          <span v-if="pipelineRunning" class="cw-act-live"></span>
+        </button>
+        <button class="cw-act-item vars" :class="{ on: activeView === 'vars' }" title="变量:候选变量启停与默认值" @click="activeView = 'vars'">
+          <VariableIcon :size="18" class="cw-act-ico" />
+          <span v-if="ir.variables.length" class="cw-act-n">{{ ir.variables.length }}</span>
+        </button>
+      </nav>
+
+      <!-- Side Bar:当前分区视图 -->
+      <aside class="cw-sidebar">
+        <template v-if="activeView === 'source'">
+          <div class="cw-panel-head">
+            <span>源代码</span>
+            <span class="cw-count">{{ keptCount }}/{{ ir.files.length }} 保留</span>
+          </div>
+          <div class="cw-panel-head">
           <span>文件</span>
           <span class="cw-count">{{ keptCount }}/{{ ir.files.length }} 保留</span>
         </div>
@@ -104,151 +132,32 @@
             </template>
           </a-tree>
         </div>
-      </aside>
-
-      <!-- 中:文件预览 / 转换过程 -->
-      <section class="cw-center">
-        <div class="cw-tabs">
-          <!-- 源代码区(镜像只读):过程/源文件/重点文件 -->
-          <span class="cw-zone">源代码区</span>
-          <button class="cw-tab" :class="{ active: centerTab === 'process' }" @click="centerTab = 'process'">
-            转换过程<span v-if="pipelineRunning" class="cw-live"></span>
-          </button>
-          <button class="cw-tab" :class="{ active: centerTab === 'file' }" :disabled="!selectedPath" @click="centerTab = 'file'">
-            文件预览
-          </button>
-          <button v-if="isDataDriven" class="cw-tab" :class="{ active: centerTab === 'focus' }" @click="centerTab = 'focus'">
-            重点文件<span v-if="focusFiles.length" class="cw-tab-n">{{ focusFiles.length }}</span>
-          </button>
-          <span class="cw-zone-sep"></span>
-          <!-- 模板区(制造中的产品):模板文件/渲染预览/构建验证 -->
-          <span class="cw-zone tpl">模板区</span>
-          <button class="cw-tab" :class="{ active: centerTab === 'tplfiles' }" @click="enterTplFiles">
-            模板文件<span v-if="keptCount" class="cw-tab-n dim2">{{ keptCount }}</span>
-          </button>
-          <button class="cw-tab" :class="{ active: centerTab === 'renderall' }" title="整套模板按变量默认值渲染的结果" @click="enterRenderAll">
-            渲染预览
-          </button>
-          <div class="cw-tabs-right">
-            <a-button v-if="ir.source.dir" size="small" :loading="buildChecking" title="渲染落盘后按技术栈构建命令冒烟验证(存储前可选门禁)" @click="runBuildCheck">
-              <template #icon><BuildOutlined /></template>构建验证
-            </a-button>
-            <template v-if="centerTab === 'file' && selectedPath">
-              <div class="cw-seg">
-                <button :class="{ on: previewMode === 'render' }" title="变量默认值注入后的生成效果(编辑器同款渲染引擎)" @click="previewMode = 'render'">渲染</button>
-                <button :class="{ on: previewMode === 'tpl' }" @click="previewMode = 'tpl'">模板化</button>
-                <button :class="{ on: previewMode === 'raw' }" @click="previewMode = 'raw'">原文</button>
-              </div>
-              <span v-if="previewReplaced" class="cw-repl">替换 {{ previewReplaced }} 处</span>
-            </template>
+      
+        </template>
+        <template v-else-if="activeView === 'template'">
+          <div class="cw-panel-head">
+            <span>模板文件</span>
+            <span class="cw-count">{{ keptFiles.length }} 文件</span>
           </div>
-        </div>
-
-        <!-- 过程页:阶段条 + 问题 + 时间线 -->
-        <div v-if="centerTab === 'process'" class="cw-proc">
-          <div class="cw-stagestrip">
-            <template v-for="(s, i) in stages" :key="i">
-              <div class="cw-pstage" :class="s.state">
-                <span class="cw-pdot"></span>
-                <span>{{ s.label }}</span>
-                <span v-if="s.detail" class="cw-pdetail">{{ s.detail }}</span>
-              </div>
-              <span v-if="i < stages.length - 1" class="cw-plink"></span>
-            </template>
-          </div>
-
-          <div v-for="(c, i) in ir.conflicts" :key="'c' + i" class="cw-issue conflict"><b>冲突</b>{{ c.path }} · {{ c.original || '' }} {{ c.reason }}</div>
-          <div v-for="(w, i) in ir.warnings" :key="'w' + i" class="cw-issue warn"><b>提示</b>{{ w.path }} · {{ w.original }}(预期 {{ w.expected }}/实际 {{ w.actual }})已替换全部合法位置</div>
-          <div v-for="(e, i) in ir.validationErrors" :key="'e' + i" class="cw-issue conflict"><b>渲染失败</b>{{ e.path }} · {{ e.error }}</div>
-
-          <div class="cw-timeline" ref="logEl">
-            <div v-if="activity.length === 0" class="cw-tl-empty">尚无过程记录——重新分析或调整文件/变量后,管线运行轨迹会实时出现在这里</div>
-            <div v-for="(a, i) in activity" :key="i" class="cw-act">
-              <span class="cw-act-dot" :class="a.stage"></span>
-              <span class="cw-act-stage">{{ stageNames[a.stage] || a.stage }}</span>
-              <span class="cw-act-text">{{ a.text }}</span>
-              <span class="cw-act-ts">{{ fmtTs(a.ts) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 模板文件页:模板自身的文件集(剔除后+模板化产物) -->
-        <div v-else-if="centerTab === 'tplfiles'" class="cw-rapane">
-          <div class="cw-ra-list">
+          <div class="cw-ra-list flat">
             <div
               v-for="f in keptFiles" :key="f.path"
-              class="cw-ra-item" :class="{ cur: f.path === tplSel }"
-              @click="pickTplFile(f.path)"
+              class="cw-ra-item" :class="{ cur: f.path === selectedPath }"
+              @click="onTplSelect(f.path)"
             >
               <span class="cw-ra-name">{{ f.base }}</span>
               <span class="cw-ra-path">{{ f.path }}</span>
               <span v-if="tplReplacedOf(f.path)" class="cw-ra-badge">{{ tplReplacedOf(f.path) }}</span>
             </div>
-            <div v-if="!keptFiles.length" class="cw-tl-empty">模板暂无文件——在源代码区勾选保留</div>
+            <div v-if="!keptFiles.length" class="cw-tl-empty">模板暂无文件——在源代码区切换保留</div>
           </div>
-          <div class="cw-ra-view">
-            <div v-if="tplSel" class="cw-ra-head">
-              <span class="cw-ra-hpath cw-mono">{{ tplSel }}</span>
-              <div class="cw-ra-meta">
-                <span class="cw-repl">替换 {{ tplReplacedOf(tplSel) || 0 }} 处</span>
-                <a-button size="small" @click="copyTplContent">
-                  <template #icon><CopyOutlined /></template>复制
-                </a-button>
-              </div>
-            </div>
-            <div v-if="tplSel" class="cw-code">
-              <div v-for="(l, i) in tplLines" :key="i" class="cw-ln">
-                <span class="cw-no">{{ i + 1 }}</span>
-                <span class="cw-lc" v-html="l"></span>
-              </div>
-            </div>
-            <div v-else class="cw-empty">选择左侧文件查看模板化内容(绿色高亮为变量占位符)</div>
+        </template>
+        <template v-else-if="activeView === 'focus'">
+          <div class="cw-panel-head">
+            <span>重点文件</span>
+            <span class="cw-count">已勾选 {{ focusFiles.length }}</span>
           </div>
-        </div>
-
-        <!-- 渲染预览页:整套输出文件的渲染结果 -->
-        <div v-else-if="centerTab === 'renderall'" class="cw-rapane">
-          <div class="cw-ra-list">
-            <div
-              v-for="o in ir.outputs" :key="o.path"
-              class="cw-ra-item" :class="{ cur: o.path === renderAllSel }"
-              @click="pickRenderAll(o.path)"
-            >
-              <span class="cw-ra-name">{{ o.path.split('/').pop() }}</span>
-              <span class="cw-ra-path">{{ o.path }}</span>
-              <span v-if="o.replaced" class="cw-ra-badge">{{ o.replaced }}</span>
-            </div>
-            <div v-if="!ir.outputs.length" class="cw-tl-empty">{{ raLoading ? '正在生成替换结果…' : '尚无替换结果——调整文件/变量后自动生成' }}</div>
-          </div>
-          <div class="cw-ra-view">
-            <div v-if="renderAllSel" class="cw-ra-head">
-              <span class="cw-ra-hpath cw-mono">{{ renderAllSel }}</span>
-              <div class="cw-ra-meta">
-                <span class="engine-tag">Cloud</span>
-                <span v-if="raDuration != null" class="render-time">{{ raDuration }}ms</span>
-                <span class="cw-repl">替换 {{ raCurrent?.replaced || 0 }} 处</span>
-                <a-button size="small" @click="copyRendered">
-                  <template #icon><CopyOutlined /></template>复制
-                </a-button>
-              </div>
-            </div>
-
-            <div v-if="raError" class="cw-ra-error">
-              <div class="ra-err-head"><CloseCircleOutlined /> 模板渲染错误</div>
-              <div class="ra-err-type">{{ raErrText }}<span v-if="raError.line"> · 第 {{ raError.line }} 行</span></div>
-              <div class="ra-err-msg">{{ raError.message }}</div>
-              <pre v-if="raError.context" class="ra-err-ctx">{{ raError.context }}</pre>
-            </div>
-
-            <CodeViewer v-else-if="renderAllSel && raRendered" :content="raRendered" :filename="renderAllSel" class="cw-ra-code" />
-            <div v-else-if="renderAllSel" class="cw-empty">渲染中…</div>
-            <div v-else class="cw-empty">选择左侧文件查看渲染结果(变量默认值取自右侧变量面板)</div>
-          </div>
-        </div>
-
-        <!-- 重点文件页(数据驱动):勾选 + AI 暴露范围 -->
-        <div v-else-if="centerTab === 'focus'" class="cw-focuspane">
-          <div class="cw-focus-head">
+                    <div class="cw-focus-head">
             <div class="cw-focus-desc">
               <b>勾选重点文件</b>——以文件为最小单元:例如 controller → service → mapper 的一条链路,或某个交互流程(树形菜单等)涉及的文件。
             </div>
@@ -290,10 +199,51 @@
               </template>
             </a-tree>
           </div>
+        
+        </template>
+        <template v-else-if="activeView === 'vars'">
+          <div class="cw-panel-head">
+            <span>变量</span>
+            <span class="cw-count">{{ enabledVars.length }}/{{ ir.variables.length }} 启用</span>
+          </div>
+          <div class="cw-vars">
+        <div v-for="(v, i) in ir.variables" :key="i" class="cw-var" :class="{ off: !v.enabled }">
+            <div class="cw-var-top">
+              <a-checkbox v-model:checked="v.enabled" size="small" />
+              <input v-model="v.name" class="cw-var-name cw-mono" :disabled="!v.enabled" spellcheck="false" />
+              <span class="cw-conf" :title="`置信度 ${v.confidence}`" :style="{ color: confColor(v.confidence) }">●</span>
+            </div>
+            <div class="cw-var-mid">
+              <span class="cw-var-sem">{{ v.semantic }}</span>
+              <input v-model="v.defaultValue" class="cw-var-def" :disabled="!v.enabled" spellcheck="false" />
+            </div>
+            <div class="cw-var-occ" :title="occTooltip(v)">{{ v.occurrenceCount || 0 }} 处 · {{ v.occurrences?.length || 0 }} 文件</div>
+          </div>
+          </div>
+        </template>
+      </aside>
+
+      <div class="cw-center-col">
+            <section class="cw-center">
+        <div class="cw-chead">
+          <span class="cw-crumb cw-mono" :title="selectedPath">{{ selectedPath || activeLabel }}</span>
+          <div class="cw-chead-right">
+            <template v-if="selectedPath">
+              <div class="cw-seg">
+                <button :class="{ on: previewMode === 'render' }" title="变量默认值注入后的生成效果(编辑器同款渲染引擎)" @click="previewMode = 'render'">渲染</button>
+                <button :class="{ on: previewMode === 'tpl' }" @click="previewMode = 'tpl'">模板化</button>
+                <button :class="{ on: previewMode === 'raw' }" @click="previewMode = 'raw'">原文</button>
+              </div>
+              <span v-if="previewReplaced" class="cw-repl">替换 {{ previewReplaced }} 处</span>
+            </template>
+            <a-button v-if="ir.source.dir" size="small" :loading="buildChecking" title="渲染落盘后按技术栈构建命令冒烟验证(存储前可选门禁)" @click="runBuildCheck">
+              <template #icon><BuildOutlined /></template>构建验证
+            </a-button>
+          </div>
         </div>
 
-        <!-- 文件页 -->
-        <div v-else-if="centerTab === 'file'" class="cw-filepane">
+        <!-- 文件内容区 -->
+        <div v-if="selectedPath" class="cw-filepane">
           <div v-if="!selectedPath" class="cw-empty">点击左侧文件查看预览;行尾「保留/剔除」控制该文件是否进入模板</div>
           <template v-else>
             <div class="cw-file-head">
@@ -315,30 +265,44 @@
             </div>
           </template>
         </div>
+        <div v-else class="cw-filepane"><div class="cw-empty">{{ emptyHint }}</div></div>
       </section>
 
-      <!-- 右:变量表 -->
-      <aside class="cw-panel cw-right">
-        <div class="cw-panel-head">
-          <span>变量</span>
-          <span class="cw-count">{{ enabledVars.length }}/{{ ir.variables.length }} 启用</span>
-        </div>
-        <div class="cw-vars">
-          <div v-if="ir.variables.length === 0" class="cw-tl-empty">尚无候选变量——完成分析后在此调整</div>
-          <div v-for="(v, i) in ir.variables" :key="i" class="cw-var" :class="{ off: !v.enabled }">
-            <div class="cw-var-top">
-              <a-checkbox v-model:checked="v.enabled" size="small" />
-              <input v-model="v.name" class="cw-var-name cw-mono" :disabled="!v.enabled" spellcheck="false" />
-              <span class="cw-conf" :title="`置信度 ${v.confidence}`" :style="{ color: confColor(v.confidence) }">●</span>
-            </div>
-            <div class="cw-var-mid">
-              <span class="cw-var-sem">{{ v.semantic }}</span>
-              <input v-model="v.defaultValue" class="cw-var-def" :disabled="!v.enabled" spellcheck="false" />
-            </div>
-            <div class="cw-var-occ" :title="occTooltip(v)">{{ v.occurrenceCount || 0 }} 处 · {{ v.occurrences?.length || 0 }} 文件</div>
+        <!-- 底部面板:转换过程 -->
+        <div v-if="bottomOpen" class="cw-bottom">
+          <div class="cw-bottom-head">
+            <span>转换过程</span>
+            <a-button v-if="stageState.analyze === 'wait'" type="primary" size="small" @click="rerunAnalyze">下一步 · 开始分析</a-button>
+            <a-button v-else-if="focusDirty" size="small" @click="rerunAnalyze">重新分析以应用勾选</a-button>
+            <button class="cw-icon-btn sm" title="收起" @click="bottomOpen = false"><CloseOutlined /></button>
           </div>
+                    <div class="cw-stagestrip">
+            <template v-for="(s, i) in stages" :key="i">
+              <div class="cw-pstage" :class="s.state">
+                <span class="cw-pdot"></span>
+                <span>{{ s.label }}</span>
+                <span v-if="s.detail" class="cw-pdetail">{{ s.detail }}</span>
+              </div>
+              <span v-if="i < stages.length - 1" class="cw-plink"></span>
+            </template>
+          </div>
+
+          <div v-for="(c, i) in ir.conflicts" :key="'c' + i" class="cw-issue conflict"><b>冲突</b>{{ c.path }} · {{ c.original || '' }} {{ c.reason }}</div>
+          <div v-for="(w, i) in ir.warnings" :key="'w' + i" class="cw-issue warn"><b>提示</b>{{ w.path }} · {{ w.original }}(预期 {{ w.expected }}/实际 {{ w.actual }})已替换全部合法位置</div>
+          <div v-for="(e, i) in ir.validationErrors" :key="'e' + i" class="cw-issue conflict"><b>渲染失败</b>{{ e.path }} · {{ e.error }}</div>
+
+          <div class="cw-timeline" ref="logEl">
+            <div v-if="activity.length === 0" class="cw-tl-empty">尚无过程记录——重新分析或调整文件/变量后,管线运行轨迹会实时出现在这里</div>
+            <div v-for="(a, i) in activity" :key="i" class="cw-act">
+              <span class="cw-act-dot" :class="a.stage"></span>
+              <span class="cw-act-stage">{{ stageNames[a.stage] || a.stage }}</span>
+              <span class="cw-act-text">{{ a.text }}</span>
+              <span class="cw-act-ts">{{ fmtTs(a.ts) }}</span>
+            </div>
+          </div>
+        
         </div>
-      </aside>
+      </div>
 
       <!-- 转换助手(Agent):本地工具+bash+IR 操作,最右栏;见设计文档 §12 -->
       <ConvertAgentPanel
@@ -387,10 +351,11 @@ import { message } from 'ant-design-vue'
 import { invoke } from '@tauri-apps/api/core'
 import {
   ArrowLeftOutlined, CloseOutlined, RedoOutlined, SaveOutlined, MinusOutlined, BorderOutlined,
-  FileOutlined, FolderFilled, FolderOpenFilled, CopyOutlined, CloseCircleOutlined, BuildOutlined,
+  FileOutlined, FolderFilled, FolderOpenFilled, CopyOutlined, CloseCircleOutlined, BuildOutlined, FileTextFilled, StarFilled, ClockCircleFilled,
 } from '@ant-design/icons-vue'
 import ConvertAgentPanel from './components/ConvertAgentPanel.vue'
 import CodeViewer from '@/components/common/CodeViewer.vue'
+import VariableIcon from '@/components/icons/VariableIcon.vue'
 import AiIcon from '@/components/icons/AiIcon.vue'
 import { tauriApi } from '@/utils/tauriApi'
 import { createUserTemplate } from '@/api/editor/templates/contribution'
@@ -437,7 +402,8 @@ watch(() => activity.value.length, async () => {
 })
 
 // ---- 中栏:文件预览 / 过程 ----
-const centerTab = ref('process')
+const activeView = ref('source')   // source | template | focus(Activity Bar)
+const bottomOpen = ref(true)         // 底部过程面板
 const selectedPath = ref('')
 const previewMode = ref('tpl')
 const previewRaw = ref('')
@@ -504,7 +470,7 @@ const srcShort = computed(() => {
 })
 
 // 管线运行时自动切到过程页
-watch(pipelineRunning, (r) => { if (r && ir.source.dir) centerTab.value = 'process' })
+watch(pipelineRunning, (r) => { if (r && ir.source.dir) bottomOpen.value = true })
 
 const stages = computed(() => [
   { label: '克隆', state: stageState.value.clone, detail: ir.source.commit ? ir.source.commit.slice(0, 7) : '' },
@@ -560,11 +526,10 @@ const onTreeSelect = (keys, info) => {
   const d = info?.node?.dataRef || info?.node || {}
   if (!d.isDir && d.file) {
     selectedPath.value = String(d.key)
-    centerTab.value = 'file'
+    previewMode.value = 'raw'
   }
 }
-const closePreview = () => { selectedPath.value = ''; centerTab.value = 'process' }
-
+const closePreview = () => { selectedPath.value = '' }
 
 // 勾选/暴露策略变更:落草稿 + 若分析已完成则提示重新分析生效
 watch([() => focusChecked.value.join('|'), exposeAll], () => {
@@ -599,7 +564,6 @@ watch(selectedPath, async (p) => {
   previewError.value = ''
   renderedContent.value = ''
   renderError.value = ''
-  previewMode.value = 'tpl'
   if (!p) return
   try {
     const raw = await invoke('convert_read_file', { root: ir.source.dir, path: p })
@@ -614,33 +578,21 @@ const regenPreview = async () => {
 }
 
 // ---- 模板文件页(模板区) ----
-const tplSel = ref('')
 const keptFiles = computed(() => ir.files.filter((f) => f.action === 'keep'))
-const tplReplacedOf = (path) => ir.outputs.find((o) => o.path === path)?.replaced || 0
-const tplLines = computed(() => {
-  const c = ir.outputs.find((o) => o.path === tplSel.value)?.content ?? ''
-  const arr = String(c || '').split('\n')
-  const out = arr.slice(0, 3000).map(escHighlight)
-  if (arr.length > 3000) out.push('<span class="dim">… 已截断(共 ' + arr.length + ' 行)</span>')
-  return out.length ? out : ['']
-})
-const enterTplFiles = async () => {
-  centerTab.value = 'tplfiles'
+const onTplSelect = async (path) => {
+  selectedPath.value = path
+  previewMode.value = 'tpl'
   if (!ir.outputs.length && !busy.value) {
     try { await runApply() } catch (e) { message.error('生成替换结果失败: ' + (e.message || e)) }
   }
-  if (!tplSel.value) {
-    const first = keptFiles.value.find((f) => tplReplacedOf(f.path) > 0) || keptFiles.value[0]
-    if (first) tplSel.value = first.path
-  }
 }
-const pickTplFile = (path) => { tplSel.value = path }
-const copyTplContent = async () => {
-  const c = ir.outputs.find((o) => o.path === tplSel.value)?.content ?? ''
-  try { await navigator.clipboard.writeText(c); message.success('已复制模板化内容') } catch { message.error('复制失败') }
-}
-
-// ---- 构建验证(§13.1 存储前可选门禁) ----
+const activeLabel = computed(() => ({ source: '源代码区', template: '模板区', focus: '重点文件', vars: '变量' }[activeView.value] || ''))
+const emptyHint = computed(() => (activeView.value === 'vars'
+  ? '尚无候选变量——完成分析后在「变量」中调整'
+  : activeView.value === 'template'
+  ? '在左侧选择模板文件,查看模板化内容;绿色高亮为变量占位符'
+  : '点击左侧文件查看内容;行尾「保留/剔除」控制是否进入模板'))
+const tplReplacedOf = (path) => ir.outputs.find((o) => o.path === path)?.replaced || 0
 const buildChecking = ref(false)
 const buildResult = ref(null)
 const runBuildCheck = async () => {
@@ -662,68 +614,7 @@ const runBuildCheck = async () => {
 }
 
 // ---- 整体渲染预览页 ----
-const renderAllSel = ref('')
-const raRendered = ref('')
-const raError = ref(null)   // {type?, line?, message, context?}
-const raDuration = ref(null)
-const raErrTypes = { parse_error: '解析错误', execute_error: '执行错误', function_error: '函数错误', variable_error: '变量错误', unknown_error: '未知错误' }
-const raErrText = computed(() => raErrTypes[raError.value?.type] || '渲染失败')
-const copyRendered = async () => {
-  try { await navigator.clipboard.writeText(raRendered.value); message.success('已复制渲染结果') } catch { message.error('复制失败') }
-}
 const raLoading = ref(false)
-const raCache = new Map() // path -> {content} | {error}
-const raCurrent = computed(() => ir.outputs.find((o) => o.path === renderAllSel.value) || null)
-const enterRenderAll = async () => {
-  centerTab.value = 'renderall'
-  if (!ir.outputs.length && !busy.value) {
-    raLoading.value = true
-    try { await runApply() } catch (e) { message.error('生成替换结果失败: ' + (e.message || e)) }
-    raLoading.value = false
-  }
-  if (!renderAllSel.value) {
-    const first = ir.outputs.find((o) => o.replaced > 0) || ir.outputs[0]
-    if (first) pickRenderAll(first.path)
-  }
-}
-const pickRenderAll = async (path) => {
-  renderAllSel.value = path
-  raError.value = null
-  raRendered.value = ''
-  raDuration.value = null
-  const o = ir.outputs.find((x) => x.path === path)
-  if (!o) return
-  const cached = raCache.get(path)
-  if (cached) {
-    if (cached.error) raError.value = cached.error
-    else { raRendered.value = cached.content || ''; raDuration.value = cached.duration ?? null }
-    return
-  }
-  const t0 = performance.now()
-  try {
-    const vars = {}
-    for (const v of enabledVars.value) { const n = (v.name || '').trim(); if (n) vars[n] = v.defaultValue ?? '' }
-    const r = await invoke('render_string_content', { template: o.content, variables: vars })
-    raDuration.value = Math.max(1, Math.round(performance.now() - t0))
-    if (r && r.success) { raCache.set(path, { content: r.content || '', duration: raDuration.value }); raRendered.value = r.content || '' }
-    else {
-      const err = { type: r?.error?.type, line: r?.error?.line, message: r?.error?.message || '未知错误', context: r?.error?.context }
-      raCache.set(path, { error: err })
-      raError.value = err
-    }
-  } catch (e) {
-    const err = { message: String(e) }
-    raCache.set(path, { error: err })
-    raError.value = err
-  }
-}
-// 变量/清单变更 → 渲染缓存失效,重渲当前
-watch(() => ir.files.map((f) => f.path + f.action).join('|') + JSON.stringify(enabledVars.value.map((v) => [v.name, v.defaultValue])), () => {
-  raCache.clear()
-  if (centerTab.value === 'renderall' && renderAllSel.value) pickRenderAll(renderAllSel.value)
-})
-
-// 渲染预览(编辑器同款引擎):启用变量默认值注入模板化内容
 const doRenderPreview = async () => {
   renderError.value = ''
   if (!selectedPath.value) { renderedContent.value = ''; return }
@@ -787,7 +678,7 @@ const doScan = async () => {
   // 数据驱动:扫描后停在「重点标注」步骤(可选),由用户手动开始分析;脚手架:自动串行
   if (isDataDriven.value) {
     stageState.value.analyze = 'wait'
-    centerTab.value = 'focus'
+    activeView.value = 'focus'
     pushActivity('analyze', '数据驱动模式:在「重点文件」中勾选关键文件并选择 AI 暴露范围,点「下一步」开始分析(也可跳过)')
   } else {
     await doAnalyze()
@@ -857,7 +748,7 @@ const openStore = async () => {
     const r = await runApply()
     if (!r.clean) {
       message.warning('存在冲突或渲染失败,已在「转换过程」页列出,请处理后重试')
-      centerTab.value = 'process'
+      bottomOpen.value = true
       return
     }
     if (!storeForm.name) storeForm.name = ir.source.source.split(/[\\/]/).pop()?.replace(/\.git$/, '') || '转换模板'
@@ -1026,6 +917,27 @@ onBeforeUnmount(() => { unlistenLog?.() })
 
 /* ===== 三栏骨架 ===== */
 .cw-main { flex: 1; min-height: 0; display: flex; }
+/* Activity Bar(VSCode 式) */
+.cw-actbar { width: 44px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; background: var(--editor-panel-bg, #fff); border-right: 1px solid var(--editor-border, #e2e8f0); }
+.cw-act-item { position: relative; width: 36px; height: 36px; border: none; background: transparent; border-radius: 8px; cursor: pointer; color: var(--color-text-secondary, #64748b); display: flex; align-items: center; justify-content: center; }
+.cw-act-item:hover { background: var(--color-hover, #f1f5f9); color: var(--color-text, #1b1c1f); }
+.cw-act-item.on { background: var(--color-nav-active, #eef0ec); color: var(--color-text, #1b1c1f); }
+.cw-act-item.on::before { content: ''; position: absolute; left: -4px; top: 8px; bottom: 8px; width: 2.5px; border-radius: 2px; background: var(--color-brand, #16a34a); }
+.cw-act-ico { font-size: 19px; }
+.cw-act-n { position: absolute; right: 0; top: 0; min-width: 13px; height: 13px; padding: 0 3px; border-radius: 7px; background: #3e7bfa; color: #fff; font-size: 9px; display: flex; align-items: center; justify-content: center; }
+.cw-act-live { position: absolute; right: 4px; top: 4px; width: 6px; height: 6px; border-radius: 50%; background: #d97706; animation: cw-breathe 1.2s ease-in-out infinite; }
+/* Side Bar */
+.cw-sidebar { width: 250px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0; background: var(--editor-panel-bg, #fff); border-right: 1px solid var(--editor-border, #e2e8f0); }
+.cw-ra-list.flat { width: auto; flex: 1; min-height: 0; border-right: none; padding: 6px 8px 12px; }
+/* 中栏列(内容 + 底部过程) */
+.cw-center-col { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.cw-chead { height: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 12px 0 14px; border-bottom: 1px solid var(--editor-border, #e2e8f0); background: var(--editor-panel-bg, #fff); }
+.cw-crumb { font-size: 12px; color: var(--color-text-secondary, #555); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cw-chead-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+/* 底部过程面板 */
+.cw-bottom { height: 230px; flex-shrink: 0; display: flex; flex-direction: column; border-top: 1px solid var(--editor-border, #e2e8f0); background: var(--editor-bg, #fafbfc); min-height: 0; }
+.cw-bottom-head { height: 32px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 14px; font-size: 12px; font-weight: 600; color: var(--color-text-secondary, #64748b); border-bottom: 1px solid var(--editor-border, #e2e8f0); background: var(--editor-panel-bg, #fff); }
+.cw-bottom-head .cw-icon-btn { margin-left: auto; }
 .cw-panel { background: var(--editor-panel-bg, #fff); display: flex; flex-direction: column; min-height: 0; flex-shrink: 0; }
 .cw-left { width: 280px; border-right: 1px solid var(--editor-border, #e2e8f0); }
 .cw-right { width: 320px; border-left: 1px solid var(--editor-border, #e2e8f0); }
@@ -1083,7 +995,7 @@ onBeforeUnmount(() => { unlistenLog?.() })
 .cw-repl { font-size: 11px; color: var(--color-brand, #16a34a); }
 
 /* 过程页 */
-.cw-proc { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 14px 16px; gap: 10px; overflow: hidden; }
+.cw-proc { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 8px 14px 10px; gap: 8px; overflow: hidden; }
 .cw-stagestrip { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
 .cw-pstage { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text-secondary, #64748b); }
 .cw-pdot { width: 9px; height: 9px; border-radius: 50%; background: var(--editor-border, #d5dbe1); }
@@ -1164,7 +1076,7 @@ onBeforeUnmount(() => { unlistenLog?.() })
 
 /* ===== 数据驱动:重点文件勾选 ===== */
 .cw-tab-n { display: inline-flex; align-items: center; justify-content: center; min-width: 15px; height: 15px; padding: 0 4px; margin-left: 5px; border-radius: 8px; background: #3e7bfa; color: #fff; font-size: 10px; }
-.cw-focuspane { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 14px 16px; gap: 10px; overflow: hidden; }
+.cw-focuspane { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 10px 12px; gap: 8px; overflow: hidden; }
 .cw-focus-head { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
 .cw-focus-desc { flex: 1; min-width: 0; font-size: 12px; line-height: 1.7; color: var(--color-text-secondary, #64748b); }
 .cw-focus-desc b { color: var(--color-text, #1b1c1f); }
