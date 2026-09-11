@@ -1,24 +1,10 @@
 <template>
   <div class="variable-sidebar" :style="{ width: sidebarWidth + 'px' }">
-    <!-- 头部：标题 + 悬停展开式入口 -->
+    <!-- 头部：变量设计器/测试数据入口已统一收进 ActivityBar(#200 补7) -->
     <div class="sidebar-header">
       <div class="header-left">
         <AppsOutline style="font-size: 18px; color: var(--editor-accent)" />
         <span class="header-title">变量</span>
-      </div>
-      <div class="header-actions">
-        <a-tooltip>
-          <template #title>变量设计器</template>
-          <button class="action-icon" @click="emit('show-quick-design')">
-            <DesignerIcon :size="16" />
-          </button>
-        </a-tooltip>
-        <a-tooltip>
-          <template #title>测试数据</template>
-          <button class="action-icon" @click="emit('show-test-data')">
-            <TestDataIcon :size="16" />
-          </button>
-        </a-tooltip>
       </div>
     </div>
 
@@ -464,8 +450,6 @@
     Settings,
     AddOutline,
   } from '@/icons/ionicons5';
-  import DesignerIcon from '@/components/icons/DesignerIcon.vue';
-  import TestDataIcon from '@/components/icons/TestDataIcon.vue';
   import { getTemplateExpose } from '@/api/editor/templateExpose';
   import {
     getSubscribedPresets,
@@ -511,8 +495,6 @@
     'insert-variable',
     'insert-preset-variable',
     'update:width',
-    'show-quick-design', // 快速设计模式
-    'show-test-data',
   ]);
 
   // 状态

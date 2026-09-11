@@ -30,7 +30,7 @@
 
     <div class="edit-main">
       <!-- Activity Bar(VSCode 式,#147) -->
-      <EditorActivityBar v-model:view="activeView" :scm-count="scmCount" :ai-open="aiDockOpen" @toggle-ai="aiDockOpen = !aiDockOpen" />
+      <EditorActivityBar v-model:view="activeView" :scm-count="scmCount" :ai-open="aiDockOpen" @toggle-ai="aiDockOpen = !aiDockOpen" @open-designer="showQuickDesign()" @open-testdata="showTestDataFromHeader()" />
 
       <!-- Side Bar:按 ActivityBar 视图切换 -->
       <div v-show="activeView === 'explorer'" class="side-pane">
@@ -64,8 +64,6 @@
           @insert-variable="insertVariable"
           @insert-preset-variable="insertPresetVariable"
           @update:width="updateVariableSidebarWidth"
-          @show-quick-design="showQuickDesign"
-          @show-test-data="showTestDataFromHeader"
         />
       </div>
 

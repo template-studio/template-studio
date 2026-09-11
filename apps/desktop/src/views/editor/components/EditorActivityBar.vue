@@ -10,6 +10,12 @@
       <BranchesOutlined class="ed-act-ico" />
       <span v-if="badge > 0" class="ed-act-n">{{ badge > 99 ? '99+' : badge }}</span>
     </button>
+    <button class="ed-act-item" title="变量设计器(全屏工作室)" @click="$emit('open-designer')">
+      <FormOutlined class="ed-act-ico" />
+    </button>
+    <button class="ed-act-item" title="测试数据(编辑后预览自动重渲)" @click="$emit('open-testdata')">
+      <ExperimentOutlined class="ed-act-ico" />
+    </button>
     <div class="ed-act-gap"></div>
     <button class="ed-act-item" :class="{ on: view === 'settings' }" title="设置(Ctrl+,)" @click="setView('settings')">
       <SettingFilled class="ed-act-ico" />
@@ -22,7 +28,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { FolderFilled, BranchesOutlined, SettingFilled } from '@ant-design/icons-vue'
+import { FolderFilled, BranchesOutlined, SettingFilled, FormOutlined, ExperimentOutlined } from '@ant-design/icons-vue'
 import VariableIcon from '@/components/icons/VariableIcon.vue'
 import AiIcon from '@/components/icons/AiIcon.vue'
 
@@ -31,7 +37,7 @@ const props = defineProps({
   scmCount: { type: Number, default: 0 },
   aiOpen: { type: Boolean, default: false },
 })
-const emit = defineEmits(['update:view', 'toggle-ai'])
+const emit = defineEmits(['update:view', 'toggle-ai', 'open-designer', 'open-testdata'])
 const badge = computed(() => props.scmCount)
 const setView = (v) => emit('update:view', v)
 </script>

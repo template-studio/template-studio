@@ -1722,3 +1722,19 @@
 **涉及文件：** `apps/desktop/src/assets/styles/themes.css`(desktop)
 
 **验收结果：** vite build 通过。
+
+## 2026-09-11 变量设计器与测试数据入口收进 ActivityBar（任务 #200 补6）
+
+**变更内容：** ActivityBar 新增两个动作型入口(表单图标=变量设计器、试管图标=测试数据)，点击分别走既有全屏工作室与"抽屉+测试数据弹层"流程；侧栏/顶栏空间占用不变，交互入口统一到 ActivityBar。变量栏头部原有按钮保留。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/EditorActivityBar.vue`、`index.vue`(desktop)
+
+**验收结果：** vite build 通过；待用户目验。
+
+## 2026-09-11 移除变量栏头部旧入口（任务 #200 补7）
+
+**变更内容：** 变量设计器/测试数据的入口统一为 ActivityBar 图标；移除变量侧栏头部的两个悬停按钮及其 emits、图标导入与父组件事件绑定。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/VariableSidebar.vue`、`index.vue`(desktop)
+
+**验收结果：** vite build 通过。
