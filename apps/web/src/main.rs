@@ -377,6 +377,10 @@ fn template_protected_routes() -> Router<AppState> {
             post(handlers::releases::reset_to_latest),
         )
         .route(
+            "/templates/:id/git-status",
+            get(handlers::releases::git_status),
+        )
+        .route(
             "/templates/:id/releases/:version/rollback",
             post(handlers::releases::rollback_version),
         )

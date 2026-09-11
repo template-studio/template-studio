@@ -132,6 +132,22 @@ pub async fn deprecate_version(
     }
 }
 
+/// 模板工作区 git 状态(SCM 视图)
+/// GET /api/v1/templates/:id/git-status
+pub async fn git_status(
+    State(state): State<AppState>,
+    Extension(auth_user): Extension<AuthUser>,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    crate::handlers::access::ensure_template_access(&state, &auth_user, id).await?;
+    match state.release_service.git_status(id).await {
+        Ok(response) => Ok(Json(
+            serde_json::to_value(ApiResponse::success(response)).unwrap_or_default(),
+        )),
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, &e.to_string()),
+    }
+}
+
 /// 重置到最新版本
 /// POST /api/v1/templates/:id/releases/reset-to-latest
 pub async fn reset_to_latest(

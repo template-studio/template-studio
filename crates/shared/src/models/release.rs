@@ -90,6 +90,20 @@ pub struct ResetToLatestResponse {
     pub deleted_files: i32,
 }
 
+/// git 变更条目(SCM 视图,git status --porcelain 解析)
+#[derive(Debug, Clone, Serialize)]
+pub struct GitStatusEntry {
+    pub path: String,
+    /// M=修改 A=新增(未跟踪) D=删除
+    pub status: String,
+}
+
+/// git 状态响应(工作区相对最近 release 提交)
+#[derive(Debug, Clone, Serialize)]
+pub struct GitStatusResponse {
+    pub entries: Vec<GitStatusEntry>,
+}
+
 /// 版本详情响应
 #[derive(Debug, Clone, Serialize)]
 pub struct VersionDetailResponse {

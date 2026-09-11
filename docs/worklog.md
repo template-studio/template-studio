@@ -1578,3 +1578,91 @@
 **涉及文件：** `src/views/editor/components/ScmPanel.vue`
 
 **验收结果：** pnpm build 通过。
+
+## 2026-09-11 SCM 树视图收敛为 a-tree（任务 #195）
+
+**变更内容：** 放弃自制递归树(ScmNode.vue 删除),树视图改用 a-tree(与资源管理器文件树同构):目录行=名称+后代变更计数,文件行=文件名+diffstat+M/A/D 色块+悬停放弃,点击打开;默认展开一级;deep 样式收敛对齐文件树;列表视图保留。
+
+**涉及文件：** `src/views/editor/components/ScmPanel.vue`、删除 `src/views/editor/components/ScmNode.vue`
+
+**验收结果：** pnpm build 通过。
+
+## 2026-09-11 SCM 树视图修正（任务 #195 补）
+
+**变更内容：** 移除聚合根目录节点(顶层=根级目录+根级文件平铺);默认展开全部目录层级(此前仅一级且折叠态致看似列表)。
+
+**涉及文件：** `src/views/editor/components/ScmPanel.vue`
+
+**验收结果：** pnpm build 通过。
+
+## 2026-09-11 SCM 树空节点修复（任务 #195 补2）
+
+**变更内容：** 根因:列表视图 v-for 与 v-if 同节点,Vue 3 v-if 优先级高于 v-for,取 en 报错中断整个 scm-list 渲染(树一并空白)。拆为 template 包裹。
+
+**涉及文件：** `src/views/editor/components/ScmPanel.vue`
+
+**验收结果：** pnpm build 通过。
+
+## 2026-09-11 SCM 基线语义修复（任务 #195 补3）
+
+**变更内容：** 首次拉取误把全部文件标为 A(基线空 Map)。改为首次拉取静默建基线不出变更;此后差异才为 M/A/D。树渲染本身经 demo 验证正常(嵌套/计数/diffstat)。
+
+**涉及文件：** `src/views/editor/components/ScmPanel.vue`
+
+**验收结果：** pnpm build 通过。
+
+## 2026-09-11 SCM 改真 git 语义（任务 #196）
+
+**变更内容：** ①服务端新增 GET /templates/:id/git-status(shared 增 GitStatusEntry/GitStatusResponse 模型;release_service.git_status 在模板存储目录跑 git status --porcelain 解析 M/A/D,未发布过(无 .git)返回空;handlers/releases.rs::git_status+路由注册);②桌面端 ScmPanel 数据源替换为 git-status API(废弃内存全量比对——基线时机漂移致"17 个更改/没有更改"乱跳;打开/AI 应用/保存/手动刷新触发),diffstat 数字暂去(无逐文件基线),放弃单文件改懒加载当前内容兜底恢复;移除 flatten/diffStat。
+
+**涉及文件：** `crates/shared/src/models/release.rs`、`crates/services/src/release_service.rs`、`apps/web/src/handlers/releases.rs`、`apps/web/src/main.rs`、`src/api/editor/releases/index.ts`、`src/views/editor/components/ScmPanel.vue`(desktop)
+
+**验收结果：** cargo check(web+services)通过;pnpm build 通过。**需重启 web 服务端**后 SCM 即为真 git 状态。
+
+## 2026-09-11 SCM __vnode 崩溃修复（任务 #196 补）
+
+**变更内容：** 移除内联字符串模板组件 ScmCount(普通 span 替代,该模式为 patch 空引用崩溃高发源);switcherIcon 插槽 dataRef 可选链防御。
+
+**涉及文件：** `src/views/editor/components/ScmPanel.vue`
+
+**验收结果：** pnpm build 通过。
+
+## 2026-09-11 SCM refresh 误删补回（任务 #196 补2）
+
+**变更内容：** 上轮清理 flatten/diffStat 切片过界,误删 git 版 refresh 与 baseline 声明(onMounted 引用 undefined)。补回。
+
+**涉及文件：** `src/views/editor/components/ScmPanel.vue`
+
+**验收结果：** pnpm build 通过。
+
+## 2026-09-11 git-status 404 排查（任务 #196 补3）
+
+**变更内容：** 实测运行中 web 端 404=旧进程未含新路由(代码/路由/前端三方一致);SCM 错误提示按 404 给出"服务端未重启"自解释文案。reportAllChanges 报错经查不在代码库/dist,判定为 WebView 环境噪音非应用缺陷。
+
+**涉及文件：** `src/views/editor/components/ScmPanel.vue`(desktop)
+
+**验收结果：** pnpm build 通过。
+
+## 2026-09-11 预览面板默认展开+SCM 报错细化（任务 #196 补4）
+
+**变更内容：** ①TemplatePreview isCollapsed 默认 true 致内容区 v-show 隐藏、布局改造后折叠壳视觉误导("面板在但无渲染");改默认展开+localStorage 记忆;②SCM git-status 报错按 401/404 分别提示(Token 问题/服务端版本问题);③实测服务端 git-status 已注册(未带 token 探测返回 401)。
+
+**涉及文件：** `src/views/editor/components/TemplatePreview.vue`、`src/views/editor/components/ScmPanel.vue`(desktop)
+
+**验收结果：** pnpm build 通过。
+
+## 2026-09-11 预览首渲修复+SCM 诊断增强（任务 #196 补5）
+
+**变更内容：** ①根因:预览面板默认展开路径无任何首渲触发(watch 无 immediate,自动渲染仅在折叠→展开切换);onMounted 补"展开且有文件→nextTick 首渲";②SCM 失败报错附请求 URL 与 console.error 全量(config/baseURL/response),用于区分 baseURL 指向旧服务端的情况。
+
+**涉及文件：** `src/views/editor/components/TemplatePreview.vue`、`src/views/editor/components/ScmPanel.vue`(desktop)
+
+**验收结果：** pnpm build 通过。
+
+## 2026-09-11 SCM 根因修复+预览渲染解耦折叠态（任务 #196 补6）
+
+**变更内容：** 通读全链路定位两处真根因：①SCM"读取 git 状态失败: gitStatus is not defined"——ScmPanel 多轮重写中 import 行丢失 gitStatus(请求从未发出,此前 401/404 方向均误判),补导入并移除未用的 getTemplateFileTree;重置成功提示改用响应真实字段 version/deletedFiles(原 restoredFiles 恒 undefined)。②预览"无法预览"——渲染触发以 isCollapsed 为门,历史遗留 collapsed 标记使每次会话静默跳过渲染;watch 与 onMounted 首渲去除折叠态门,内容先备好、展开即见。
+
+**涉及文件：** `src/views/editor/components/ScmPanel.vue`、`src/views/editor/components/TemplatePreview.vue`(desktop)
+
+**验收结果：** vite build 通过;待用户桌面端实测(SCM 更改列表+预览渲染)。

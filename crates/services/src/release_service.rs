@@ -339,6 +339,64 @@ impl ReleaseService {
         })
     }
 
+    /// 模板工作区 git 状态(SCM 视图数据源):git status --porcelain 解析 M/A/D
+    pub async fn git_status(&self, template_id: i64) -> Result<GitStatusResponse> {
+        use std::process::Command;
+
+        let template_path = self.storage_manager.get_template_path(template_id);
+        if !template_path.join(".git").exists() {
+            // 无 git 历史(从未发布过)——全部视为未跟踪工作区,返回空让前端按需处理
+            return Ok(GitStatusResponse { entries: vec![] });
+        }
+
+        let output = Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(&template_path)
+            .output()
+            .map_err(|e| anyhow::anyhow!("Git status 失败: {}", e))?;
+        if !output.status.success() {
+            return Err(anyhow::anyhow!(
+                "Git status 失败: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+
+        let mut entries = Vec::new();
+        for line in String::from_utf8_lossy(&output.stdout).lines() {
+            if line.len() < 4 {
+                continue;
+            }
+            let xy = &line[..2];
+            let path = line[3..].trim().to_string();
+            if path.is_empty() {
+                continue;
+            }
+            // porcelain: X=暂存区 Y=工作区;??=未跟踪(A);其余以工作区优先
+            let status = if xy == "??" {
+                "A"
+            } else {
+                let y = xy.as_bytes()[1] as char;
+                match y {
+                    'M' | 'm' => "M",
+                    'D' => "D",
+                    ' ' => {
+                        // 工作区干净看暂存区(编辑器直写不暂存,此分支少见)
+                        match xy.as_bytes()[0] as char {
+                            'A' => "A",
+                            'D' => "D",
+                            _ => "M",
+                        }
+                    }
+                    'A' => "A",
+                    _ => "M",
+                }
+            };
+            entries.push(GitStatusEntry { path, status: status.to_string() });
+        }
+
+        Ok(GitStatusResponse { entries })
+    }
+
     /// 自动生成下一个版本号
     async fn generate_next_version(&self, template_id: i64) -> Result<String> {
         let latest = self.get_latest_version(template_id).await.ok();

@@ -241,7 +241,7 @@
   }
 
   // 折叠状态
-  const isCollapsed = ref(true);
+  const isCollapsed = ref(localStorage.getItem('template-preview-collapsed') === '1');
 
   // 面板宽度和拖动状态
   const panelWidth = ref(400);
@@ -338,6 +338,7 @@
   // 切换折叠状态
   function toggleCollapse() {
     isCollapsed.value = !isCollapsed.value;
+    localStorage.setItem('template-preview-collapsed', isCollapsed.value ? '1' : '0');
     if (isCollapsed.value) {
       panelWidth.value = 40;
     } else {
@@ -599,15 +600,14 @@
     }
   );
 
-  // 监听文件路径和测试变量变化，仅在面板展开时自动渲染
+  // 监听文件路径和测试变量变化，自动渲染。
+  // 不再以折叠态为门：渲染结果缓存在内存里，展开即见；避免历史遗留的
+  // collapsed 标记让每次会话都静默跳过渲染（表现即"无法预览"）。
   watch(
     [() => props.filePath, () => props.variables],
     async () => {
-      if (props.filePath && !isCollapsed.value) {
-        console.log('文件路径或变量变化，面板已展开，执行渲染');
+      if (props.filePath) {
         debouncedRender();
-      } else if (props.filePath && isCollapsed.value) {
-        console.log('文件路径或变量变化，但面板已折叠，跳过渲染');
       }
     },
     { deep: true, immediate: false }
@@ -617,6 +617,11 @@
   onMounted(() => {
     // 加载保存的宽度设置
     loadPanelWidth();
+
+    // 有已打开文件时触发首渲(与折叠态无关，内容先备好)
+    if (props.filePath) {
+      nextTick(() => debouncedRender());
+    }
 
     if (previewEditorRef.value) {
       const state = EditorState.create({

@@ -67,3 +67,15 @@ export function resetToLatest(templateId) {
     method: 'post',
   });
 }
+
+/**
+ * 模板工作区 git 状态（SCM 视图数据源，真 git 语义）
+ * @param {number} templateId - 模板ID
+ * @returns {Promise<{entries: [{path: string, status: 'M'|'A'|'D'}]}>}
+ */
+export function gitStatus(templateId) {
+  return request({
+    url: `/api/v1/template/templates/${templateId}/git-status`,
+    method: 'get',
+  });
+}
