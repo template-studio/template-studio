@@ -13,14 +13,13 @@
         :field-names="{ key: 'id', title: 'label', children: 'children' }"
         selectable
         block-node
-        show-icon
         @select="handleSelect"
         @expand="handleExpand"
         @rightclick="onNodeRightClick"
       >
         <template #title="{ dataRef }">
           <div class="tree-node-content" style="display: flex; align-items: center; justify-content: space-between; width: 100%">
-            <div style="display: flex; align-items: center; gap: 4px">
+            <div style="display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden">
               <template v-if="dataRef.isEditing">
                 <input
                   class="vscode-tree-input"
@@ -61,9 +60,6 @@
               </a-dropdown>
             </div>
           </div>
-        </template>
-        <template #icon>
-          <FolderOutline style="font-size: 14px" />
         </template>
       </a-tree>
       <a-empty v-else description="暂无变量，右键添加变量" />
@@ -123,8 +119,9 @@
 <script setup>
   import { computed, ref, h, onMounted, onUnmounted } from 'vue';
 
-// 面板宽度（右缘拖拽调节，范围 160–420）
-const panelWidth = ref(190)
+// 面板宽度（右缘拖拽调节，范围 220–420）
+// 默认 280：190 过窄，树行(图标+名称+操作)挤压变形
+const panelWidth = ref(280)
 const startResize = (e) => {
   e.preventDefault()
   const container = e.target.parentElement.parentElement
@@ -136,7 +133,7 @@ const startResize = (e) => {
   const startX = e.clientX
   const startW = panelWidth.value
   const onMove = (ev) => {
-    panelWidth.value = Math.min(Math.min(420, maxW), Math.max(160, startW + (ev.clientX - startX)))
+    panelWidth.value = Math.min(Math.min(420, maxW), Math.max(220, startW + (ev.clientX - startX)))
   }
   const onUp = () => {
     document.removeEventListener('mousemove', onMove)
@@ -159,7 +156,6 @@ const startResize = (e) => {
     ToggleOutline,
     ListOutline,
     LockClosedOutline,
-    FolderOutline,
     CodeSlashOutline,
     AppsOutline,
     ChevronForward,
@@ -610,19 +606,26 @@ const startResize = (e) => {
   }
 
   .panel-header {
-    padding: 16px;
+    height: 34px;
+    padding: 0 12px;
     border-bottom: 1px solid var(--editor-border, #e0e0e0);
     background: var(--editor-panel-bg, #fff);
     display: flex;
     align-items: center;
-    min-height: 56px;
     box-sizing: border-box;
     flex-shrink: 0;
   }
 
+  .panel-header strong {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--editor-primary, #1b1c1f);
+  }
+
   .tree-content {
     flex: 1;
-    padding: 16px;
+    padding: 6px 6px 12px;
     overflow-y: auto;
     overflow-x: hidden;
     background: var(--editor-inset-bg, #f9f9f9);
@@ -665,10 +668,59 @@ const startResize = (e) => {
     font-style: italic;
   }
 
-  /* 树节点标签样式 */
+  /* 树节点标签样式:长变量名省略号截断,不撑变形树行 */
   .tree-node-label {
     font-size: 13px;
     user-select: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* a-tree 单行约束(与 SCM 面板同款):title/content-wrapper 走 flex 收缩链,
+     保证任意缩进深度下变量名单行省略号显示,不换行 */
+  :deep(.ant-tree) {
+    background: transparent;
+    font-size: 12.5px;
+  }
+
+  :deep(.ant-tree .ant-tree-node-content-wrapper) {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1;
+    padding: 1px 5px;
+    border-radius: 5px;
+    transition: background-color 0.12s;
+  }
+
+  :deep(.ant-tree .ant-tree-node-content-wrapper:hover) {
+    background: var(--editor-hover-bg, #ececea);
+  }
+
+  :deep(.ant-tree .ant-tree-node-selected),
+  :deep(.ant-tree .ant-tree-node-content-wrapper.ant-tree-node-selected) {
+    background: var(--editor-active-bg, #e0e2dc) !important;
+    font-weight: 500;
+  }
+
+  :deep(.ant-tree .ant-tree-title) {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1;
+  }
+
+  :deep(.ant-tree .ant-tree-treenode) {
+    align-items: center;
+    padding: 0;
+  }
+
+  :deep(.ant-tree .ant-tree-switcher) {
+    width: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   /* 右键菜单 */

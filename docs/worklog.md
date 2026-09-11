@@ -1810,3 +1810,27 @@
 **涉及文件：** `apps/desktop/src/views/editor/components/EditorActivityBar.vue`、`index.vue`(desktop)
 
 **验收结果：** vite build 通过；浏览器实测：点设计器→仅设计器亮、切测试数据→高亮转移、点资源视图→回落且层收起，每步仅一个按钮高亮。
+
+## 2026-09-11 变量树模式适配修复（任务 #200 补17）
+
+**变更内容：** 变量树面板默认宽仅 190px，树行(缩进+图标+名称+操作)挤压变形且宽度随内容跳变。默认宽改 280px(拖拽范围 160-420→220-420)；节点标签加省略号截断、标签容器 min-width:0，长变量名不再撑破树行。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/QuickDesignDrawer/components/VariableTree.vue`(desktop)
+
+**验收结果：** vite build 通过；浏览器实测树面板 280px 生效，截图确认树/属性/Schema 三栏布局无变形无溢出。
+
+## 2026-09-11 变量树去图标与单行显示（任务 #200 补18）
+
+**变更内容：** 变量树每节点都渲染文件夹图标(show-icon + FolderOutline)语义不当观感差,移除(可展开节点仅保留默认箭头);标签换行问题补全 a-tree 收缩链约束(ant-tree-title/content-wrapper 设 flex+min-width:0,与 SCM 面板同款方案),任意缩进深度下变量名单行省略号显示。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/QuickDesignDrawer/components/VariableTree.vue`(desktop)
+
+**验收结果：** vite build 通过；单行约束为 SCM 面板已验证的同款方案,待用户目验。
+
+## 2026-09-11 变量树样式打磨（任务 #200 补19）
+
+**变更内容：** 变量树观感对齐 VSCode 文件树：面板头改 34px 小标题规格(11px 粗体,与 SCM/设置面板统一)；树区 padding 16→6；树行字号 12.5px、行内圆角悬停高亮、选中态底色加深并加粗；展开箭头列收窄至 18px。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/QuickDesignDrawer/components/VariableTree.vue`(desktop)
+
+**验收结果：** vite build 通过。
