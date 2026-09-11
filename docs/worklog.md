@@ -1674,3 +1674,11 @@
 **涉及文件：** `crates/shared/src/models/release.rs`、`apps/web/src/handlers/template_files.rs`、`apps/desktop/src/composables/useRenderService.ts`、`apps/desktop/src/views/editor/components/TemplatePreview.vue`
 
 **验收结果：** cargo build/test(shared 7+web 3 通过)+桌面 vite build 通过；重启服务端后 curl 端到端实测：空变量渲染失败返回 error 详情(line/context)、正常文件无 error 字段、填全变量渲染出真实内容(875B)。桌面端待用户实测。
+
+## 2026-09-11 编辑器通知修复：notification 参数为 Naive UI 风格（任务 #196 补8）
+
+**变更内容：** TemplateEditor 的 13 处 notification 调用沿用 Naive UI API(title/content/duration 毫秒)，ant-design-vue 不识别 title/content 致通知空白无文字，duration 2500 被按秒解析(约 42 分钟)不消失；统一转换为 message/description/duration 秒。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/TemplateEditor.vue`
+
+**验收结果：** vite build 通过；待用户桌面端实测(通知显示文字并自动消失)。

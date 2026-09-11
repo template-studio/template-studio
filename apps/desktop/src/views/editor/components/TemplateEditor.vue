@@ -227,9 +227,9 @@
     if (!props.currentFileId || !props.currentFilePath) {
       if (!silent) {
         notification.warning({
-          title: '无法保存',
-          content: '请先选择一个文件',
-          duration: 2500,
+          message: '无法保存',
+          description: '请先选择一个文件',
+          duration: 2.5,
         });
       }
       return false;
@@ -245,9 +245,9 @@
 
       if (!silent) {
         notification.success({
-          title: '保存成功',
-          content: '文件已成功保存',
-          duration: 2500,
+          message: '保存成功',
+          description: '文件已成功保存',
+          duration: 2.5,
         });
       }
 
@@ -262,9 +262,9 @@
     } catch (e) {
       // 错误始终显示通知，即使是静默模式
       notification.error({
-        title: '保存失败',
-        content: '请检查网络或稍后重试',
-        duration: 2500,
+        message: '保存失败',
+        description: '请检查网络或稍后重试',
+        duration: 2.5,
       });
       return false;
     }
@@ -299,9 +299,9 @@
   function triggerPreview() {
     if (!props.currentFileId) {
       notification.warning({
-        title: '无法预览',
-        content: '请先选择一个文件',
-        duration: 2500,
+        message: '无法预览',
+        description: '请先选择一个文件',
+        duration: 2.5,
       });
       return;
     }
@@ -354,9 +354,9 @@
   function wrapSelectionWithRaw() {
     if (!editorView) {
       notification.warning({
-        title: '无法操作',
-        content: '编辑器未初始化',
-        duration: 2000,
+        message: '无法操作',
+        description: '编辑器未初始化',
+        duration: 2,
       });
       return;
     }
@@ -366,9 +366,9 @@
     // 如果没有选中文本，提示用户
     if (selection.empty) {
       notification.warning({
-        title: '请先选中文本',
-        content: '请选中需要原样显示的文本',
-        duration: 2000,
+        message: '请先选中文本',
+        description: '请选中需要原样显示的文本',
+        duration: 2,
       });
       return;
     }
@@ -404,9 +404,9 @@
     emit('contentChange', { content });
 
     notification.success({
-      title: '已添加 raw 标签',
-      content: '选中文本已被 {% raw %} 标签包裹',
-      duration: 2000,
+      message: '已添加 raw 标签',
+      description: '选中文本已被 {% raw %} 标签包裹',
+      duration: 2,
     });
   }
 
@@ -414,9 +414,9 @@
   async function resetFile() {
     if (!props.currentFileId || !props.currentFilePath) {
       notification.warning({
-        title: '无法重置',
-        content: '请先选择一个文件',
-        duration: 2500,
+        message: '无法重置',
+        description: '请先选择一个文件',
+        duration: 2.5,
       });
       return;
     }
@@ -434,9 +434,9 @@
       });
 
       notification.success({
-        title: '重置成功',
-        content: '文件已恢复到上次提交状态',
-        duration: 2500,
+        message: '重置成功',
+        description: '文件已恢复到上次提交状态',
+        duration: 2.5,
       });
     } catch (e) {
       // 响应拦截器已处理错误提示
@@ -475,9 +475,9 @@
         // 设置超时保护
         const timeout = setTimeout(() => {
           notification.error({
-            title: '预览超时',
-            content: 'HTML 渲染超时，可能存在无限循环或错误',
-            duration: 3000,
+            message: '预览超时',
+            description: 'HTML 渲染超时，可能存在无限循环或错误',
+            duration: 3,
           });
           showHtmlPreviewModal.value = false;
         }, 3000); // 3秒超时
@@ -495,9 +495,9 @@
           clearTimeout(timeout);
 
           notification.success({
-            title: '预览成功',
-            content: 'HTML 内容已在弹框中显示',
-            duration: 2500,
+            message: '预览成功',
+            description: 'HTML 内容已在弹框中显示',
+            duration: 2.5,
           });
         } catch (e) {
           // 清除超时
@@ -513,17 +513,17 @@
             doc.close();
 
             notification.warning({
-              title: '渲染失败',
-              content: 'HTML 渲染失败，已显示为纯文本',
-              duration: 3000,
+              message: '渲染失败',
+              description: 'HTML 渲染失败，已显示为纯文本',
+              duration: 3,
             });
           } catch (fallbackError) {
             // 最后的保护措施
             showHtmlPreviewModal.value = false;
             notification.error({
-              title: '预览失败',
-              content: '无法显示内容',
-              duration: 3000,
+              message: '预览失败',
+              description: '无法显示内容',
+              duration: 3,
             });
           }
         }
