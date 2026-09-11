@@ -13,7 +13,7 @@
     <button class="ed-act-item" title="变量设计器(全屏工作室)" @click="$emit('open-designer')">
       <FormOutlined class="ed-act-ico" />
     </button>
-    <button class="ed-act-item" title="测试数据(编辑后预览自动重渲)" @click="$emit('open-testdata')">
+    <button class="ed-act-item" title="测试数据(表单/JSON 双栏编辑)" @click="$emit('open-testdata')">
       <ExperimentOutlined class="ed-act-ico" />
     </button>
     <div class="ed-act-gap"></div>

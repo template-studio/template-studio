@@ -1,12 +1,7 @@
 <template>
-  <a-drawer
-    v-model:open="drawerVisible"
-    :width="'100%'"
-    placement="right"
-    :closable="false"
-    :body-style="{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }"
-    :mask="false"
-  >
+  <!-- 内容区工作室层(#200 补8):原 100% 全屏 a-drawer 改为内联 v-show 容器,
+      由父组件在 edit-main 内绝对定位占满内容区;v-show 保活,切换顺滑 -->
+  <div v-show="drawerVisible" class="designer-studio">
     <div class="drawer-container">
       <!-- Header -->
       <StudioHeader
@@ -190,7 +185,7 @@
         @remove-components="handleRemoveUnusedComponents"
       />
     </div>
-  </a-drawer>
+  </div>
 </template>
 
 <script setup>
@@ -1627,8 +1622,21 @@
   }
 
   /* 确保 drawer-container 不会超出视口 */
+  /* 工作室内联根(#200 补8):承接原 a-drawer body 的 flex 布局 */
+  .designer-studio {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--editor-panel-bg, #fff);
+  }
+
   .drawer-container {
-    max-height: 100vh !important;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     overflow: hidden !important;
   }
 

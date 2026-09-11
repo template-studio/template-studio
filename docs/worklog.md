@@ -1738,3 +1738,43 @@
 **涉及文件：** `apps/desktop/src/views/editor/components/VariableSidebar.vue`、`index.vue`(desktop)
 
 **验收结果：** vite build 通过。
+
+## 2026-09-11 变量设计器改为内容区层（任务 #200 补8）
+
+**变更内容：** 变量设计器不再以 100% 全屏 a-drawer 覆盖整窗，改为 edit-main 内绝对定位层占满内容区（左侧让出 ActivityBar）；组件根改内联 v-show 容器保活（切换不丢状态）；点击 ActivityBar 任意视图图标自动收起设计器，形成平滑切换。层级：设计器 200 > AI 悬浮球 100，内部表单预览浮层 1200 不受影响。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/QuickDesignDrawer/index.vue`、`index.vue`(desktop)
+
+**验收结果：** vite build 通过；待用户目验。
+
+## 2026-09-11 测试数据独立侧栏视图（任务 #200 补9）
+
+**变更内容：** 新增 TestDataPanel 侧栏面板(300px)：标题行悬停动作(JSON/YAML 切换/重新生成/复制) + CodeMirror 编辑器 + "保存并应用"；数据加载/生成/存储与原 TestDataModal 同源(服务端 templateExpose, schema 复用 useSchemaStore)；保存后经 updated 事件更新 variableValues，预览自动重渲。ActivityBar 测试数据按钮改为视图切换(带选中态)，移除旧的两跳入口函数。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/TestDataPanel.vue`(新增)、`EditorActivityBar.vue`、`index.vue`(desktop)
+
+**验收结果：** vite build 通过；待用户目验。
+
+## 2026-09-11 测试数据升级为内容区双栏工作室（任务 #200 补10）
+
+**变更内容：** 测试数据由 300px 侧栏改为内容区层(同设计器,左让 ActivityBar/v-show 保活/视图切换收起)。双栏布局:左侧表单按 schema 递归渲染控件(文本/数值/开关/枚举/密钥/字符串数组 tags/通用数组 JSON 文本域/嵌套对象/对象数组带增删,新增 FieldGroup.vue),右侧 CodeMirror(JSON/YAML 切换);单数据源 testData,表单深度监听防抖序列化到编辑器、编辑器解析成功整体替换数据(标志位防同步环路),解析错误右下浮动提示;分栏可拖拽(25%-75%);保存以编辑器内容为准,经 updated 事件刷新预览变量。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/TestDataPanel.vue`(重写)、`FieldGroup.vue`(新增)、`EditorActivityBar.vue`、`index.vue`(desktop)
+
+**验收结果：** vite build 通过；待用户目验(表单↔JSON 双向同步、对象数组增删、保存后预览重渲)。
+
+## 2026-09-11 测试数据编辑器主题适配（任务 #200 补11）
+
+**变更内容：** TestDataPanel 的 CodeMirror 原为裸 basicSetup(默认浅色),暗色下行号槽/编辑区不适配；接入主题 store——暗色挂 dracula(与主编辑器同款),亮色保持默认,isDark 变化时重挂编辑器。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/TestDataPanel.vue`(desktop)
+
+**验收结果：** vite build 通过。
+
+## 2026-09-11 CodeMirror 主题适配补全（任务 #200 补12）
+
+**变更内容：** 新增共享工具 utils/cmTheme.js(cmThemeExtensions 暗色挂 dracula / watchCmTheme 切换重建)；接入两处裸 basicSetup 的编辑器——变量设计器 Schema 编辑器(useSchemaEditor)与模板渲染表单 JSON 字段(VariableForm,初始化抽出为 initJsonEditors,重建不丢数据)。SQL 系编辑器(SQLDiffEditor/SQLEditor)已有 props.theme 机制(底色/行号槽随主题),无需改动。
+
+**涉及文件：** `apps/desktop/src/utils/cmTheme.js`(新增)、`views/editor/components/QuickDesignDrawer/composables/useSchemaEditor.js`、`views/template-render/VariableForm.vue`(desktop)
+
+**验收结果：** vite build 通过。

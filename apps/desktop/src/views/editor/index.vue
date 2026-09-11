@@ -30,7 +30,7 @@
 
     <div class="edit-main">
       <!-- Activity Bar(VSCode 式,#147) -->
-      <EditorActivityBar v-model:view="activeView" :scm-count="scmCount" :ai-open="aiDockOpen" @toggle-ai="aiDockOpen = !aiDockOpen" @open-designer="showQuickDesign()" @open-testdata="showTestDataFromHeader()" />
+      <EditorActivityBar v-model:view="activeView" :scm-count="scmCount" :ai-open="aiDockOpen" @toggle-ai="aiDockOpen = !aiDockOpen" @open-designer="showQuickDesign()" @open-testdata="testDataOpen = true" />
 
       <!-- Side Bar:按 ActivityBar 视图切换 -->
       <div v-show="activeView === 'explorer'" class="side-pane">
@@ -120,6 +120,25 @@
         @buffer-replace="onAgentBufferReplace"
         @files-updated="onAgentFilesUpdated"
       />
+
+      <!-- 变量设计器:占用内容区层(左让 ActivityBar,盖侧栏/编辑器/预览;
+           v-show 保活切换顺滑,点 ActivityBar 视图自动收起 #200 补8) -->
+      <QuickDesignDrawer
+        ref="quickDesignDrawerRef"
+        v-model:show="showQuickDesignDrawer"
+        :template-id="route.params.id"
+        class="designer-layer"
+        @save="handleQuickDesignSave"
+        @test-data-updated="handleTestDataUpdated"
+      />
+
+      <!-- 测试数据工作室层:同为内容区层(#200 补10),左表单/右 JSON 双向同步 -->
+      <TestDataPanel
+        v-model:show="testDataOpen"
+        :template-id="route.params.id"
+        class="designer-layer"
+        @updated="handleTestDataUpdated"
+      />
     </div>
 
     <!-- 条件设置弹框 -->
@@ -139,14 +158,7 @@
       @save-settings="saveSettings"
     /> -->
 
-    <!-- 快速设计抽屉 -->
-    <QuickDesignDrawer
-      ref="quickDesignDrawerRef"
-      v-model:show="showQuickDesignDrawer"
-      :template-id="route.params.id"
-      @save="handleQuickDesignSave"
-      @test-data-updated="handleTestDataUpdated"
-    />
+    <!-- 快速设计抽屉:已改为 edit-main 内内容区层(见 edit-main 尾部,#200 补8) -->
 
     <!-- 全量渲染抽屉 -->
     <FullRenderDrawer
@@ -189,6 +201,7 @@
   import ConditionModal from './components/ConditionModal.vue';
   import VariableSidebar from './components/VariableSidebar.vue';
   import SettingsPanel from './components/SettingsPanel.vue';
+  import TestDataPanel from './components/TestDataPanel.vue';
   import FullRenderDrawer from './components/FullRenderDrawer.vue';
   import ReleaseManager from './components/ReleaseManager.vue';
   import QuickDesignDrawer from './components/QuickDesignDrawer/index.vue';
@@ -234,19 +247,13 @@
     });
   };
 
-  const showTestDataFromHeader = () => {
-    showQuickDesignDrawer.value = true;
-    nextTick(() => {
-      if (quickDesignDrawerRef.value) {
-        quickDesignDrawerRef.value.showTestDataModal();
-      }
-    });
-  };
-
   // 快速设计模式处理函数
   const showQuickDesign = () => {
     showQuickDesignDrawer.value = true;
   };
+
+  // 测试数据工作室层(#200 补10)
+  const testDataOpen = ref(false);
 
   // 快速设计抽屉事件处理
   const handleQuickDesignSave = async (schema) => {
@@ -366,7 +373,12 @@
 
   // VSCode 化(#147):ActivityBar 视图与 SCM 计数
   const activeView = ref(localStorage.getItem('ed-active-view') || 'explorer');
-  watch(activeView, (v) => localStorage.setItem('ed-active-view', v));
+  watch(activeView, (v) => {
+    localStorage.setItem('ed-active-view', v);
+    // 设计器/测试数据层打开时点任意视图 = 收起内容区层回到该视图(#200 补8/补10)
+    if (showQuickDesignDrawer.value) showQuickDesignDrawer.value = false;
+    if (testDataOpen.value) testDataOpen.value = false;
+  });
   const scmCount = ref(0);
   const scmRef = ref(null);
   const onSelectFileByPath = (filePath) => {
@@ -1314,6 +1326,18 @@
     display: flex;
     min-height: 0;
     transition: all 0.2s ease;
+    position: relative; /* 变量设计器内容区层的定位上下文(#200 补8) */
+  }
+
+  /* 变量设计器:占满内容区,左让 ActivityBar(44px+1px 边框),盖侧栏/编辑器/预览
+     (z 高于 AI 悬浮球 100,低于设计器内部表单预览浮层 1200) */
+  .designer-layer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 45px;
+    right: 0;
+    z-index: 200;
   }
 
   .side-pane {

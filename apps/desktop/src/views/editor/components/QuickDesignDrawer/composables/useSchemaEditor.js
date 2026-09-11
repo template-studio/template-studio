@@ -8,6 +8,7 @@ import { EditorView, basicSetup } from 'codemirror'
 import { EditorState } from '@codemirror/state'
 import { json } from '@codemirror/lang-json'
 import { yaml } from '@codemirror/lang-yaml'
+import { cmThemeExtensions, watchCmTheme } from '@/utils/cmTheme'
 import * as YAML from 'js-yaml'
 
 export function useSchemaEditor(props, emit) {
@@ -66,6 +67,7 @@ export function useSchemaEditor(props, emit) {
 
     const extensions = [
       basicSetup,
+      ...cmThemeExtensions(),
       EditorView.theme({
         '&': {
           fontSize: '13px',
@@ -102,6 +104,9 @@ export function useSchemaEditor(props, emit) {
       parent: editorRef.value
     })
   }
+
+  // 明暗主题切换时重建编辑器(行号/底色随主题)
+  watchCmTheme(initEditor)
 
   /**
    * 更新编辑器内容

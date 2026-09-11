@@ -115,6 +115,7 @@
 import { computed, watch, ref, onBeforeUnmount, nextTick } from 'vue'
 import { EditorView, basicSetup } from 'codemirror'
 import { json } from '@codemirror/lang-json'
+import { cmThemeExtensions, watchCmTheme } from '@/utils/cmTheme'
 
 const props = defineProps({
   schema: { type: Object, default: null },
@@ -167,13 +168,14 @@ const updateField = (name, value) => {
 const jsonEditorRefs = ref([])
 const jsonEditors = []
 
-watch(() => props.modelValue, async () => {
-  await nextTick()
-  // 为 json 类型字段初始化编辑器
+// 为 json 类型字段初始化编辑器(主题切换时先销毁再重建)
+const initJsonEditors = () => {
+  jsonEditors.forEach(v => v.destroy())
+  jsonEditors.length = 0
   const jsonFields = fields.value.filter(f => f.type === 'json')
   jsonFields.forEach((field, idx) => {
     const container = jsonEditorRefs.value?.[idx]
-    if (!container || container._hasEditor) return
+    if (!container) return
     container._hasEditor = true
 
     const val = props.modelValue[field.name]
@@ -183,6 +185,7 @@ watch(() => props.modelValue, async () => {
       doc,
       extensions: [
         basicSetup,
+        ...cmThemeExtensions(),
         json(),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -200,7 +203,18 @@ watch(() => props.modelValue, async () => {
     })
     jsonEditors.push(view)
   })
+}
+
+watch(() => props.modelValue, async () => {
+  await nextTick()
+  // 未初始化的字段容器才创建(避免每次数据变化重建导致光标丢失)
+  const jsonFields = fields.value.filter(f => f.type === 'json')
+  const pending = jsonFields.some((_, idx) => jsonEditorRefs.value?.[idx] && !jsonEditorRefs.value[idx]._hasEditor)
+  if (pending) initJsonEditors()
 }, { immediate: true })
+
+// 明暗主题切换时重建(行号/底色随主题)
+watchCmTheme(initJsonEditors)
 
 onBeforeUnmount(() => {
   jsonEditors.forEach(v => v.destroy())
