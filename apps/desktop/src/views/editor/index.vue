@@ -30,7 +30,7 @@
 
     <div class="edit-main">
       <!-- Activity Bar(VSCode 式,#147) -->
-      <EditorActivityBar v-model:view="activeView" :scm-count="scmCount" :ai-open="aiDockOpen" @toggle-ai="aiDockOpen = !aiDockOpen" @open-designer="showQuickDesign()" @open-testdata="testDataOpen = true" />
+      <EditorActivityBar :view="effectiveView" :scm-count="scmCount" :ai-open="aiDockOpen" @update:view="(v) => (activeView = v)" @toggle-ai="aiDockOpen = !aiDockOpen" @open-designer="openDesigner()" @open-testdata="openTestData()" />
 
       <!-- Side Bar:按 ActivityBar 视图切换 -->
       <div v-show="activeView === 'explorer'" class="side-pane">
@@ -252,8 +252,26 @@
     showQuickDesignDrawer.value = true;
   };
 
-  // 测试数据工作室层(#200 补10)
+  // 内容区工作室层(#200 补8/补10):两器互斥
   const testDataOpen = ref(false);
+
+  const openDesigner = () => {
+    testDataOpen.value = false;
+    showQuickDesignDrawer.value = true;
+  };
+
+  const openTestData = () => {
+    showQuickDesignDrawer.value = false;
+    testDataOpen.value = true;
+  };
+
+  // ActivityBar 高亮用"有效视图":工作室层打开时亮层按钮,底层视图按钮熄灭;
+  // 层关闭(切视图/自身关闭)后回落到 activeView
+  const effectiveView = computed(() => {
+    if (showQuickDesignDrawer.value) return 'designer';
+    if (testDataOpen.value) return 'testdata';
+    return activeView.value;
+  });
 
   // 快速设计抽屉事件处理
   const handleQuickDesignSave = async (schema) => {

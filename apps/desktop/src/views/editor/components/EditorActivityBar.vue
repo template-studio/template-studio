@@ -10,10 +10,10 @@
       <BranchesOutlined class="ed-act-ico" />
       <span v-if="badge > 0" class="ed-act-n">{{ badge > 99 ? '99+' : badge }}</span>
     </button>
-    <button class="ed-act-item" title="变量设计器(全屏工作室)" @click="$emit('open-designer')">
+    <button class="ed-act-item" :class="{ on: view === 'designer' }" title="变量设计器(全屏工作室)" @click="$emit('open-designer')">
       <FormOutlined class="ed-act-ico" />
     </button>
-    <button class="ed-act-item" title="测试数据(表单/JSON 双栏编辑)" @click="$emit('open-testdata')">
+    <button class="ed-act-item" :class="{ on: view === 'testdata' }" title="测试数据(表单/JSON 双栏编辑)" @click="$emit('open-testdata')">
       <ExperimentOutlined class="ed-act-ico" />
     </button>
     <div class="ed-act-gap"></div>

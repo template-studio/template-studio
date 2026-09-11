@@ -1802,3 +1802,11 @@
 **涉及文件：** `apps/desktop/src/views/editor/components/QuickDesignDrawer/index.vue`、`TestDataPanel.vue`(desktop)
 
 **验收结果：** 浏览器实测几何验证通过（层右缘贴内容区边界）；用户 Tauri 窗口待目验。
+
+## 2026-09-11 ActivityBar 工作室层选中态（任务 #200 补16）
+
+**变更内容：** 设计器/测试数据按钮原为无态动作按钮，打开层时底层视图按钮仍高亮。引入 effectiveView 计算属性（设计器开→'designer'、测试数据开→'testdata'、否则 activeView）驱动 ActivityBar 高亮；两个工作室层互斥打开；层关闭后高亮自动回落到当前视图。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/EditorActivityBar.vue`、`index.vue`(desktop)
+
+**验收结果：** vite build 通过；浏览器实测：点设计器→仅设计器亮、切测试数据→高亮转移、点资源视图→回落且层收起，每步仅一个按钮高亮。
