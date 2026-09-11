@@ -1834,3 +1834,11 @@
 **涉及文件：** `apps/desktop/src/views/editor/components/QuickDesignDrawer/components/VariableTree.vue`(desktop)
 
 **验收结果：** vite build 通过。
+
+## 2026-09-11 设计器拖拽体系重构与放宽（任务 #200 补20）
+
+**变更内容：** 深度梳理后依次修复：新建 composables/useColumnResize.js(左/右锚定方向、硬上下限、动态上限回调、localStorage 持久化、body 光标抑制统一)；Schema 列/表单预览浮层/变量树/属性面板四处拖拽全部接入，删除 formColWidth 死分支与 parentElement 爬树取容器(改 ref/单跳显式声明)。放宽限制：Schema 上限 560→820、属性面板 440→560、变量树 420→520、设计列保底 660→560(DESIGN_FLOOR 常量与 CSS 同步)、浮层上限随视口(窄窗口不出左缘)；手柄热区统一 9px。修复两个深坑：①工作室层隐藏时容器 clientWidth=0 把初始宽误压到 min——初始化只走硬边界，动态上限仅拖拽时生效；②.layout-column 的 transition:all 让列宽拖拽跟手发黏(且后台标签页渲染挂起时过渡冻结产生测量假象)——移除列宽过渡。
+
+**涉及文件：** `apps/desktop/src/composables/useColumnResize.js`(新增)、`views/editor/components/QuickDesignDrawer/index.vue`、`components/VariableTree.vue`、`components/PropertyPanel.vue`(desktop)
+
+**验收结果：** vite build 通过；浏览器实测拖拽全链路：Schema 320→拖至 620(动态上限 665 内)→再拖 520，变量树 280→430，均正确持久化与恢复。

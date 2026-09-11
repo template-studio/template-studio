@@ -1,5 +1,5 @@
 <template>
-  <div class="property-panel" :class="{ 'property-panel-tree': mode === 'tree' }" :style="{ width: panelWidth + 'px' }">
+  <div class="property-panel" :class="{ 'property-panel-tree': mode === 'tree' }" ref="rootRef" :style="{ width: panelWidth + 'px' }">
     <div class="col-resize-handle" @mousedown="startResize"></div>
     <div class="panel-header">
       <strong>属性</strong>
@@ -121,34 +121,23 @@
 </template>
 
 <script setup>
-// 面板宽度（左缘拖拽调节，范围 200–420）
-const panelWidth = ref(280)
-const startResize = (e) => {
-  e.preventDefault()
-  const container = e.target.parentElement.parentElement
-  // 弹性兄弟（画布/编辑器）按保底计入，不吃它的当前宽
-  const fixedSiblingsW = [...container.children]
-    .filter((c) => !c.classList.contains('property-panel') && getComputedStyle(c).flexGrow === '0')
-    .reduce((sum, c) => sum + c.offsetWidth, 0)
-  const maxW = Math.max(200, container.clientWidth - fixedSiblingsW - 200)
-  const startX = e.clientX
-  const startW = panelWidth.value
-  const onMove = (ev) => {
-    panelWidth.value = Math.min(Math.min(440, maxW), Math.max(180, startW - (ev.clientX - startX)))
-  }
-  const onUp = () => {
-    document.removeEventListener('mousemove', onMove)
-    document.removeEventListener('mouseup', onUp)
-    document.body.style.cursor = ''
-    document.body.style.userSelect = ''
-  }
-  document.body.style.cursor = 'col-resize'
-  document.body.style.userSelect = 'none'
-  document.addEventListener('mousemove', onMove)
-  document.addEventListener('mouseup', onUp)
-}
+// 面板宽度(useColumnResize,#200 补20):左缘手柄左拖变宽,持久化;仅设计模式生效
+const rootRef = ref(null)
+const {
+  width: panelWidth,
+  start: startResize,
+} = useColumnResize({
+  key: 'qd-prop-panel-w',
+  initial: 280,
+  min: 180,
+  max: 560,
+  side: 'left',
+  // 容器(设计模式行)减组件库 220 再留画布 160 保底;root 上一层即 flex 行容器
+  getDynamicMax: () => (rootRef.value?.parentElement?.clientWidth || 0) - 380,
+})
 
   import { ref, nextTick } from 'vue';
+  import { useColumnResize } from '@/composables/useColumnResize';
 
   /**
    * PropertyPanel 组件
@@ -261,10 +250,10 @@ const startResize = (e) => {
 <style scoped>
   .col-resize-handle {
     position: absolute;
-    left: 0;
+    left: -4px;
     top: 0;
     bottom: 0;
-    width: 5px;
+    width: 9px;
     cursor: col-resize;
     z-index: 10;
     background: transparent;

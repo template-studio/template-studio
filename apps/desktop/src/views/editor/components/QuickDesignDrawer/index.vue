@@ -19,7 +19,7 @@
 
       <!-- 主体内容区域 - 三栏布局 -->
       <div class="main-content-wrapper">
-        <div class="three-column-layout">
+          <div class="three-column-layout" ref="threeColLayoutRef">
           <!-- 左栏：设计区域 -->
           <div
             v-show="showDesign"
@@ -127,7 +127,7 @@
             class="layout-column schema-column"
             :style="{ width: schemaColWidth + 'px' }"
           >
-            <div class="col-resize-handle" @mousedown="startColResize($event, 'schema')"></div>
+            <div class="col-resize-handle" @mousedown="startSchemaColResize"></div>
             <SchemaEditor
               ref="schemaEditorRef"
               v-if="showSchema"
@@ -190,6 +190,7 @@
 
 <script setup>
   import { ref, computed, watch, onMounted, onUnmounted, provide, readonly, toRef, nextTick } from 'vue';
+  import { useColumnResize } from '@/composables/useColumnResize';
   import { message } from 'ant-design-vue';
   import { ChevronForwardOutline } from '@/icons/ionicons5';
   import { useSchemaStore } from './composables/useSchemaStore';
@@ -269,37 +270,25 @@
   const editMode = ref('design'); // 'design' | 'tree'
   const expandedKeys = ref([]); // 变量树展开的节点
   const showDesign = ref(true);
-  // 预览列宽度（可拖拽调节，范围 220–520）
-  const schemaColWidth = ref(320);
 
-  const startColResize = (e, which) => {
-    e.preventDefault();
-    const column = e.target.parentElement;
-    const layout = column.parentElement;
-    // 弹性列（设计区）按最小保底计入而非当前宽——否则它吃满的空间会
-    // 把可拖列上限压死（预览列永远拖不大、画布相对永远最宽）
-    const fixedSiblingsW = [...layout.children]
-      .filter((c) => c !== column && getComputedStyle(c).display !== 'none' && getComputedStyle(c).flexGrow === '0')
-      .reduce((sum, c) => sum + c.offsetWidth, 0);
-    const maxW = Math.max(200, layout.clientWidth - fixedSiblingsW - 660);
-    const startX = e.clientX;
-    const startW = schemaColWidth.value;
-    const onMove = (ev) => {
-      const w = Math.min(Math.min(560, maxW), Math.max(160, startW - (ev.clientX - startX)));
-      if (which === 'schema') schemaColWidth.value = w;
-      else formColWidth.value = w;
-    };
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  };
+  // ===== 列宽拖拽(useColumnResize 统一,#200 补20) =====
+  // 三栏布局容器 ref:动态上限用,不再爬 DOM
+  const threeColLayoutRef = ref(null);
+  // 设计列保底 = 组件库 220 + 画布 160 + 属性面板硬下限 180(与 .design-column
+  // 的 min-width 及 PropertyPanel 的 min 保持同步——改这里三处要一起动)
+  const DESIGN_FLOOR = 560;
+
+  const {
+    width: schemaColWidth,
+    start: startSchemaColResize,
+  } = useColumnResize({
+    key: 'qd-schema-col-w',
+    initial: 320,
+    min: 200,
+    max: 820,
+    side: 'left',
+    getDynamicMax: () => (threeColLayoutRef.value?.clientWidth || 0) - DESIGN_FLOOR,
+  });
   // 表单预览已改为浮层不占布局空间，两栏共存宽裕：默认全展开
   const showSchema = ref(true);
   const showForm = ref(false);
@@ -315,25 +304,18 @@
   onMounted(() => document.addEventListener('keydown', onFormPanelKeydown, true))
   onUnmounted(() => document.removeEventListener('keydown', onFormPanelKeydown, true))
 
-  const formPanelWidth = ref(460)
-  const startPanelResize = (e) => {
-    e.preventDefault()
-    const startX = e.clientX
-    const startW = formPanelWidth.value
-    const onMove = (ev) => {
-      formPanelWidth.value = Math.min(700, Math.max(300, startW + (startX - ev.clientX)))
-    }
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup', onUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
-  }
+  // 表单预览浮层宽度（左缘拖动；上限随视口，窄窗口不出左缘）
+  const {
+    width: formPanelWidth,
+    start: startPanelResize,
+  } = useColumnResize({
+    key: 'qd-form-panel-w',
+    initial: 460,
+    min: 280,
+    max: 900,
+    side: 'left',
+    getDynamicMax: () => window.innerWidth - 60,
+  });
 
   const saving = ref(false);
   const isLoading = ref(false); // 防止加载时触发无限循环
@@ -1478,7 +1460,7 @@
 
   .layout-column {
     border-right: 1px solid var(--editor-border, #e0e0e0);
-    transition: all 0.3s;
+    /* 不加 transition:all——列宽拖拽会跟手发黏(0.3s 追帧);显隐切换无需动画 */
     min-height: 0 !important;
     overflow: hidden !important;
     display: flex; /* 不能加 !important：会压过 v-show 的内联 display:none，列壳子将无法隐藏 */
@@ -1493,8 +1475,13 @@
    * 此前 JS 三等分把设计列也压到 1/3，内部面板连环挤压。 */
   .design-column {
     flex: 1 1 auto !important;
-    /* 保底 = 组件库 220 + 画布最小 160 + 属性 280：预览列拖到最大时三者不被裁 */
-    min-width: 660px !important;
+    /* 保底 = 组件库 220 + 画布 160 + 属性面板 180(与脚本 DESIGN_FLOOR 保持同步) */
+    min-width: 560px !important;
+  }
+
+  /* Schema 列宽以拖拽值为准,不参与 flex 收缩(否则 inline 宽被压回) */
+  .schema-column {
+    flex: 0 0 auto !important;
   }
 
   .schema-column,
@@ -1503,13 +1490,13 @@
     position: relative;
   }
 
-  /* 列宽拖拽手柄：左缘 5px 热区 */
+  /* 列宽拖拽手柄：左缘 9px 热区(居中跨边) */
   .col-resize-handle {
     position: absolute;
-    left: 0;
+    left: -4px;
     top: 0;
     bottom: 0;
-    width: 5px;
+    width: 9px;
     cursor: col-resize;
     z-index: 10;
     background: transparent;
@@ -1677,10 +1664,10 @@
 .form-resize-handle {
   pointer-events: auto;
   position: absolute;
-  left: 0;
+  left: -4px;
   top: 0;
   bottom: 0;
-  width: 5px;
+  width: 9px;
   cursor: col-resize;
   z-index: 10;
   background: transparent;

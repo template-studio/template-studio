@@ -1,5 +1,5 @@
 <template>
-  <div class="tree-panel" :style="{ width: panelWidth + 'px' }">
+  <div class="tree-panel" ref="rootRef" :style="{ width: panelWidth + 'px' }">
     <div class="panel-header">
       <strong>变量树</strong>
     </div>
@@ -119,34 +119,22 @@
 <script setup>
   import { computed, ref, h, onMounted, onUnmounted } from 'vue';
 
-// 面板宽度（右缘拖拽调节，范围 220–420）
-// 默认 280：190 过窄，树行(图标+名称+操作)挤压变形
-const panelWidth = ref(280)
-const startResize = (e) => {
-  e.preventDefault()
-  const container = e.target.parentElement.parentElement
-  // 弹性兄弟（画布/编辑器）按保底计入，不吃它的当前宽
-  const fixedSiblingsW = [...container.children]
-    .filter((c) => !c.classList.contains('tree-panel') && getComputedStyle(c).flexGrow === '0')
-    .reduce((sum, c) => sum + c.offsetWidth, 0)
-  const maxW = Math.max(200, container.clientWidth - fixedSiblingsW - 200)
-  const startX = e.clientX
-  const startW = panelWidth.value
-  const onMove = (ev) => {
-    panelWidth.value = Math.min(Math.min(420, maxW), Math.max(220, startW + (ev.clientX - startX)))
-  }
-  const onUp = () => {
-    document.removeEventListener('mousemove', onMove)
-    document.removeEventListener('mouseup', onUp)
-    document.body.style.cursor = ''
-    document.body.style.userSelect = ''
-  }
-  document.body.style.cursor = 'col-resize'
-  document.body.style.userSelect = 'none'
-  document.addEventListener('mousemove', onMove)
-  document.addEventListener('mouseup', onUp)
-}
+// 面板宽度(useColumnResize,#200 补20):右缘手柄右拖变宽,持久化
+const rootRef = ref(null)
+const {
+  width: panelWidth,
+  start: startResize,
+} = useColumnResize({
+  key: 'qd-var-tree-w',
+  initial: 280,
+  min: 220,
+  max: 520,
+  side: 'right',
+  // 容器(树模式行)留 200 给属性面板保底;root 上一层即 flex 行容器,单跳显式声明
+  getDynamicMax: () => (rootRef.value?.parentElement?.clientWidth || 0) - 200,
+})
 
+  import { useColumnResize } from '@/composables/useColumnResize';
   import {
     TextOutline,
     EllipsisHorizontalOutline,
@@ -578,10 +566,10 @@ const startResize = (e) => {
 <style scoped>
     .col-resize-handle {
     position: absolute;
-    right: 0;
+    right: -4px;
     top: 0;
     bottom: 0;
-    width: 5px;
+    width: 9px;
     cursor: col-resize;
     z-index: 10;
     background: transparent;
