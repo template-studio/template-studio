@@ -98,7 +98,9 @@ export function useRenderService(options: UseRenderServiceOptions = {}): UseRend
   const service = RenderService.getInstance(config);
 
   // 计算属性
-  const isUsingWasm = computed(() => currentEngine.value === 'WASM');
+  // 桌面端本地引擎名为 'Tauri'（占 web 版 WASM 槽位，见 EngineManager 兼容说明），
+  // 两者都视为"本地引擎已启用"——否则桌面端永远走后端，未保存内容的本地实时预览失效。
+  const isUsingWasm = computed(() => currentEngine.value === 'WASM' || currentEngine.value === 'Tauri');
 
   // 事件监听器清理函数
   let cleanupListener: (() => void) | null = null;

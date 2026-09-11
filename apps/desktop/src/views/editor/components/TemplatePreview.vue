@@ -11,9 +11,9 @@
       <div class="preview-meta">
         <!-- 引擎标识 -->
         <a-tooltip v-if="renderServiceReady">
-          <template #title>{{ isUsingWasm ? '本地 WASM 引擎渲染（支持离线）' : '后端服务渲染' }}</template>
+          <template #title>{{ isUsingWasm ? `本地引擎渲染（${currentEngine}，支持离线）` : '后端服务渲染' }}</template>
           <span class="engine-tag" :class="{ wasm: isUsingWasm }">
-            {{ isUsingWasm ? 'WASM' : 'Cloud' }}
+            {{ isUsingWasm ? currentEngine : 'Cloud' }}
           </span>
         </a-tooltip>
         <!-- 渲染耗时 -->

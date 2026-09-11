@@ -169,4 +169,10 @@ pub struct TemplateRenderData {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,  // 仅 generate 接口返回
+
+    /// 渲染失败详情（模板语法错误/未定义变量等）。
+    /// file_content 为空串时以此区分"渲染出错"与"空文件"，避免错误被吞成空预览。
+    /// 类型为 Value：错误结构由 services 层 RenderError 序列化后嵌入。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<serde_json::Value>,
 }

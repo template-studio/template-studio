@@ -1666,3 +1666,11 @@
 **涉及文件：** `src/views/editor/components/ScmPanel.vue`、`src/views/editor/components/TemplatePreview.vue`(desktop)
 
 **验收结果：** vite build 通过;待用户桌面端实测(SCM 更改列表+预览渲染)。
+
+## 2026-09-11 预览空白真根因：服务端吞渲染错误+桌面本地引擎未启用（任务 #196 补7）
+
+**变更内容：** ①服务端 preview/generate 接口丢弃 result.error，渲染失败(如未定义变量)以"code:0+空内容"返回，预览静默空白；TemplateRenderData 增加可选 error 字段(serde_json::Value，services 层 RenderError 序列化嵌入)，两接口透传渲染错误详情(类型/行号/上下文)。②桌面端 useRenderService.isUsingWasm 仅认 'WASM' 而本地引擎名为 'Tauri'，未保存内容的本地实时渲染(TauriEngine)从未启用、恒走后端已保存内容；补认 'Tauri'，预览引擎标签同步显示真实引擎名。
+
+**涉及文件：** `crates/shared/src/models/release.rs`、`apps/web/src/handlers/template_files.rs`、`apps/desktop/src/composables/useRenderService.ts`、`apps/desktop/src/views/editor/components/TemplatePreview.vue`
+
+**验收结果：** cargo build/test(shared 7+web 3 通过)+桌面 vite build 通过；重启服务端后 curl 端到端实测：空变量渲染失败返回 error 详情(line/context)、正常文件无 error 字段、填全变量渲染出真实内容(875B)。桌面端待用户实测。

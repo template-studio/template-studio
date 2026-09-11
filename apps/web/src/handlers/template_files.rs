@@ -67,6 +67,11 @@ pub async fn preview_template_file(
                 file_content: result.file_content,
                 file_name: result.file_name,
                 version: None, // preview 不返回版本号
+                // 渲染失败时带上错误详情，避免"成功+空内容"把错误吞掉（空预览）
+                error: result
+                    .error
+                    .as_ref()
+                    .map(|e| serde_json::to_value(e).unwrap_or_default()),
             };
 
             Ok(Json(
@@ -153,6 +158,11 @@ pub async fn generate_template_file(
                 file_content: result.file_content,
                 file_name: result.file_name,
                 version: Some(version), // generate 返回使用的版本号
+                // 渲染失败时带上错误详情，与 preview 一致（避免"成功+空内容"）
+                error: result
+                    .error
+                    .as_ref()
+                    .map(|e| serde_json::to_value(e).unwrap_or_default()),
             };
 
             Ok(Json(
