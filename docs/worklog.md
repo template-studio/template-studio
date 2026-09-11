@@ -1682,3 +1682,43 @@
 **涉及文件：** `apps/desktop/src/views/editor/components/TemplateEditor.vue`
 
 **验收结果：** vite build 通过；待用户桌面端实测(通知显示文字并自动消失)。
+
+## 2026-09-11 编辑器设置抽屉改造为侧栏视图（任务 #200）
+
+**变更内容：** 高级设置从 80vw 大抽屉改为 VSCode 式侧栏一栏：ActivityBar 底部新增设置入口(齿轮图标,位于 AI 助手上方),设置面板常驻侧栏(activeView='settings');组件由 a-drawer 改为 280px 内联面板(文件更名 AdvancedDrawer.vue→SettingsPanel.vue),tab 由左侧竖排改顶部小号,设置项纵向堆叠适配窄栏,备份描述列表改单列;底部操作按钮随 tab 切换保留;EditHeader 高级设置按钮与 Ctrl+, 快捷键改为切到设置视图并定位 tab(openTab 能力保留)。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/SettingsPanel.vue`(更名自 AdvancedDrawer.vue)、`EditorActivityBar.vue`、`index.vue`(desktop)
+
+**验收结果：** vite build 通过;待用户桌面端实测(齿轮入口/三个 tab/备份恢复/快捷键)。
+
+## 2026-09-11 设置面板首渲染空对象崩溃修复（任务 #200 补1）
+
+**变更内容：** 面板常驻挂载后首渲染先于 onMounted 的 initSettings，localSettings 为空 {} 致模板访问 autoSave.enabled 抛 TypeError；改为声明时即深拷贝 defaultSettings 初始化。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/SettingsPanel.vue`(desktop)
+
+**验收结果：** vite build 通过。
+
+## 2026-09-11 设置面板加宽并支持拖拽调宽（任务 #200 补2）
+
+**变更内容：** 280px 固定宽过窄；默认加宽至 360px，新增右缘拖拽手柄（280-560px，localStorage 记忆），交互与预览面板一致。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/SettingsPanel.vue`(desktop)
+
+**验收结果：** vite build 通过。
+
+## 2026-09-11 设置面板窄栏布局重设计（任务 #200 补4）
+
+**变更内容：** 弃用 ant 卡片壳(窄栏下边框/卡片头占空间严重)，改为 VSCode 式窄栏设置布局：分组标题(set-section)+设置行(set-row)，布尔开关右置于标题行、数值/下拉输入下挂全宽、描述小字次行；引擎切换改纵向单选；备份操作改整宽按钮；tab 标题精简(编辑器/引擎/备份)并补 tab 导航内边距修复左侧贴边。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/SettingsPanel.vue`(desktop)
+
+**验收结果：** vite build 通过；待用户目验。
+
+## 2026-09-11 暗色主题开关对比度修复（任务 #200 补5）
+
+**变更内容：** 全局暗色 a-switch 选中态使用 primary-dark(近白)导致白色把手被吞、状态不可辨；未选中轨道与面板底对比过弱。改为选中=品牌绿(--color-brand-dark)、未选中=--color-border-strong-dark，白把手两种状态下均清晰。
+
+**涉及文件：** `apps/desktop/src/assets/styles/themes.css`(desktop)
+
+**验收结果：** vite build 通过。

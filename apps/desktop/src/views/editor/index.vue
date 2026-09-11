@@ -10,7 +10,7 @@
       @toggle-variable-sidebar="toggleVariableSidebar"
       @close-edit="closeEdit"
       @toggle-file-tree="toggleFileTree"
-      @show-advanced="openAdvancedTab('engine')"
+      @show-advanced="openSettingsTab('engine')"
       @full-render="showFullRenderDrawer = true"
       @toggle-ai="aiDockOpen = !aiDockOpen"
     />
@@ -71,6 +71,17 @@
 
       <div v-show="activeView === 'scm'" class="side-pane">
         <ScmPanel ref="scmRef" :template-id="route.params.id" @open-file="onSelectFileByPath" @changed="(n) => scmCount = n" />
+      </div>
+
+      <!-- 设置侧栏(原高级设置抽屉,#200) -->
+      <div v-show="activeView === 'settings'" class="side-pane">
+        <SettingsPanel
+          ref="settingsPanelRef"
+          :settings="editorSettings"
+          :template-id="route.params.id"
+          @save-settings="saveSettings"
+          @restore-complete="handleRestoreComplete"
+        />
       </div>
 
       <!-- 中间：编辑器区域 -->
@@ -139,16 +150,6 @@
       @test-data-updated="handleTestDataUpdated"
     />
 
-    <!-- 高级设置抽屉 -->
-    <AdvancedDrawer
-      ref="advancedDrawerRef"
-      v-model:show="showAdvancedDrawer"
-      :settings="editorSettings"
-      :template-id="route.params.id"
-      @save-settings="saveSettings"
-      @restore-complete="handleRestoreComplete"
-    />
-
     <!-- 全量渲染抽屉 -->
     <FullRenderDrawer
       v-model:show="showFullRenderDrawer"
@@ -189,8 +190,7 @@
   import EditHeader from './components/EditHeader.vue';
   import ConditionModal from './components/ConditionModal.vue';
   import VariableSidebar from './components/VariableSidebar.vue';
-  import EditorSettings from './components/EditorSettings.vue';
-  import AdvancedDrawer from './components/AdvancedDrawer.vue';
+  import SettingsPanel from './components/SettingsPanel.vue';
   import FullRenderDrawer from './components/FullRenderDrawer.vue';
   import ReleaseManager from './components/ReleaseManager.vue';
   import QuickDesignDrawer from './components/QuickDesignDrawer/index.vue';
@@ -226,13 +226,13 @@
 
   const showQuickDesignDrawer = ref(false);
   const quickDesignDrawerRef = ref(null);
-  const advancedDrawerRef = ref(null);
+  const settingsPanelRef = ref(null);
 
-  const openAdvancedTab = (tabName) => {
+  // 打开设置侧栏并定位到指定 tab(#200:原高级设置抽屉现为一栏)
+  const openSettingsTab = (tabName) => {
+    activeView.value = 'settings';
     nextTick(() => {
-      if (advancedDrawerRef.value) {
-        advancedDrawerRef.value.openTab(tabName);
-      }
+      settingsPanelRef.value?.openTab(tabName);
     });
   };
 
@@ -366,7 +366,6 @@
       : localStorage.getItem('template-file-tree-visible') !== 'false'
   );
 
-  const showAdvancedDrawer = ref(false);
   // VSCode 化(#147):ActivityBar 视图与 SCM 计数
   const activeView = ref(localStorage.getItem('ed-active-view') || 'explorer');
   watch(activeView, (v) => localStorage.setItem('ed-active-view', v));
@@ -554,7 +553,7 @@
 
     if ((event.ctrlKey || event.metaKey) && event.key === ',') {
       event.preventDefault();
-      openAdvancedTab('editor-settings');
+      openSettingsTab('editor-settings');
     }
   };
 

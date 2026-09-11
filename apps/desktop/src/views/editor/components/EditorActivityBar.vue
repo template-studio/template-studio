@@ -11,6 +11,9 @@
       <span v-if="badge > 0" class="ed-act-n">{{ badge > 99 ? '99+' : badge }}</span>
     </button>
     <div class="ed-act-gap"></div>
+    <button class="ed-act-item" :class="{ on: view === 'settings' }" title="设置(Ctrl+,)" @click="setView('settings')">
+      <SettingFilled class="ed-act-ico" />
+    </button>
     <button class="ed-act-item" :class="{ on: aiOpen }" title="AI 助手" @click="$emit('toggle-ai')">
       <AiIcon :size="18" class="ed-act-ico" />
     </button>
@@ -19,7 +22,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { FolderFilled, BranchesOutlined } from '@ant-design/icons-vue'
+import { FolderFilled, BranchesOutlined, SettingFilled } from '@ant-design/icons-vue'
 import VariableIcon from '@/components/icons/VariableIcon.vue'
 import AiIcon from '@/components/icons/AiIcon.vue'
 

@@ -743,12 +743,14 @@ html {
 }
 
 /* Switch dark theme */
+/* 未选中:轨道用 border-strong(比面板底明显亮一档);
+   选中:品牌绿而非 primary-dark(近白底会吞掉白色把手,开关状态不可辨) */
 [data-theme="dark"] .ant-switch {
-  background-color: var(--color-border-dark) !important;
+  background-color: var(--color-border-strong-dark) !important;
 }
 
 [data-theme="dark"] .ant-switch-checked {
-  background-color: var(--color-primary-dark) !important;
+  background-color: var(--color-brand-dark) !important;
 }
 
 /* Checkbox dark theme */
