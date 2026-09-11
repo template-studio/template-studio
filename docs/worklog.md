@@ -1778,3 +1778,27 @@
 **涉及文件：** `apps/desktop/src/utils/cmTheme.js`(新增)、`views/editor/components/QuickDesignDrawer/composables/useSchemaEditor.js`、`views/template-render/VariableForm.vue`(desktop)
 
 **验收结果：** vite build 通过。
+
+## 2026-09-11 Schema 列工具栏优化（任务 #200 补13）
+
+**变更内容：** Schema 列头 8 个文字按钮挤压——按使用频率分层：格式化/复制改纯图标按钮(tooltip 说明)；低频且含破坏性的重置与导入/导出收进「⋯」下拉菜单(重置标 danger 并注明后果)；同步保留唯一 primary 文字按钮；JSON/YAML 切换改小号分段样式；头部 padding 收窄。可见元素 8→5,320px 列宽单行放下。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/QuickDesignDrawer/components/SchemaEditor.vue`(desktop)
+
+**验收结果：** vite build 通过；待用户目验。
+
+## 2026-09-11 Schema 列头溢出修复（任务 #200 补14）
+
+**变更内容：** 窄列下列头按钮组溢出栏外（同步按钮不可见）；header 加 flex-wrap 换行兜底、右组 margin-left:auto 保持靠右、收紧间距。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/QuickDesignDrawer/components/SchemaEditor.vue`(desktop)
+
+**验收结果：** vite build 通过。
+
+## 2026-09-11 设计器层右缘溢出真根因修复（任务 #200 补15）
+
+**变更内容：** 同步按钮出窗的真根因非列头按钮排布——工作室层元素同时带 .designer-layer(absolute, left:45/right:0) 与组件根的 width:100%，CSS 过约束下 left+width 生效而 right 失效，层实际宽度=内容区全宽且从 45px 起排，右缘恒溢出视口（实测 1280 视口下层右缘 1315）。修复：去掉 designer-studio/td-studio 的 width:100%，由 left/right 拉伸。浏览器实测复现与复测：修前同步按钮右缘 1299（出窗 19px），修后 1254（入窗余 26px）。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/QuickDesignDrawer/index.vue`、`TestDataPanel.vue`(desktop)
+
+**验收结果：** 浏览器实测几何验证通过（层右缘贴内容区边界）；用户 Tauri 窗口待目验。

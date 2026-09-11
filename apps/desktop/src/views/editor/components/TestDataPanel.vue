@@ -321,8 +321,8 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 不设 width:由父级 .designer-layer 的 left/right 拉伸(设 width:100% 会与 left 过约束致右缘溢出) */
 .td-studio {
-  width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;

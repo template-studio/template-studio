@@ -1,49 +1,48 @@
 <template>
   <div class="schema-preview-container">
     <div class="preview-header">
-      <div style="display: flex; align-items: center; gap: 12px">
+      <div class="ph-left">
         <strong>Schema</strong>
-        <!-- 格式切换 -->
-        <a-space :size="0">
-          <a-button
-            size="small"
-            :type="schemaFormat === 'json' ? 'primary' : 'default'"
+        <div class="ph-fmt">
+          <button
+            class="sch-act fmt"
+            :class="{ on: schemaFormat === 'json' }"
             @click="handleFormatChange('json')"
-          >
-            JSON
-          </a-button>
-          <a-button
-            size="small"
-            :type="schemaFormat === 'yaml' ? 'primary' : 'default'"
+          >JSON</button>
+          <button
+            class="sch-act fmt"
+            :class="{ on: schemaFormat === 'yaml' }"
             @click="handleFormatChange('yaml')"
-          >
-            YAML
-          </a-button>
-        </a-space>
+          >YAML</button>
+        </div>
       </div>
-      <a-space :size="8" wrap>
-        <a-button size="small" @click="handleReset"> 重置 </a-button>
-        <a-button size="small" @click="handleFormat">
-          <template #icon><RefreshOutline /></template>
-          格式化
-        </a-button>
-        <a-button size="small" @click="handleCopy">
-          <template #icon><CopyOutline /></template>
-          复制
-        </a-button>
-        <a-button size="small" @click="handleImport">
-          <template #icon><CloudUploadOutline /></template>
-          导入
-        </a-button>
-        <a-button size="small" @click="handleExport">
-          <template #icon><DownloadOutline /></template>
-          导出
-        </a-button>
+      <div class="ph-right">
+        <a-tooltip title="格式化">
+          <button class="sch-act" @click="handleFormat"><RefreshOutline :size="15" /></button>
+        </a-tooltip>
+        <a-tooltip title="复制">
+          <button class="sch-act" @click="handleCopy"><CopyOutline :size="15" /></button>
+        </a-tooltip>
+        <!-- 低频操作收进菜单:重置(破坏性)/导入/导出 -->
+        <a-dropdown trigger="click">
+          <button class="sch-act" title="更多操作"><MoreOutlined /></button>
+          <template #overlay>
+            <a-menu @click="onMoreMenu">
+              <a-menu-item key="import">
+                <CloudUploadOutline :size="14" style="margin-right: 6px" />导入
+              </a-menu-item>
+              <a-menu-item key="export">
+                <DownloadOutline :size="14" style="margin-right: 6px" />导出
+              </a-menu-item>
+              <a-menu-divider />
+              <a-menu-item key="reset" danger>重置(丢弃未同步修改)</a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
         <a-button size="small" type="primary" @click="handleSync">
-          <template #icon><SyncOutline /></template>
-          同步
+          <template #icon><SyncOutline /></template>同步
         </a-button>
-      </a-space>
+      </div>
     </div>
     <div class="preview-content">
       <div ref="editorRef" class="schema-editor"></div>
@@ -60,6 +59,7 @@
     DownloadOutline,
     SyncOutline,
   } from '@/icons/ionicons5';
+  import { MoreOutlined } from '@ant-design/icons-vue';
   import { useSchemaEditor } from '../composables/useSchemaEditor';
 
   /**
@@ -149,6 +149,13 @@
     emit('reset');
   };
 
+  // 「更多」下拉分发
+  const onMoreMenu = ({ key }) => {
+    if (key === 'import') handleImport();
+    else if (key === 'export') handleExport();
+    else if (key === 'reset') handleReset();
+  };
+
   const handleFormatChange = (format) => {
     if (schemaFormat.value !== format) {
       schemaFormat.value = format;
@@ -190,13 +197,62 @@
   }
 
   .preview-header {
-    padding: 16px;
+    padding: 8px 12px;
     border-bottom: 1px solid var(--editor-border, #e0e0e0);
     background: var(--editor-panel-bg, #fff);
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 4px 8px;
+    flex-wrap: wrap; /* 列宽不足时右组换行,避免按钮溢出到栏外 */
     flex-shrink: 0;
+  }
+
+  .ph-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .ph-fmt { display: flex; gap: 2px; }
+
+  .ph-right { display: flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: auto; /* 换行后仍靠右 */
+  }
+
+  /* 图标动作按钮(悬停提示语义) */
+  .sch-act {
+    height: 24px;
+    min-width: 24px;
+    padding: 0 4px;
+    border: none;
+    background: transparent;
+    border-radius: 5px;
+    cursor: pointer;
+    color: var(--editor-muted, #64748b);
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sch-act:hover {
+    background: var(--editor-hover-bg, #f1f5f9);
+    color: var(--editor-primary, #1b1c1f);
+  }
+
+  .sch-act.fmt {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 0 5px;
+  }
+
+  .sch-act.fmt.on {
+    background: var(--editor-active-bg, #eef0ec);
+    color: var(--editor-primary, #1b1c1f);
   }
 
   .preview-content {

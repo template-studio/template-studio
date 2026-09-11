@@ -1622,9 +1622,10 @@
   }
 
   /* 确保 drawer-container 不会超出视口 */
-  /* 工作室内联根(#200 补8):承接原 a-drawer body 的 flex 布局 */
+  /* 工作室内联根(#200 补8):承接原 a-drawer body 的 flex 布局。
+     不设 width——元素由父级 .designer-layer 的 left/right 拉伸;
+     若写 width:100% 会与 left 过约束(right 失效),层右缘溢出视口 */
   .designer-studio {
-    width: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
