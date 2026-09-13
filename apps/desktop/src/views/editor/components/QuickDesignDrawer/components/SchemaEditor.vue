@@ -186,7 +186,10 @@
 </script>
 
 <style scoped>
+  /* 列宽感知(容器查询):窄列时按钮不再挤压而是阶梯隐藏(规则置于基础规则之后,
+     同特异性下靠源序胜出) */
   .schema-preview-container {
+    container-type: inline-size;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -281,5 +284,18 @@
   :deep(.CodeMirror::-webkit-scrollbar) {
     width: 0 !important;
     height: 0 !important;
+  }
+
+  /* 窄列阶梯隐藏:≤350px 藏图标动作(保同步),≤270px 整组隐藏 */
+  @container (max-width: 350px) {
+    .ph-right .sch-act {
+      display: none;
+    }
+  }
+
+  @container (max-width: 270px) {
+    .ph-right {
+      display: none;
+    }
   }
 </style>

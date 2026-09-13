@@ -1842,3 +1842,11 @@
 **涉及文件：** `apps/desktop/src/composables/useColumnResize.js`(新增)、`views/editor/components/QuickDesignDrawer/index.vue`、`components/VariableTree.vue`、`components/PropertyPanel.vue`(desktop)
 
 **验收结果：** vite build 通过；浏览器实测拖拽全链路：Schema 320→拖至 620(动态上限 665 内)→再拖 520，变量树 280→430，均正确持久化与恢复。
+
+## 2026-09-11 Schema 列头窄列阶梯隐藏（任务 #200 补21）
+
+**变更内容：** Schema 列拖窄时头部按钮不再挤压换行，改为容器查询阶梯隐藏：≤350px 藏格式化/复制/更多图标(保同步主操作)、≤270px 整组隐藏(拉宽即回)。实现置于 .schema-preview-container 的 container-type:inline-size + 两档 @container 规则(置于样式段末尾，避免同特异性被后置基础规则覆盖)。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/QuickDesignDrawer/components/SchemaEditor.vue`(desktop)
+
+**验收结果：** vite build 通过；浏览器实测 500/320/240 三档：全显/仅同步/全隐，切换正确。
