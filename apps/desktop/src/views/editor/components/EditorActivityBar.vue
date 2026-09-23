@@ -13,6 +13,9 @@
     <button class="ed-act-item" :class="{ on: view === 'designer' }" title="变量设计器(全屏工作室)" @click="$emit('open-designer')">
       <FormOutlined class="ed-act-ico" />
     </button>
+    <button class="ed-act-item" :class="{ on: view === 'project' }" title="项目区:渲染产物落盘+构建验证" @click="setView('project')">
+      <RocketOutlined class="ed-act-ico" />
+    </button>
     <button class="ed-act-item" :class="{ on: view === 'testdata' }" title="测试数据(表单/JSON 双栏编辑)" @click="$emit('open-testdata')">
       <ExperimentOutlined class="ed-act-ico" />
     </button>
@@ -28,7 +31,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { FolderFilled, BranchesOutlined, SettingFilled, FormOutlined, ExperimentOutlined } from '@ant-design/icons-vue'
+import { FolderFilled, BranchesOutlined, SettingFilled, FormOutlined, ExperimentOutlined, RocketOutlined } from '@ant-design/icons-vue'
 import VariableIcon from '@/components/icons/VariableIcon.vue'
 import AiIcon from '@/components/icons/AiIcon.vue'
 

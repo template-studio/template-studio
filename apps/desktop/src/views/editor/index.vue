@@ -71,6 +71,11 @@
         <ScmPanel ref="scmRef" :template-id="route.params.id" @open-file="onSelectFileByPath" @changed="(n) => scmCount = n" />
       </div>
 
+      <!-- 项目区(#718):渲染产物落盘+构建验证 -->
+      <div v-show="activeView === 'project'" class="side-pane">
+        <ProjectPanel :template-id="route.params.id" :variables="variableValues" />
+      </div>
+
       <!-- 设置侧栏(原高级设置抽屉,#200) -->
       <div v-show="activeView === 'settings'" class="side-pane">
         <SettingsPanel
@@ -202,6 +207,7 @@
   import VariableSidebar from './components/VariableSidebar.vue';
   import SettingsPanel from './components/SettingsPanel.vue';
   import TestDataPanel from './components/TestDataPanel.vue';
+  import ProjectPanel from './components/ProjectPanel.vue';
   import FullRenderDrawer from './components/FullRenderDrawer.vue';
   import ReleaseManager from './components/ReleaseManager.vue';
   import QuickDesignDrawer from './components/QuickDesignDrawer/index.vue';

@@ -1026,6 +1026,42 @@ pub async fn convert_build_check(
     build_check_impl(outputs, variables, &build_cmd, &log).await
 }
 
+/// 编辑器项目区(#718):已渲染内容(服务端 preview-tree 产物)直接落盘
+/// workspace/projects/<tid>/<ts>/——内容不再二次渲染,路径安全校验与 buildcheck 同语义。
+#[tauri::command]
+pub fn convert_project_materialize(template_id: String, outputs: Vec<serde_json::Value>) -> Result<String, String> {
+    let tid = template_id.trim();
+    if tid.is_empty() || tid.contains("..") || tid.contains('/') || tid.contains('\\') {
+        return Err("模板 id 非法".to_string());
+    }
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    let dir = studio_home("projects").join(tid).join(ts.to_string());
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).map_err(|e| format!("创建项目目录失败: {e}"))?;
+
+    let mut count = 0usize;
+    for o in &outputs {
+        let path = o["path"].as_str().unwrap_or("").trim().to_string();
+        let content = o["content"].as_str().unwrap_or("");
+        if path.is_empty() || path.contains("..") || Path::new(&path).is_absolute() {
+            continue;
+        }
+        let full = dir.join(&path);
+        if let Some(p) = full.parent() {
+            std::fs::create_dir_all(p).map_err(|e| format!("创建目录失败: {e}"))?;
+        }
+        std::fs::write(&full, content).map_err(|e| format!("写入 {path} 失败: {e}"))?;
+        count += 1;
+    }
+    if count == 0 {
+        return Err("没有可落盘的文件".to_string());
+    }
+    Ok(serde_json::json!({ "ok": true, "count": count, "dir": dir.to_string_lossy() }).to_string())
+}
+
 // ===== 草稿持久化(converts/<id>/,终稿前不进模板库) =====
 
 fn convert_draft_dir(id: &str) -> Result<PathBuf, String> {

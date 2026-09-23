@@ -1866,3 +1866,11 @@
 **涉及文件：** `apps/desktop/src-tauri/Cargo.toml`、`src/lib.rs`、`src/commands/window.rs`、`capabilities/default.json`、`src/views/settings/GeneralSettings.vue`、`src/stores/uiSettings.js`(desktop)
 
 **验收结果：** cargo check(-p desktop)与 vite build 通过；托盘交互与自启注册表写入待用户在 Tauri 窗口实测。
+
+## 2026-09-23 编辑器项目区：渲染落盘+构建验证（任务 #718，承接 #145）
+
+**变更内容：** 编辑器补齐"项目区"(三区分离架构§13 的第三区)：ActivityBar 新增项目区视图(火箭图标)。ProjectPanel 面板流程——变量来源选择(已保存测试数据/变量默认值)→服务端 preview-tree 全量渲染(读工作区,未保存状态即可验证)→新增 Rust 命令 convert_project_materialize 将已渲染内容落盘 workspace/projects/<模板id>/<时间戳>/(路径穿越校验与 buildcheck 同语义,内容不再二次渲染)→复用转换台 convert_build_check 按所选技术栈规则包 buildCmd 构建冒烟；产物文件列表(含渲染失败项标记)与构建输出终端式面板就地展示。
+
+**涉及文件：** `apps/desktop/src/views/editor/components/ProjectPanel.vue`(新增)、`EditorActivityBar.vue`、`index.vue`、`src-tauri/src/commands/convert.rs`、`src/lib.rs`(desktop)
+
+**验收结果：** cargo check 与 vite build 通过；渲染落盘与构建链路待用户 Tauri 窗口实测。

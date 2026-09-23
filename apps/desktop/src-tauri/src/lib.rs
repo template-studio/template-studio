@@ -184,6 +184,7 @@ pub fn run() {
             commands::convert::convert_agent_write,
             commands::convert::convert_agent_bash,
             commands::convert::convert_build_check,
+            commands::convert::convert_project_materialize,
             commands::convert::convert_rules_get,
             commands::convert::convert_rules_save,
             commands::convert::convert_rules_reset,
