@@ -5,6 +5,15 @@ import { defineStore } from 'pinia'
 const STORAGE_KEY = 'ui-settings-v1'
 
 const DEFAULTS = {
+  general: {
+    // 常规设置页(GeneralSettings)持久偏好(#717)
+    minimizeToTray: false,
+    notificationsEnabled: true,
+    notificationSound: true,
+    autoUpdate: true,
+    updateFrequency: 'weekly',
+    language: 'zh-CN',
+  },
   display: {
     // 显示设置页(DisplaySettings)真实生效的偏好(#716):应用 CSS 变量/类名
     primaryColor: '#3e7bfa',

@@ -128,6 +128,10 @@
 <script setup>
 import { reactive, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
+import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart'
+import { useUiSettingsStore } from '@/stores/uiSettings'
+
+const uiSettings = useUiSettingsStore()
 
 // 响应式设置数据
 const settings = reactive({
@@ -141,14 +145,26 @@ const settings = reactive({
 })
 
 // 处理设置变更
-const handleAutoStartChange = (checked) => {
-  console.log('Auto start changed:', checked)
-  // TODO: 实现开机自启动逻辑
+// 开机自启(#717):直接调 autostart 插件写系统注册表,成功后记忆偏好
+const handleAutoStartChange = async (checked) => {
+  try {
+    if (checked) {
+      await enable()
+    } else {
+      await disable()
+    }
+    uiSettings.general = { ...(uiSettings.general || {}), autoStart: checked }
+    message.success(checked ? '已开启开机自启动' : '已关闭开机自启动')
+  } catch (error) {
+    // 失败回滚开关状态
+    settings.autoStart = !checked
+    message.error('设置开机自启失败: ' + (error?.message || error))
+  }
 }
 
+// 启动最小化到托盘(#717):记忆偏好,main 窗口创建参数由前端启动时应用
 const handleMinimizeToTrayChange = (checked) => {
-  console.log('Minimize to tray changed:', checked)
-  // TODO: 实现最小化到托盘逻辑
+  uiSettings.general = { ...(uiSettings.general || {}), minimizeToTray: checked }
 }
 
 const handleNotificationsChange = (checked) => {
@@ -177,13 +193,16 @@ const handleLanguageChange = (value) => {
 
 // 保存设置
 const saveSettings = () => {
-  try {
-    localStorage.setItem('generalSettings', JSON.stringify(settings))
-    message.success('设置已保存')
-  } catch (error) {
-    message.error('保存设置失败')
-    console.error('Save settings error:', error)
+  // 开机自启即时生效(插件已写系统),其余偏好统一入 uiSettings 持久化
+  uiSettings.general = {
+    minimizeToTray: settings.minimizeToTray,
+    notificationsEnabled: settings.notificationsEnabled,
+    notificationSound: settings.notificationSound,
+    autoUpdate: settings.autoUpdate,
+    updateFrequency: settings.updateFrequency,
+    language: settings.language,
   }
+  message.success('设置已保存')
 }
 
 // 重置设置
@@ -202,16 +221,21 @@ const resetSettings = () => {
   message.info('设置已重置为默认值')
 }
 
-// 加载设置
-const loadSettings = () => {
+// 加载设置:偏好从 uiSettings 恢复;开机自启以系统注册表实际状态为准(插件读真值)
+const loadSettings = async () => {
   try {
-    const saved = localStorage.getItem('generalSettings')
-    if (saved) {
-      const savedSettings = JSON.parse(saved)
-      Object.assign(settings, savedSettings)
-    }
+    const g = uiSettings.general || {}
+    Object.assign(settings, {
+      minimizeToTray: g.minimizeToTray ?? false,
+      notificationsEnabled: g.notificationsEnabled ?? true,
+      notificationSound: g.notificationSound ?? true,
+      autoUpdate: g.autoUpdate ?? true,
+      updateFrequency: g.updateFrequency ?? 'weekly',
+      language: g.language ?? 'zh-CN',
+    })
+    settings.autoStart = await isEnabled()
   } catch (error) {
-    console.error('Load settings error:', error)
+    console.warn('读取自启状态失败(非 Tauri 环境为预期):', error?.message || error)
   }
 }
 

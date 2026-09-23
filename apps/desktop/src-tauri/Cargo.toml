@@ -19,9 +19,10 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 # Tauri
-tauri = { version = "2", features = ["protocol-asset", "devtools"] }
+tauri = { version = "2", features = ["protocol-asset", "devtools", "tray-icon"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-autostart = "2"
 
 # 数据库
 sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "mysql", "postgres"] }

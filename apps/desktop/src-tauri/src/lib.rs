@@ -16,7 +16,15 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        // 开机自启(#717):插件注入 enable/disable/is_enabled 前端命令 + ManagerExt 扩展
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec![]),
+        ))
         .setup(|app| {
+            // 系统托盘(#717):显示主窗口/退出;关闭按钮最小化到托盘的语义在窗口命令里
+            setup_tray(app.handle().clone())?;
+
             // 使用 block_in_place 来在 setup 中等待异步数据库初始化
             let handle = app.handle().clone();
             tauri::async_runtime::block_on(async move {
@@ -44,6 +52,7 @@ pub fn run() {
             commands::window::window_minimize,
             commands::window::window_maximize,
             commands::window::window_close,
+            commands::window::app_quit,
             commands::window::get_username,
             commands::window::get_system_theme,
             commands::window::toggle_devtools,
@@ -187,4 +196,46 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// 系统托盘(#717):显示主窗口 / 退出应用。
+/// 左键单击托盘 = 显示/聚焦主窗口;关闭按钮默认隐藏到托盘(退出走托盘菜单)。
+fn setup_tray(app: tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    use tauri::menu::{Menu, MenuItem};
+
+    let show = MenuItem::with_id(&app, "show", "显示主窗口", true, None::<&str>)?;
+    let quit = MenuItem::with_id(&app, "quit", "退出", true, None::<&str>)?;
+    let menu = Menu::with_items(&app, &[&show, &quit])?;
+
+    let tray = tauri::tray::TrayIconBuilder::with_id("main-tray")
+        .icon(app.default_window_icon().unwrap().clone())
+        .tooltip("Template Studio")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "show" => {
+                if let Some(w) = app.get_webview_window("main") {
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
+            }
+            "quit" => {
+                app.exit(0);
+            }
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let tauri::tray::TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, button_state: tauri::tray::MouseButtonState::Up, .. } = event
+            {
+                let app = tray.app_handle().clone();
+                if let Some(w) = app.get_webview_window("main") {
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
+            }
+        })
+        .build(&app)?;
+
+    tray.set_visible(true)?;
+    Ok(())
 }

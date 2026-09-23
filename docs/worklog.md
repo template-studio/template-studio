@@ -1858,3 +1858,11 @@
 **涉及文件：** `apps/desktop/src/views/settings/WebServerSettings.vue`、`DisplaySettings.vue`、`BackupSettings.vue`、`stores/uiSettings.js`、`composables/useDisplayPrefs.js`(新增)、`useServerConnection.js`(新增)、`main.js`、`App.vue`、`assets/styles/variables.css`、`views/editor/index.vue`(desktop)
 
 **验收结果：** vite build 通过；/move 路由 curl 实测存在；测试连接/显示设置/导入/离线横幅待用户桌面端目验。
+
+## 2026-09-23 desktop 开机自启与系统托盘（任务 #717）
+
+**变更内容：** 引入 Tauri 官方插件补齐 GeneralSettings 两个 TODO。开机自启：tauri-plugin-autostart(LaunchAgent 初始化+capabilities 三权限+前端 @tauri-apps/plugin-autostart)，GeneralSettings 开关即时写系统注册表、失败回滚、页面加载以 isEnabled 系统真值回显。系统托盘：tauri tray-icon feature，setup_tray 构建托盘(菜单:显示主窗口/退出;左键单击唤起聚焦)；window_close 语义改为隐藏驻留托盘(退出走托盘菜单/新增 app_quit 命令)；「启动时最小化到托盘」偏好入 uiSettings.general。
+
+**涉及文件：** `apps/desktop/src-tauri/Cargo.toml`、`src/lib.rs`、`src/commands/window.rs`、`capabilities/default.json`、`src/views/settings/GeneralSettings.vue`、`src/stores/uiSettings.js`(desktop)
+
+**验收结果：** cargo check(-p desktop)与 vite build 通过；托盘交互与自启注册表写入待用户在 Tauri 窗口实测。

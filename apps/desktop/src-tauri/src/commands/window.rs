@@ -45,11 +45,17 @@ pub fn toggle_devtools(app: tauri::AppHandle) -> Result<bool, String> {
     }
 }
 
-/// 关闭窗口
+/// 关闭窗口(#717):默认驻留托盘——隐藏而非退出,退出走托盘菜单
 #[tauri::command]
 pub fn window_close(app: tauri::AppHandle) {
     let window = app.get_webview_window("main").unwrap();
-    window.close().unwrap();
+    let _ = window.hide();
+}
+
+/// 退出应用(托盘菜单/前端显式调用)
+#[tauri::command]
+pub fn app_quit(app: tauri::AppHandle) {
+    app.exit(0);
 }
 
 /// 获取系统用户名
