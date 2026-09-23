@@ -176,3 +176,22 @@
   --ai-dock-bg: #17181d;
   --ai-composer-bg: #24262b;
 }
+
+/* ===== 显示偏好(#716):紧凑模式与动画开关的全局钩子 ===== */
+/* 紧凑模式:全局间距变量降档(组件用 var() 消费处自动收紧) */
+.compact-mode {
+  --spacing-xs: 2px;
+  --spacing-sm: 4px;
+  --spacing-md: 8px;
+  --spacing-lg: 12px;
+  --spacing-xl: 16px;
+}
+
+/* 动画禁用:通吃 transition/animation(滚动条等原生行为不受影响) */
+.no-animations *,
+.no-animations *::before,
+.no-animations *::after {
+  transition-duration: 0s !important;
+  animation-duration: 0s !important;
+  animation-iteration-count: 1 !important;
+}

@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { theme } from 'ant-design-vue'
 import { useThemeStore } from '@/stores/theme'
 import { useConfigStore } from '@/stores/config'
+import { useServerConnection } from '@/composables/useServerConnection'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ProjectWorkspaceLayout from '@/components/layout/ProjectWorkspaceLayout.vue'
 import GlobalSearch from '@/components/common/GlobalSearch.vue'
@@ -13,6 +14,9 @@ const route = useRoute()
 const themeStore = useThemeStore()
 const globalSearchRef = ref(null)
 const configStore = useConfigStore()
+
+// 服务端连接感知(#716):离线横幅数据源
+const { offline: serverOffline, start: startConnWatch, probeNow } = useServerConnection()
 
 // Ant Design 主题配置（视觉语言：AgentHub/HiFox——单色主操作 + 品牌绿强调）
 const antTheme = computed(() => ({
@@ -92,6 +96,9 @@ onMounted(async () => {
   // 再初始化主题
   await themeStore.initializeTheme()
 
+  // 服务端连接感知:配置就绪后再起(探活需 baseURL)
+  startConnWatch()
+
   // 全局禁用右键菜单
   document.addEventListener('contextmenu', handleGlobalContextMenu)
 
@@ -109,6 +116,15 @@ onBeforeUnmount(() => {
 <template>
   <a-config-provider :locale="zhCN" :theme="antTheme">
     <div id="app">
+      <!-- 离线横幅(#716):服务端不可达时全局提示,点击可立即重试 -->
+      <transition name="offline-slide">
+        <div v-if="serverOffline" class="offline-banner">
+          <span class="offline-dot"></span>
+          <span>无法连接服务器——在线功能不可用。请检查 Web 服务端是否运行,或到 设置→Web服务器 检查地址。</span>
+          <button class="offline-retry" @click="probeNow">重试</button>
+        </div>
+      </transition>
+
       <!-- 主应用布局 -->
       <AppLayout v-if="!isProjectWorkspace && !isStandalonePage" />
 
@@ -140,4 +156,52 @@ html, body {
   padding: 0;
   overflow: hidden;
 }
+
+/* 离线横幅(#716) */
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: #b45309;
+  color: #fff;
+  font-size: 12.5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.offline-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fecaca;
+  animation: offline-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes offline-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.offline-retry {
+  margin-left: auto;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: transparent;
+  color: #fff;
+  border-radius: 5px;
+  padding: 2px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.offline-retry:hover { background: rgba(255, 255, 255, 0.15); }
+
+.offline-slide-enter-active, .offline-slide-leave-active { transition: transform 0.25s ease, opacity 0.25s ease; }
+.offline-slide-enter-from, .offline-slide-leave-to { transform: translateY(-100%); opacity: 0; }
 </style>

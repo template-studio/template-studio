@@ -1110,7 +1110,7 @@
       console.error('移动失败:', error);
 
       if (error.response?.status === 404) {
-        message.error('移动功能暂未实现，请联系管理员添加后端接口');
+        message.error('服务端不支持移动接口(/move)——请更新并重启 Web 服务端');
       } else {
         message.error(
           '移动失败: ' + (error.response?.data?.message || error.message || '未知错误')

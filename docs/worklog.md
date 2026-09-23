@@ -1850,3 +1850,11 @@
 **涉及文件：** `apps/desktop/src/views/editor/components/QuickDesignDrawer/components/SchemaEditor.vue`(desktop)
 
 **验收结果：** vite build 通过；浏览器实测 500/320/240 三档：全显/仅同步/全隐，切换正确。
+
+## 2026-09-23 desktop 功能缺口修复·分析报告落地（任务 #716）
+
+**变更内容：** 深度分析 desktop 四层(路由/API/Tauri 命令/web 对照)产出缺口清单，依次修复五项：①WebServerSettings"测试连接"真实现(URL 预检→登录端点探活→engine/info 附版本→token 头鉴权校验，分场景文案)；②DisplaySettings 五个假开关清账——uiSettings 增 display 段，新建 composables/useDisplayPrefs 应用器(主题色→--color-brand 系变量+透明度衍生 hover/active，字号→--base-font-size，紧凑/动画禁用→文档类名+间距变量降档，动画速度→时长因子)，main.js 启动即应用，侧边栏联动 layout store；③BackupSettings 导入真实现(合并语义：语言→数据源→类型映射→项目依赖序逐条创建，同名跳过，语言 id 重映射，跳过缺数据源的项目，统计反馈)；④编辑器文件树 move 链路核实本就完整(服务端 /move 路由实测存在)，404 兜底文案勘误；⑤离线全局感知——useServerConnection composable(30s 周期探活 engine/info、连续 2 次失败判离线、恢复自动消隐)，App.vue 顶部琥珀色横幅(脉冲指示点+重试按钮)。GeneralSettings 开机自启/托盘需 Tauri 插件(autostart/tray-icon)列入后续。
+
+**涉及文件：** `apps/desktop/src/views/settings/WebServerSettings.vue`、`DisplaySettings.vue`、`BackupSettings.vue`、`stores/uiSettings.js`、`composables/useDisplayPrefs.js`(新增)、`useServerConnection.js`(新增)、`main.js`、`App.vue`、`assets/styles/variables.css`、`views/editor/index.vue`(desktop)
+
+**验收结果：** vite build 通过；/move 路由 curl 实测存在；测试连接/显示设置/导入/离线横幅待用户桌面端目验。

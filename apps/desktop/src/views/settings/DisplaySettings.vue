@@ -136,8 +136,13 @@
 import { reactive, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { useThemeStore } from '@/stores/theme'
+import { useUiSettingsStore } from '@/stores/uiSettings'
+import { useLayoutStore } from '@/stores/layout'
+import { applyDisplay } from '@/composables/useDisplayPrefs'
 
 const themeStore = useThemeStore()
+const uiSettings = useUiSettingsStore()
+const layoutStore = useLayoutStore()
 
 // 主题颜色选项
 const themeColors = [
@@ -149,10 +154,10 @@ const themeColors = [
   { name: '青色', value: '#13c2c2' }
 ]
 
-// 响应式设置数据
+// 响应式设置数据(与 uiSettings.display 同步)
 const settings = reactive({
   theme: 'light',
-  primaryColor: '#1b1c1f',
+  primaryColor: '#3e7bfa',
   showSidebar: true,
   compactMode: false,
   fontSize: 14,
@@ -160,10 +165,15 @@ const settings = reactive({
   animationSpeed: 'normal'
 })
 
+// 变更即写 store + 应用(不再等"保存";保存按钮仅作确认提示)
+const persistAndApply = () => {
+  uiSettings.display = { ...settings }
+  applyDisplay(settings)
+}
+
 // 处理设置变更
 const handleThemeChange = (e) => {
   const theme = e.target.value
-  console.log('Theme changed:', theme)
   if (theme === 'light') {
     themeStore.setTheme('light')
   } else if (theme === 'dark') {
@@ -172,55 +182,51 @@ const handleThemeChange = (e) => {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
     themeStore.setTheme(prefersDark ? 'dark' : 'light')
   }
+  persistAndApply()
 }
 
 const handlePrimaryColorChange = (color) => {
   settings.primaryColor = color
-  console.log('Primary color changed:', color)
-  // TODO: 实现主题颜色变更逻辑
+  persistAndApply()
 }
 
 const handleSidebarToggle = (checked) => {
-  console.log('Sidebar toggle:', checked)
-  // TODO: 实现侧边栏显示/隐藏逻辑
+  settings.showSidebar = checked
+  layoutStore.setSidebarCollapsed(!checked)
+  persistAndApply()
 }
 
 const handleCompactModeChange = (checked) => {
-  console.log('Compact mode:', checked)
-  // TODO: 实现紧凑模式逻辑
+  settings.compactMode = checked
+  persistAndApply()
 }
 
 const handleFontSizeChange = (value) => {
-  console.log('Font size changed:', value)
-  document.documentElement.style.setProperty('--base-font-size', `${value}px`)
+  settings.fontSize = value
+  persistAndApply()
 }
 
 const handleAnimationsToggle = (checked) => {
-  console.log('Animations toggle:', checked)
-  // TODO: 实现动画开关逻辑
+  settings.enableAnimations = checked
+  persistAndApply()
 }
 
 const handleAnimationSpeedChange = (value) => {
-  console.log('Animation speed changed:', value)
-  // TODO: 实现动画速度调整逻辑
+  settings.animationSpeed = value
+  persistAndApply()
 }
 
-// 保存设置
+// 保存设置(值已实时生效并持久化,此处仅确认提示)
 const saveSettings = () => {
-  try {
-    localStorage.setItem('displaySettings', JSON.stringify(settings))
-    message.success('显示设置已保存')
-  } catch (error) {
-    message.error('保存设置失败')
-    console.error('Save settings error:', error)
-  }
+  persistAndApply()
+  message.success('显示设置已保存')
 }
 
 // 重置设置
 const resetSettings = () => {
   const defaultSettings = {
     theme: 'light',
-    primaryColor: '#1b1c1f',
+    primaryColor: '#3e7bfa',
     showSidebar: true,
     compactMode: false,
     fontSize: 14,
@@ -229,22 +235,33 @@ const resetSettings = () => {
   }
 
   Object.assign(settings, defaultSettings)
+  layoutStore.setSidebarCollapsed(false)
+  themeStore.setTheme('light')
+  persistAndApply()
   message.info('显示设置已重置为默认值')
 }
 
-// 预览设置
+// 预览设置(实时应用后预览即所见,保留入口作说明)
 const previewSettings = () => {
-  message.info('预览模式：设置将在页面刷新后应用')
+  applyDisplay(settings)
+  message.info('设置已实时应用(本页所有开关即时生效)')
 }
 
 // 加载设置
 const loadSettings = () => {
   try {
-    const saved = localStorage.getItem('displaySettings')
-    if (saved) {
-      const savedSettings = JSON.parse(saved)
-      Object.assign(settings, savedSettings)
-    }
+    // 恢复持久化的显示偏好
+    Object.assign(settings, {
+      primaryColor: uiSettings.display.primaryColor,
+      showSidebar: uiSettings.display.showSidebar,
+      compactMode: uiSettings.display.compactMode,
+      fontSize: uiSettings.display.fontSize,
+      enableAnimations: uiSettings.display.enableAnimations,
+      animationSpeed: uiSettings.display.animationSpeed,
+    })
+    // 主题模式跟随 theme store(其自身已持久化)
+    settings.theme = themeStore.currentTheme === 'dark' ? 'dark' : 'light'
+    applyDisplay(settings)
   } catch (error) {
     console.error('Load settings error:', error)
   }

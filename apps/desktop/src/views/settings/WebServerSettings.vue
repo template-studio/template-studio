@@ -292,33 +292,80 @@ const getParentPath = (path) => {
   return null
 }
 
-// 测试连接
+// 测试连接(#716):两级探测——①服务探活(公开端点) ②Token 鉴权校验
 const testConnection = async () => {
   testing.value = true
   testResult.value = null
 
   try {
-    // 这里暂时模拟测试连接
-    // TODO: 实际应该调用 API 测试连接
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    const base = String(config.value.api_url || '').replace(/\/+$/, '')
 
-    // 简单验证 URL 格式
-    const urlPattern = /^https?:\/\/.+/
-    if (urlPattern.test(config.value.api_url)) {
-      testResult.value = {
-        success: true,
-        message: '连接成功！服务器可以访问。'
-      }
-    } else {
+    // 0) URL 格式预检
+    if (!/^https?:\/\/.+/.test(base)) {
+      testResult.value = { success: false, message: 'URL 格式不正确，请检查输入（需以 http:// 或 https:// 开头）。' }
+      return
+    }
+
+    // 1) 服务探活:登录端点 POST 空体,服务在线必回 HTTP 响应(而非网络错误)
+    let alive = false
+    let serverVersion = ''
+    try {
+      const probe = await fetch(`${base}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+        signal: AbortSignal.timeout(6000),
+      })
+      // 只要拿到了 HTTP 响应(任意状态码)就说明服务在监听
+      alive = true
+      // 顺带尝试公开的引擎信息端点(有则展示,失败忽略)
+      try {
+        const info = await fetch(`${base}/api/v1/engine/info`, { signal: AbortSignal.timeout(4000) })
+        if (info.ok) {
+          const j = await info.json()
+          serverVersion = j?.data?.version ? `（引擎 v${j.data.version}）` : ''
+        }
+      } catch { /* 版本端点可选 */ }
+    } catch {
+      alive = false
+    }
+
+    if (!alive) {
+      testResult.value = { success: false, message: '无法连接服务器：请确认地址正确、服务已启动且防火墙放行。' }
+      return
+    }
+
+    // 2) Token 鉴权校验:带 token 头请求需鉴权端点
+    const token = String(config.value.api_key || '').trim()
+    if (!token) {
       testResult.value = {
         success: false,
-        message: 'URL 格式不正确，请检查输入。'
+        message: `服务器在线${serverVersion}，但未配置 API Token——请先在 Web 端「个人中心」创建并填入。`,
       }
+      return
+    }
+
+    const authRes = await fetch(`${base}/api/v1/template/templates?page=1&page_size=1`, {
+      headers: { token },
+      signal: AbortSignal.timeout(6000),
+    })
+    if (authRes.status === 401) {
+      testResult.value = { success: false, message: '服务器在线，但 Token 无效或已过期——请在 Web 端重新创建。' }
+      return
+    }
+    if (!authRes.ok) {
+      testResult.value = { success: false, message: `服务器在线，但鉴权探测异常（HTTP ${authRes.status}）。` }
+      return
+    }
+
+    testResult.value = {
+      success: true,
+      message: `连接成功${serverVersion}，Token 鉴权通过。`,
     }
   } catch (error) {
     testResult.value = {
       success: false,
-      message: '连接失败: ' + error
+      message: '连接失败: ' + (error?.message || error),
     }
   } finally {
     testing.value = false

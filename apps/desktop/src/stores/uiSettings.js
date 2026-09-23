@@ -5,6 +5,15 @@ import { defineStore } from 'pinia'
 const STORAGE_KEY = 'ui-settings-v1'
 
 const DEFAULTS = {
+  display: {
+    // 显示设置页(DisplaySettings)真实生效的偏好(#716):应用 CSS 变量/类名
+    primaryColor: '#3e7bfa',
+    showSidebar: true,
+    compactMode: false,
+    fontSize: 14,
+    enableAnimations: true,
+    animationSpeed: 'normal',
+  },
   security: {
     enableCSP: true,
     blockExternalLinks: false,

@@ -203,39 +203,132 @@ const triggerImport = () => {
   fileInputRef.value?.click()
 }
 
-// 处理导入文件
+// 处理导入文件(#716):合并导入——按依赖序逐条创建,同名跳过
 const handleImportFile = async (event) => {
   const file = event.target.files?.[0]
   if (!file) return
 
   event.target.value = ''
 
+  let data
   try {
     const text = await file.text()
-    const data = JSON.parse(text)
-
-    if (!data.data) {
+    data = JSON.parse(text)
+    if (!data.data || typeof data.data !== 'object') {
       message.error('无效的备份文件格式')
       return
     }
-
-    Modal.confirm({
-      title: '确认导入',
-      content: '导入将覆盖现有数据，是否继续？',
-      okText: '导入',
-      cancelText: '取消',
-      onOk: async () => {
-        try {
-          // TODO: 实现数据导入逻辑
-          message.success('数据导入成功')
-        } catch (error) {
-          message.error('导入失败: ' + error)
-        }
-      }
-    })
   } catch (error) {
     message.error('文件解析失败: ' + error)
+    return
   }
+
+  const d = data.data
+  const total =
+    (Array.isArray(d.languages) ? d.languages.length : 0) +
+    (Array.isArray(d.datasources) ? d.datasources.length : 0) +
+    (Array.isArray(d.mappings) ? d.mappings.length : 0) +
+    (Array.isArray(d.projects) ? d.projects.length : 0)
+
+  if (total === 0) {
+    message.warning('备份文件中没有可导入的数据')
+    return
+  }
+
+  Modal.confirm({
+    title: '确认导入',
+    content: `将导入 ${total} 条记录（语言/数据源/类型映射/项目）。同名或同键的记录会跳过，现有数据不会被覆盖或删除。`,
+    okText: '导入',
+    cancelText: '取消',
+    onOk: async () => {
+      const stats = { imported: 0, skipped: 0, failed: 0 }
+      // 语言名 → 新 id 映射(项目/映射引用语言 id,导入后需重指)
+      const langIdMap = new Map()
+
+      // 1) 语言(先建:映射和项目可能引用)
+      for (const lang of d.languages || []) {
+        try {
+          const oldId = lang.id ?? lang.languageId
+          const newId = await invoke('db_create_language', {
+            params: {
+              name: lang.name,
+              icon: lang.icon ?? null,
+              color: lang.color ?? null,
+              description: lang.description ?? null,
+            },
+          })
+          if (newId && oldId != null) langIdMap.set(String(oldId), newId)
+          stats.imported++
+        } catch {
+          stats.skipped++
+        }
+      }
+
+      // 2) 数据源(独立,无外键;字段为 snake_case 原生命名)
+      for (const ds of d.datasources || []) {
+        try {
+          await invoke('db_create_datasource', {
+            params: {
+              name: ds.name,
+              type: ds.type ?? ds.type_ ?? ds.database_type ?? ds.db_type,
+              host: ds.host ?? null,
+              port: ds.port ?? null,
+              username: ds.username ?? null,
+              password: ds.password ?? null,
+              database: ds.database ?? null,
+              sqlite_file: ds.sqlite_file ?? null,
+            },
+          })
+          stats.imported++
+        } catch {
+          stats.skipped++
+        }
+      }
+
+      // 3) 系统类型映射(引用语言 id;模型序列化为 snake_case)
+      for (const m of d.mappings || []) {
+        try {
+          const langId = langIdMap.get(String(m.language_id)) ?? m.language_id
+          if (langId == null) { stats.skipped++; continue }
+          await invoke('db_create_system_type_mapping', {
+            languageId: langId,
+            dbType: m.db_type ?? m.database_type ?? '',
+            pattern: m.pattern ?? '',
+            targetType: m.target_type ?? '',
+            priority: m.priority ?? 0,
+          })
+          stats.imported++
+        } catch {
+          stats.skipped++
+        }
+      }
+
+      // 4) 项目(引用语言 id;模型 snake_case,命令参数 camelCase;
+      //    datasourceId/databaseName 为必填——缺数据源的项目跳过并计入)
+      for (const p of d.projects || []) {
+        try {
+          if (p.datasource_id == null) { stats.skipped++; continue }
+          const langId = langIdMap.get(String(p.primary_language_id)) ?? p.primary_language_id
+          await invoke('db_create_project', {
+            params: {
+              name: p.name,
+              description: p.description ?? null,
+              databaseName: p.database_name ?? p.name,
+              datasourceId: p.datasource_id,
+              primaryLanguageId: langId ?? null,
+              frontendLanguageId: langIdMap.get(String(p.frontend_language_id)) ?? p.frontend_language_id ?? null,
+              backendLanguageId: langIdMap.get(String(p.backend_language_id)) ?? p.backend_language_id ?? null,
+            },
+          })
+          stats.imported++
+        } catch {
+          stats.failed++
+        }
+      }
+
+      message.success(`导入完成：成功 ${stats.imported} 条，跳过 ${stats.skipped + stats.failed} 条`)
+    },
+  })
 }
 
 // 选择模板路径
